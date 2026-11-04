@@ -13,9 +13,9 @@ loader: ota.bin 8340 B
   ok    .ram_text: 2659 insns, no calls
   ok    no 64-bit multiply inlined beside a load
   ok    no soft-double routines (single-precision FPU only)
-  ok    image 115384 B; RAM .data+.bss 27404 B of 98304; pool 72608 B of 344064
+  ok    image 115396 B; RAM .data+.bss 27404 B of 98304; pool 72608 B of 344064
   ok    register access: felucca-bsp only (device/, include/ and the app clean)
 parts    USB audio in, the second core  (not built in: Bluetooth MIDI, Bluetooth MIDI devices, WiFi, USB audio out, screen mirroring, backup and restore, USB MIDI host, velocity and pressure)
-app      /workspace/scratch/9c764547533f/aquora-next/device/build/sound-healing.bin  115384 B
+app      /workspace/scratch/9c764547533f/aquora-next/device/build/sound-healing.bin  115396 B
 loader   /workspace/scratch/9c764547533f/aquora-next/device/build/loader/ota.bin  8340 B
 package  /workspace/scratch/9c764547533f/aquora-next/device/build/sound-healing-0.4.0.fwsc  611496 B, identity FM-1_73000400

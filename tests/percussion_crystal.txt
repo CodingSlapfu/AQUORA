@@ -19,6 +19,10 @@ spin K1 500
 spin K1 500
 spin K1 500
 spin K1 500
+spin K1 500
+spin K1 500
+spin K1 500
+spin K1 500
 wait 150
 expect hit 100
 shot percussion.png

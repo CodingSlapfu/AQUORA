@@ -1,0 +1,10 @@
+  ok drums == 1
+  ok drums == 0
+  ok density == 0
+  ok drums == 1
+  ok density == 2
+  ok hit == 100
+  ok visual == 1
+  ok running == 0
+  ok peak -180.0 dBFS (max -110)
+host: 4103 ms simulated, 173 blits, render 0.2% of real time (host CPU)

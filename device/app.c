@@ -260,7 +260,8 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  plat_leds((engine.running?(1u<<B_PLAY):0)|(engine.freeze?(1u<<B_SEQ):0),k);
 }
 #include "ui.c"
-void app_ui_init(void){draw(1);}
+enum { FRAME_MIN_MS = 50 };
+void app_ui_init(void){draw(1);redraw_ui_ms=lastdraw=plat_ms();}
 void app_frame(void)
 {
     app_input_only();
@@ -281,8 +282,9 @@ void app_frame(void)
     }
     if(displayed_revision!=state_revision)dirty=1;
     if(knob_until&&(int32_t)(now-knob_until)>=0){knob_until=0;dirty=1;}
+    if(now-redraw_ui_ms<FRAME_MIN_MS)return;
     unsigned load=plat_cpu_pct();
-    unsigned interval=load>82?150:load>68?90:load>60?70:34;
+    unsigned interval=load>82?150:load>68?90:load>60?70:FRAME_MIN_MS;
     int animate=!debug&&now-lastdraw>=interval&&(!dirty||load<=68||now-lastdraw>=200);
     if(animate){
       lastdraw=now;
@@ -290,7 +292,7 @@ void app_frame(void)
       prepare_geometry();
       graphics_us=(plat_ticks24()-begin)/24;
     }
-    if(animate||(dirty&&now-redraw_ui_ms>=25)){
+    if(animate||dirty){
       redraw_ui_ms=now;
       draw(animate);
     }
