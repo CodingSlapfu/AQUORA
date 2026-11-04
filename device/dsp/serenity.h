@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #define SR_RATE 44100
+#define SR_HIT_MAX 100u
 #define SR_TRACKS 8
 #define SR_VOICES 16
 #define SR_PATCHES 24

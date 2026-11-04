@@ -123,7 +123,7 @@ static void consume(void){
  case 33:if(c.track<=SR_BASS)engine.motion[c.track].glide_ms=bounded(engine.motion[c.track].glide_ms+10*d,10,800);break;
  case 34:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_rate=bounded(engine.motion[c.track].vibrato_rate+d,5,80);break;
  case 36:engine.sacred_harmonics=adjust(engine.sacred_harmonics,d,.025f,1);break;
- case 37:engine.drum_hit=bounded(engine.drum_hit+d,0,70);break;
+ case 37:engine.drum_hit=bounded(engine.drum_hit+d,0,SR_HIT_MAX);break;
  case 35:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
  }
  }

@@ -129,7 +129,7 @@ static void arrangement_apply(const arrangement *record)
 #define COPY_FIELD(field) engine.field=record->field;
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
-    engine.drum_hit=engine.drum_hit>70?70:engine.drum_hit;
+    engine.drum_hit=engine.drum_hit>SR_HIT_MAX?SR_HIT_MAX:engine.drum_hit;
     visual_mode=record->visual;
     memcpy(engine.melody,record->melody,sizeof(engine.melody));
     memcpy(engine.motion,record->motion,sizeof(engine.motion));

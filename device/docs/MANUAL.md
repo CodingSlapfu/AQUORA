@@ -19,7 +19,7 @@ ALGORITHM selects PLAY, SOUND, EVOLVE, MIX. SELECT chooses Lead, Bass, Pads, Har
 | SOUND / Sacred Bass | Sacred level | Off / musical / reference | Harmonic blend | Fixed tone level |
 | SOUND / Lead / Bass Motion | Off / legato / always glide | Glide milliseconds | Vibrato rate in 0.1 Hz steps | Vibrato depth in cents, 0 disables |
 | SOUND / Track Routing | Track level | Pan | FX send | Solo / clear |
-| SOUND / Percussion HIT | HIT % (0–70) | Drum level | Density 0–3 | Drums ON/OFF |
+| SOUND / Percussion HIT | HIT % (0–100) | Drum level | Density 0–3 | Drums ON/OFF |
 | SOUND / Visualizer | Original / Water Crystals | — | — | — |
 | SOUND / Arrangement Banks | Bank 1–4 | LOAD / SAVE | Overwrite arm | Visualizer |
 | EVOLVE | Motif variation | Freeze toggle | Tempo | Energy |

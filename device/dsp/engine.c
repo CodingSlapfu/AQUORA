@@ -293,7 +293,7 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
                     (beat==7||beat==15);
   if(!hits&&eligible){
     e->drum_rng=e->drum_rng*1664525u+1013904223u;
-    unsigned percent=e->drum_hit>70?70:e->drum_hit;
+    unsigned percent=e->drum_hit>SR_HIT_MAX?SR_HIT_MAX:e->drum_hit;
     if((e->drum_rng>>16)%100u<percent){
       if(beat==11)e->hand_env=.55f;
       else e->shaker_env=.52f;

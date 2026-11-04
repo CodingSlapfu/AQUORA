@@ -61,21 +61,67 @@ static void stopped_voices(void)
     puts("PASS duplicate held key, missed-release watchdog, Sacred Bass release, 32 saturated STOP/restart cycles, no stale FX or keyed voices");
 }
 
+/* Isolate the fixed oscillator from all generated tracks and effects. */
+static unsigned rising_crossings(void)
+{
+    unsigned crossings=0;
+    int16_t previous=0;
+    for(unsigned i=0;i<SR_RATE/256;i++){
+        block(&a);
+        for(unsigned sample=0;sample<512;sample+=2){
+            assert(pcm[sample]==pcm[sample+1]);
+            crossings+=(previous<=0&&pcm[sample]>0);
+            previous=pcm[sample];
+        }
+    }
+    return crossings;
+}
+
+static void fixed_reference_isolation(void)
+{
+    sr_init(&a,731);
+    a.bed_level=a.reverb_amount=a.delay_amount=0;
+    a.sacred_mode=0;
+    for(unsigned t=0;t<SR_TRACKS;t++)a.tracks[t].mute=1;
+    sr_start(&a);
+    assert(rising_crossings()==0);
+
+    a.tone_level=.10f;
+    unsigned initial=rising_crossings();
+    assert(initial>=526&&initial<=529);
+    sr_set_scene(&a,6);
+    a.bed_level=0;
+    unsigned changed=rising_crossings();
+    assert(changed>=526&&changed<=529);
+    sr_stop(&a);
+    block(&a);
+    block(&a);silence();
+    sr_start(&a);
+    unsigned restarted=rising_crossings();
+    assert(restarted>=526&&restarted<=529);
+
+    a.tone_level=0;
+    assert(rising_crossings()==0);
+    silence();
+    printf("PASS isolated fixed-reference crossings: %u initial, %u after scene change, %u after restart\n",
+        initial,changed,restarted);
+}
+
 static void hit_cap(void)
 {
     sr_init(&a,3131);
     sr_init(&b,3131);
     sr_start(&a);sr_start(&b);
     a.drum_density=b.drum_density=2;
-    a.drum_hit=70;b.drum_hit=255;
+    a.drum_hit=SR_HIT_MAX;b.drum_hit=255;
     a.tick_length=b.tick_length=32;
     for(unsigned i=0;i<3500;i++){
         block(&a);block(&b);
         assert(a.optional_hits==b.optional_hits);
     }
     unsigned eligible=a.sequence_step/4;
-    assert(a.optional_hits*100>eligible*65&&a.optional_hits*100<eligible*75);
-    printf("PASS 70%% equals corrupted 255%% input: %u optional strikes in about %u eligible subdivisions\n",a.optional_hits,eligible);
+    assert(a.optional_hits==eligible);
+    printf("PASS 100%% equals corrupted 255%% input: %u optional strikes in %u eligible subdivisions\n",a.optional_hits,eligible);
     sr_init(&a,1);sr_start(&a);a.drum_hit=0;a.tick_length=32;
     for(unsigned i=0;i<500;i++)block(&a);
     assert(!a.optional_hits&&a.tracks[SR_DRUMS].events>0&&a.drums_enabled);
@@ -91,4 +137,4 @@ static void hit_cap(void)
     }
     puts("PASS HIT zero retains pulse and all eight scenes produce audible-range drum PCM");
 }
-int main(void){stopped_voices();hit_cap();return 0;}
+int main(void){stopped_voices();fixed_reference_isolation();hit_cap();return 0;}

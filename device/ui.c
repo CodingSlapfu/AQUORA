@@ -106,7 +106,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 34:*name="VIBRATO Hz";if(selected>SR_BASS)return "-";return tenth(buffer,motion->vibrato_rate);
  case 35:*name="VIBRATO cents";if(selected>SR_BASS)return "-";number=motion->vibrato_depth;break;
  case 36:*name="HARMONIC %";number=engine.sacred_harmonics*100;break;
- case 37:*name="HIT % (MAX 70)";number=engine.drum_hit;break;
+ case 37:*name="HIT %";number=engine.drum_hit;break;
  case 38:*name="VISUALIZER";return visual_name();
  case 39:*name="BANK";number=bank_slot+1;break;
  case 40:*name="ACTION";return bank_action?"SAVE":"LOAD";
