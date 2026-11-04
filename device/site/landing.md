@@ -1,13 +1,13 @@
 # AQUORA
 
-Generative music for the M-VAVE FM-1.
+Generative Sound Sanctuary for M-VAVE FM-1.
 
-Version {{VERSION}} — eight-track hardware-test build. Original instruments, evolving motifs, gentle percussion, nature textures, fixed-frequency tones and headphone-oriented binaural listening.
+Version {{VERSION}} brings four arrangement banks, full live knob feedback, a clearer drum path, and selectable Water Crystals alongside Original geometry.
 
-[Open the browser installer](install/) · [Read the manual](manual/)
+[Open the browser installer](install/) · [Play the emulator](emu/) · [Read the manual](manual/)
 
-Native compilation and software tests are checked separately from physical hardware validation. No medical claims. The previous instrument projects have been retired from this website; their backups remain on GitHub.
+[Release notes and hardware checklist](RELEASE.md) · [0.2.0 rollback](rollback/0.2.0/install/) · [0.1.0 rollback](rollback/0.1.0/install/)
 
-[Release notes and hardware checklist](RELEASE.md) · [0.1.0 rollback installer](rollback/0.1.0/install/)
+[Download release package](AQUORA-0.3.0-package.tar.gz) · [Download matching source](AQUORA-0.3.0-source.tar.gz) · [SHA-256 checksums](SHA256SUMS.txt)
 
-[Download release package](AQUORA-0.2.0-package.tar.gz) · [Download matching source](AQUORA-0.2.0-source.tar.gz) · [SHA-256 checksums](SHA256SUMS.txt)
+Software checks are complete. FM-1 listening, sustained real-time performance and physical upgrade/recovery remain owner tests.

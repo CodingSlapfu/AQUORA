@@ -117,6 +117,12 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  num(buffer,number);
  return buffer;
 }
+static int text_pixels(const felucca_font_t *font,const char *text)
+{
+ int width=0;
+ for(;*text;text++)width+=font->adv[glyph(font,(uint8_t)*text)];
+ return width;
+}
 static void knob_cell(unsigned knob,int x)
 {
  char value[16],tag[]="K1 ";
@@ -125,7 +131,10 @@ static void knob_cell(unsigned knob,int x)
  tag[1]=(char)('1'+knob);
  int label_x=cv_text(x,0,&FONT_XS,tag,RGB(143,213,201));
  limited_text(label_x,0,108-(label_x-x),&FONT_XS,name,RGB(126,166,164));
- limited_text(x,14,108,&FONT_B,shown,RGB(218,240,220));
+ int focus=knob_until&&knob_focus==knob;
+ const felucca_font_t *font=focus&&knob<2&&text_pixels(&FONT_M,shown)<=108?&FONT_M:&FONT_B;
+ if(text_pixels(font,shown)>108)font=&FONT_XS;
+ limited_text(x,14,108,font,shown,focus?RGB(255,229,156):RGB(218,240,220));
 }
 static void voice_diagnostics(int band)
 {
@@ -142,7 +151,9 @@ static void voice_diagnostics(int band)
    label(8,0,"VOICE SLOT",voice_slot+1);
    cv_text(126,0,&FONT_XS,"ROLE / ORIGIN",RGB(126,166,164));
    cv_text(126,15,&FONT_B,voice.active?role_names[voice.track]:"Idle",C_WHITE);
-   cv_text(126,31,&FONT_XS,voice.active?(voice.key?"Physical key":"Generator"):"-",C_WHITE);
+   const char *origin=voice.key?"Physical key":"Generator";
+   if(voice.active&&engine.tracks[voice.track].mute)origin=voice.key?"Key / muted":"Gen / muted";
+   cv_text(126,31,&FONT_XS,voice.active?origin:"-",C_WHITE);
  }else if(band==2){
    label(8,0,"MIDI / AGE ms",voice.active?voice.midi:0);
    label(126,0,"REMAIN ms",voice.active?voice.remain/(SR_RATE/1000):0);

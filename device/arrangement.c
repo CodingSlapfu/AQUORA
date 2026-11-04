@@ -5,10 +5,8 @@
  */
 #define AQ_BANKS 4u
 #define AQ_BANK_VERSION 0x41514201u
-#define AQ_BANK_BYTES 8192u
-#define AQ_BANK_BASE 0xD4000u
-_Static_assert(AQ_BANK_BASE + AQ_BANKS * AQ_BANK_BYTES == 0xDC000u,
-               "Bank sector pairs must end before panel storage");
+_Static_assert(AQ_BANK_BASE >= 0x97000u && AQ_BANK_BASE + AQ_BANKS * AQ_BANK_STRIDE <= 0xA0000u,
+               "Bank sector pairs must stay in the documented data region");
 
 #define AQ_BANK_FIELDS(X) \
  X(scene) X(frequency) X(tuning_432) X(bed_type) X(drums_enabled) \

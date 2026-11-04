@@ -36,20 +36,34 @@ wait 150
 tap OCT-
 tap SAVE
 expect scene 0
+expect bank_exact 1
+expect bank_guard 1
 expect visual 1
 spin K1 1
 tap SAVE
 expect scene 2
+expect bank_exact 1
+expect bank_guard 1
 expect visual 0
 spin K1 1
 tap SAVE
 expect scene 4
+expect bank_exact 1
+expect bank_guard 1
 expect visual 1
 spin K1 1
 tap SAVE
 expect scene 6
+expect bank_exact 1
+expect bank_guard 1
 expect visual 0
 spin K2 1
+tap SAVE
+expect bank_message 3
+expect store_writes 4
+spin K3 1
+tap HOME
+tap OCT-
 tap SAVE
 expect bank_message 3
 expect store_writes 4

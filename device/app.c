@@ -197,13 +197,14 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if(press&(1u<<B_PLAY)){
    unsigned flags=plat_lock();
    blocked_keys|=k;
+   bank_confirm=0;
    requested_play=!requested_play;
    if(!requested_play)stop_generation++;
    plat_unlock(flags);
  }
- if(press&(1u<<B_HOME)){page=0;debug=0;}
+ if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=0;}
  if(press&(1u<<B_SEL))send(15,0);
- if(press&(1u<<B_ARP)){page=1;group=GROUP_PERC;debug=0;send(9,1);}
+ if(press&(1u<<B_ARP)){bank_confirm=0;page=1;group=GROUP_PERC;debug=0;send(9,1);}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
  if(press&(1u<<B_REC))plat_cpu2_set(0);
  if(press&(1u<<B_ENV))send(14,0);
@@ -215,7 +216,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=1;group=GROUP_BANKS;debug=0;}
- if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){page=1;group=group==GROUP_PERC?GROUP_HIT:GROUP_PERC;debug=0;}
+ if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;page=1;group=group==GROUP_PERC?GROUP_HIT:GROUP_PERC;debug=0;}
  if(press&(1u<<B_LFO))send(debug?27:28,0);
  if((press&(1u<<B_SAVE))&&page==1&&group==GROUP_BANKS&&!debug){
     arrangement_execute();
@@ -295,5 +296,26 @@ void app_frame(void)
     }
 }
 #ifdef PLAT_HOST
-int app_expect(const char *what,int *got){if(!strcmp(what,"page"))*got=page;else if(!strcmp(what,"running"))*got=engine.running;else if(!strcmp(what,"binaural"))*got=engine.binaural_enabled;else if(!strcmp(what,"track"))*got=selected;else if(!strcmp(what,"perfect"))*got=engine.perfect_key;else if(!strcmp(what,"tracks"))*got=SR_TRACKS;else if(!strcmp(what,"lead_glide"))*got=engine.motion[SR_LEAD].glide_ms;else if(!strcmp(what,"bass_glide"))*got=engine.motion[SR_BASS].glide_ms;else if(!strcmp(what,"lead_vibrato"))*got=engine.motion[SR_LEAD].vibrato_depth;else if(!strcmp(what,"bass_vibrato"))*got=engine.motion[SR_BASS].vibrato_depth;else if(!strcmp(what,"drums"))*got=engine.drums_enabled;else if(!strcmp(what,"density"))*got=engine.drum_density;else if(!strcmp(what,"hit"))*got=engine.drum_hit;else if(!strcmp(what,"scene"))*got=engine.scene;else if(!strcmp(what,"visual"))*got=visual_mode;else if(!strcmp(what,"bank"))*got=bank_slot;else if(!strcmp(what,"bank_message"))*got=bank_message;else if(!strcmp(what,"bank_mask")){*got=0;for(unsigned i=0;i<AQ_BANKS;i++)*got|=(bank_status[i]==1)<<i;}else if(!strcmp(what,"worker"))*got=plat_cpu2_on();else if(!strcmp(what,"fallbacks"))*got=worker_fallbacks;else if(!strcmp(what,"drops"))*got=dropped;else return 0;return 1;}
+int app_expect(const char *what,int *got){if(!strcmp(what,"page"))*got=page;else if(!strcmp(what,"running"))*got=engine.running;else if(!strcmp(what,"binaural"))*got=engine.binaural_enabled;else if(!strcmp(what,"track"))*got=selected;else if(!strcmp(what,"perfect"))*got=engine.perfect_key;else if(!strcmp(what,"tracks"))*got=SR_TRACKS;else if(!strcmp(what,"lead_glide"))*got=engine.motion[SR_LEAD].glide_ms;else if(!strcmp(what,"bass_glide"))*got=engine.motion[SR_BASS].glide_ms;else if(!strcmp(what,"lead_vibrato"))*got=engine.motion[SR_LEAD].vibrato_depth;else if(!strcmp(what,"bass_vibrato"))*got=engine.motion[SR_BASS].vibrato_depth;else if(!strcmp(what,"drums"))*got=engine.drums_enabled;else if(!strcmp(what,"density"))*got=engine.drum_density;else if(!strcmp(what,"hit"))*got=engine.drum_hit;else if(!strcmp(what,"scene"))*got=engine.scene;else if(!strcmp(what,"visual"))*got=visual_mode;else if(!strcmp(what,"bank"))*got=bank_slot;else if(!strcmp(what,"bank_message"))*got=bank_message;else if(!strcmp(what,"knobs_valid")){
+ *got=1;
+ for(unsigned i=0;i<4;i++){
+   unsigned id=control_for(i);
+   if(id){
+     char buffer[16];const char *name;
+     const char *value=knob_value(id,&name,buffer);
+     if(!*name||!*value||text_pixels(&FONT_XS,value)>108)*got=0;
+   }
+ }
+ }else if(!strcmp(what,"bank_exact")){
+ arrangement current,stored;
+ arrangement_snapshot(&current);
+ *got=arrangement_read(bank_slot,&stored)&&current.crc==stored.crc;
+ }else if(!strcmp(what,"bank_guard")){
+ arrangement bad;
+ arrangement_snapshot(&bad);
+ bad.melody[0]^=1;
+ int corrupt=!arrangement_valid(&bad);
+ bad.scene=255;bad.crc=arrangement_crc(&bad);
+ *got=corrupt&&!arrangement_valid(&bad);
+ }else if(!strcmp(what,"bank_mask")){*got=0;for(unsigned i=0;i<AQ_BANKS;i++)*got|=(bank_status[i]==1)<<i;}else if(!strcmp(what,"worker"))*got=plat_cpu2_on();else if(!strcmp(what,"fallbacks"))*got=worker_fallbacks;else if(!strcmp(what,"drops"))*got=dropped;else return 0;return 1;}
 #endif

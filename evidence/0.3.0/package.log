@@ -1,0 +1,1 @@
+PASS packaged firmware matches native image, identity/CRC, installer target and emulator WASM

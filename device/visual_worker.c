@@ -47,7 +47,7 @@ static void visual_init(void)
  * Table indices and vertex counts are fixed. All inputs are immutable snapshots. */
 static void crystal_point(unsigned stem,unsigned vertex,unsigned angle,float radius)
 {
-    vis_output.xy[stem][vertex][0]=120+(int)(radius*vis_sine[(angle+32)&127]);
+    vis_output.xy[stem][vertex][0]=120+(int)(radius*1.48f*vis_sine[(angle+32)&127]);
     vis_output.xy[stem][vertex][1]=96+(int)(radius*.77f*vis_sine[angle&127]);
 }
 

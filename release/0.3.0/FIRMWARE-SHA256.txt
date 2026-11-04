@@ -1,0 +1,1 @@
+8ed7742635bb52b55274cc0ce1c8ee431ef8738871af59211818721e7c1bc6da  firmware/sound-healing-0.3.0.fwsc

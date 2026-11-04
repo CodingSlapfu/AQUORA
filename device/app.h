@@ -6,7 +6,9 @@
 #define APP_BLOCK 256u
 #define APP_CANVAS_PX (240u*48u)
 enum {OBJ_SETTINGS,OBJ_PANEL,OBJ_BANK1,OBJ_BANK2,OBJ_BANK3,OBJ_BANK4,OBJ_NOBJ};
-#define APP_STORE_MAP {0xFC000u,0xDC000u,0xD4000u,0xD6000u,0xD8000u,0xDA000u}
+#define AQ_BANK_BASE 0x97000u
+#define AQ_BANK_STRIDE 0x2000u
+#define APP_STORE_MAP {0xFC000u,0xDC000u,AQ_BANK_BASE,AQ_BANK_BASE+AQ_BANK_STRIDE,                        AQ_BANK_BASE+2*AQ_BANK_STRIDE,AQ_BANK_BASE+3*AQ_BANK_STRIDE}
 void app_init(void);
 void app_render(int32_t*,uint32_t,uint32_t);
 void app_panic(void);

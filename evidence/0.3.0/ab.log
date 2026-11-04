@@ -1,0 +1,25 @@
+Host CPU time per 256-frame callback. Identical workload inputs; output differs. Device timing remains open.
+Run 1 0.2.0
+quiet: mean 0.2 us p95 0.2 us peak 65.3 us, PCM peak 0 RMS 0
+pitched dry: mean 59.0 us p95 126.2 us peak 1114.3 us, PCM peak 8522 RMS 2116
+all + wet: mean 63.2 us p95 112.1 us peak 3795.9 us, PCM peak 14731 RMS 3579
+Run 1 0.3.0
+quiet: mean 0.2 us p95 0.2 us peak 105.5 us, PCM peak 0 RMS 0
+pitched dry: mean 47.9 us p95 87.1 us peak 1967.3 us, PCM peak 8903 RMS 2157
+all + wet: mean 52.8 us p95 90.3 us peak 517.0 us, PCM peak 14234 RMS 3684
+Run 2 0.2.0
+quiet: mean 0.1 us p95 0.1 us peak 9.7 us, PCM peak 0 RMS 0
+pitched dry: mean 53.3 us p95 99.4 us peak 790.7 us, PCM peak 8522 RMS 2116
+all + wet: mean 64.0 us p95 110.4 us peak 2241.7 us, PCM peak 14731 RMS 3579
+Run 2 0.3.0
+quiet: mean 0.2 us p95 0.1 us peak 66.8 us, PCM peak 0 RMS 0
+pitched dry: mean 47.1 us p95 93.1 us peak 627.1 us, PCM peak 8903 RMS 2157
+all + wet: mean 58.5 us p95 117.0 us peak 928.7 us, PCM peak 14234 RMS 3684
+Run 3 0.2.0
+quiet: mean 0.1 us p95 0.1 us peak 1.8 us, PCM peak 0 RMS 0
+pitched dry: mean 74.6 us p95 114.2 us peak 54262.3 us, PCM peak 8522 RMS 2116
+all + wet: mean 67.1 us p95 109.4 us peak 2549.8 us, PCM peak 14731 RMS 3579
+Run 3 0.3.0
+quiet: mean 0.2 us p95 0.3 us peak 20.0 us, PCM peak 0 RMS 0
+pitched dry: mean 56.2 us p95 120.8 us peak 2403.5 us, PCM peak 8903 RMS 2157
+all + wet: mean 68.5 us p95 111.7 us peak 3279.8 us, PCM peak 14234 RMS 3684
