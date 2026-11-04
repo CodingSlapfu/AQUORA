@@ -323,10 +323,11 @@ void sr_key_up(sr_engine *e,unsigned key)
 static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return;
   uint32_t beat=step&15u;
+  unsigned bar=e->loop_length>16?step/16u:0;
   unsigned hits=0;
   if(beat==0 || (beat==8 && e->drum_density>=2)){e->kick_env=1.f;hits++;}
   if((beat==4||beat==12) && (e->drum_density>=2 || (rng(e)&3u)==0)){
-    e->hand_env=1.f;hits++;
+    e->hand_env=bar&&(beat==4?bar&1u:bar&2u)?.78f:1.f;hits++;
   }
   if(e->drum_density==3 && (beat&1u)){e->shaker_env=.72f;hits++;}
   else if(e->drum_density==2 && (beat&3u)==2){e->shaker_env=.65f;hits++;}
@@ -335,11 +336,16 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   unsigned eligible=e->scene==6 ? (beat==3||beat==11) :
                     energy>=2 ? (beat==3||beat==7||beat==11||beat==15) :
                     (beat==7||beat==15);
+  /* Answer bars add off-beat pickups, with a two-hit closing fill at full HIT. */
+  if(bar&&e->drum_density>=2){
+    if(bar&1u)eligible|=beat==5||beat==13;
+    if(bar&2u)eligible|=beat==1||beat==9;
+  }
   if(!hits&&eligible){
     e->drum_rng=e->drum_rng*1664525u+1013904223u;
     unsigned percent=e->drum_hit>SR_HIT_MAX?SR_HIT_MAX:e->drum_hit;
     if((e->drum_rng>>16)%100u<percent){
-      if(beat==11)e->hand_env=.55f;
+      if(beat==11||(bar&&(beat==5||beat==13)))e->hand_env=.55f;
       else e->shaker_env=.52f;
       e->optional_hits++;
       hits++;

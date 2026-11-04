@@ -245,6 +245,57 @@ static void nature_audibility(void)
     block(&a);silence();
 }
 
+static void multi_bar_percussion(void)
+{
+    for(unsigned length=16;length<=64;length*=2){
+        sr_init(&a,441);
+        sr_set_loop_length(&a,length);
+        a.drum_hit=100;
+        a.drum_density=2;
+        a.freeze=1;
+        sr_start(&a);
+        a.tick_length=64;
+        unsigned masks[4]={0};
+        for(unsigned step=0;step<length*2;step++){
+            unsigned before=a.tracks[SR_DRUMS].events;
+            sr_render(&a,pcm,64);
+            unsigned bar=(step%length)/16;
+            unsigned hit=a.tracks[SR_DRUMS].events>before;
+            if(step<length)masks[bar]|=hit<<(step%16);
+            else assert(hit==((masks[bar]>>(step%16))&1u));
+        }
+        for(unsigned bar=0;bar<length/16;bar++){
+            assert(masks[bar]&1u);
+            for(unsigned prev=0;prev<bar;prev++)assert(masks[bar]!=masks[prev]);
+        }
+    }
+    puts("PASS 16/32/64 percussion, distinct answer bars at HIT 100 and repeatable loop timing");
+}
+
+static void vibrato_pcm(void)
+{
+    int16_t clean[512];
+    for(unsigned track=SR_LEAD;track<=SR_BASS;track++){
+        sr_init(&a,231);
+        sr_init(&b,231);
+        a.bed_level=b.bed_level=0;
+        a.reverb_amount=b.reverb_amount=a.delay_amount=b.delay_amount=0;
+        a.sacred_mode=b.sacred_mode=0;
+        sr_start(&a);sr_start(&b);
+        a.tick_phase=b.tick_phase=0;
+        b.motion[track].vibrato_depth=35;
+        sr_key_down(&a,track,8);sr_key_down(&b,track,8);
+        for(unsigned i=0;i<12;i++){block(&a);block(&b);}
+        block(&a);
+        for(unsigned i=0;i<512;i++)clean[i]=pcm[i];
+        block(&b);
+        unsigned different=0;
+        for(unsigned i=0;i<512;i++)different+=clean[i]!=pcm[i];
+        assert(different>100);
+    }
+    puts("PASS Lead and Bass vibrato each change rendered PCM independently of glide");
+}
+
 static void hit_cap(void)
 {
     sr_init(&a,3131);
@@ -275,4 +326,4 @@ static void hit_cap(void)
     }
     puts("PASS HIT zero retains pulse and all thirteen scenes produce audible-range drum PCM");
 }
-int main(void){stopped_voices();fixed_reference_isolation();scene_frequency_isolation();loop_key_boundary();frequency_lock_pcm();nature_audibility();hit_cap();return 0;}
+int main(void){stopped_voices();fixed_reference_isolation();scene_frequency_isolation();loop_key_boundary();frequency_lock_pcm();nature_audibility();multi_bar_percussion();vibrato_pcm();hit_cap();return 0;}

@@ -1,5 +1,7 @@
 # AQUORA fast resume
 
+**Final 0.4.0 software build:** See release/0.4.0/README.md and CHECKPOINT.md. Recover the numbered archives and verify checksums. Use the existing project lock. Older notes below describe development milestones.
+
 **Latest resume:** Read the integrated 0.4.0 candidate section of CHECKPOINT.md before using any older notes below. The live release is 0.3.0. Reuse the verified candidate, SDK and compiler under the exclusive lock.
 
 **Flow renamed (2026-11-04):** Owner renamed existing scene **Flow** to **Flow State**. This label is already updated in development `device/dsp/engine.c` without changing scene ID 1, 58 BPM, its music or proposed scene Hz **417 Hz**; preserve name throughout the next firmware, manual and site, and ensure old saved banks at scene ID 1 show Flow State. This **has not been compiled or published**. Also preserve the recently recorded larger, immersive second Water Cymatics visualizer on PLAY (current 96px preview → target ~170–190px+), with 20 FPS audio-safe rendering.

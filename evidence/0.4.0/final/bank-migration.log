@@ -1,0 +1,3 @@
+0.3.0 firmware serializer wrote 244-byte fixture
+PASS genuine 0.3.0 record migration and four distinct 0.4.0 payloads across reboot
+cbbf9622dcb110e0653e112318fa7ea0c742b6c84b1d0ef68281fdc0f770c926  ../aq4-release/0.3.0-bank.bin

@@ -1,0 +1,2 @@
+98fba6964862cd79a13154712e9bbdc218330c5ba2eb5249c3719f16c737f9cb  AQUORA-0.4.0-source.tar.gz
+e2b33ff363645e285f8bfe04dcdba5f45327ed4cf0e43337e7b54345fda25ddb  AQUORA-0.4.0-package.tar.gz
