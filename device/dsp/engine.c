@@ -3,8 +3,8 @@
 #include "fastmath.h"
 #define sinf fm_sinf
 #define expf fm_expf
-#define fabsf fm_fabsf
-#define fmaxf fm_maxf
+#define fabsf(x) ((x)<0.f?-(x):(x))
+#define fmaxf(a,b) ((a)>(b)?(a):(b))
 #define floorf fm_floorf
 #define isfinite(x) (fm_fabsf(x) <= 3.402823466e38f)
 extern void *memset(void *, int, size_t);
