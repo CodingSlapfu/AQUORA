@@ -28,8 +28,51 @@ int plat_cpu2_gave_up(void) { return 0; }
 uint32_t plat_cpu2_bad(void) { return 0; }
 uint32_t plat_cpu2_stack(void) { return 0; }
 #endif
-static struct {float time,meter[8];} vis_input __attribute__((aligned(64)));
-static struct {int16_t xy[8][41][2];unsigned busy_us;} vis_output __attribute__((aligned(64)));
+static struct {
+    unsigned phase, event[SR_TRACKS];
+    float meter[SR_TRACKS];
+} vis_input __attribute__((aligned(64)));
+static struct {int16_t xy[SR_TRACKS][33][2];unsigned busy_us;} vis_output __attribute__((aligned(64)));
+static float vis_sine[128];
 static unsigned worker_wait_us,worker_fallbacks;
-static void visual_job(uint32_t unused){(void)unused;unsigned begin=plat_ticks24();for(int t=0;t<8;t++){float phase=vis_input.time+t*.785398f;float radius=32.f+t*4.f+vis_input.meter[t]*28.f;for(int j=0;j<=40;j++){float a=j*.1570796f;float petal=radius*(.78f+.22f*fm_sinf(3*a+phase));float z=fm_sinf(a+phase);vis_output.xy[t][j][0]=120+(int)(petal*fm_sinf(a+phase));vis_output.xy[t][j][1]=87+(int)(petal*fm_sinf(a*2+phase)*.45f+z*7);}}vis_output.busy_us=(plat_ticks24()-begin)/24;}
-static void prepare_geometry(void){vis_input.time=(float)(plat_ms()%120000)*.00012f;for(int t=0;t<8;t++)vis_input.meter[t]=engine.tracks[t].meter;plat_cpu2_sync();unsigned begin=plat_ticks24();if(plat_cpu2_run(visual_job,0)){if(plat_cpu2_wait()!=0){worker_fallbacks++;visual_job(0);}}else visual_job(0);worker_wait_us=(plat_ticks24()-begin)/24;plat_cpu2_sync();}
+
+static void visual_init(void)
+{
+    for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
+}
+
+static void visual_job(uint32_t unused)
+{
+    (void)unused;
+    unsigned begin=plat_ticks24();
+    for(unsigned t=0;t<SR_TRACKS;t++){
+      unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;
+      float pulse=vis_input.meter[t]*55.f;
+      float radius=45.f+t*6.f+(pulse>13.f?13.f:pulse);
+      for(unsigned j=0;j<=32;j++){
+        unsigned a=j*4;
+        float petal=radius*(.82f+.18f*vis_sine[(3*a+phase)&127]);
+        vis_output.xy[t][j][0]=120+(int)(petal*vis_sine[(a+phase)&127]);
+        vis_output.xy[t][j][1]=96+(int)(petal*.44f*vis_sine[(2*a+phase)&127]);
+      }
+    }
+    vis_output.busy_us=(plat_ticks24()-begin)/24;
+}
+
+static void prepare_geometry(void)
+{
+    vis_input.phase=plat_ms()/49u;
+    unsigned flags=plat_lock();
+    for(unsigned t=0;t<SR_TRACKS;t++){
+      vis_input.meter[t]=engine.tracks[t].meter;
+      vis_input.event[t]=engine.tracks[t].events;
+    }
+    plat_unlock(flags);
+    plat_cpu2_sync();
+    unsigned begin=plat_ticks24();
+    if(plat_cpu2_run(visual_job,0)){
+      if(plat_cpu2_wait()!=0){worker_fallbacks++;visual_job(0);}
+    }else visual_job(0);
+    worker_wait_us=(plat_ticks24()-begin)/24;
+    plat_cpu2_sync();
+}

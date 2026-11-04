@@ -1,0 +1,44 @@
+master 2048
+wait 200
+expect perfect 1
+expect tracks 8
+tap GLO
+tap LFO
+wait 100
+expect perfect 0
+tap SAVE
+wait 100
+reboot
+wait 200
+expect perfect 0
+tap GLO
+tap LFO
+wait 100
+expect perfect 1
+tap HOME
+spin K1 6
+wait 100
+tap PLAY
+wait 100
+expect running 1
+spin SELECT 7
+wait 100
+expect track 7
+key 0 down
+wait 300
+tap FX
+wait 300
+wav next-mix.wav
+wait 500
+tap PLAY
+wait 150
+expect running 0
+peakreset
+wait 500
+expect peak_db_max -110
+wavstop
+key 0 up
+tap GLO
+wait 2400
+shot next-performance.png
+expect drops 0
