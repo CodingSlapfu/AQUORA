@@ -21,7 +21,7 @@ typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
 typedef struct { uint8_t patch, mute; float volume, pan, meter, send; uint32_t events; } sr_track;
-typedef struct { uint8_t active, track, gate, midi, key; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain; } sr_voice;
+typedef struct { uint8_t active, track, gate, midi, key; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {
   sr_track tracks[SR_TRACKS]; sr_voice voices[SR_VOICES];
@@ -36,7 +36,9 @@ typedef struct {
   float binaural_phase_l, binaural_phase_r;
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;
-  uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask;
+  uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
+  uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;
+  float sacred_hz_now;
   uint16_t stop_frames;
   float sacred_level, sacred_gain, sacred_harmonics, pitch_last[2], vibrato_phase[2];
   sr_motion motion[2];

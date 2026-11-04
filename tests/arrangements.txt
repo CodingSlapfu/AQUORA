@@ -1,0 +1,74 @@
+wait 100
+tap OCT-
+expect bank_mask 0
+tap SAVE
+expect bank_message 2
+spin K2 1
+spin K4 1
+tap SAVE
+expect bank_mask 1
+tap HOME
+spin K1 2
+wait 100
+tap OCT-
+spin K1 1
+spin K4 -1
+tap SAVE
+expect bank_mask 3
+tap HOME
+spin K1 2
+wait 100
+tap OCT-
+spin K1 1
+spin K4 1
+tap SAVE
+expect bank_mask 7
+tap HOME
+spin K1 2
+wait 100
+tap OCT-
+spin K1 1
+spin K4 -1
+tap SAVE
+expect bank_mask 15
+reboot
+wait 150
+tap OCT-
+tap SAVE
+expect scene 0
+expect visual 1
+spin K1 1
+tap SAVE
+expect scene 2
+expect visual 0
+spin K1 1
+tap SAVE
+expect scene 4
+expect visual 1
+spin K1 1
+tap SAVE
+expect scene 6
+expect visual 0
+spin K2 1
+tap SAVE
+expect bank_message 3
+expect store_writes 4
+spin K3 1
+flash_fail 1
+tap SAVE
+expect bank_message 6
+expect store_writes 4
+flash_fail 0
+spin K3 1
+tap SAVE
+expect bank_message 4
+expect store_writes 5
+tap PLAY
+wait 200
+tap SAVE
+expect bank_message 1
+expect store_writes 5
+tap PLAY
+wait 200
+expect running 0
+shot banks.png

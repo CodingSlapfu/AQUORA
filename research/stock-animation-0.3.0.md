@@ -1,0 +1,5 @@
+# Animation reference audit
+
+The [official stock product/download page](https://www.m-vave.com/product?id=fm-1) identifies the V15 firmware and separately links firmware documentation. The [official Open firmware source](https://github.com/m-vave/fm1_open/tree/4c7496daac04a95ff10d1afdcc8f9ead2dbabc41) is a different application with a binary device SDK. A targeted search of its application and web sources did not expose the stock visualizer's drawing or evolution routine. No stock algorithm, measured behavior or asset reuse is claimed.
+
+AQUORA preserves its 0.2.0 Original geometry. Water Crystals uses fixed-point table indices, six evolving stems, three branching layers and two resonant rings. Frequency selects a geometric family. Scene, role events, bass and percussion meters, nature and reverb vary its shape and rhythm. Core 1 processes a coherent snapshot with a bounded one-core fallback. The crystal analogy is artistic and makes no empirical claims about water, emotions or healing.

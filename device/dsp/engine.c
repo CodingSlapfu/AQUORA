@@ -138,7 +138,7 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
   if(scene>=SR_SCENES)return;
   if(e->running&&scene!=e->scene)for(int i=0;i<SR_VOICES;i++){
     sr_voice *v=&e->voices[i];
-    if(!v->key){v->gate=0;v->remain=0;v->release_coef=.0012f;}
+    if(!v->key){e->note_offs+=v->gate!=0;v->gate=0;v->remain=0;v->release_coef=.0012f;}
   }
   e->scene=scene; e->tick_length=(uint32_t)((float)SR_RATE*60.f/(float)sr_scenes[scene].bpm/4.f);
   e->bed_type=sr_scenes[scene].ambiance;
@@ -166,7 +166,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   memset(e,0,sizeof(*e)); e->rng=seed?seed:0x73ac05u;
   if(!lut_ready){for(int i=0;i<=LUT;i++)sin_table[i]=sinf((float)i*2.f*PI/(float)LUT);lut_ready=1;}
   e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
-  e->drums_enabled=1;e->drum_level=.66f;e->drum_density=2;e->drum_kit=0;
+  e->drums_enabled=1;e->drum_level=.66f;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
@@ -181,6 +181,7 @@ void sr_init(sr_engine *e,uint32_t seed){
  * generating a fresh downbeat, even when STOP and PLAY share a block. */
 static void clear_transport(sr_engine *e)
 {
+    for(unsigned i=0;i<SR_VOICES;i++)e->note_offs+=e->voices[i].gate!=0;
     memset(e->voices,0,sizeof(e->voices));
     memset(e->rev_pos,0,sizeof(e->rev_pos));
     e->delay_pos=0;
@@ -190,7 +191,7 @@ static void clear_transport(sr_engine *e)
     e->kick_env=e->hand_env=e->shaker_env=e->drum_meter=0;
     e->binaural_env=e->transport_env=e->sacred_gain=e->limiter=0;
     e->wind_lp=e->rain_lp=e->hand_noise_lp=e->shaker_lp=e->bird_env=0;
-    e->pitch_last[0]=e->pitch_last[1]=0;
+    e->pitch_last[0]=e->pitch_last[1]=e->sacred_hz_now=0;
     for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter=0;
 }
 void sr_start(sr_engine *e)
@@ -212,12 +213,12 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   int slot=-1;float quiet=1.e9f;
   for(int i=0;i<SR_VOICES;i++){
     if(!e->voices[i].active){slot=i;break;}
-    float score=e->voices[i].env+(e->voices[i].track==SR_BASS?.35f:e->voices[i].key?.25f:0);
+    float score=e->voices[i].env+(e->voices[i].track==SR_BASS?.35f:e->voices[i].key&&e->voices[i].gate?.25f:0);
     if(score<quiet){quiet=score;slot=i;}
   }
-  sr_voice *v=&e->voices[slot];float tail=v->active?v->filter*v->env*sr_patches[e->tracks[v->track].patch].gain:0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;
+  sr_voice *v=&e->voices[slot];e->note_offs+=v->gate!=0;e->note_ons++;float tail=v->active?v->filter*v->env*sr_patches[e->tracks[v->track].patch].gain:0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;
   const sr_patch *p=&sr_patches[e->tracks[track].patch];
-  v->freq=sr_note_frequency(e,midi);v->pitch=v->freq;v->midi=midi;
+  v->born=e->frame_count;v->freq=sr_note_frequency(e,midi);v->pitch=v->freq;v->midi=midi;
   if(track<=SR_BASS){
     sr_motion *m=&e->motion[track];
     int held=0;
@@ -254,7 +255,7 @@ uint8_t sr_key_note(const sr_engine *e,unsigned key)
 }
 void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
 {
-    if(!e->running||key>=64||track>=SR_TRACKS)return;
+    if(!e->running||key>=27||track>=SR_TRACKS)return;
     if(track==SR_DRUMS){
       if(!e->drums_enabled)return;
       if(key%3==0)e->kick_env=1;
@@ -263,45 +264,64 @@ void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
       e->tracks[SR_DRUMS].events++;
       return;
     }
+    for(unsigned i=0;i<SR_VOICES;i++)if(e->voices[i].gate&&e->voices[i].key==key+1)return;
     sr_voice *voice=note_on(e,track,sr_key_note(e,key),96,1.f);
-    if(voice){voice->key=(uint8_t)(key+1);voice->remain=0;}
+    if(voice){voice->key=(uint8_t)(key+1);voice->remain=SR_RATE*8u;}
 }
 void sr_key_up(sr_engine *e,unsigned key)
 {
     for(int j=0;j<SR_VOICES;j++)if(e->voices[j].key==key+1){
+      e->note_offs+=e->voices[j].gate!=0;
       e->voices[j].gate=0;
-      e->voices[j].key=0;
+
     }
 }
 static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return;
   uint32_t beat=step&15u;
-  if(beat==0 || (beat==8 && e->drum_density>=2)){e->kick_env=1.f;e->tracks[SR_DRUMS].events++;}
-  (void)energy;
-  if((beat==4||beat==12) && (e->drum_density>=2 || (rng(e)&3u)==0)){e->hand_env=1.f;e->tracks[SR_DRUMS].events++;}
-  if(e->drum_density==3 && (beat&1u))e->shaker_env=1.f;
-  else if(e->drum_density==2 && (beat&3u)==2)e->shaker_env=.65f;
-  else if(e->drum_density==1 && beat==8 && (rng(e)&1u)==0)e->shaker_env=.45f;
+  unsigned hits=0;
+  if(beat==0 || (beat==8 && e->drum_density>=2)){e->kick_env=1.f;hits++;}
+  if((beat==4||beat==12) && (e->drum_density>=2 || (rng(e)&3u)==0)){
+    e->hand_env=1.f;hits++;
+  }
+  if(e->drum_density==3 && (beat&1u)){e->shaker_env=.72f;hits++;}
+  else if(e->drum_density==2 && (beat&3u)==2){e->shaker_env=.65f;hits++;}
+  else if(e->drum_density==1 && beat==8 && (rng(e)&1u)==0){e->shaker_env=.45f;hits++;}
+  /* One optional strike at most on an otherwise empty, eligible subdivision. */
+  unsigned eligible=e->scene==6 ? (beat==3||beat==11) :
+                    energy>=2 ? (beat==3||beat==7||beat==11||beat==15) :
+                    (beat==7||beat==15);
+  if(!hits&&eligible){
+    e->drum_rng=e->drum_rng*1664525u+1013904223u;
+    unsigned percent=e->drum_hit>70?70:e->drum_hit;
+    if((e->drum_rng>>16)%100u<percent){
+      if(beat==11)e->hand_env=.55f;
+      else e->shaker_env=.52f;
+      e->optional_hits++;
+      hits++;
+    }
+  }
+  e->tracks[SR_DRUMS].events+=hits;
 }
 static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
   const sr_drum_kit *kit=&sr_drum_kits[e->drum_kit];float sound=0.f;
   if(e->kick_env>.0003f){
     float hz=kit->root+45.f*e->kick_env;
     e->kick_phase+=hz/(float)SR_RATE;if(e->kick_phase>=1.f)e->kick_phase-=1.f;
-    sound+=(sine(e->kick_phase)*.82f+sine(e->kick_phase*2)*.18f)*e->kick_env*kit->kick*.36f;
+    sound+=(sine(e->kick_phase)*.82f+sine(e->kick_phase*2)*.18f)*e->kick_env*kit->kick*.45f;
     e->kick_env*=kit->decay;
   }else e->kick_env=0.f;
   if(e->hand_env>.0003f){
     float noise=rnd(e)*2.f-1.f;
     e->hand_noise_lp+=(noise-e->hand_noise_lp)*kit->brush;
     e->hand_phase+=kit->skin*(1.f/SR_RATE);if(e->hand_phase>=1.f)e->hand_phase-=1.f;
-    sound+=(sine(e->hand_phase)*.64f+e->hand_noise_lp*.36f)*e->hand_env*kit->hand*.33f;
+    sound+=(sine(e->hand_phase)*.64f+e->hand_noise_lp*.36f)*e->hand_env*kit->hand*.43f;
     e->hand_env*=.99925f;
   }else e->hand_env=0.f;
   if(e->shaker_env>.0003f){
     float noise=rnd(e)*2.f-1.f;
     e->shaker_lp+=(noise-e->shaker_lp)*.35f;
-    sound+=(noise-e->shaker_lp)*e->shaker_env*kit->shaker*.23f;
+    sound+=(noise-e->shaker_lp)*e->shaker_env*kit->shaker*.28f;
     e->shaker_env*=.9967f;
   }else e->shaker_env=0.f;
   e->drum_meter=fmaxf(e->drum_meter*.9993f,fabsf(sound));
@@ -431,6 +451,8 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     uint8_t track, chorus;
   } active[SR_VOICES];
   unsigned count=0;
+  float bass_envelope=0,bass_pitch=0;
+  uint32_t bass_age=0xffffffffu;
   float reciprocal=1.f/(float)frames;
   float vibrato[2];
   for(int t=0;t<2;t++){
@@ -449,6 +471,15 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int j=0;j<SR_VOICES;j++){
     sr_voice *v=&e->voices[j];
     if(!v->active)continue;
+    if(e->frame_count-v->born>SR_RATE*30u&&v->release_coef<.003f){
+      e->note_offs+=v->gate!=0;
+      v->gate=0;v->remain=0;v->release_coef=.003f;e->watchdogs++;
+    }
+    if(v->track==SR_BASS&&v->gate){
+      bass_envelope=fmaxf(bass_envelope,v->env);
+      uint32_t age=e->frame_count-v->born;
+      if(age<=bass_age){bass_age=age;bass_pitch=v->pitch;}
+    }
     struct voice_config *config=&active[count++];
     sr_track *track=&e->tracks[v->track];
     const sr_patch *patch=&sr_patches[track->patch];
@@ -471,18 +502,30 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     }
     config->step=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
   }
-  float bass_hz=e->pitch_last[SR_BASS]*.5f;
+  float bass_hz=bass_pitch*.5f;
   if(e->sacred_mode==2)bass_hz=sacred_hz(e);
-  while(bass_hz>110.f)bass_hz*=.5f;
-  if(bass_hz<38.f)bass_hz*=2.f;
+  if(bass_hz>0){
+    while(bass_hz>110.f)bass_hz*=.5f;
+    if(bass_hz<38.f)bass_hz*=2.f;
+    e->sacred_hz_now=bass_hz;
+  }else bass_hz=e->sacred_hz_now;
+  /* A musical bass overtone is a voice companion, not a last-pitch latch.
+   * Reference mode remains an explicitly selected continuous tone. */
+  float target_bass=e->sacred_mode&&bass_hz>=38.f&&e->running?
+      e->sacred_level*(e->sacred_mode==2?1.f:clampf(bass_envelope*2.f,0,1)):0;
+  /* Track meters are display-only. Decay once per render chunk. */
+  float meter_decay=1.f-(float)frames*.00097f;
+  for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
   for(size_t i=0;i<frames;i++){
     float l=0.f,r=0.f,mix=0.f;
-    for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=.999f;
     for(unsigned a=0;a<count;a++){
       const struct voice_config *config=&active[a];
       sr_voice *v=config->voice;
       if(!v->active)continue;
-      if(v->remain>0){v->remain--;if(v->remain==0)v->gate=0;}
+      if(v->remain>0&&--v->remain==0&&v->gate){
+        v->gate=0;e->note_offs++;
+        if(v->key){v->release_coef=.002f;e->watchdogs++;}
+      }
       if(v->gate)v->env+=(v->peak-v->env)*v->attack_coef;
       else v->env-=v->env*v->release_coef;
       if(!v->gate && v->env<.0005f){v->active=0;continue;}
@@ -513,7 +556,6 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     float nature=e->bed_level>0&&e->bed_type?bed(e)*e->bed_level*e->transport_env:0;
     if(e->solo<SR_TRACKS)nature=0;
     l+=nature*.5f;r+=nature*.5f;mix+=nature*.5f;
-    float target_bass=e->sacred_mode&&bass_hz>=38.f&&e->running?e->sacred_level:0;
     e->sacred_gain+=(target_bass-e->sacred_gain)*.001f;
     float sacred=0;
     if(e->sacred_gain>.00001f){
