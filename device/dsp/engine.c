@@ -46,7 +46,7 @@ const sr_patch sr_patches[SR_PATCHES] = {
   {"Linen Pad", SR_CHOIR_WAVE, 1.5f, 3.9f, .25f, .23f}
 };
 const sr_scene sr_scenes[SR_SCENES] = {
-  {"Stillness", 43, 0, 1, 1}, {"Flow", 58, 1, 2, 2},
+  {"Stillness", 43, 0, 1, 1}, {"Flow State", 58, 1, 2, 2},
   {"Radiance", 68, 0, 3, 3}, {"Grounding", 48, 2, 2, 4},
   {"Dreaming", 52, 3, 2, 5}, {"Ceremony", 61, 4, 3, 1},
   {"Anti-Curse", 51, 2, 2, 4}, {"Positive Healing", 63, 4, 2, 2}
