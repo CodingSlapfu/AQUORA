@@ -4,7 +4,8 @@
  * versioned payload independently of the platform envelope.
  */
 #define AQ_BANKS 4u
-#define AQ_BANK_VERSION 0x41514201u
+#define AQ_BANK_LEGACY 0x41514201u
+#define AQ_BANK_VERSION 0x41514202u
 _Static_assert(AQ_BANK_BASE >= 0x97000u && AQ_BANK_BASE + AQ_BANKS * AQ_BANK_STRIDE <= 0xA0000u,
                "Bank sector pairs must stay in the documented data region");
 
@@ -33,6 +34,8 @@ typedef struct {
     float reverb_amount, delay_amount, bed_level, drum_level;
     float binaural_carrier, binaural_rate, binaural_level;
     float tone_level, energy, variation, sacred_level, sacred_harmonics;
+    uint32_t legacy_crc;
+    uint8_t loop_length, keyboard_mode, tonic_override, pending_length, pending_key;
     uint32_t crc;
 } arrangement;
 _Static_assert(sizeof(arrangement)<512,"Arrangement record budget");
@@ -46,7 +49,8 @@ static uint32_t arrangement_crc(const arrangement *record)
 {
     const uint8_t *bytes=(const uint8_t *)record;
     uint32_t crc=0xffffffffu;
-    for(size_t i=0;i<offsetof(arrangement,crc);i++){
+    size_t end=record->version==AQ_BANK_LEGACY?offsetof(arrangement,legacy_crc):offsetof(arrangement,crc);
+    for(size_t i=0;i<end;i++){
         crc^=bytes[i];
         for(unsigned j=0;j<8;j++)crc=(crc>>1)^((0u-(crc&1u))&0xedb88320u);
     }
@@ -60,7 +64,13 @@ static int range(float value,float lo,float hi)
 
 static int arrangement_valid(const arrangement *r)
 {
-    if(r->version!=AQ_BANK_VERSION||r->crc!=arrangement_crc(r)||
+    int legacy=r->version==AQ_BANK_LEGACY;
+    if((!legacy&&r->version!=AQ_BANK_VERSION)||
+       (legacy?r->legacy_crc:r->crc)!=arrangement_crc(r)||
+       (!legacy&&((r->loop_length!=16&&r->loop_length!=32&&r->loop_length!=64)||
+        (r->pending_length&&r->pending_length!=16&&r->pending_length!=32&&r->pending_length!=64)||
+        r->keyboard_mode>1||r->pending_key>12||
+        (r->tonic_override&&(r->tonic_override<36||r->tonic_override>47))))||
        r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>7||
        r->drum_kit>=SR_DRUM_KITS||r->drum_density>3||r->solo>SR_TRACKS||
        r->frequency_auto>1||r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
@@ -88,8 +98,12 @@ static int arrangement_valid(const arrangement *r)
 
 static int arrangement_read(unsigned slot,arrangement *record)
 {
-    return plat_store_load(OBJ_BANK1+slot,record,sizeof(*record))==(int)sizeof(*record)
-           && arrangement_valid(record);
+    memset(record,0,sizeof(*record));
+    int size=plat_store_size(OBJ_BANK1+slot);
+    if(size!=(int)sizeof(*record)&&size!=(int)offsetof(arrangement,loop_length))return 0;
+    if(plat_store_load(OBJ_BANK1+slot,record,sizeof(*record))!=size)return 0;
+    if(size==(int)sizeof(*record)?record->version!=AQ_BANK_VERSION:record->version!=AQ_BANK_LEGACY)return 0;
+    return arrangement_valid(record);
 }
 
 static void arrangement_init(void)
@@ -121,6 +135,11 @@ static void arrangement_snapshot(arrangement *record)
         record->track[i].mute=engine.tracks[i].mute;
     }
     record->frequency_auto=engine.frequency_auto;
+    record->loop_length=engine.loop_length;
+    record->pending_length=engine.pending_length;
+    record->keyboard_mode=engine.keyboard_mode;
+    record->tonic_override=engine.tonic_override;
+    record->pending_key=engine.pending_key;
     plat_unlock(irq);
     record->crc=arrangement_crc(record);
 }
@@ -132,6 +151,12 @@ static void arrangement_apply(const arrangement *record)
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
     engine.frequency_auto=record->frequency_auto;
+    engine.loop_length=record->version==AQ_BANK_LEGACY?16:record->loop_length;
+    engine.pending_length=record->pending_length;
+    engine.loop_pos=0;
+    engine.keyboard_mode=record->keyboard_mode;
+    engine.tonic_override=record->tonic_override;
+    engine.pending_key=record->pending_key;
     if(engine.frequency_auto)engine.frequency=sr_scenes[engine.scene].frequency;
     engine.drum_hit=engine.drum_hit>SR_HIT_MAX?SR_HIT_MAX:engine.drum_hit;
     visual_mode=record->visual;

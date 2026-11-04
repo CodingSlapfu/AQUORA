@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves"};
-static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate"};
+static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard"};
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
 static void label(int x,int y,const char *name,int value){char v[12];num(v,value);cv_text(x,y,&FONT_XS,name,RGB(126,166,164));cv_text(x,y+15,&FONT_B,v,RGB(218,240,220));}
 static const char *role_names[SR_TRACKS]={
@@ -111,6 +111,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 39:*name="BANK";number=bank_slot+1;break;
  case 40:*name="ACTION";return bank_action?"SAVE":"LOAD";
  case 41:*name="OVERWRITE";return bank_confirm?"ARMED":"LOCKED";
+ case 47:*name="KEYBOARD";return engine.keyboard_mode?"Change Key":"Play Along";
+ case 46:*name=engine.pending_length?"NEXT LOOP STEPS":"LOOP STEPS";number=engine.pending_length?engine.pending_length:engine.loop_length;break;
  case 45:*name="HZ SOURCE";return engine.frequency_auto?"Auto / intention":"Manual";
  case 43:
    *name="ISOLATE";
@@ -258,6 +260,19 @@ static void draw(int animate)
          char hit[12];num(hit,engine.drum_hit);
          x=cv_text(x+8,33,&FONT_XS,"HIT %",C_WHITE);
          cv_text(x+5,33,&FONT_XS,hit,C_WHITE);
+       }else if(page==2||(page==1&&group==GROUP_KEYS)){
+         static const char *notes[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+         unsigned length=engine.loop_length,pos=engine.loop_pos;
+         char step[12];
+         num(step,engine.running?(pos?pos:length):0);
+         int x=cv_text(8,33,&FONT_XS,"STEP ",C_WHITE);
+         x=cv_text(x,33,&FONT_XS,step,C_WHITE);
+         x=cv_text(x,33,&FONT_XS," / ",C_WHITE);
+         num(step,length);cv_text(x,33,&FONT_XS,step,C_WHITE);
+         x=cv_text(126,33,&FONT_XS,"KEY ",C_WHITE);
+         x=cv_text(x,33,&FONT_XS,notes[sr_tonic(&engine)%12],RGB(97,241,244));
+         unsigned next=engine.pending_key;
+         if(next){x=cv_text(x+3,33,&FONT_XS," > ",C_WHITE);cv_text(x,33,&FONT_XS,notes[(next-1)%12],RGB(250,171,64));}
        }else if(page==1&&group==GROUP_BANKS){
          static const char *messages[]={"SAVE RUNS ACTION","STOP FIRST","EMPTY BANK",
            "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED"};

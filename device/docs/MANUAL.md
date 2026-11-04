@@ -22,7 +22,7 @@ ALGORITHM selects PLAY, SOUND, EVOLVE, MIX. SELECT chooses Lead, Bass, Pads, Har
 | SOUND / Percussion HIT | HIT % (0–100) | Drum level | Density 0–3 | Drums ON/OFF |
 | SOUND / Visualizer | Original / Water Crystals | — | — | — |
 | SOUND / Arrangement Banks | Bank 1–4 | LOAD / SAVE | Overwrite arm | Visualizer |
-| EVOLVE | Motif variation | Freeze toggle | Tempo | Energy |
+| EVOLVE | Motif variation | Freeze toggle | Tempo | Loop steps 16/32/64 |
 | MIX | Track level | Pan | Reverb | Delay |
 
 ENV toggles A4 432/440. FX toggles binaural tones. ARP opens Percussion and turns drums on. Enabling restores audible minimums if density, track level or drum level is too low, unmutes track 8, and clears a conflicting solo. K4 counterclockwise turns drums off. OCT+ switches between Percussion and Percussion HIT. SEQ freezes/unfreezes motif replacement. GLO cycles Performance, Callback/Core and Voice Inspector, then returns to the instrument. In Voice Inspector, K1 selects a voice and SEQ stops transport and clears it with the normal fade. LFO toggles Perfect Key on either diagnostics screen and solos the selected track on the instrument. Perfect Key defaults on and maps all 27 keys to ascending notes in the current scene scale. Stopped SAVE stores Perfect Key and both tracks’ motion settings. Legato glide needs an overlapping note on the same track. Always glide uses the last pitch on that track. Glide and vibrato produce brief continuous excursions around or between scale notes. REC forces single-core graphics until reboot. For ON/OFF encoders turn clockwise to enable and counterclockwise to disable. For Solo turn clockwise to solo the selected role and counterclockwise to clear.
@@ -61,3 +61,14 @@ Existing mute and solo settings still apply. HOME returns to the full mix.
 K2 edits the reference Hz and switches to Manual. K3 adjusts the fixed tone
 level. K4 selects the Sacred Bass source. Choose Auto on the Frequency page to
 follow the intention again. Reference tone is off until its level is raised.
+
+### Loop length and keyboard
+
+EVOLVE K4 selects 16, 32 or 64 steps. During playback the new length applies
+at the start of the next full loop. Longer loops keep the same pulse and
+derive distinct response phrases from the stored motif.
+SOUND > Keyboard K1 switches between Play Along and Change Key. SELECT picks
+the Play Along instrument. In Change Key, the keys map chromatically from F
+and select the new tonic without sounding a note. The last choice applies
+on the next loop downbeat. If transport stops first, the choice applies on
+the next PLAY. The active key and pending choice are shown on the screen.

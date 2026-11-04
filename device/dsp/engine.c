@@ -120,9 +120,23 @@ static void make_motif(sr_engine *e){
     else e->melody[i]=(int8_t)(rng(e)%7);
   }
 }
-static int scene_tonic(const sr_engine *e)
+uint8_t sr_tonic(const sr_engine *e)
 {
-    return sr_scenes[e->scene].tonic;
+  return e->tonic_override?e->tonic_override:sr_scenes[e->scene].tonic;
+}
+static int motif_degree(const sr_engine *e,unsigned step)
+{
+  int degree=e->melody[step&15u];
+  unsigned bar=step/16u;
+  if(!bar||degree<0)return degree;
+  if((step&7u)==0)return (int)(bar+e->scene)%5;
+  return (degree+(int)bar*2)%7;
+}
+void sr_set_loop_length(sr_engine *e,uint8_t length)
+{
+  if(length!=16&&length!=32&&length!=64)return;
+  if(e->running)e->pending_length=length;
+  else{e->loop_length=length;e->pending_length=0;}
 }
 
 static void retune_keys(sr_engine *e)
@@ -191,6 +205,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   }
   e->perfect_key=1; e->solo=SR_TRACKS; e->sacred_level=.08f; e->sacred_mode=1; e->sacred_harmonics=.32f;
   e->motion[0]=(sr_motion){120,0,0,45}; e->motion[1]=(sr_motion){90,0,0,32};
+  e->loop_length=16;
   e->frequency_auto=1;
   sr_set_scene(e,0);
 }
@@ -216,7 +231,7 @@ void sr_start(sr_engine *e)
     if(e->stop_frames){e->restart=1;return;}
     clear_transport(e);
     e->running=1;
-    e->sequence_step=0;
+    e->sequence_step=0;e->loop_pos=0;
     e->tick_phase=e->tick_length;
 }
 void sr_stop(sr_engine *e)
@@ -260,7 +275,7 @@ void sr_note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float b
 uint8_t sr_key_note(const sr_engine *e,unsigned key)
 {
     if(!e->perfect_key)return (uint8_t)(53+key);
-    int root=scene_tonic(e)+12;
+    int root=sr_tonic(e)+12;
     int degree=0;
     for(int note=root;note<=127;note++){
       for(int i=0;i<7;i++)if((note-root)%12==scale_notes[sr_scenes[e->scene].scale][i]%12){
@@ -273,6 +288,8 @@ uint8_t sr_key_note(const sr_engine *e,unsigned key)
 void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
 {
     if(!e->running||key>=27||track>=SR_TRACKS)return;
+    if(e->keyboard_mode){e->pending_key=(uint8_t)((53u+key)%12u+1u);return;}
+    if(!e->perfect_key)sr_set_perfect_key(e,1);
     if(track==SR_DRUMS){
       if(!e->drums_enabled)return;
       if(key%3==0)e->kick_env=1;
@@ -363,10 +380,25 @@ static inline __attribute__((always_inline)) void render_binaural(sr_engine *e,f
   *right+=advance(&e->binaural_phase_r,hz_right)*e->binaural_level*e->binaural_env;
 }
 static void trigger(sr_engine *e){
-  uint32_t s=e->sequence_step++, idx=s&15u;int octave=0;
+  if(!e->loop_pos){
+    if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;}
+    if(e->pending_key){
+      e->tonic_override=36+e->pending_key-1;
+      e->pending_key=0;
+      for(unsigned i=0;i<SR_VOICES;i++){
+        sr_voice *v=&e->voices[i];
+        e->note_offs+=v->gate!=0;
+        v->gate=0;v->remain=0;v->release_coef=.002f;
+      }
+    }
+  }
+  uint32_t s=e->sequence_step++;
+  unsigned idx=e->loop_pos++;
+  if(e->loop_pos>=e->loop_length)e->loop_pos=0;
+  if(e->loop_length!=16)s=idx;
   const sr_scene *sc=&sr_scenes[e->scene];
-  int tonic=scene_tonic(e);
-  int k=(int)e->melody[idx];
+  int tonic=sr_tonic(e);
+  int k=motif_degree(e,idx);
   uint8_t energy=(uint8_t)(1.f+e->energy*2.99f);
   drum_trigger(e,s,energy);
   if((s&31u)==0 && s>0 && !e->freeze && rnd(e)<e->variation){make_motif(e);e->phrase++;}
@@ -408,7 +440,6 @@ static void trigger(sr_engine *e){
       sr_note_on(e,SR_HARMONY,(uint8_t)(tonic+24+third),44,3.4f);
     }
   }
-  (void)octave;
 }
 static inline __attribute__((always_inline)) float bed(sr_engine *e){
   float n=rnd(e)*2.f-1.f;
@@ -671,7 +702,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     unsigned restart=e->restart;
     clear_transport(e);
     e->restart=0;
-    if(restart){e->running=1;e->sequence_step=0;e->tick_phase=e->tick_length;}
+    if(restart){e->running=1;e->sequence_step=0;e->loop_pos=0;e->tick_phase=e->tick_length;}
   }
   if(e->running&&!fading)e->tick_phase+=(uint32_t)n;
   out+=n*2;frames-=n;

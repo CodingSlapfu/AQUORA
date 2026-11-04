@@ -19,3 +19,9 @@ The display scheduler now enforces a 50 ms minimum between display updates while
 SOUND > Source Isolate provides dry track and independent Fixed, Sacred Bass, Binaural, Nature and Wet FX monitoring. HOME restores the mix. Isolation is transient. Thirteen scene mappings use Auto by default, reference level stays off until raised, and Manual overrides survive scene changes. Legacy banks retain their stored Hz in Manual. The physical source of the recurring tone is still unknown, and Frequency Lock and the remainder of NEXT_BUILD_ACTIVE.md are still open.
 
 The new native candidate is stored as isolation.part-* in evidence/0.4.0/. Concatenate in numeric order and verify isolation-sha256.txt. Transport/scene PCM, sanitizer, knob matrix and arrangement tests passed. The live installer still serves 0.3.0. Next implement Frequency Lock with measured exact-pitch isolation, add an on-device isolation workflow test and continue the active queue before publication.
+
+### Sequence and keyboard development checkpoint
+
+EVOLVE K4 selects 16/32/64 steps; longer loops derive response notes from the stored motif. SOUND > Keyboard selects Play Along or Change Key. Pending tonic and length apply before step zero. Bank v2 appends loop/key state and reads the previous CRC and payload layout as v1. The native build and targeted transport, arrangement and knob tests passed. More tests are needed for multi-bar percussion variation, legacy migration fixtures, all banks in both keyboard modes, and full acceptance.
+
+The partial native candidate is in evidence/0.4.0/loop.part-* with loop-sha256.txt. Preserve earlier candidates and 0.3.0 production. Next implement Frequency Lock and its PCM isolation acceptance, then complete mixer/auto modes, Water Cymatics, bass/nature/glide and all remaining queue items. No 0.4.0 publication yet. Physical source of the reported tone remains unconfirmed.

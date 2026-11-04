@@ -142,6 +142,37 @@ static void scene_frequency_isolation(void)
     puts("PASS all thirteen Auto frequencies in PCM, Sacred Bass isolation, independent binaural stereo and STOP silence");
 }
 
+static void loop_key_boundary(void)
+{
+    for(unsigned length=16;length<=64;length*=2){
+        sr_init(&a,71);
+        a.keyboard_mode=1;
+        a.freeze=1;
+        sr_set_loop_length(&a,length);
+        sr_start(&a);
+        a.tick_length=32;
+        sr_render(&a,pcm,32);
+        unsigned previous=sr_tonic(&a), voices=a.note_ons;
+        sr_key_down(&a,SR_PIANO,1);
+        sr_key_down(&a,SR_PIANO,5);
+        assert(a.note_ons==voices&&a.pending_key==11&&sr_tonic(&a)==previous);
+        for(unsigned step=1;step<length;step++){
+            sr_render(&a,pcm,32);
+            assert(sr_tonic(&a)==previous);
+        }
+        assert(!a.loop_pos);
+        sr_set_loop_length(&a,32);
+        sr_render(&a,pcm,32);
+        assert(a.loop_length==32&&a.loop_pos==1&&sr_tonic(&a)==46&&!a.pending_key);
+        assert(a.frequency==sr_scenes[a.scene].frequency);
+        sr_stop(&a);
+        block(&a);
+        block(&a);
+        silence();
+    }
+    puts("PASS next-loop tonic and length changes at all three loop lengths");
+}
+
 static void hit_cap(void)
 {
     sr_init(&a,3131);
@@ -172,4 +203,4 @@ static void hit_cap(void)
     }
     puts("PASS HIT zero retains pulse and all thirteen scenes produce audible-range drum PCM");
 }
-int main(void){stopped_voices();fixed_reference_isolation();scene_frequency_isolation();hit_cap();return 0;}
+int main(void){stopped_voices();fixed_reference_isolation();scene_frequency_isolation();loop_key_boundary();hit_cap();return 0;}
