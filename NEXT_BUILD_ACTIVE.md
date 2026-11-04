@@ -4,7 +4,7 @@ The 0.5.0 software evidence is in evidence/0.5.0/final/. The full development sc
 
 ## P0 — Actual FM-1 0.5.0 live PERF / CALLBACK / VOICE INSPECTOR screenshots (owner, 2026-11-04)
 
-Owner provided **three physical FM-1 screen photos during live playback** in this conversation. These are *measured on-device observations*, distinct from host benchmarks. Preservation: this textual transcription, numbers, and source interpretation here and `FAST_RESUME.md`; photos are attached in user conversation rather than imported into GitHub. Owner previously reported crackling only **VERY RARELY**, otherwise excellent sound.
+Owner provided **three physical FM-1 screen photos during live playback** in this conversation. **IMPORTANT CORRECTION FROM OWNER: NO DRUMS ACTIVE DURING THESE SCREENSHOTS.** Therefore ~83% AUDIO+FX budget, 16 voices, ~4.8ms callback and observed XRUN delta 0 are a **NO-DRUMS baseline**, not a dense-drums stress test. Do not attribute the CPU budget shown here to active percussion. Subsequent testing must compare precisely matched no-drums vs drums enabled, Density 0/4/8 and HIT 0/50/100, including extra drum synthesis/mixing costs, and ensure adequate audio headroom. These are *measured on-device observations*, distinct from host benchmarks. Preservation: this textual transcription, numbers, and source interpretation here and `FAST_RESUME.md`; photos are attached in user conversation rather than imported into GitHub. Owner previously reported crackling only **VERY RARELY**, otherwise excellent sound.
 
 **PERFORMANCE 0.5.0 photo:**
 - `K1 VISUAL FPS: 20 TARGET`
