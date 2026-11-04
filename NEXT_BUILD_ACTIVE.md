@@ -2,6 +2,38 @@
 
 The 0.5.0 software evidence is in evidence/0.5.0/final/. The full development scope is archived in archive/0.5.0-requirements.md.
 
+## P0 — Actual FM-1 0.5.0 live PERF / CALLBACK / VOICE INSPECTOR screenshots (owner, 2026-11-04)
+
+Owner provided **three physical FM-1 screen photos during live playback** in this conversation. These are *measured on-device observations*, distinct from host benchmarks. Preservation: this textual transcription, numbers, and source interpretation here and `FAST_RESUME.md`; photos are attached in user conversation rather than imported into GitHub. Owner previously reported crackling only **VERY RARELY**, otherwise excellent sound.
+
+**PERFORMANCE 0.5.0 photo:**
+- `K1 VISUAL FPS: 20 TARGET`
+- `PLAY BLITS FPS x10 = 189` -> software count **18.9 blits/s** when last updated, **not actual LCD-delivered 18.9 FPS**. `MISSED / 2s = 0` (also potentially stale).
+- `DRAW us = 46,735` (~46.7 ms most recent `draw()` call; not necessarily actual PLAY redraw; close to 50ms target).
+- `Audio P95 / Peak = 4800 / 4762 us`; `FX P95 / Peak = 300 / 273 us`.
+- `DMA XRUN DELTA = 0`; `plat_xruns() total = 0` as displayed. Do not convert these into a claim of zero underruns throughout a multi-hour session or that rare crackle is resolved.
+- `AUDIO+FX % BUDGET = 83`.
+- `CORE 0 / SINGLE-CORE FALLBACK`, `WORK / WAIT us = 34 / 35`, `FALLBACK / BAD = 1 / 0`.
+
+**CALLBACK / CORE photo:**
+- Window `256 FRAMES / 5805 us` at 44.1kHz.
+- Callback mean = **4797µs** (~82.6% of 5805µs), raw peak = **5024µs** (~86.5%), P95 = **5100µs** (~87.9%), P99 = **5100µs** (~87.9%). P95 headroom ~705µs from hard DMA deadline. Core-1 worker reason = **2**, `GEOMETRY+LCD us = 36` (not equivalent to the `DRAW us = 46735` above).
+- **ACTIVE VOICES = 16** of 16, input command drops = **0**.
+
+**VOICE INSPECTOR photo:**
+- Slot 1, role **Plucks / Generator**, MIDI **57**, voice age **28,867ms**, remaining = **0ms**, release state, displayed envelope **0%** (rounded to integer; does *not* prove true zero or hanging note). Note ON/OFF = **914 / 909**, Guards = **21**. Sacred active ~**55 Hz**, fixed active 0 Hz, Binaural ON, Solo OFF. These counters are not DMA underruns, and ON-minus-OFF does not directly equal active voices. Investigate prolonged quiet release tails and voice allocation efficiency while preserving audible release sound; do not assert stuck-note cause from a snapshot.
+
+**CRITICAL SOURCE-VERIFIED DIAGNOSTIC GOTCHAS / required fixes:**
+- [ ] In `device/app.c::app_frame()`, `shown_fps10=frames*10000u/span` and `shown_missed=missed` are refreshed ONLY if `!debug && page==0`. When GLO Performance is open, both displayed values freeze at the most recent PLAY measurement. Fix by using independent interval counters/snapshots that continue capturing while diagnostics open, and distinguish **actual physical LCD delivery**, PLAY-submitted blits, and time since last active PLAY capture. Do not claim 18.9 FPS from photo is the live diagnostic page's current delivered FPS or claim `MISSED=0` is current during diagnostics.
+- [ ] `device/app.c::summarize()` computes percentile labels as `(i+1)*100` at 100µs histogram bins while recording `peak=t->max` raw. This can legitimately display `P95 > PEAK` (e.g. audio 4800 > 4762, FX 300 > 273, callback P95 5100 > raw peak 5024). Fix presentation using percentiles with consistent units/bounds/rounding or explicitly label them as upper-bin boundaries; include tests for noncontradictory display. Preserve raw accurate peak.
+- [ ] `frame_us` is the most recent entire `draw(animate)` time, but `graphics_us` is only `prepare_geometry()` time. Their labels currently make it hard to compare 46,735µs vs 36µs. Separate **LCD transfer**, **geometry**, **display draw**, **core-1 worker** and per-page rates. Capture actual frame delivery (driver-completion/physical measurement when supported), render percentiles, current refresh cadence and correct counters while on GLO pages.
+- [ ] Investigate `CORE 0 / SINGLE-CORE FALLBACK` and `WORKER REASON 2` under normal operation, and why / when core-1 offload isn't in use. Distinguish genuine hardware/boot/core issue from diagnostic flag; do not invent reason code meaning without inspecting platform. Evaluate whether safe worker scheduling and LCD optimization improve audio deadlines without blocking audio. Do not force unverified dual-core to operate.
+- [ ] Profile real on-device 16-voice audio/DSP load: these data indicate **relatively high ~83% audio+FX budget** but zero observed DMA underruns. Look for quiet/long release voices (Plucks 28.9s old shown as release env=0%), voice culling, FX and LCD contention. Investigate without shortening musically desired long tails; compare PCM and user sound quality. Confirm rare crackling only if an event coincides with a new Xrun, clipping or limiter state; avoid expensive rearchitecture without evidence.
+- [ ] Next performance page must display **large LIVE CPU %, AUDIO %, FX %, TOTAL %, voice count, XRUN DELTA/TOTAL, and truthful FPS**, with 1–2s windows and explicit measurement semantics. CPU busy is distinct from callback-budget %. Add recorder of 2s/10s minima and maxima, optional long-window peaks and XRUN timestamps for rare glitch capture, without profiler overhead causing glitches.
+- [ ] Hardware follow-up: test **Original and Water** with 16 voices, 20-FPS target and live Performance snapshot; collect reason-code mapping, true core activity, DMA XRUN increments and callback p95/p99 with FX/visual toggles. Baseline 0.5.0 audio sounds good; preserve and prioritize actual performance verification.
+
+
+
 ## P0 — INTENTION-AWARE QUANTIZE FOR GENERATOR + PERFECTLY IN-TIME PLAY ALONG (owner directive 2026-11-04)
 
 **Owner request:** Add a real **QUANTIZE** system. Generative music should choose suitable rhythmic timing and musical pitch/scale behavior based on current **intention, musical character/style, selected frequency/reference mode, tempo, patches, role and arrangement**. In **PLAY ALONG** mode, physical keys should be quantized so human performances join the current music *cleanly on the beat and in the correct key/scale* every time. Preserve the excellent sound of released 0.5.0 and make quantization conspicuous and easy to control. This is **NEXT-build work**, not a change to the installed firmware.
