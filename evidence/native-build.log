@@ -1,5 +1,3 @@
-device/build/o2/dsp_engine.o: In function `.GJTIE20_0_0_':
-device/dsp/engine.c:(.ram_text+0x4c8): relocation truncated to fit: R_PI32V2_LONG_JUMP_23M2 against `fm_fabsf'
 warning: SDK uboot.boot differs from AC79NN_SDK_V1.2.1; the package will not match the reference
 warning: SDK cfg/eq_cfg_hw.bin differs from AC79NN_SDK_V1.2.1; the package will not match the reference
 font T: BarlowSemiCondensed-SemiBold.ttf 10px h 12, digit adv 5, 3600 B
@@ -9,7 +7,15 @@ font B: BarlowSemiCondensed-Bold.ttf 15px h 16, digit adv 8, 8752 B
 font M: BarlowSemiCondensed-SemiBold.ttf 23px h 24, digit adv 12, 11832 B
 font L: BarlowSemiCondensed-Bold.ttf 31px h 32, digit adv 16, 19776 B
 font set barlow: 60782 B (approx)
-words: 3 own + 51 common -> /workspace/scratch/9c764547533f/fm1-projects/FM1-Sound-Healing/device/web/words/95a41ce197.json (1059 B)
+words: 3 own + 51 common -> /workspace/scratch/9c764547533f/aquora/device/web/words/95a41ce197.json (1059 B)
 loader: image 9636 B at 0x1c0a800, bss end 0x1c12210
 loader: ota.bin 8340 B
-build: pi32v2/bin/ld failed
+  ok    .ram_text: 2189 insns, no calls
+  ok    no 64-bit multiply inlined beside a load
+  ok    no soft-double routines (single-precision FPU only)
+  ok    image 90700 B; RAM .data+.bss 26284 B of 98304; pool 72192 B of 344064
+  ok    register access: felucca-bsp only (device/, include/ and the app clean)
+parts    USB audio in, the second core  (not built in: Bluetooth MIDI, Bluetooth MIDI devices, WiFi, USB audio out, screen mirroring, backup and restore, USB MIDI host, velocity and pressure)
+app      /workspace/scratch/9c764547533f/aquora/device/build/sound-healing.bin  90700 B
+loader   /workspace/scratch/9c764547533f/aquora/device/build/loader/ota.bin  8340 B
+package  /workspace/scratch/9c764547533f/aquora/device/build/sound-healing-0.1.0.fwsc  611496 B, identity FM-1_73000100

@@ -1,4 +1,4 @@
-# Sound Healing 0.1.0 — FM-1
+# AQUORA 0.1.0 — FM-1
 
 An original generative musical instrument for reflective listening. No medical benefit is claimed. Acoustic names describe synthesized instruments, not recordings. This first software build awaits physical FM-1 verification.
 

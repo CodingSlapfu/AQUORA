@@ -8,4 +8,4 @@
   ok page == 3
   ok drops == 0
   ok running == 0
-host: 25110 ms simulated, 2365 blits, render 0.6% of real time (host CPU)
+host: 25110 ms simulated, 2368 blits, render 0.7% of real time (host CPU)

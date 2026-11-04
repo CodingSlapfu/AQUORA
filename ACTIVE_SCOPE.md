@@ -24,4 +24,4 @@ Date: November 3, 2026. New product; retired scopes are NOT inherited.
 - Continue across development steps without requiring repeated authorization; checkpoint intelligently where session execution limits force interruption.
 - Keep active queue short and archive completed work with evidence rather than historical sprawl.
 
-Status: prototype source and unit tests saved to Library package. Full native firmware and web installer remain NOT DONE.
+Status: 0.1.0 native and browser software checks recorded in evidence/. See release/0.1.0/README.md for the hardware test checklist. Physical flashing, timing, output and recovery remain open.

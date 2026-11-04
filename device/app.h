@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include "plat.h"
-#define APP_NAME "SOUND HEALING"
+#define APP_NAME "AQUORA"
 #define APP_SPLASH_RGB RGB(140,220,190)
 #define APP_BLOCK 256u
 #define APP_CANVAS_PX (240u*48u)

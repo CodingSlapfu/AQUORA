@@ -13,6 +13,20 @@ int plat_cpu2_gave_up(void){return host_worker_reason;}
 uint32_t plat_cpu2_bad(void){return host_worker_reason==1;}
 int plat_cpu2_barred(void){return host_worker_reason!=0;}
 uint32_t plat_cpu2_stack(void){return 0;}
+#elif !FM1B_CPU2
+int plat_cpu2_set(int on) { return on ? -1 : 0; }
+int plat_cpu2_on(void) { return 0; }
+int plat_cpu2_run(void (*job)(uint32_t), uint32_t arg)
+{
+    (void)job;
+    (void)arg;
+    return 0;
+}
+int plat_cpu2_wait(void) { return 0; }
+void plat_cpu2_sync(void) {}
+int plat_cpu2_gave_up(void) { return 0; }
+uint32_t plat_cpu2_bad(void) { return 0; }
+uint32_t plat_cpu2_stack(void) { return 0; }
 #endif
 static struct {float time,meter[8];} vis_input __attribute__((aligned(64)));
 static struct {int16_t xy[8][41][2];unsigned busy_us;} vis_output __attribute__((aligned(64)));

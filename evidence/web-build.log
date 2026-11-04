@@ -1,0 +1,10 @@
+font T: BarlowSemiCondensed-SemiBold.ttf 10px h 12, digit adv 5, 3600 B
+font XS: BarlowSemiCondensed-SemiBold.ttf 12px h 15, digit adv 6, 7005 B
+font S: BarlowSemiCondensed-Medium.ttf 15px h 16, digit adv 7, 8576 B
+font B: BarlowSemiCondensed-Bold.ttf 15px h 16, digit adv 8, 8752 B
+font M: BarlowSemiCondensed-SemiBold.ttf 23px h 24, digit adv 12, 11832 B
+font L: BarlowSemiCondensed-Bold.ttf 31px h 32, digit adv 16, 19776 B
+font set barlow: 60782 B (approx)
+words: 3 own + 51 common -> /workspace/scratch/9c764547533f/aquora/device/web/words/95a41ce197.json (1059 B)
+emu: no fm1-reader at /workspace/scratch/9c764547533f/aquora/vendor/fm1-reader/web: the screen is read as plain text, without its voice (set FM1_READER)
+emu      /workspace/scratch/9c764547533f/aquora/device/build/emu  (46917 B wasm)

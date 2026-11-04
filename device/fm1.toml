@@ -1,7 +1,7 @@
 name = "sound-healing"
 id_prefix = "FM-1_73"
 usb_manufacturer = "ZIAO"
-usb_product = "Sound Healing FM-1"
+usb_product = "AQUORA FM-1"
 o2 = ["dsp/engine.c"]
 include = ["dsp"]
 o2_cflags = ["-DSR_DEVICE"]
@@ -11,6 +11,6 @@ cpu2 = true
 cpu2_fallback = true
 usb_audio_in = true
 usb_audio_out = false
-tagline = "Generative music for reflective listening"
-repo = "https://github.com/CodingSlapfu/FM-1-Firmware-Projects"
+tagline = "Generative Sound Sanctuary"
+repo = "https://github.com/CodingSlapfu/AQUORA"
 licence = "MPL-2.0"

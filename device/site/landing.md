@@ -1,4 +1,4 @@
-# Sound Healing
+# AQUORA
 
 Generative music for the M-VAVE FM-1.
 
