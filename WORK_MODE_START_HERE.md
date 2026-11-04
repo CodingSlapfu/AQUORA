@@ -2,6 +2,8 @@
 Created November 3, 2026. NEW PROJECT, not a continuation of retired EIN-1 / PARALLAX-8 / Crystal Water.
 
 ## First read
+**For paused-work recovery and minimal usage, read [FAST_RESUME.md](FAST_RESUME.md) first, then only the checkpoint, current blocker, and authoritative requirements needed for the task.**
+
 1. Read this document and ACTIVE_SCOPE.md from the AQUORA repository root. Full source/prototype handoff and demo are saved in ChatGPT Library at `/FM1-Sound-Healing/FM1-Sound-Healing_WorkMode_Handoff_2026-11-03.zip`.
 2. Read the root WEBSITE_RETIREMENT.md and remove retired products from the existing Sites-hosted public showcase as an independent website-maintenance task. Preserve all old source/backups.
 3. Host C prototype includes source, Makefile, tests, 240x240 UI mockups and demo audio. `make test` passed on November 3, 2026. THIS IS NOT FLASHABLE DEVICE FIRMWARE.
