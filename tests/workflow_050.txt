@@ -1,0 +1,43 @@
+master 2048
+tap ARP
+expect page 4
+expect drum_tab 0
+spin K2 8
+wait 100
+expect density 8
+spin K3 8
+tap EDIT
+expect drum_tab 1
+spin K4 -4
+tap EDIT
+expect drum_tab 2
+spin K1 1
+spin K2 1
+wait 100
+expect solo 7
+spin K2 -1
+tap HOME
+turn ALGO 1
+expect page 1
+tap EDIT
+turn SELECT 3
+expect sound_group 2
+tap EDIT
+spin K3 1
+wait 100
+expect frequency_lock 1
+tap OCT-
+expect page 5
+spin K2 1
+tap SAVE
+wait 100
+expect bank_message 4
+spin K2 -1
+tap SAVE
+wait 100
+expect bank_exact 1
+tap HOME
+tap GLO
+spin K1 1
+expect knobs_valid 1
+expect drops 0

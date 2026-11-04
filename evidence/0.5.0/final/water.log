@@ -1,0 +1,5 @@
+  ok page == 5
+  ok visual == 1
+  ok running == 0
+  ok drops == 0
+host: 2581 ms simulated, 172 blits, render 0.4% of real time (host CPU)

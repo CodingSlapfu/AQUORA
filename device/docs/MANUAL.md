@@ -105,3 +105,14 @@ together. Turn a lock control left to unlock. Editing a Nature bed also locks
 that selection so a deliberately disabled bed stays off. Sound locks travel
 with the arrangement bank. PLAY and STOP preserve the current motif and
 sounds. A stopped intention change draws a fresh palette for that intention.
+
+### Navigation
+
+ALGORITHM selects PLAY, SOUND, EVOLVE, MIX, DRUMS, and SETUP. HOME returns
+to PLAY. ARP jumps to DRUMS without changing the drum enable setting. EDIT
+cycles Pattern, Sound / Mix, and Mute / Solo. OCT+ is a DRUMS shortcut.
+On SOUND, EDIT opens the category picker, SELECT chooses the category, and
+EDIT opens it. SETUP groups lighting and visualizer controls with arrangement
+banks on its second tab. OCT− jumps to banks. GLO opens Performance, with
+K1 selecting the visual pacing policy. The displayed PLAY blit rate is a
+software count and still needs confirmation on the physical LCD.

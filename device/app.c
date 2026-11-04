@@ -19,6 +19,10 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset, song_tab, song_nonce;
+static unsigned drum_tab, setup_tab, sound_picker;
+enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP };
+static const uint8_t sound_groups[]={0,6,1,2,3,5,7,11,13};
+
 static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
@@ -63,6 +67,12 @@ static timing_summary summarize(const timing *t)
 static unsigned control_for(unsigned knob)
 {
  if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
+ if(page==PAGE_DRUMS){
+   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,0,0}};
+   return controls[drum_tab][knob];
+ }
+ if(page==PAGE_SETUP)return sound_controls[setup_tab?GROUP_BANKS:GROUP_VISUAL][knob];
+ if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==2&&song_tab){static const uint8_t ids[]={58,59,60,61};return ids[knob];}
  if(page==3&&mix_tab){
    static const uint8_t master_controls[]={11,12,50,51};
@@ -88,7 +98,7 @@ static void drums_enable(int enabled)
 }
 static int bounded(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
 static float adjust(float x,int d,float step,float hi){return fm_clampf(x+d*step,0,hi);}
-static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,selected};__asm__ volatile("":::"memory");qwrite=next;}
+static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected};__asm__ volatile("":::"memory");qwrite=next;}
 static void consume(void){
  unsigned stop=stop_generation;
  unsigned play=requested_play;
@@ -188,6 +198,9 @@ static void consume(void){
 void app_init(void)
 {
     song_nonce=plat_ticks24();
+#ifdef PLAT_HOST
+    if(getenv("AQUORA_TEST_SEED"))song_nonce=7301u;
+#endif
     sr_init(&engine,song_nonce^7301u);
     sr_generate_song(&engine,song_nonce,0);
     engine.clock_ticks=plat_ticks24;
@@ -259,7 +272,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  }
  if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=0;send(44,0);}
  if(press&(1u<<B_SEL))send(15,0);
- if(press&(1u<<B_ARP)){bank_confirm=0;page=1;group=GROUP_PERC;debug=0;send(9,1);}
+ if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
  if(press&(1u<<B_REC))plat_cpu2_set(0);
  if(press&(1u<<B_ENV))send(14,0);
@@ -268,18 +281,20 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
    if(!debug&&page==2)song_tab=!song_tab;
-   if(page==1)group=(group+1)%GROUP_COUNT;
+   if(page==PAGE_SOUND)sound_picker=!sound_picker;
+   if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%3;
+   if(page==PAGE_SETUP)setup_tab=!setup_tab;
    if(page==3){mix_tab=(mix_tab+1)%3;mix_reset=0;}
    bank_confirm=0;bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
- if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=1;group=GROUP_BANKS;debug=0;}
- if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;page=1;group=group==GROUP_PERC?GROUP_HIT:GROUP_PERC;debug=0;}
+ if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
+ if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%3:0;page=PAGE_DRUMS;debug=0;}
  if(press&(1u<<B_LFO))send(debug?27:28,0);
  if((press&(1u<<B_SAVE))&&page==3&&mix_tab==2&&!debug){
     if(mix_reset)send(53,0);
     mix_reset=0;
- }else if((press&(1u<<B_SAVE))&&page==1&&group==GROUP_BANKS&&!debug){
+ }else if((press&(1u<<B_SAVE))&&page==PAGE_SETUP&&setup_tab&&!debug){
     arrangement_execute();
     blocked_keys|=k;
  }else if((press&(1u<<B_SAVE))&&!requested_play&&!engine.running&&!engine.stop_frames){
@@ -299,11 +314,18 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  }
  oldkeys=k;
  int d=plat_enc(EN_ALGO);
- if(d&&!debug){page=bounded((int)page+d,0,3);mix_reset=0;bank_confirm=0;knob_until=0;dirty=1;}
+ if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_SETUP);sound_picker=0;mix_reset=0;bank_confirm=0;knob_until=0;dirty=1;}
  d=plat_enc(EN_SELECT);
- if(d&&!debug){selected=bounded((int)selected+d,0,7);knob_until=0;dirty=1;}
+ if(d&&!debug){
+   if(page==PAGE_SOUND&&sound_picker){
+     int index=0;
+     for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=(int)i;
+     group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
+   }else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
+   knob_until=0;dirty=1;
+ }
  d=plat_enc(EN_PRESET);
- if(d&&!debug){send(page==0?1:2,d>0?1:-1);dirty=1;}
+ if(d&&!debug&&page!=PAGE_SETUP&&!(page==PAGE_SOUND&&sound_picker)){send(page==0?1:page==PAGE_DRUMS?16:2,d>0?1:-1);dirty=1;}
  for(unsigned i=0;i<4;i++){
     d=plat_enc(EN_K1+i);
     unsigned control=control_for(i);
@@ -367,7 +389,7 @@ void app_frame(void)
     if(knob_until&&(int32_t)(now-knob_until)>=0){knob_until=0;dirty=1;}
     if(now-redraw_ui_ms<FRAME_MIN_MS)return;
     unsigned elapsed=now-lastdraw;
-    int animate=!debug&&elapsed>=FRAME_MIN_MS;
+    int animate=!debug&&(page==PAGE_PLAY||page==PAGE_MIX)&&elapsed>=FRAME_MIN_MS;
     if(animate&&page==0){
       missed+=elapsed/FRAME_MIN_MS-1u;
       if(callback_stats.p95>=(fps_auto?5500u:5700u)){
@@ -377,7 +399,7 @@ void app_frame(void)
     if(animate){
       lastdraw=now;
       unsigned begin=plat_ticks24();
-      if(page!=3)prepare_geometry();
+      if(page==PAGE_PLAY)prepare_geometry();
       graphics_us=(plat_ticks24()-begin)/24;
     }
     if(animate||dirty){
@@ -396,6 +418,8 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"mute"))*got=track->mute;
  else if(!strcmp(what,"solo"))*got=engine.solo;
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
+ else if(!strcmp(what,"drum_tab"))*got=drum_tab;
+ else if(!strcmp(what,"sound_group"))*got=group;
  else if(!strcmp(what,"mix_tab"))*got=mix_tab;
  else if(!strcmp(what,"isolation"))*got=engine.isolate;
  else if(!strcmp(what,"frequency_lock"))*got=engine.frequency_lock;

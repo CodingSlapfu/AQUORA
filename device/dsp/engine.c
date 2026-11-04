@@ -558,17 +558,17 @@ static inline __attribute__((always_inline)) float bed(sr_engine *e){
    default:return 0.f;
   }
 }
-static inline __attribute__((always_inline)) float fx(sr_engine *e,float dry,float *wide){
+static inline __attribute__((always_inline)) float fx(sr_engine *e,unsigned mask,float dry,float *wide){
   float wet=0.f;
-  if(e->fx_mask&1u)for(int i=0;i<4;i++){
+  if(mask&1u)for(int i=0;i<4;i++){
     uint16_t p=e->rev_pos[i];float delayed=e->rev_history>=rv_len[i]?(float)e->reverb[i][p]*(1.f/32768.f):0;
     float next=clampf(dry*.34f+delayed*.71f,-.97f,.97f);
     e->reverb[i][p]=(int16_t)(next*32767.f);
     e->rev_pos[i]=(uint16_t)(p+1u==rv_len[i]?0:p+1u);wet+=delayed*.25f;
   }
-  if((e->fx_mask&1u)&&e->rev_history<1789)e->rev_history++;
+  if((mask&1u)&&e->rev_history<1789)e->rev_history++;
   float d=0;
-  if(e->fx_mask&2u){
+  if(mask&2u){
   uint16_t p=e->delay_pos;d=e->delay_history>=16384?(float)e->delay[p]*(1.f/32768.f):0;
   if(e->delay_history<16384)e->delay_history++;
   float next=clampf(dry*.54f+d*.28f,-.97f,.97f);
@@ -761,12 +761,15 @@ __attribute__((section(".ram_text"), noinline))
 #endif
 static void apply_fx(sr_engine *e,float *dry,size_t frames)
 {
+  unsigned mask=e->fx_mask;
+  int audible=e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_FX;
+  float reverb=e->reverb_amount, delay=e->delay_amount;
   for(size_t i=0;i<frames;i++){
-    e->reverb_wet+=(e->reverb_amount-e->reverb_wet)*.002f;
-    e->delay_wet+=(e->delay_amount-e->delay_wet)*.002f;
+    e->reverb_wet+=(reverb-e->reverb_wet)*.002f;
+    e->delay_wet+=(delay-e->delay_wet)*.002f;
     float width=0;
-    float wet=fx(e,dry[3*i+2],&width);
-    if(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_FX){
+    float wet=fx(e,mask,dry[3*i+2],&width);
+    if(audible){
       dry[3*i]+=wet+width;
       dry[3*i+1]+=wet-width;
     }

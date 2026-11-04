@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MPL-2.0 */
-static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX"};
+static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures"};
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
@@ -70,7 +70,7 @@ static const char *tenth(char *buffer,int value)
 }
 static const char *knob_value(unsigned id,const char **name,char *buffer)
 {
- sr_track *track=&engine.tracks[selected];
+ sr_track *track=&engine.tracks[page==PAGE_DRUMS?SR_DRUMS:selected];
  sr_motion *motion=&engine.motion[selected<=SR_BASS?selected:0];
  int number=0;
  switch(id){
@@ -117,6 +117,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 60:*name="TRACK LOCK";return onoff(engine.sound_locks&(1u<<selected));
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
  case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
+ case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
  case 54:*name="AUDITION";return engine.nature_audition?"Playing":"Turn right";
  case 49:*name="MUTE";return onoff(track->mute);
  case 50:*name="AUTO GAIN";return onoff(engine.auto_gain);
@@ -291,18 +292,37 @@ static void draw(int animate)
        limited_text(x,15,55,&FONT_XS,name,color);
        limited_text(x,29,55,&FONT_XS,result,C_WHITE);
      }
+   }else if(visual&&page==PAGE_DRUMS){
+     if(band==1){
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO"};
+       cv_text(8,0,&FONT_B,tabs[drum_tab],colors[SR_DRUMS]);
+       limited_text(8,25,225,&FONT_XS,sr_drum_kits[engine.drum_kit].name,C_WHITE);
+     }else{
+       label(8,0,"DENSITY",engine.drum_density);
+       label(91,0,"HIT %",engine.drum_hit);
+       label(163,0,"LEVEL %",engine.drum_level*100);
+       cv_text(8,33,&FONT_XS,"EDIT: TAB   PRESET: KIT",C_WHITE);
+     }
+   }else if(visual&&page==PAGE_SOUND&&sound_picker){
+     if(band==1){
+       cv_text(8,0,&FONT_B,"SOUND CATEGORIES",C_WHITE);
+       cv_text(8,28,&FONT_XS,"SELECT: CHOOSE   EDIT: OPEN",C_WHITE);
+     }else limited_text(8,8,225,&FONT_B,groups[group],colors[SR_LEAD]);
+   }else if(visual&&page==PAGE_SETUP){
+     if(band==1)cv_text(8,3,&FONT_B,setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY",C_WHITE);
+     if(band==2)cv_text(8,10,&FONT_XS,"EDIT: TAB   GLO: PERFORMANCE",C_WHITE);
    }else if(visual&&page==3)mixer_band(band);
    else if(visual)geometry(band*48);
    else if(band==0){
      cv_text(8,0,&FONT_XS,"ALGO",RGB(126,166,164));
      cv_text(46,0,&FONT_B,pages[page],RGB(174,236,208));
-     if(page==1&&(group==GROUP_PERC||group==GROUP_HIT)){
+     if(page==PAGE_DRUMS){
        char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
        int x=cv_text(104,2,&FONT_XS,"PULSE ",C_WHITE);
        cv_text(x,2,&FONT_XS,count,RGB(147,221,207));
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(187,2,&FONT_XS,meter,C_WHITE);cv_text(212,2,&FONT_XS,"%",C_WHITE);
-     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==1?groups[group]:page==2?(song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"CHANNELS":mix_tab==1?"MASTER FX":"RESET MIX"):visual_name(),C_WHITE);
+     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"CHANNELS":mix_tab==1?"MASTER FX":"RESET MIX"):visual_name(),C_WHITE);
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));
@@ -322,7 +342,7 @@ static void draw(int animate)
      knob_cell(start,8);
      knob_cell(start+1,126);
      if(band==4){
-       if(page==1&&(group==GROUP_PERC||group==GROUP_HIT)){
+       if(page==PAGE_DRUMS){
          int x=cv_text(8,33,&FONT_XS,drum_status(),RGB(147,221,207));
          char hit[12];num(hit,engine.drum_hit);
          x=cv_text(x+8,33,&FONT_XS,"HIT %",C_WHITE);
@@ -350,7 +370,7 @@ static void draw(int animate)
          x=cv_text(x,33,&FONT_XS,notes[sr_tonic(&engine)%12],RGB(97,241,244));
          unsigned next=engine.pending_key;
          if(next){x=cv_text(x+3,33,&FONT_XS," > ",C_WHITE);cv_text(x,33,&FONT_XS,notes[(next-1)%12],RGB(250,171,64));}
-       }else if(page==1&&group==GROUP_BANKS){
+       }else if(page==PAGE_SETUP&&setup_tab){
          static const char *messages[]={"SAVE RUNS ACTION","STOP FIRST","EMPTY BANK",
            "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED"};
          cv_text(8,33,&FONT_XS,bank_status[bank_slot]==1?"SAVED":bank_status[bank_slot]==2?"INVALID":"EMPTY",RGB(147,221,207));

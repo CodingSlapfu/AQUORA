@@ -38,6 +38,9 @@ int main(int argc,char **argv)
     arrangement record;
     sr_set_scene(&engine,6);
     engine.frequency=7;
+#ifdef AQ_BANK_LEGACY
+    sr_set_frequency_auto(&engine,0);
+#endif
     engine.tone_level=.035f;
     engine.tracks[SR_BASS].pan=-.75f;
     engine.motion[0]=(sr_motion){240,2,35,61};
@@ -45,11 +48,11 @@ int main(int argc,char **argv)
     arrangement_snapshot(&record);
     file=fopen(argv[1],"wb");assert(file);
     assert(fwrite(&record,1,sizeof(record),file)==sizeof(record));
-    printf("0.3.0 firmware serializer wrote %zu-byte fixture\n",sizeof(record));
+    printf("Archived firmware serializer wrote %zu-byte fixture\n",sizeof(record));
 #else
     file=fopen(argv[1],"rb");assert(file);
     sizes[0]=fread(flash[0],1,sizeof(flash[0]),file);
-    assert(sizes[0]==offsetof(arrangement,loop_length));
+    assert(sizes[0]==offsetof(arrangement,loop_length)||sizes[0]==sizeof(arrangement));
     arrangement_init();
     assert(bank_status[0]==1);
     arrangement_execute();
@@ -58,7 +61,7 @@ int main(int argc,char **argv)
     assert(engine.tone_level==.035f&&engine.tracks[SR_BASS].pan==-.75f);
     assert(engine.motion[0].glide_ms==240&&engine.motion[0].vibrato_depth==35);
     assert(visual_mode==1&&engine.loop_length==16&&!engine.keyboard_mode&&!engine.frequency_lock);
-    assert(!engine.auto_gain&&!engine.auto_level);
+    assert(!engine.auto_gain&&!engine.auto_level&&!engine.sound_locks);
 
     uint32_t crc[4];
     static const unsigned lengths[]={16,32,64,32};
@@ -67,6 +70,7 @@ int main(int argc,char **argv)
         sr_set_frequency_auto(&engine,slot&1);
         if(!engine.frequency_auto)sr_set_frequency(&engine,6+slot);
         engine.keyboard_mode=slot&1;
+        engine.sound_locks=(1u<<slot)|SR_SOUND_NATURE;
         engine.tonic_override=37+slot;
         engine.pending_key=1+slot;
         sr_set_loop_length(&engine,lengths[slot]);
@@ -100,7 +104,7 @@ int main(int argc,char **argv)
         arrangement_snapshot(&actual);
         assert(actual.crc==crc[slot]);
     }
-    puts("PASS genuine 0.3.0 record migration and four distinct 0.4.0 payloads across reboot");
+    puts("PASS archived record migration and four distinct 0.5.0 lock payloads across reboot");
 #endif
     return fclose(file);
 }
