@@ -112,6 +112,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 40:*name="ACTION";return bank_action?"SAVE":"LOAD";
  case 41:*name="OVERWRITE";return bank_confirm?"ARMED":"LOCKED";
  case 55:*name="EXTRA TEXTURES";return engine.lock_textures?"ON / not pure":"OFF / strict";
+ case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 54:*name="AUDITION";return engine.nature_audition?"Playing":"Turn right";
  case 49:*name="MUTE";return onoff(track->mute);
  case 50:*name="AUTO GAIN";return onoff(engine.auto_gain);
@@ -210,10 +211,13 @@ static void performance(int band)
  }
  if(band==0){
    cv_text(8,1,&FONT_B,"PERFORMANCE " APP_VERSION,C_WHITE);
-   cv_text(8,25,&FONT_XS,engine.perfect_key?"LFO: Perfect Key ON":"LFO: Perfect Key OFF",RGB(147,221,207));
+   cv_text(8,25,&FONT_XS,fps_auto?"K1 VISUAL FPS: AUTO (20 TARGET)":"K1 VISUAL FPS: 20 TARGET",RGB(147,221,207));
  }else if(band==1){
-   label(8,0,"Audio Processing us",audio_stats.mean);
-   label(127,0,"FX Processing us",fx_stats.mean);
+   label(8,0,"PLAY BLITS FPS x10",shown_fps10);
+   label(127,0,"MISSED / 2s",shown_missed);
+   cv_text(8,31,&FONT_XS,"DRAW us",C_WHITE);
+   char draw[12];num(draw,frame_us);cv_text(65,31,&FONT_XS,draw,C_WHITE);
+
  }else if(band==2){
    label(8,0,"Audio P95 / PEAK",audio_stats.p95);
    label(127,0,"FX P95 / PEAK",fx_stats.p95);
@@ -221,7 +225,7 @@ static void performance(int band)
    num(v,audio_stats.peak);cv_text(66,15,&FONT_B,v,C_WHITE);
    num(v,fx_stats.peak);cv_text(185,15,&FONT_B,v,C_WHITE);
  }else if(band==3){
-   label(8,0,"CPU / DMA XRUN",plat_cpu_pct());
+   label(8,0,"DMA XRUN DELTA",xrun_delta);
    label(127,0,"AUDIO+FX % BUDGET",(audio_stats.mean+fx_stats.mean)*100/5805);
    char v[12];num(v,plat_xruns());cv_text(66,15,&FONT_B,v,C_WHITE);
  }else if(band==4){
@@ -234,27 +238,33 @@ static void performance(int band)
 }
 static void mixer_band(int band)
 {
- if(band==2){
+ if(band==2&&mix_tab){
    label(8,2,"MASTER PEAK %",(int)(engine.master_peak*100.f));
    label(93,2,"LIMITER %",(int)(engine.limiter*100.f));
    label(174,2,"GAIN %",(int)(engine.gain_trim[selected]*100.f));
    cv_text(8,30,&FONT_XS,"EDIT: TAB   LFO: SOLO   SEL: MUTE",C_WHITE);
    return;
  }
- for(int t=0;t<SR_TRACKS;t++){
-   static const char *short_names[]={"LD","BS","PD","HM","PN","PL","CH","DR"};
-   int x=3+t*29;
+ unsigned first=selected&~3u;
+ int offset=(band-1)*48;
+ for(unsigned t=first;t<first+4;t++){
+   int x=4+(int)(t-first)*59;
    const sr_track *track=&engine.tracks[t];
    uint16_t color=track->mute?RGB(75,90,112):colors[t];
-   if((unsigned)t==selected)cv_line(x,0,x+26,0,C_WHITE);
-   cv_text(x+4,33,&FONT_XS,short_names[t],color);
-   int meter=(int)(fm_clampf(track->meter,0,1)*27.f);
-   int fader=30-(int)(track->volume*27.f);
-   cv_line(x+8,3,x+8,30,RGB(75,90,112));
-   cv_line(x+14,fader,x+22,fader,color);
-   for(int w=0;w<4;w++)cv_line(x+6+w,30-meter,x+6+w,30,color);
-   if(engine.solo==(unsigned)t)cv_text(x+18,32,&FONT_XS,"S",C_WHITE);
+   if(band==1){
+     if(t==selected)cv_line(x,0,x+53,0,C_WHITE);
+     limited_text(x+2,2,53,&FONT_XS,role_names[t],color);
+     if(engine.solo==t)cv_text(x+39,29,&FONT_XS,"S",C_WHITE);
+   }
+   float mag=fm_clampf(track->meter,0,1);
+   int meter=(int)(fm_sqrtf(fm_sqrtf(mag))*69.f);
+   int fader=87-(int)(track->volume*69.f);
+   cv_line(x+14,18-offset,x+14,87-offset,RGB(75,90,112));
+   if(fader>=offset&&fader<offset+48)
+     for(int w=-1;w<=1;w++)cv_line(x+24,fader+w-offset,x+49,fader+w-offset,color);
+   for(int w=0;w<8;w++)cv_line(x+10+w,87-meter-offset,x+10+w,87-offset,color);
  }
+
 }
 static void draw(int animate)
 {
@@ -290,12 +300,15 @@ static void draw(int animate)
        cv_text(187,2,&FONT_XS,meter,C_WHITE);cv_text(212,2,&FONT_XS,"%",C_WHITE);
      }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==1?groups[group]:page==3?(mix_tab==0?"CHANNELS":mix_tab==1?"MASTER FX":"RESET MIX"):visual_name(),C_WHITE);
      char track[12];num(track,selected+1);
+     if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));
      cv_text(30,25,&FONT_XS,track,C_WHITE);
      limited_text(44,25,55,&FONT_XS,role_names[selected],C_WHITE);
+     }
      cv_text(101,25,&FONT_XS,"PRE",RGB(126,166,164));
      limited_text(127,25,105,&FONT_XS,page==0?sr_scenes[engine.scene].name:patch_name(),C_WHITE);
      if(page==0){
+       cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",RGB(119,255,243));
        const char *mode=engine.frequency_lock?"LOCK":engine.tone_level>0?"REF ON":"REF OFF";
        int x=cv_text(107,2,&FONT_XS,mode,RGB(119,255,243));
        cv_text(x+4,2,&FONT_XS,sr_frequencies[engine.frequency].name,C_WHITE);

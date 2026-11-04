@@ -19,12 +19,14 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset;
+static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
+static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
 enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=14 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,12},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,22},{32,33,34,35},{13,24,29,28},
- {37,17,10,9},{38,0,0,0},{39,40,41,38},{43,4,22,31},{47,46,0,0},{55,14,48,45}
+ {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,46,0,0},{55,14,48,45}
 };
 static const uint8_t page_controls[4][4]={
  {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,29,49}
@@ -33,7 +35,7 @@ static const uint8_t page_controls[4][4]={
 typedef struct {
     uint32_t version;
     sr_motion motion[2];
-    uint8_t perfect_key;
+    uint8_t perfect_key, lighting, fps_auto;
 } aq_settings;
 
 static void measure(timing *t,unsigned us)
@@ -60,7 +62,7 @@ static timing_summary summarize(const timing *t)
 #include "visual_worker.c"
 static unsigned control_for(unsigned knob)
 {
- if(debug)return debug==3&&knob==0?42:0;
+ if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
  if(page==3&&mix_tab){
    static const uint8_t master_controls[]={11,12,50,51};
    static const uint8_t reset_controls[]={52,0,0,0};
@@ -104,7 +106,7 @@ static void consume(void){
  case 7:sr_set_binaural_rate(&engine,fm_clampf(engine.binaural_rate+d*.5f,.5f,40));break;
  case 8:sr_set_binaural_carrier(&engine,fm_clampf(engine.binaural_carrier+d*5.f,80,1000));break;
  case 9:drums_enable(switched(engine.drums_enabled,d));break;
- case 10:sr_set_drum_density(&engine,bounded(engine.drum_density+d,0,3));break;
+ case 10:sr_set_drum_density(&engine,bounded(engine.drum_density+d,0,SR_DENSITY_MAX));break;
  case 11:engine.reverb_amount=adjust(engine.reverb_amount,d,.02f,.8f);break;
  case 12:engine.delay_amount=adjust(engine.delay_amount,d,.02f,.7f);break;
  case 13:t->volume=adjust(t->volume,d,.03f,1);break;
@@ -137,7 +139,7 @@ static void consume(void){
  }
  case 47:
    engine.keyboard_mode=switched(engine.keyboard_mode,d);
-   if(!engine.keyboard_mode)engine.pending_key=0;
+   if(!engine.keyboard_mode)engine.pending_key=engine.pending_physical_key=0;
    sr_set_perfect_key(&engine,1);
    break;
  case 49:t->mute=switched(t->mute,d);break;
@@ -181,6 +183,8 @@ void app_init(void)
            m.vibrato_rate>=5&&m.vibrato_rate<=80&&m.vibrato_depth<=50)engine.motion[i]=m;
       }
       engine.perfect_key=!!settings.perfect_key;
+      lighting=settings.lighting<=3?settings.lighting:0;
+      fps_auto=!!settings.fps_auto;
     }
     arrangement_init();
     visual_init();
@@ -246,6 +250,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if(press&(1u<<B_FX))send(6,0);
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
+   if(!debug&&page==0)send(47,0);
    if(page==1)group=(group+1)%GROUP_COUNT;
    if(page==3){mix_tab=(mix_tab+1)%3;mix_reset=0;}
    bank_confirm=0;bank_message=BANK_IDLE;
@@ -266,6 +271,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     settings.version=0x41513032u;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
+    settings.lighting=lighting;settings.fps_auto=fps_auto;
     plat_unlock(flags);
     saved_status=plat_store_save(OBJ_SETTINGS,&settings,sizeof(settings))==0?1:2;
  }
@@ -290,6 +296,8 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
     else if(control==52)mix_reset=d>0;
+    else if(control==56)lighting=bounded((int)lighting+d,0,3);
+    else if(control==57)fps_auto=switched(fps_auto,d);
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
     else send(control,bounded(d,-8,8));
     knob_focus=i;
@@ -297,7 +305,15 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     dirty=1;
  }
  if(press)dirty=1;
- plat_leds((engine.running?(1u<<B_PLAY):0)|(engine.freeze?(1u<<B_SEQ):0),k);
+ unsigned buttons=(engine.running?(1u<<B_PLAY):0)|(engine.freeze?(1u<<B_SEQ):0);
+ unsigned pending=engine.pending_physical_key;
+ unsigned lights=k;
+ if(pending&&pending<=NKEYS)lights|=1u<<(pending-1);
+ if(lighting==3&&engine.running)
+   for(unsigned t=0;t<SR_TRACKS;t++)
+     if(engine.tracks[t].meter>.045f)
+       lights|=1u<<((engine.tracks[t].events+t*3u)%NKEYS);
+ plat_leds(lighting==1||lighting==2?0:buttons,lighting==2?0:lights);
 }
 #include "ui.c"
 enum { FRAME_MIN_MS = 50 };
@@ -317,6 +333,12 @@ void app_frame(void)
       audio_stats=summarize(&audio);
       fx_stats=summarize(&fx);
       callback_stats=summarize(&callback);
+      unsigned span=now-window_ms;
+      if(!debug&&page==0){shown_fps10=frames*10000u/span;shown_missed=missed;}
+      frames=missed=0;
+      unsigned xruns=plat_xruns();
+      xrun_delta=xruns-last_xruns;
+      last_xruns=xruns;
       window_ms=now;
       if(debug||(page==1&&(group==1||group==GROUP_PERC||group==GROUP_HIT)))dirty=1;
     }
@@ -327,9 +349,14 @@ void app_frame(void)
     }
     if(knob_until&&(int32_t)(now-knob_until)>=0){knob_until=0;dirty=1;}
     if(now-redraw_ui_ms<FRAME_MIN_MS)return;
-    unsigned load=plat_cpu_pct();
-    unsigned interval=load>82?150:load>68?90:load>60?70:FRAME_MIN_MS;
-    int animate=!debug&&now-lastdraw>=interval&&(!dirty||load<=68||now-lastdraw>=200);
+    unsigned elapsed=now-lastdraw;
+    int animate=!debug&&elapsed>=FRAME_MIN_MS;
+    if(animate&&page==0){
+      missed+=elapsed/FRAME_MIN_MS-1u;
+      if(callback_stats.p95>=(fps_auto?5500u:5700u)){
+        animate=0;missed++;lastdraw=now;
+      }
+    }
     if(animate){
       lastdraw=now;
       unsigned begin=plat_ticks24();
@@ -338,7 +365,10 @@ void app_frame(void)
     }
     if(animate||dirty){
       redraw_ui_ms=now;
+      unsigned draw_start=plat_ticks24();
       draw(animate);
+      frame_us=(plat_ticks24()-draw_start)/24;
+      if(animate&&page==0)frames++;
     }
 }
 #ifdef PLAT_HOST

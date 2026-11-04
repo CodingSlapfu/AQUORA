@@ -43,31 +43,31 @@ static void visual_init(void)
     for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
 }
 
-/* Two offset wave origins and standing-mode lobes on a shallow basin.
- * One bounded polyline per band, with shared lookup tables for both cores. */
+/* A shallow membrane shown as eight perspective cross-sections.
+ * Counter-traveling waves meet a standing mode tied to the selected Hz. */
 static void cymatics_job(void)
 {
-    unsigned time=vis_input.phase, family=vis_input.frequency;
-    float pulse=vis_input.meter[SR_DRUMS]*18.f+vis_input.meter[SR_BASS]*25.f;
-    if(pulse>9.f)pulse=9.f;
-    for(unsigned ring=0;ring<SR_TRACKS;ring++){
-        unsigned travel=(time+ring*13u)%104u;
-        unsigned reflected=(ring&1u)!=0;
-        float center=120.f+(reflected?1.f:-1.f)*vis_sine[(time/3u+family*9u)&127]*12.f;
-        unsigned mode=2u+family%5u;
-        float radius=10.f+(float)(reflected?103u-travel:travel)*.83f;
-        float excitation=vis_input.meter[ring]*24.f+vis_input.atmosphere*3.f+pulse*.45f;
-        if(excitation>9.f)excitation=9.f;
-        for(unsigned point=0;point<=32;point++){
-            unsigned a=point*4u;
-            float standing=vis_sine[(a*mode+vis_input.scene*11u+vis_input.event[ring])&127];
-            float opposing=vis_sine[(a*(mode+1u)-time*2u+ring*19u)&127];
-            float displacement=standing*opposing*(3.f+excitation);
-            float r=radius+displacement;
-            vis_output.xy[ring][point][0]=(int)(center+r*vis_sine[(a+32u)&127]);
-            vis_output.xy[ring][point][1]=144+(int)(r*.88f*vis_sine[a&127]);
+    unsigned time=vis_input.phase;
+    unsigned mode=2u+vis_input.frequency/160u;
+    float bass=vis_input.meter[SR_BASS]*18.f;
+    float drums=vis_input.meter[SR_DRUMS]*18.f;
+    if(bass>6.f)bass=6.f;
+    if(drums>7.f)drums=7.f;
+    for(unsigned row=0;row<SR_TRACKS;row++){
+        unsigned depth=row*9u;
+        float width=68.f+row*6.f;
+        float note=vis_input.meter[row]*18.f;
+        if(note>6.f)note=6.f;
+        for(unsigned x=0;x<=24;x++){
+            unsigned u=x*5u;
+            float node=vis_sine[(u*mode+depth)&127]*vis_sine[(depth*(mode-1u))&127];
+            float wave=vis_sine[(u+depth+time*3u)&127]+vis_sine[(u-depth-time*2u)&127];
+            float pulse=vis_sine[(u*2u+depth*2u-time*5u+vis_input.event[SR_DRUMS])&127];
+            float dy=node*(8.f+note+vis_input.atmosphere*4.f)+wave*(2.f+bass*.5f)+pulse*drums;
+            vis_output.xy[row][x][0]=(int)(120.f+((float)x-12.f)*width/12.f);
+            vis_output.xy[row][x][1]=62+(int)(row*22u)+(int)dy;
         }
-        vis_output.count[ring]=33;
+        vis_output.count[row]=25;
     }
 }
 
@@ -96,7 +96,7 @@ static void prepare_geometry(void)
     vis_input.phase=plat_ms()/(visual_mode?35u:49u);
     unsigned flags=plat_lock();
     vis_input.water=visual_mode&&page==0;
-    vis_input.frequency=engine.frequency;
+    vis_input.frequency=(unsigned)sr_frequencies[engine.frequency].hz;
     vis_input.scene=engine.scene;
     vis_input.atmosphere=engine.transport_env*engine.bed_level+engine.reverb_wet*.6f;
     for(unsigned t=0;t<SR_TRACKS;t++){

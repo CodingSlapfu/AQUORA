@@ -4,6 +4,7 @@
 #include <stddef.h>
 #define SR_RATE 44100
 #define SR_HIT_MAX 100u
+#define SR_DENSITY_MAX 8u
 #define SR_TRACKS 8
 #define SR_VOICES 16
 #define SR_PATCHES 24
@@ -55,7 +56,7 @@ typedef struct {
   int16_t reverb[4][1789]; int16_t delay[16384];
   uint16_t rev_pos[4], delay_pos, rev_history, delay_history;
   float reverb_wet, delay_wet;
-  uint8_t loop_length, loop_pos, pending_length, keyboard_mode, tonic_override, pending_key;
+  uint8_t loop_length, loop_pos, pending_length, keyboard_mode, tonic_override, pending_key, pending_physical_key;
   int8_t melody[16];
 } sr_engine;
 

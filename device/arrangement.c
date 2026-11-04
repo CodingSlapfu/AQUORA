@@ -72,7 +72,7 @@ static int arrangement_valid(const arrangement *r)
         r->keyboard_mode>1||r->pending_key>12||r->frequency_lock>1||r->auto_gain>1||r->auto_level>1||
         (r->tonic_override&&(r->tonic_override<36||r->tonic_override>47))))||
        r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>7||
-       r->drum_kit>=SR_DRUM_KITS||r->drum_density>3||r->solo>SR_TRACKS||
+       r->drum_kit>=SR_DRUM_KITS||r->drum_density>SR_DENSITY_MAX||r->solo>SR_TRACKS||
        r->frequency_auto>1||r->lock_textures>1||r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
        r->tuning_432>1||r->drums_enabled>1||r->binaural_enabled>1||
        r->freeze>1||r->perfect_key>1)return 0;
@@ -162,6 +162,7 @@ static void arrangement_apply(const arrangement *record)
     engine.keyboard_mode=record->keyboard_mode;
     engine.tonic_override=record->tonic_override;
     engine.pending_key=record->pending_key;
+    engine.pending_physical_key=0;
     engine.frequency_lock=engine.pending_lock=record->frequency_lock;
     engine.auto_gain=record->auto_gain;
     engine.auto_level=record->auto_level;

@@ -193,7 +193,7 @@ void sr_set_perfect_key(sr_engine *e,uint8_t on){e->perfect_key=on?1:0;retune_ke
 void sr_set_tuning_432(sr_engine *e,uint8_t on){e->tuning_432=on?1:0;retune_keys(e);}
 void sr_set_drums(sr_engine *e,uint8_t enabled){e->drums_enabled=enabled?1:0;}
 void sr_set_drum_level(sr_engine *e,float level){if(isfinite(level))e->drum_level=clampf(level,0.f,1.f);}
-void sr_set_drum_density(sr_engine *e,uint8_t density){if(density<=3)e->drum_density=density;}
+void sr_set_drum_density(sr_engine *e,uint8_t density){if(density<=SR_DENSITY_MAX)e->drum_density=density;}
 void sr_set_drum_kit(sr_engine *e,uint8_t kit){if(kit<SR_DRUM_KITS)e->drum_kit=kit;}
 void sr_set_binaural(sr_engine *e,uint8_t enabled){e->binaural_enabled=enabled?1:0;}
 void sr_set_binaural_rate(sr_engine *e,float hz){if(isfinite(hz)&&hz>=.5f&&hz<=40.f)e->binaural_rate=hz;}
@@ -298,7 +298,7 @@ uint8_t sr_key_note(const sr_engine *e,unsigned key)
 void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
 {
     if(!e->running||key>=27||track>=SR_TRACKS)return;
-    if(e->keyboard_mode){e->pending_key=(uint8_t)((53u+key)%12u+1u);return;}
+    if(e->keyboard_mode){e->pending_key=(uint8_t)((53u+key)%12u+1u);e->pending_physical_key=(uint8_t)(key+1u);return;}
     if(!e->perfect_key)sr_set_perfect_key(e,1);
     if(track==SR_DRUMS){
       if(!e->drums_enabled)return;
@@ -329,9 +329,14 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if((beat==4||beat==12) && (e->drum_density>=2 || (rng(e)&3u)==0)){
     e->hand_env=bar&&(beat==4?bar&1u:bar&2u)?.78f:1.f;hits++;
   }
-  if(e->drum_density==3 && (beat&1u)){e->shaker_env=.72f;hits++;}
+  if(e->drum_density>=3 && (beat&1u)){e->shaker_env=.72f;hits++;}
   else if(e->drum_density==2 && (beat&3u)==2){e->shaker_env=.65f;hits++;}
   else if(e->drum_density==1 && beat==8 && (rng(e)&1u)==0){e->shaker_env=.45f;hits++;}
+  if(e->drum_density>=4&&(beat&3u)==2){e->shaker_env=.56f;hits++;}
+  if(e->drum_density>=5&&beat==(bar&1u?10u:6u)){e->hand_env=.48f;hits++;}
+  if(e->drum_density>=6&&beat==(bar&1u?6u:10u)){e->kick_env=.54f;hits++;}
+  if(e->drum_density>=7&&(beat==2||beat==14)){e->hand_env=.42f;hits++;}
+  if(e->drum_density>=8&&(beat==3||beat==15)){e->hand_env=bar&1u?.52f:.37f;hits++;}
   /* One optional strike at most on an otherwise empty, eligible subdivision. */
   unsigned eligible=e->scene==6 ? (beat==3||beat==11) :
                     energy>=2 ? (beat==3||beat==7||beat==11||beat==15) :
@@ -374,6 +379,7 @@ static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
     sound+=(noise-e->shaker_lp)*e->shaker_env*kit->shaker*.28f;
     e->shaker_env*=.9967f;
   }else e->shaker_env=0.f;
+  sound*=1.14f;
   e->drum_meter=fmaxf(e->drum_meter*.9993f,fabsf(sound));
   return sound*e->drum_level;
 }
@@ -400,7 +406,7 @@ static void trigger(sr_engine *e){
     if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;}
     if(e->pending_key){
       e->tonic_override=36+e->pending_key-1;
-      e->pending_key=0;
+      e->pending_key=e->pending_physical_key=0;
       for(unsigned i=0;i<SR_VOICES;i++){
         sr_voice *v=&e->voices[i];
         e->note_offs+=v->gate!=0;

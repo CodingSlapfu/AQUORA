@@ -15,11 +15,11 @@ ALGORITHM selects PLAY, SOUND, EVOLVE, MIX. SELECT chooses Lead, Bass, Pads, Har
 | SOUND / Nature | Bed | Bed level | Reverb | Delay |
 | SOUND / Frequency | Fixed Hz | Tone level | Reference Layer / Frequency Lock | Hz Source Auto/Manual |
 | SOUND / Binaural | Carrier Hz | Difference (0.5 Hz steps) | Binaural level | Enable toggle |
-| SOUND / Percussion | Kit | Drum level | Density 0–3 | Enable toggle |
+| SOUND / Percussion | Kit | Drum level | Density 0–8 | Enable toggle |
 | SOUND / Sacred Bass | Sacred level | Off / musical / reference | Harmonic blend | Fixed tone level |
 | SOUND / Lead / Bass Motion | Off / legato / always glide | Glide milliseconds | Vibrato rate in 0.1 Hz steps | Vibrato depth in cents, 0 disables |
 | SOUND / Track Routing | Track level | Pan | FX send | Solo / clear |
-| SOUND / Percussion HIT | HIT % (0–100) | Drum level | Density 0–3 | Drums ON/OFF |
+| SOUND / Percussion HIT | HIT % (0–100) | Drum level | Density 0–8 | Drums ON/OFF |
 | SOUND / Visualizer | Original / Water Cymatics | — | — | — |
 | SOUND / Arrangement Banks | Bank 1–4 | LOAD / SAVE | Overwrite arm | Visualizer |
 | EVOLVE | Motif variation | Freeze toggle | Tempo | Loop steps 16/32/64 |

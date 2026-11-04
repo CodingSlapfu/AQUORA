@@ -37,3 +37,11 @@ Next, complete the release-specific acceptance still in NEXT_BUILD_ACTIVE.md. St
 ### 0.4.0 final software acceptance
 
 Native and forced core-0 builds, sanitizer/PCM, legacy fixture migration, all four bank round trips, eight mixer strips, source routing and Frequency Lock, percussion loop evolution, independent Lead/Bass vibrato, graphics fallback, browser and installer protocol passed. Exact artifact hashes and recovery instructions are in release/0.4.0. Use the final release package in place of the integrated development candidate. The exact source of the intermittent hardware tone is still unconfirmed. Follow release/0.4.0/README.md for the FM-1 checklist and publication provenance.
+
+### 0.5.0 development checkpoint
+
+Native candidate (FM-1_73000500) in evidence/0.5.0/candidate.part-*; concatenate in order and verify FIRMWARE-SHA256.txt. Reuse the 0.4.0 source archive for the SDK and the pinned JieLi 20260730.1 archive from FAST_RESUME.md. The live installer still serves 0.4.0.
+
+Implemented Density 0–8 with legacy scheduling tiers retained, 14% drum synthesis gain, direct PLAY EDIT key-mode toggle, four lighting modes, physical pending-key latch, Performance K1 20/Auto selector with software blit cadence, missed slots and XRUN delta, four-channel bank mixer meters, and an actual-Hz perspective wave surface. Density/key-latch host regression and native compilation passed. Software blit measurements do not establish delivered LCD FPS. These changes are partial and the active queue remains authoritative.
+
+Next start with audio/DMA profiling and FX hot-path A/B, then complete the dedicated page redesign and drum consolidation. Verify graphics and control behavior, migration and extended audio tests, build the matching emulator and complete release publication only after acceptance. The reported 89 XRUN and 90% budget have not been reproduced or explained in software. Real 20 FPS and DMA behavior still require FM-1 measurement.
