@@ -94,3 +94,14 @@ The Lock Textures group can explicitly add drums and Nature to Frequency Lock.
 This introduces other frequencies. Leave Extra Textures off for strict output.
 On Nature, turn K3 right to audition for four seconds. Turn it left or press
 HOME to exit. An intention change selects that intention's default Nature bed.
+
+### New songs and sound palettes
+
+From EVOLVE, press EDIT to open the song controls. Stop transport before
+turning K1 right for **New Song**, or K2 right for **Reroll Sounds**. Reroll
+keeps the motif and musical RNG state. SELECT chooses the track for K3's
+sound lock, including the percussion kit on track 8. K4 locks Nature and FX
+together. Turn a lock control left to unlock. Editing a Nature bed also locks
+that selection so a deliberately disabled bed stays off. Sound locks travel
+with the arrangement bank. PLAY and STOP preserve the current motif and
+sounds. A stopped intention change draws a fresh palette for that intention.

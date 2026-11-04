@@ -18,7 +18,7 @@ static unsigned window_ms;
 static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
-static unsigned mix_tab,mix_reset;
+static unsigned mix_tab,mix_reset, song_tab, song_nonce;
 static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
@@ -63,6 +63,7 @@ static timing_summary summarize(const timing *t)
 static unsigned control_for(unsigned knob)
 {
  if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
+ if(page==2&&song_tab){static const uint8_t ids[]={58,59,60,61};return ids[knob];}
  if(page==3&&mix_tab){
    static const uint8_t master_controls[]={11,12,50,51};
    static const uint8_t reset_controls[]={52,0,0,0};
@@ -97,7 +98,14 @@ static void consume(void){
  state_revision++;
  switch(c.kind){
 
- case 1:sr_set_scene(&engine,bounded(engine.scene+d,0,SR_SCENES-1));break;
+ case 1:{
+   unsigned next=bounded(engine.scene+d,0,SR_SCENES-1);
+   if(next!=engine.scene){
+     sr_set_scene(&engine,next);
+     sr_generate_song(&engine,plat_ticks24()^++song_nonce,0);
+   }
+   break;
+ }
  case 2:if(c.track==SR_DRUMS)sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));else sr_set_track_patch(&engine,c.track,bounded(t->patch+d,0,SR_PATCHES-1));break;
  case 3:if(!interrupted&&play&&(physical_keys&(1u<<d)))sr_key_down(&engine,c.track,(unsigned)d);break;
  case 4:sr_set_frequency(&engine,bounded(engine.frequency+d,0,SR_FREQUENCIES-1));break;
@@ -117,7 +125,7 @@ static void consume(void){
  case 18:engine.energy=adjust(engine.energy,d,.05f,1);break;
  case 19:engine.variation=adjust(engine.variation,d,.05f,1);break;
  case 20:engine.freeze=switched(engine.freeze,d);break;
- case 21:engine.bed_type=bounded(engine.bed_type+d,0,7);break;
+ case 21:engine.bed_type=bounded(engine.bed_type+d,0,7);engine.sound_locks|=SR_SOUND_NATURE;break;
  case 22:engine.tone_level=adjust(engine.tone_level,d,.005f,.10f);break;
  case 23:engine.binaural_level=adjust(engine.binaural_level,d,.005f,.10f);break;
  case 24:t->pan=fm_clampf(t->pan+d*.05f,-1,1);break;
@@ -146,6 +154,12 @@ static void consume(void){
  case 50:engine.auto_gain=switched(engine.auto_gain,d);break;
  case 51:engine.auto_level=switched(engine.auto_level,d);break;
  case 55:engine.lock_textures=switched(engine.lock_textures,d);break;
+ case 58:case 59:
+   if(!engine.running)engine.nature_audition=0;
+   if(d>0)sr_generate_song(&engine,plat_ticks24()^++song_nonce,c.kind==59);
+   break;
+ case 60:if(d>0)engine.sound_locks|=1u<<c.track;else engine.sound_locks&=~(1u<<c.track);break;
+ case 61:if(d>0)engine.sound_locks|=SR_SOUND_NATURE|SR_SOUND_FX;else engine.sound_locks&=~(SR_SOUND_NATURE|SR_SOUND_FX);break;
  case 54:engine.nature_audition=engine.running&&!engine.pending_lock&&d>0?SR_RATE*4u:0;break;
  case 53:
    engine.solo=SR_TRACKS;
@@ -173,7 +187,9 @@ static void consume(void){
 }
 void app_init(void)
 {
-    sr_init(&engine,7301);
+    song_nonce=plat_ticks24();
+    sr_init(&engine,song_nonce^7301u);
+    sr_generate_song(&engine,song_nonce,0);
     engine.clock_ticks=plat_ticks24;
     aq_settings settings;
     if(plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==(int)sizeof(settings)&&settings.version==0x41513032u){
@@ -251,6 +267,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
+   if(!debug&&page==2)song_tab=!song_tab;
    if(page==1)group=(group+1)%GROUP_COUNT;
    if(page==3){mix_tab=(mix_tab+1)%3;mix_reset=0;}
    bank_confirm=0;bank_message=BANK_IDLE;

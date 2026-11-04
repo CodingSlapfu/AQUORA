@@ -5,6 +5,9 @@
 #define SR_RATE 44100
 #define SR_HIT_MAX 100u
 #define SR_DENSITY_MAX 8u
+#define SR_SOUND_NATURE (1u<<8)
+#define SR_SOUND_FX (1u<<9)
+#define SR_SOUND_LOCK_MASK 1023u
 #define SR_TRACKS 8
 #define SR_VOICES 16
 #define SR_PATCHES 24
@@ -42,6 +45,7 @@ typedef struct {
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
+  uint16_t sound_locks;
   uint32_t nature_audition, bird_wait;
   float nature_peak;
   uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;
@@ -66,6 +70,7 @@ extern const sr_frequency sr_frequencies[SR_FREQUENCIES];
 extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
 void sr_init(sr_engine *e, uint32_t seed);
+void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only);
 void sr_set_scene(sr_engine *e, uint8_t scene);
 void sr_set_frequency_lock(sr_engine *e, uint8_t enabled);
 void sr_set_frequency_auto(sr_engine *e, uint8_t enabled);

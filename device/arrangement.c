@@ -34,7 +34,7 @@ typedef struct {
     float reverb_amount, delay_amount, bed_level, drum_level;
     float binaural_carrier, binaural_rate, binaural_level;
     float tone_level, energy, variation, sacred_level, sacred_harmonics;
-    uint32_t legacy_crc;
+    uint32_t legacy_crc; /* v2 uses this CRC-covered slot for sound locks. */
     uint8_t loop_length, keyboard_mode, tonic_override, pending_length, pending_key, frequency_lock, auto_gain, auto_level;
     uint32_t crc;
 } arrangement;
@@ -121,6 +121,7 @@ static void arrangement_snapshot(arrangement *record)
     memset(record,0,sizeof(*record));
     unsigned irq=plat_lock();
     record->version=AQ_BANK_VERSION;
+    record->legacy_crc=engine.sound_locks;
 #define COPY_FIELD(field) record->field=engine.field;
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
@@ -154,6 +155,7 @@ static void arrangement_apply(const arrangement *record)
 #define COPY_FIELD(field) engine.field=record->field;
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
+    engine.sound_locks=record->version==AQ_BANK_LEGACY?0:record->legacy_crc&SR_SOUND_LOCK_MASK;
     engine.frequency_auto=record->frequency_auto;
     engine.lock_textures=record->lock_textures;
     engine.loop_length=record->version==AQ_BANK_LEGACY?16:record->loop_length;

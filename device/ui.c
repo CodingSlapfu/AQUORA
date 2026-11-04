@@ -112,6 +112,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 40:*name="ACTION";return bank_action?"SAVE":"LOAD";
  case 41:*name="OVERWRITE";return bank_confirm?"ARMED":"LOCKED";
  case 55:*name="EXTRA TEXTURES";return engine.lock_textures?"ON / not pure":"OFF / strict";
+ case 58:*name="NEW SONG";return engine.running?"Stop first":"Turn right";
+ case 59:*name="REROLL SOUNDS";return engine.running?"Stop first":"Turn right";
+ case 60:*name="TRACK LOCK";return onoff(engine.sound_locks&(1u<<selected));
+ case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
  case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 54:*name="AUDITION";return engine.nature_audition?"Playing":"Turn right";
  case 49:*name="MUTE";return onoff(track->mute);
@@ -298,7 +302,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,RGB(147,221,207));
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(187,2,&FONT_XS,meter,C_WHITE);cv_text(212,2,&FONT_XS,"%",C_WHITE);
-     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==1?groups[group]:page==3?(mix_tab==0?"CHANNELS":mix_tab==1?"MASTER FX":"RESET MIX"):visual_name(),C_WHITE);
+     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==1?groups[group]:page==2?(song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"CHANNELS":mix_tab==1?"MASTER FX":"RESET MIX"):visual_name(),C_WHITE);
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));

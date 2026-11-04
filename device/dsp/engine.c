@@ -150,6 +150,69 @@ static void retune_keys(sr_engine *e)
     }
   }
 }
+/* Each palette favors a particular member of each role's compatible pool.
+ * Seeded draws are separate from the render RNG and from one another. */
+static uint32_t song_draw(uint32_t seed,uint32_t stream)
+{
+  uint32_t x=seed+0x9e3779b9u*(stream+1u);
+  x=(x^(x>>16))*0x7feb352du;
+  x=(x^(x>>15))*0x846ca68bu;
+  return x^(x>>16);
+}
+void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
+{
+  if(e->running||e->stop_frames)return;
+  static const uint8_t pool[SR_DRUMS][4]={
+    {12,13,14,16},{0,1,2,1},{3,4,5,23},{15,16,20,21},
+    {6,7,8,7},{9,10,11,17},{19,23,4,20}
+  };
+  static const struct {
+    uint8_t flavor,kits[3],beds[3],density,hit,space;
+  } palette[SR_SCENES]={
+    {2,{0,1,2},{1,4,7},2,18,3}, {0,{0,3,7},{2,5,1},3,35,2},
+    {1,{7,8,10},{3,6,7},4,42,3}, {0,{2,5,13},{4,1,7},2,24,1},
+    {2,{3,8,12},{5,2,1},2,21,4}, {3,{4,10,13},{1,7,4},3,35,4},
+    {0,{13,2,14},{4,1,3},2,20,2}, {1,{3,4,11},{2,6,5},3,30,3},
+    {3,{8,10,11},{7,3,2},4,48,2}, {2,{4,8,12},{6,4,2},3,32,4},
+    {1,{6,7,12},{3,6,2},4,45,2}, {0,{2,5,14},{5,4,1},2,25,3},
+    {3,{3,10,14},{2,6,7},3,39,3}
+  };
+  unsigned scene=e->scene;
+  if(!sounds_only){
+    e->rng=song_draw(seed,12);
+    e->drum_rng=song_draw(seed,13);
+    e->phrase=0;
+    make_motif(e);
+    e->energy=.12f+.17f*sr_scenes[scene].energy+.025f*(song_draw(seed,14)%7u);
+    e->variation=.18f+.04f*(song_draw(seed,15)%7u);
+  }
+  for(unsigned t=0;t<SR_DRUMS;t++){
+    if(e->sound_locks&(1u<<t))continue;
+    unsigned draw=song_draw(seed,t)%7u;
+    unsigned favorite=(palette[scene].flavor+t)%4u;
+    unsigned pick=draw<4?favorite:(favorite+draw-3u)%4u;
+    if(pool[t][pick]==e->tracks[t].patch&&(song_draw(seed,20u+t)&3u))pick=(pick+1u)%4u;
+    e->tracks[t].patch=pool[t][pick];
+  }
+  if(!(e->sound_locks&(1u<<SR_DRUMS))){
+    unsigned k=song_draw(seed,7)%5u;
+    unsigned pick=k<3?0:k-2u;
+    if(palette[scene].kits[pick]==e->drum_kit&&(song_draw(seed,31)&3u))pick=(pick+1u)%3u;
+    e->drum_kit=palette[scene].kits[pick];
+    if(!sounds_only){
+      e->drum_density=palette[scene].density+song_draw(seed,16)%2u;
+      e->drum_hit=palette[scene].hit+song_draw(seed,17)%11u;
+    }
+  }
+  if(!(e->sound_locks&SR_SOUND_NATURE)&&e->bed_type&&e->bed_level>0){
+    unsigned n=song_draw(seed,8)%5u;
+    e->bed_type=palette[scene].beds[n<3?0:n-2u];
+  }
+  if(!(e->sound_locks&SR_SOUND_FX)){
+    e->reverb_amount=.12f+.045f*palette[scene].space+.01f*(song_draw(seed,9)%8u);
+    e->delay_amount=.06f+.025f*palette[scene].space+.01f*(song_draw(seed,10)%6u);
+  }
+}
 void sr_set_scene(sr_engine *e,uint8_t scene){
   if(scene>=SR_SCENES)return;
   if(e->running&&scene!=e->scene)for(int i=0;i<SR_VOICES;i++){
@@ -157,20 +220,20 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
     if(!v->key){e->note_offs+=v->gate!=0;v->gate=0;v->remain=0;v->release_coef=.0012f;}
   }
   e->scene=scene; e->tick_length=(uint32_t)((float)SR_RATE*60.f/(float)sr_scenes[scene].bpm/4.f);
-  e->bed_type=sr_scenes[scene].ambiance;
+  if(!(e->sound_locks&SR_SOUND_NATURE))e->bed_type=sr_scenes[scene].ambiance;
   if(e->frequency_auto)e->frequency=sr_scenes[scene].frequency;
   if(scene==6||scene==7){
-    e->drum_kit=scene==6?13:3;
-    e->reverb_amount=scene==6?.37f:.41f;
-    e->delay_amount=scene==6?.13f:.22f;
+    if(!(e->sound_locks&(1u<<SR_DRUMS)))e->drum_kit=scene==6?13:3;
+    if(!(e->sound_locks&SR_SOUND_FX))e->reverb_amount=scene==6?.37f:.41f;
+    if(!(e->sound_locks&SR_SOUND_FX))e->delay_amount=scene==6?.13f:.22f;
     e->energy=scene==6?.42f:.58f;
   }
   if(scene>=8){
     static const uint8_t kits[]={8,4,12,2,10};
-    e->drum_kit=kits[scene-8];
+    if(!(e->sound_locks&(1u<<SR_DRUMS)))e->drum_kit=kits[scene-8];
     e->energy=.25f*sr_scenes[scene].energy;
-    e->reverb_amount=.22f+(scene-8)*.05f;
-    e->delay_amount=.11f+(12-scene)*.035f;
+    if(!(e->sound_locks&SR_SOUND_FX))e->reverb_amount=.22f+(scene-8)*.05f;
+    if(!(e->sound_locks&SR_SOUND_FX))e->delay_amount=.11f+(12-scene)*.035f;
   }
   make_motif(e);
   retune_keys(e);
