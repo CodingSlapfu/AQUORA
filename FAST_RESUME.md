@@ -1,5 +1,7 @@
 # AQUORA fast resume
 
+**Hardware follow-up (2026-11-04; AQUORA 0.2.0):** User has installed the new build on FM-1, calls sound engine amazing, and reports processing approximately 74% (previously ~90%). **P0 new issue:** drums still cannot be heard or reliably activated; percussion K3 Density and K4 On/Off provide no live values. **P1 new scope:** display every knob's function and live value across all pages/groups, including toggles; keep performance and sound quality. Read `NEXT_BUILD_ACTIVE.md` first for the precise active acceptance queue; do not repeat completed 0.2.0 work.
+
 **Corrected hardware connection report (2026-11-04):** The earlier `No answer. Check that the FM-1 is running sound-healing.` was caused by an **unplugged USB cable**. User reconnected USB and reports the installer is working. No confirmed firmware updater regression. Do not launch the prior P0 investigation. Only separate physical completion/boot and rollback verification remains as noted in `NEXT_BUILD_ACTIVE.md`.
 
 Read CHECKPOINT.md and NEXT_BUILD_ACTIVE.md first. 0.2.0 release artifacts and recovery instructions are in release/0.2.0/. Owner hardware validation remains open. 0.1.0 is the rollback package. The full versioned source archive includes the platform and SDK files, so restore the archive instead of downloading them again.
