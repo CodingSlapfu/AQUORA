@@ -2,6 +2,17 @@
 
 The 0.5.0 software evidence is in evidence/0.5.0/final/. The full development scope is archived in archive/0.5.0-requirements.md.
 
+## P1 — Readable installed AQUORA firmware version / ABOUT screen (FM-1 owner feedback 2026-11-04)
+
+**Owner report:** Cannot tell which firmware version is installed. The current 0.5.0 implementation includes `APP_VERSION` inside the small `PERFORMANCE ` header (`device/ui.c::performance()`, band 0), but it is not discoverable enough. This is a **small, high-value NEXT-BUILD requirement**, not an immediate firmware change. Preserve all existing settings/bank compatibility.
+
+- [ ] Add a dedicated **SETUP > ABOUT / FIRMWARE INFO** destination, directly reachable and clearly labeled from the main SETUP navigation, requiring no hidden gestures or scrolling through old SOUND groups. Show **AQUORA**, an especially large, obvious **Installed Version vX.Y.Z** (actual compiled firmware), and preferably **Build ID** (short versioned Git commit / date if generated deterministically), **Updater identity** (e.g. `FM-1_73000500` for released v0.5.0), and relevant device model `M-VAVE FM-1`; avoid confusion between product version and updater identity. Do not invent build metadata; if absent display the reliable real version only.
+- [ ] Put the same large readable **Firmware: vX.Y.Z** immediately in the first GLO > PERFORMANCE overview and, optionally, in the boot splash for a brief moment without delaying boot or changing startup volume. Hardware user should learn installed version in **at most 2–3 obvious actions** from PLAY (e.g. GLO once).
+- [ ] Use a single authoritative build/version constant generated alongside firmware packaging, browser emulator, installer and release docs. Prevent stale hard-coded About text: test that firmware About display, APP_VERSION, updater family/ID, browser installer artifact metadata, release/manifest/checksum, and emulator all identify the **same actual build**; clarify build hash only when compiled from source. Keep a visible firmware version even without USB/browser access.
+- [ ] Implement a low-cost static UI (no new DSP, no graphics loop) and preserve SETUP/ALGORITHM/SELECT/EDIT/HOME controls. Test 240×240 legibility, direct navigation, nonblank display on physical FM-1, and end-to-end version/identity matching after flashing a new release. **No additional resource-intensive features are needed**.
+
+
+
 ## P0 — HOURS-LONG, ACTUALLY EVOLVING MUSIC IN ALL 16 / 32 / 64 STEP MODES (owner FM-1 listening feedback 2026-11-04)
 
 **Owner report:** On installed AQUORA 0.5.0, despite New Song and Reroll Sounds working, there is far too little noticeable continuing musical evolution—especially when comparing the 16-, 32-, and 64-step modes. Bassline and drums need to transform, but **EVERY role** (Lead, Bass, Pads/Drone, Harmony, Piano, Plucks, Choir and Drums) should keep evolving with meaningful variation during sessions that can run **for hours** without feeling like the same loop repeating. The goal is **coherent long-term musical composition**, NOT extra chaotic randomness, constant kit-swapping or a much denser drum beat. Preserve the already-liked sound and intention-appropriate palettes. This is a NEW next-build priority, NOT fixed by released 0.5.0.
