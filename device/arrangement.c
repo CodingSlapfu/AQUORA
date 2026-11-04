@@ -24,6 +24,7 @@ typedef struct {
     uint8_t drum_density, drum_kit, drum_hit, binaural_enabled;
     uint8_t freeze, perfect_key, solo, sacred_mode, visual;
     int8_t melody[16];
+    uint8_t frequency_auto; /* Legacy zero in the existing alignment padding. */
     struct {
         float volume, pan, send;
         uint8_t patch, mute;
@@ -62,7 +63,7 @@ static int arrangement_valid(const arrangement *r)
     if(r->version!=AQ_BANK_VERSION||r->crc!=arrangement_crc(r)||
        r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>7||
        r->drum_kit>=SR_DRUM_KITS||r->drum_density>3||r->solo>SR_TRACKS||
-       r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
+       r->frequency_auto>1||r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
        r->tuning_432>1||r->drums_enabled>1||r->binaural_enabled>1||
        r->freeze>1||r->perfect_key>1)return 0;
     if(!range(r->reverb_amount,0,.8f)||!range(r->delay_amount,0,.7f)||
@@ -119,6 +120,7 @@ static void arrangement_snapshot(arrangement *record)
         record->track[i].patch=engine.tracks[i].patch;
         record->track[i].mute=engine.tracks[i].mute;
     }
+    record->frequency_auto=engine.frequency_auto;
     plat_unlock(irq);
     record->crc=arrangement_crc(record);
 }
@@ -129,6 +131,8 @@ static void arrangement_apply(const arrangement *record)
 #define COPY_FIELD(field) engine.field=record->field;
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
+    engine.frequency_auto=record->frequency_auto;
+    if(engine.frequency_auto)engine.frequency=sr_scenes[engine.scene].frequency;
     engine.drum_hit=engine.drum_hit>SR_HIT_MAX?SR_HIT_MAX:engine.drum_hit;
     visual_mode=record->visual;
     memcpy(engine.melody,record->melody,sizeof(engine.melody));

@@ -13,7 +13,7 @@ ALGORITHM selects PLAY, SOUND, EVOLVE, MIX. SELECT chooses Lead, Bass, Pads, Har
 | PLAY | Scene | Energy | Fixed tone level | Nature level |
 | SOUND / Instrument | Patch or drum kit | Track level | Pan | FX send |
 | SOUND / Nature | Bed | Bed level | Reverb | Delay |
-| SOUND / Frequency | Fixed Hz | Tone level | A4 432/440 toggle | Energy |
+| SOUND / Frequency | Fixed Hz | Tone level | A4 432/440 toggle |Hz Source Auto/Manual |
 | SOUND / Binaural | Carrier Hz | Difference (0.5 Hz steps) | Binaural level | Enable toggle |
 | SOUND / Percussion | Kit | Drum level | Density 0–3 | Enable toggle |
 | SOUND / Sacred Bass | Sacred level | Off / musical / reference | Harmonic blend | Fixed tone level |
@@ -51,3 +51,13 @@ If normal startup fails, hold OCT- while powering on to request the platform res
 
 ## Current limitations
 Four arrangement banks and the separate motion/Perfect Key settings are persistent. Unsaved changes reset on reboot. Keyed notes have an eight-second missed-release guard. A total voice age guard keeps malformed or unexpectedly long voices bounded. No sampler, Bluetooth, mirror, looper or retired-product functionality is included. One nature bed is selected at a time. Physical clock calibration, sound quality, stereo separation, sustained CPU budget, display FPS, controls, direct version-to-version updating and interrupted-update recovery still require hardware testing.
+
+### Sound Source Isolate
+
+In SOUND, use EDIT to reach **Source Isolate**. K1 selects the full mix, a dry
+track, Fixed tone, Sacred Bass, Binaural, Nature or Wet FX. Other audio sources
+continue running internally, so Wet FX can be heard with its normal inputs.
+Existing mute and solo settings still apply. HOME returns to the full mix.
+K2 edits the reference Hz and switches to Manual. K3 adjusts the fixed tone
+level. K4 selects the Sacred Bass source. Choose Auto on the Frequency page to
+follow the intention again. Reference tone is off until its level is raised.

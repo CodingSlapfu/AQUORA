@@ -7,8 +7,8 @@
 #define SR_TRACKS 8
 #define SR_VOICES 16
 #define SR_PATCHES 24
-#define SR_SCENES 8
-#define SR_FREQUENCIES 11
+#define SR_SCENES 13
+#define SR_FREQUENCIES 13
 #define SR_DRUM_KITS 15
 #define SR_BEAT_PRESETS 8
 #ifdef __cplusplus
@@ -16,9 +16,11 @@ extern "C" {
 #endif
 
 typedef enum {SR_LEAD, SR_BASS, SR_DRONE, SR_HARMONY, SR_PIANO, SR_GUITAR, SR_CHOIR, SR_DRUMS} sr_role;
+enum {SR_ISOLATE_MIX, SR_ISOLATE_TRACK1, SR_ISOLATE_FIXED=SR_TRACKS+1,
+      SR_ISOLATE_SACRED, SR_ISOLATE_BINAURAL, SR_ISOLATE_NATURE, SR_ISOLATE_FX};
 typedef enum {SR_SINE, SR_TRI, SR_HOLLOW, SR_REED, SR_PLUCK, SR_CHOIR_WAVE} sr_wave;
 typedef struct { const char *name; sr_wave wave; float attack, release, brightness, gain; } sr_patch;
-typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance; } sr_scene;
+typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance, tonic, frequency; } sr_scene;
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
 typedef struct { uint8_t patch, mute; float volume, pan, meter, send; uint32_t events; } sr_track;
@@ -27,7 +29,7 @@ typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_r
 typedef struct {
   sr_track tracks[SR_TRACKS]; sr_voice voices[SR_VOICES];
   uint32_t rng, frame_count, tick_phase, tick_length, sequence_step, phrase;
-  uint8_t scene, frequency, tuning_432, running, bed_type;
+  uint8_t scene, frequency, tuning_432, running, bed_type, isolate, frequency_auto;
   uint8_t drums_enabled, drum_density, drum_kit, binaural_enabled;
   float master, reverb_amount, delay_amount, bed_level, current_energy;
   float wind_lp, rain_lp, limiter, dc_x, dc_y, low_bass;
@@ -58,6 +60,7 @@ extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
 void sr_init(sr_engine *e, uint32_t seed);
 void sr_set_scene(sr_engine *e, uint8_t scene);
+void sr_set_frequency_auto(sr_engine *e, uint8_t enabled);
 void sr_set_frequency(sr_engine *e, uint8_t frequency);
 void sr_set_perfect_key(sr_engine *e, uint8_t enabled);
 void sr_set_tuning_432(sr_engine *e, uint8_t enabled);

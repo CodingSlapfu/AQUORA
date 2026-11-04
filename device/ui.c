@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves"};
-static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks"};
+static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate"};
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
 static void label(int x,int y,const char *name,int value){char v[12];num(v,value);cv_text(x,y,&FONT_XS,name,RGB(126,166,164));cv_text(x,y+15,&FONT_B,v,RGB(218,240,220));}
 static const char *role_names[SR_TRACKS]={
@@ -111,6 +111,15 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 39:*name="BANK";number=bank_slot+1;break;
  case 40:*name="ACTION";return bank_action?"SAVE":"LOAD";
  case 41:*name="OVERWRITE";return bank_confirm?"ARMED":"LOCKED";
+ case 45:*name="HZ SOURCE";return engine.frequency_auto?"Auto / intention":"Manual";
+ case 43:
+   *name="ISOLATE";
+   if(engine.isolate==SR_ISOLATE_MIX)return "Full mix";
+   if(engine.isolate<SR_ISOLATE_FIXED)return role_names[engine.isolate-SR_ISOLATE_TRACK1];
+   {
+     static const char *sources[]={"Fixed tone","Sacred Bass","Binaural","Nature","Wet FX"};
+     return sources[engine.isolate-SR_ISOLATE_FIXED];
+   }
  case 42:*name="VOICE";number=voice_slot+1;break;
  default:*name="";return "-";
  }
@@ -269,6 +278,7 @@ static void draw(int animate)
            limited_text(x+7,33,225-x,&FONT_B,value,C_WHITE);
            status=0;
          }
+         if(engine.isolate&&status)status="SOURCE ISOLATION ON";
          if(status)cv_text(8,33,&FONT_XS,status,RGB(147,221,207));
        }
      }

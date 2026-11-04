@@ -63,8 +63,8 @@ static void transport(void)
 
 static void keys_and_motion(void)
 {
-    static const int roots[]={57,57,57,53,57,60,55,60};
-    static const unsigned masks[]={0x295,0x4ad,0x295,0x4a9,0x2a5,0xab5,0x4a9,0xab5};
+    static const int roots[]={57,57,57,53,57,60,55,60,58,62,55,53,60};
+    static const unsigned masks[]={0x295,0x4ad,0x295,0x4a9,0x2a5,0xab5,0x4a9,0xab5,0x4ad,0xab5,0x295,0x2a5,0xab5};
     sr_init(&engine,31);
     assert(engine.perfect_key);
     for(unsigned scene=0;scene<SR_SCENES;scene++){
@@ -105,7 +105,7 @@ static void keys_and_motion(void)
     assert(engine.voices[1].freq==sr_note_frequency(&engine,engine.voices[1].midi));
     sr_key_up(&engine,5);
     assert(!engine.voices[1].gate&&engine.voices[0].gate);
-    puts("PASS all 216 mapped keys, chromatic mode, held retuning, Lead legato, Bass always glide and key release");
+    puts("PASS all 351 mapped keys, chromatic mode, held retuning, Lead legato, Bass always glide and key release");
 }
 
 static void tracks(void)
@@ -147,7 +147,7 @@ static void tracks(void)
         engine.tracks[role].mute=1;
         require_silence();
     }
-    for(unsigned scene=6;scene<SR_SCENES;scene++){
+    for(unsigned scene=6;scene<8;scene++){
         sr_init(&engine,19);
         sr_set_scene(&engine,scene);
         assert(engine.drum_kit==(scene==6?13:3));

@@ -80,12 +80,14 @@ static unsigned rising_crossings(void)
 static void fixed_reference_isolation(void)
 {
     sr_init(&a,731);
+    sr_set_frequency(&a,4);
     a.bed_level=a.reverb_amount=a.delay_amount=0;
     a.sacred_mode=0;
     for(unsigned t=0;t<SR_TRACKS;t++)a.tracks[t].mute=1;
     sr_start(&a);
     assert(rising_crossings()==0);
 
+    a.isolate=SR_ISOLATE_FIXED;
     a.tone_level=.10f;
     unsigned initial=rising_crossings();
     assert(initial>=526&&initial<=529);
@@ -105,6 +107,39 @@ static void fixed_reference_isolation(void)
     silence();
     printf("PASS isolated fixed-reference crossings: %u initial, %u after scene change, %u after restart\n",
         initial,changed,restarted);
+}
+
+static void scene_frequency_isolation(void)
+{
+    static const unsigned expected[]={174,417,963,396,741,639,852,528,417,741,777,888,963};
+    sr_init(&a,731);
+    a.isolate=SR_ISOLATE_FIXED;
+    a.tone_level=.07f;
+    a.binaural_enabled=1;
+    a.sacred_mode=2;
+    sr_start(&a);
+    for(unsigned scene=0;scene<SR_SCENES;scene++){
+        sr_set_scene(&a,scene);
+        unsigned crossings=rising_crossings();
+        assert(crossings+2>=expected[scene]&&crossings<=expected[scene]+1);
+    }
+    a.isolate=SR_ISOLATE_SACRED;
+    assert(rising_crossings()>=59);
+    a.sacred_mode=0;
+    for(unsigned b=0;b<80;b++)block(&a);
+    silence();
+    a.isolate=SR_ISOLATE_BINAURAL;
+    block(&a);
+    unsigned unequal=0;
+    for(unsigned sample=0;sample<512;sample+=2)unequal+=pcm[sample]!=pcm[sample+1];
+    assert(unequal>200);
+    a.binaural_enabled=0;
+    for(unsigned b=0;b<80;b++)block(&a);
+    silence();
+    sr_stop(&a);
+    block(&a);
+    block(&a);silence();
+    puts("PASS all thirteen Auto frequencies in PCM, Sacred Bass isolation, independent binaural stereo and STOP silence");
 }
 
 static void hit_cap(void)
@@ -135,6 +170,6 @@ static void hit_cap(void)
         assert(a.tracks[SR_DRUMS].events>0&&peak>.07f);
         printf("Scene %u drum peak %.3f, %u strikes\n",scene,peak,a.tracks[SR_DRUMS].events);
     }
-    puts("PASS HIT zero retains pulse and all eight scenes produce audible-range drum PCM");
+    puts("PASS HIT zero retains pulse and all thirteen scenes produce audible-range drum PCM");
 }
-int main(void){stopped_voices();fixed_reference_isolation();hit_cap();return 0;}
+int main(void){stopped_voices();fixed_reference_isolation();scene_frequency_isolation();hit_cap();return 0;}

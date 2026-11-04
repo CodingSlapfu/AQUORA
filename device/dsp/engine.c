@@ -46,16 +46,19 @@ const sr_patch sr_patches[SR_PATCHES] = {
   {"Linen Pad", SR_CHOIR_WAVE, 1.5f, 3.9f, .25f, .23f}
 };
 const sr_scene sr_scenes[SR_SCENES] = {
-  {"Stillness", 43, 0, 1, 1}, {"Flow State", 58, 1, 2, 2},
-  {"Radiance", 68, 0, 3, 3}, {"Grounding", 48, 2, 2, 4},
-  {"Dreaming", 52, 3, 2, 5}, {"Ceremony", 61, 4, 3, 1},
-  {"Anti-Curse", 51, 2, 2, 4}, {"Positive Healing", 63, 4, 2, 2}
+  {"Stillness",43,0,1,1,45,0}, {"Flow State",58,1,2,2,45,3},
+  {"Radiance",68,0,3,3,45,8}, {"Grounding",48,2,2,4,41,2},
+  {"Dreaming",52,3,2,5,45,6}, {"Ceremony",61,4,3,1,48,5},
+  {"Anti-Curse",51,2,2,4,43,7}, {"Positive Healing",63,4,2,2,48,4},
+  {"Creativity",66,1,3,7,46,3}, {"Inspiration",55,4,2,6,50,6},
+  {"Luck",71,0,3,3,43,11}, {"Abundance",49,3,1,5,41,12},
+  {"Attract Positivity",64,4,3,2,48,8}
 };
 const sr_frequency sr_frequencies[SR_FREQUENCIES] = {
   {"174 Hz",174.f}, {"285 Hz",285.f}, {"396 Hz",396.f},
   {"417 Hz",417.f}, {"528 Hz",528.f}, {"639 Hz",639.f},
   {"741 Hz",741.f}, {"852 Hz",852.f}, {"963 Hz",963.f},
-  {"111 Hz",111.f}, {"136.1 Hz",136.1f}
+  {"111 Hz",111.f}, {"136.1 Hz",136.1f}, {"777 Hz",777.f}, {"888 Hz",888.f}
 };
 const sr_drum_kit sr_drum_kits[SR_DRUM_KITS] = {
   {"River Hands", .75f,.42f,.23f,49,175,.99948f,.13f},
@@ -119,8 +122,7 @@ static void make_motif(sr_engine *e){
 }
 static int scene_tonic(const sr_engine *e)
 {
-    static const uint8_t roots[SR_SCENES] = {45,45,45,41,45,48,43,48};
-    return roots[e->scene];
+    return sr_scenes[e->scene].tonic;
 }
 
 static void retune_keys(sr_engine *e)
@@ -142,16 +144,30 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
   }
   e->scene=scene; e->tick_length=(uint32_t)((float)SR_RATE*60.f/(float)sr_scenes[scene].bpm/4.f);
   e->bed_type=sr_scenes[scene].ambiance;
-  if(scene>=6){
+  if(e->frequency_auto)e->frequency=sr_scenes[scene].frequency;
+  if(scene==6||scene==7){
     e->drum_kit=scene==6?13:3;
     e->reverb_amount=scene==6?.37f:.41f;
     e->delay_amount=scene==6?.13f:.22f;
     e->energy=scene==6?.42f:.58f;
   }
+  if(scene>=8){
+    static const uint8_t kits[]={8,4,12,2,10};
+    e->drum_kit=kits[scene-8];
+    e->energy=.25f*sr_scenes[scene].energy;
+    e->reverb_amount=.22f+(scene-8)*.05f;
+    e->delay_amount=.11f+(12-scene)*.035f;
+  }
   make_motif(e);
   retune_keys(e);
 }
-void sr_set_frequency(sr_engine *e,uint8_t f){if(f<SR_FREQUENCIES)e->frequency=f;}
+void sr_set_frequency_auto(sr_engine *e,uint8_t enabled){
+  e->frequency_auto=!!enabled;
+  if(enabled)e->frequency=sr_scenes[e->scene].frequency;
+}
+void sr_set_frequency(sr_engine *e,uint8_t f){
+  if(f<SR_FREQUENCIES){e->frequency=f;e->frequency_auto=0;}
+}
 void sr_set_perfect_key(sr_engine *e,uint8_t on){e->perfect_key=on?1:0;retune_keys(e);}
 void sr_set_tuning_432(sr_engine *e,uint8_t on){e->tuning_432=on?1:0;retune_keys(e);}
 void sr_set_drums(sr_engine *e,uint8_t enabled){e->drums_enabled=enabled?1:0;}
@@ -175,7 +191,8 @@ void sr_init(sr_engine *e,uint32_t seed){
   }
   e->perfect_key=1; e->solo=SR_TRACKS; e->sacred_level=.08f; e->sacred_mode=1; e->sacred_harmonics=.32f;
   e->motion[0]=(sr_motion){120,0,0,45}; e->motion[1]=(sr_motion){90,0,0,32};
-  sr_set_scene(e,0);sr_set_frequency(e,4);
+  e->frequency_auto=1;
+  sr_set_scene(e,0);
 }
 /* The old transport fades as a unit. A restart clears all energy before
  * generating a fresh downbeat, even when STOP and PLAY share a block. */
@@ -356,7 +373,9 @@ static void trigger(sr_engine *e){
   if((s&7u)==0){
     int bass_note=tonic;
     if(e->scene>=6){
-      static const uint8_t degrees[2][4]={{0,2,4,1},{0,4,5,3}};
+      static const uint8_t degrees[][4]={
+        {0,2,4,1},{0,4,5,3},{0,5,3,1},{0,2,5,4},{0,4,1,5},{0,3,0,4},{0,4,5,2}
+      };
       bass_note+=scale_notes[sc->scale][degrees[e->scene-6][(s/8u)&3u]];
     }
     sr_note_on(e,SR_BASS,(uint8_t)bass_note,112,2.3f);
@@ -444,6 +463,8 @@ __attribute__((section(".ram_text"), noinline))
 #endif
 static void render_samples(sr_engine *e,float *dry,size_t frames){
   float left[SR_TRACKS], right[SR_TRACKS], send[SR_TRACKS];
+  unsigned source=e->isolate;
+  int full=source==SR_ISOLATE_MIX;
   struct voice_config {
     sr_voice *voice;
     float brightness, cutoff, gain, step, left, right, send;
@@ -464,9 +485,10 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int t=0;t<SR_TRACKS;t++){
     sr_track *track=&e->tracks[t];
     float level=(track->mute||(e->solo<SR_TRACKS&&e->solo!=t))?0:track->volume;
+    send[t]=level*track->send;
+    if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
     left[t]=level*(.5f-.31f*track->pan);
     right[t]=level*(.5f+.31f*track->pan);
-    send[t]=level*track->send;
   }
   for(int j=0;j<SR_VOICES;j++){
     sr_voice *v=&e->voices[j];
@@ -555,17 +577,19 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     e->transport_env+=((e->running?1.f:0.f)-e->transport_env)*.0008f;
     float nature=e->bed_level>0&&e->bed_type?bed(e)*e->bed_level*e->transport_env:0;
     if(e->solo<SR_TRACKS)nature=0;
-    l+=nature*.5f;r+=nature*.5f;mix+=nature*.5f;
+    if(full||source==SR_ISOLATE_NATURE){l+=nature*.5f;r+=nature*.5f;}
+    mix+=nature*.5f;
     e->sacred_gain+=(target_bass-e->sacred_gain)*.001f;
     float sacred=0;
     if(e->sacred_gain>.00001f){
       float base=advance(&e->bass_phase,bass_hz);
       sacred=(base*(1-e->sacred_harmonics)+sine(e->bass_phase*2.f)*e->sacred_harmonics)*e->sacred_gain;
     }
-    sacred*=left[SR_BASS]+right[SR_BASS];
+    sacred*=full?left[SR_BASS]+right[SR_BASS]:
+      (e->tracks[SR_BASS].mute||(e->solo<SR_TRACKS&&e->solo!=SR_BASS)?0:e->tracks[SR_BASS].volume);
     float reference=e->tone_level>0&&e->solo==SR_TRACKS?advance(&e->tone_phase,sr_frequencies[e->frequency].hz)*e->tone_level*e->transport_env:0;
-    l+=reference;r+=reference;
-    l+=sacred*.6f;r+=sacred*.6f;
+    if(full||source==SR_ISOLATE_FIXED){l+=reference;r+=reference;}
+    if(full||source==SR_ISOLATE_SACRED){l+=sacred*.6f;r+=sacred*.6f;}
     dry[3*i]=l; dry[3*i+1]=r; dry[3*i+2]=mix;
   }
 }
@@ -580,8 +604,10 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
     e->delay_wet+=(e->delay_amount-e->delay_wet)*.002f;
     float width=0;
     float wet=fx(e,dry[3*i+2],&width);
-    dry[3*i]+=wet+width;
-    dry[3*i+1]+=wet-width;
+    if(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_FX){
+      dry[3*i]+=wet+width;
+      dry[3*i+1]+=wet-width;
+    }
   }
 }
 
@@ -592,7 +618,11 @@ static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t fra
 {
   for(size_t i=0;i<frames;i++){
     float l=dry[3*i],r=dry[3*i+1];
-    render_binaural(e,&l,&r);
+    float binaural_l=0,binaural_r=0;
+    render_binaural(e,&binaural_l,&binaural_r);
+    if(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL){
+      l+=binaural_l;r+=binaural_r;
+    }
     // Soft-knee master saturation controls peaks without a dynamic allocation.
     float level=fmaxf(fabsf(l),fabsf(r));
     float target=level>.78f?.78f/level:1.f;

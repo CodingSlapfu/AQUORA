@@ -19,11 +19,11 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned knob_focus, knob_until, redraw_ui_ms;
-enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_COUNT=11 };
+enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_COUNT=12 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
- {2,13,24,29},{21,5,11,12},{4,22,14,18},{8,7,23,6},{16,17,10,9},
+ {2,13,24,29},{21,5,11,12},{4,22,14,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,22},{32,33,34,35},{13,24,29,28},
- {37,17,10,9},{38,0,0,0},{39,40,41,38}
+ {37,17,10,9},{38,0,0,0},{39,40,41,38},{43,4,22,31}
 };
 static const uint8_t page_controls[4][4]={
  {1,18,22,5},{0,0,0,0},{19,20,25,18},{13,24,11,12}
@@ -124,6 +124,9 @@ static void consume(void){
  case 34:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_rate=bounded(engine.motion[c.track].vibrato_rate+d,5,80);break;
  case 36:engine.sacred_harmonics=adjust(engine.sacred_harmonics,d,.025f,1);break;
  case 37:engine.drum_hit=bounded(engine.drum_hit+d,0,SR_HIT_MAX);break;
+ case 45:sr_set_frequency_auto(&engine,switched(engine.frequency_auto,d));break;
+ case 44:engine.isolate=SR_ISOLATE_MIX;break;
+ case 43:engine.isolate=bounded(engine.isolate+d,SR_ISOLATE_MIX,SR_ISOLATE_FX);break;
  case 35:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
  }
  }
@@ -202,7 +205,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    if(!requested_play)stop_generation++;
    plat_unlock(flags);
  }
- if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=0;}
+ if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=0;send(44,0);}
  if(press&(1u<<B_SEL))send(15,0);
  if(press&(1u<<B_ARP)){bank_confirm=0;page=1;group=GROUP_PERC;debug=0;send(9,1);}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
