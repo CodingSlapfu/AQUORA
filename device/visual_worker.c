@@ -38,6 +38,7 @@ static unsigned worker_wait_us,worker_fallbacks;
 
 static void visual_init(void)
 {
+    worker_wait_us=worker_fallbacks=0;
     for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
 }
 

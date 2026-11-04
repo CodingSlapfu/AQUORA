@@ -91,6 +91,7 @@ static void consume(void){
  case 32:if(c.track<=SR_BASS)engine.motion[c.track].glide_mode=bounded(engine.motion[c.track].glide_mode+d,0,2);break;
  case 33:if(c.track<=SR_BASS)engine.motion[c.track].glide_ms=bounded(engine.motion[c.track].glide_ms+10*d,10,800);break;
  case 34:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_rate=bounded(engine.motion[c.track].vibrato_rate+d,5,80);break;
+ case 36:engine.sacred_harmonics=adjust(engine.sacred_harmonics,d,.025f,1);break;
  case 35:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
  }
  }
@@ -186,7 +187,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  int d=plat_enc(EN_ALGO);if(d){page=bounded((int)page+d,0,3);dirty=1;}
  d=plat_enc(EN_SELECT);if(d){selected=bounded((int)selected+d,0,7);dirty=1;}
  d=plat_enc(EN_PRESET);if(d){send(page==0?1:2,d>0?1:-1);dirty=1;}
- static const int sound[8][4]={{2,13,24,29},{21,5,11,12},{4,22,14,18},{8,7,23,6},{16,17,10,9},{30,31,4,22},{32,33,34,35},{13,24,29,28}};
+ static const int sound[8][4]={{2,13,24,29},{21,5,11,12},{4,22,14,18},{8,7,23,6},{16,17,10,9},{30,31,36,22},{32,33,34,35},{13,24,29,28}};
  static const int controls[4][4]={{1,18,22,5},{0,0,0,0},{19,20,25,18},{13,24,11,12}};
  for(int i=0;i<4;i++){d=plat_enc(EN_K1+i);if(d){send(page==1?sound[group][i]:controls[page][i],bounded(d,-8,8));dirty=1;}}
  if(press)dirty=1;
@@ -223,5 +224,5 @@ void app_frame(void)
     }
 }
 #ifdef PLAT_HOST
-int app_expect(const char *what,int *got){if(!strcmp(what,"page"))*got=page;else if(!strcmp(what,"running"))*got=engine.running;else if(!strcmp(what,"binaural"))*got=engine.binaural_enabled;else if(!strcmp(what,"track"))*got=selected;else if(!strcmp(what,"perfect"))*got=engine.perfect_key;else if(!strcmp(what,"tracks"))*got=SR_TRACKS;else if(!strcmp(what,"worker"))*got=plat_cpu2_on();else if(!strcmp(what,"fallbacks"))*got=worker_fallbacks;else if(!strcmp(what,"drops"))*got=dropped;else return 0;return 1;}
+int app_expect(const char *what,int *got){if(!strcmp(what,"page"))*got=page;else if(!strcmp(what,"running"))*got=engine.running;else if(!strcmp(what,"binaural"))*got=engine.binaural_enabled;else if(!strcmp(what,"track"))*got=selected;else if(!strcmp(what,"perfect"))*got=engine.perfect_key;else if(!strcmp(what,"tracks"))*got=SR_TRACKS;else if(!strcmp(what,"lead_glide"))*got=engine.motion[SR_LEAD].glide_ms;else if(!strcmp(what,"bass_glide"))*got=engine.motion[SR_BASS].glide_ms;else if(!strcmp(what,"lead_vibrato"))*got=engine.motion[SR_LEAD].vibrato_depth;else if(!strcmp(what,"bass_vibrato"))*got=engine.motion[SR_BASS].vibrato_depth;else if(!strcmp(what,"worker"))*got=plat_cpu2_on();else if(!strcmp(what,"fallbacks"))*got=worker_fallbacks;else if(!strcmp(what,"drops"))*got=dropped;else return 0;return 1;}
 #endif

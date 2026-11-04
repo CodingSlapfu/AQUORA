@@ -1,7 +1,7 @@
-# AQUORA 0.2.0 development checkpoint
+# AQUORA 0.2.0 software checkpoint
 
-Resume on main under the AQUORA lock. The verified 0.1.0 source archive restores the pinned vendor tree and AC79 inputs. Keep 0.1.0 as rollback.
+Matching release material is in release/0.2.0/. Restore both archives with the instructions there, verify checksums, and use the existing pinned tools. Keep 0.1.0 rollback intact. Read NEXT_BUILD_ACTIVE.md for hardware follow-up.
 
-0.2.0 code implements bounded STOP, eight tracks including Drums, fifteen kits, both intentions, Sacred Bass, Perfect Key, persistent Lead/Bass motion, visual geometry, and measured Audio/FX stages. Initial native link and focused host tests passed. The final FX-history and motion interpolation edits have focused tests but still require full release validation.
+Use /workspace/.fm1-sound-healing-build.lock with nonblocking flock for all edits, builds and publication. Reconcile current GitHub main and local work before modifying source. Use one active build session. Do not repeat accepted 0.2.0 work unless inputs change.
 
-Next: run automated DSP/host UI/worker acceptance, build final native and forced single-core variants plus web emulator, verify package identity/CRC and installer simulation, archive matching source/package, then publish and verify the live release. Do not treat 0.2.0 as published yet. Physical test remains open.
+0.2.0 retains the FM-1_73 updater family. Follow release/0.2.0/PUBLICATION.md for the verified publication record when present.

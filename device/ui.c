@@ -92,5 +92,8 @@ static void draw(void){unsigned revision=state_revision;int first=dirty?0:1,last
  label(8,0,"K3 VIBRATO x0.1Hz",engine.motion[selected].vibrato_rate);
  label(126,0,"K4 DEPTH CENTS",engine.motion[selected].vibrato_depth);
  cv_text(8,32,&FONT_XS,saved_status==2?"SAVE FAILED":saved_status==1?"SETTINGS SAVED":"STOP THEN SAVE TO KEEP SETTINGS",C_WHITE);
+ }else if(band==4 && page==1 && group==5){
+ label(8,0,"K3 HARMONIC %",engine.sacred_harmonics*100);
+ label(126,0,"K4 FIXED TONE %",engine.tone_level*100);
  }else if(band==4){const char *hint=page==0?"K3 TONE  K4 NATURE":page==2?"K3 TEMPO  K4 ENERGY":page==3?"K3 REVERB  K4 DELAY":group==0?"K3 PAN  K4 FX SEND":group==1?"K3 REVERB  K4 DELAY":group==2?"K3 432/440  K4 ENERGY":group==3?"K3 LEVEL  K4 ON/OFF":group==4?"K3 DENSITY  K4 ON/OFF":group==5?"K3 REFERENCE  K4 TONE":group==7?"K3 FX SEND  K4 SOLO":"SELECT LEAD OR BASS";cv_text(8,0,&FONT_XS,hint,C_WHITE);cv_text(8,15,&FONT_XS,"ALGO PAGE  SELECT TRACK",RGB(126,166,164));cv_text(8,30,&FONT_XS,engine.binaural_enabled?"HEADPHONES / STEREO":"EDIT GROUP  ENV 432/440",RGB(174,236,208));}}
  cv_blit(0,band*48);}dirty=0;displayed_revision=revision;}

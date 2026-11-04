@@ -38,7 +38,7 @@ typedef struct {
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask;
   uint16_t stop_frames;
-  float sacred_level, sacred_gain, pitch_last[2], vibrato_phase[2];
+  float sacred_level, sacred_gain, sacred_harmonics, pitch_last[2], vibrato_phase[2];
   sr_motion motion[2];
   uint32_t (*clock_ticks)(void);
   uint32_t fx_ticks;

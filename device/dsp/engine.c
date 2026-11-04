@@ -173,7 +173,7 @@ void sr_init(sr_engine *e,uint32_t seed){
     e->tracks[t].patch=default_patches[t];e->tracks[t].volume=t==SR_BASS?.88f:t==SR_DRUMS?1.f:.68f; e->tracks[t].send=1.f;
     e->tracks[t].pan=(float)(t%4-1)*.13f;
   }
-  e->perfect_key=1; e->solo=SR_TRACKS; e->sacred_level=.08f; e->sacred_mode=1;
+  e->perfect_key=1; e->solo=SR_TRACKS; e->sacred_level=.08f; e->sacred_mode=1; e->sacred_harmonics=.32f;
   e->motion[0]=(sr_motion){120,0,0,45}; e->motion[1]=(sr_motion){90,0,0,32};
   sr_set_scene(e,0);sr_set_frequency(e,4);
 }
@@ -340,11 +340,11 @@ static void trigger(sr_engine *e){
       bass_note+=scale_notes[sc->scale][degrees[e->scene-6][(s/8u)&3u]];
     }
     sr_note_on(e,SR_BASS,(uint8_t)bass_note,112,2.3f);
-    if((s&15u)==0)sr_note_on(e,SR_DRONE,(uint8_t)(tonic+12),76,8.f);
+    if((s&15u)==0)sr_note_on(e,SR_DRONE,(uint8_t)(tonic+12),e->scene==6?86:76,8.f);
   }
   if((s&3u)==0 && (rng(e)%4u)<energy){
     int note=tonic+24+scale_notes[sc->scale][rng(e)%5u];
-    sr_note_on(e,SR_PIANO,(uint8_t)note,80,1.45f);
+    sr_note_on(e,SR_PIANO,(uint8_t)note,e->scene==7?91:e->scene==6?61:80,1.45f);
   }
   if(k>=0 && (s%2u)==0){
     if(rng(e)%5u<=energy){
@@ -362,8 +362,12 @@ static void trigger(sr_engine *e){
   }
   if((s&15u)==0){
     int note=tonic+12+scale_notes[sc->scale][(s/16u)%5u];
-    sr_note_on(e,SR_CHOIR,(uint8_t)note,65,7.f);
+    sr_note_on(e,SR_CHOIR,(uint8_t)note,e->scene==6?80:65,7.f);
     sr_note_on(e,SR_HARMONY,(uint8_t)(note+12),52,3.8f);
+    if(e->scene>=6){
+      int third=scale_notes[sc->scale][e->scene==6?1:2];
+      sr_note_on(e,SR_HARMONY,(uint8_t)(tonic+24+third),44,3.4f);
+    }
   }
   (void)octave;
 }
@@ -374,12 +378,14 @@ static inline __attribute__((always_inline)) float bed(sr_engine *e){
   float wind=e->wind_lp*3.5f;
   float rain=(e->rain_lp-e->wind_lp)*.26f;
   e->bed_phase+=.12f/SR_RATE;if(e->bed_phase>=1.f)e->bed_phase-=1.f;
-  float swell=.55f+.45f*sine(e->bed_phase);
+  float swell=0;
+  if(e->bed_type==5||e->bed_type==7)swell=.55f+.45f*sine(e->bed_phase);
   if(e->bird_env<.0001f && (rng(e)%220500u)==0)e->bird_env=1.f;
   e->bird_env*=.99985f;
   e->bird_phase+=(1700.f+800.f*e->bird_env)/SR_RATE;
   if(e->bird_phase>=1.f)e->bird_phase-=1.f;
-  float bird=sine(e->bird_phase)*e->bird_env*.035f;
+  float bird=0;
+  if(e->bed_type==4||e->bed_type==6)bird=sine(e->bird_phase)*e->bird_env*.035f;
   switch(e->bed_type){
    case 1:return wind*.6f+rain*.2f;
    case 2:return rain*.7f+sine(e->bird_phase)*rain*.12f;
@@ -417,8 +423,13 @@ static inline __attribute__((always_inline)) int16_t sampleout(float v){
 __attribute__((section(".ram_text"), noinline))
 #endif
 static void render_samples(sr_engine *e,float *dry,size_t frames){
-  float left[SR_TRACKS], right[SR_TRACKS], send[SR_TRACKS], increment_step[SR_VOICES];
-  uint8_t active[SR_VOICES];
+  float left[SR_TRACKS], right[SR_TRACKS], send[SR_TRACKS];
+  struct voice_config {
+    sr_voice *voice;
+    float brightness, cutoff, gain, step, left, right, send;
+    sr_wave wave;
+    uint8_t track, chorus;
+  } active[SR_VOICES];
   unsigned count=0;
   float reciprocal=1.f/(float)frames;
   float vibrato[2];
@@ -438,7 +449,19 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int j=0;j<SR_VOICES;j++){
     sr_voice *v=&e->voices[j];
     if(!v->active)continue;
-    active[count++]=(uint8_t)j;
+    struct voice_config *config=&active[count++];
+    sr_track *track=&e->tracks[v->track];
+    const sr_patch *patch=&sr_patches[track->patch];
+    config->voice=v;
+    config->track=v->track;
+    config->wave=patch->wave;
+    config->chorus=patch->wave==SR_CHOIR_WAVE||track->patch>=20;
+    config->brightness=patch->brightness*(v->freq>3000.f?.15f:1.f);
+    config->cutoff=.028f+patch->brightness*.24f;
+    config->gain=patch->gain;
+    config->left=left[v->track];
+    config->right=right[v->track];
+    config->send=send[v->track]*.5f;
     float modulation=0;
     if(v->track<=SR_BASS){
       sr_motion *m=&e->motion[v->track];
@@ -446,45 +469,48 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       v->pitch+=(v->freq-v->pitch)*amount;
       modulation=vibrato[v->track];
     }
-    increment_step[j]=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
+    config->step=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
   }
   float bass_hz=e->pitch_last[SR_BASS]*.5f;
   if(e->sacred_mode==2)bass_hz=sacred_hz(e);
+  while(bass_hz>110.f)bass_hz*=.5f;
   if(bass_hz<38.f)bass_hz*=2.f;
   for(size_t i=0;i<frames;i++){
     float l=0.f,r=0.f,mix=0.f;
     for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=.999f;
     for(unsigned a=0;a<count;a++){
-      unsigned j=active[a];
-      sr_voice *v=&e->voices[j];if(!v->active)continue;
-      sr_track *t=&e->tracks[v->track];const sr_patch *p=&sr_patches[t->patch];
+      const struct voice_config *config=&active[a];
+      sr_voice *v=config->voice;
+      if(!v->active)continue;
       if(v->remain>0){v->remain--;if(v->remain==0)v->gate=0;}
       if(v->gate)v->env+=(v->peak-v->env)*v->attack_coef;
       else v->env-=v->env*v->release_coef;
       if(!v->gate && v->env<.0005f){v->active=0;continue;}
-      v->increment+=increment_step[j];
+      v->increment+=config->step;
       v->phase+=v->increment;
       if(v->phase>=1.f)v->phase-=1.f;
-      float brightness=p->brightness;if(v->freq>3000.f)brightness*=.15f;
-      float s=wave(p->wave,v->phase,brightness);
-      if(p->wave==SR_CHOIR_WAVE || e->tracks[v->track].patch>=20){
+      float s=wave(config->wave,v->phase,config->brightness);
+      if(config->chorus){
         v->phase2+=v->increment*1.0023f;if(v->phase2>=1.f)v->phase2-=1.f;
         s=.75f*s+.25f*sine(v->phase2);
       }
-      if(p->wave==SR_PLUCK)v->peak*=.99996f;
-      float cutoff=.028f+p->brightness*.24f;
-      v->filter+=(s-v->filter)*cutoff;
-      unsigned tindex=v->track;
-      float z=v->filter*v->env*p->gain+v->tail;v->tail*=.98f;
-      l+=z*left[tindex];r+=z*right[tindex];mix+=z*send[tindex]*.5f;
-      float mag=fabsf(z)*(left[tindex]+right[tindex]);if(mag>t->meter)t->meter=mag;
+      if(config->wave==SR_PLUCK)v->peak*=.99996f;
+      v->filter+=(s-v->filter)*config->cutoff;
+      float z=v->filter*v->env*config->gain+v->tail;
+      v->tail*=.98f;
+      l+=z*config->left;
+      r+=z*config->right;
+      mix+=z*config->send;
+      float mag=fabsf(z)*(config->left+config->right);
+      sr_track *track=&e->tracks[config->track];
+      if(mag>track->meter)track->meter=mag;
     }
     float drums=drum_sample(e);
     l+=drums*left[SR_DRUMS];r+=drums*right[SR_DRUMS];
     mix+=drums*send[SR_DRUMS]*.5f;
     e->tracks[SR_DRUMS].meter=e->drum_meter*e->drum_level*(left[SR_DRUMS]+right[SR_DRUMS]);
     e->transport_env+=((e->running?1.f:0.f)-e->transport_env)*.0008f;
-    float nature=e->bed_level>0?bed(e)*e->bed_level*e->transport_env:0;
+    float nature=e->bed_level>0&&e->bed_type?bed(e)*e->bed_level*e->transport_env:0;
     if(e->solo<SR_TRACKS)nature=0;
     l+=nature*.5f;r+=nature*.5f;mix+=nature*.5f;
     float target_bass=e->sacred_mode&&bass_hz>=38.f&&e->running?e->sacred_level:0;
@@ -492,7 +518,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     float sacred=0;
     if(e->sacred_gain>.00001f){
       float base=advance(&e->bass_phase,bass_hz);
-      sacred=(base*.68f+sine(e->bass_phase*2.f)*.32f)*e->sacred_gain;
+      sacred=(base*(1-e->sacred_harmonics)+sine(e->bass_phase*2.f)*e->sacred_harmonics)*e->sacred_gain;
     }
     sacred*=left[SR_BASS]+right[SR_BASS];
     float reference=e->tone_level>0&&e->solo==SR_TRACKS?advance(&e->tone_phase,sr_frequencies[e->frequency].hz)*e->tone_level*e->transport_env:0;

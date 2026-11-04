@@ -1,0 +1,9 @@
+Host thread CPU time, equal workload inputs, differing instrument output. Not FM-1 timing.
+0.1.0
+quiet: mean 15.3 us p95 19.7 us peak 2153.4 us, PCM peak 0 RMS 0
+pitched dry: mean 60.1 us p95 74.5 us peak 3133.5 us, PCM peak 5669 RMS 1454
+all + wet: mean 61.9 us p95 80.8 us peak 601.5 us, PCM peak 8722 RMS 2069
+0.2.0
+quiet: mean 0.1 us p95 0.1 us peak 10.1 us, PCM peak 0 RMS 0
+pitched dry: mean 51.9 us p95 76.5 us peak 725.1 us, PCM peak 8522 RMS 2116
+all + wet: mean 60.7 us p95 100.8 us peak 627.2 us, PCM peak 14731 RMS 3579
