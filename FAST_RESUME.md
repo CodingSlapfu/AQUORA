@@ -1,5 +1,7 @@
 # AQUORA fast resume
 
+**Performance follow-up (2026-11-04):** The active next-build queue now includes an explicit measured optimization pass covering synth/voices, DSP/FX, memory, UI/visualizer, dual-core worker and benchmark A/B against 0.1.0. Preserve the sound quality the owner likes; seek lower CPU load and buffer headroom without skipping safety/STOP tests. Do not treat any targets as already achieved.
+
 **Additional P0 hardware feedback (2026-11-04):** STOP occasionally leaves audio playing. The next release must fix bounded silence-after-STOP and convert to exactly eight roles including Drums (seven pitched + Drums), plus independent Glide/Vibrato controls on Lead and Bass. Read the expanded P0 items in `NEXT_BUILD_ACTIVE.md`; do not silently treat them as implemented.
 
 **Post-hardware-test, next release:** Read [NEXT_BUILD_ACTIVE.md](NEXT_BUILD_ACTIVE.md) first. The user successfully installed and listened to AQUORA 0.1.0 on FM-1 on November 4, 2026, and reports great general audio, but no audible drums or bass, ~90% CPU; new perfect-key, visual, performance, two intention modes, and twelve additional ambient kits are outstanding. Maintain this as the authoritative next-build queue, and do not redo completed 0.1.0 work.
