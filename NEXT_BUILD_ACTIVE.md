@@ -1,5 +1,7 @@
 # AQUORA active follow-up
 
+**0.4.0 integrated candidate:** See CHECKPOINT.md and evidence/0.4.0/integrated/. Implemented features have targeted tests, and the inherited suite passed across host, native, fallback and browser checks. This queue retains complete requirements until release-specific coverage is finished. Immediate gaps: legacy fixture and four-bank new-settings round trips, mixer/isolation workflows, multi-bar rhythmic evolution, sustained-tone source confirmation and publication.
+
 0.3.0 software requirements are archived in [archive/0.3.0-requirements.md](archive/0.3.0-requirements.md). Test evidence lives in evidence/0.3.0/ and the versioned backups in release/0.3.0/. Preserve 0.2.0 and 0.1.0 for rollback.
 
 ## P0 — Recurring sustained / stuck tone across all audio on actual 0.3.0 (owner regression 2026-11-04)

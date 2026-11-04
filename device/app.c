@@ -18,15 +18,16 @@ static unsigned window_ms;
 static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
+static unsigned mix_tab,mix_reset;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
-enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=13 };
+enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=14 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
- {2,13,24,29},{21,5,11,12},{4,22,14,45},{8,7,23,6},{16,17,10,9},
+ {2,13,24,29},{21,5,54,12},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,22},{32,33,34,35},{13,24,29,28},
- {37,17,10,9},{38,0,0,0},{39,40,41,38},{43,4,22,31},{47,46,0,0}
+ {37,17,10,9},{38,0,0,0},{39,40,41,38},{43,4,22,31},{47,46,0,0},{55,14,48,45}
 };
 static const uint8_t page_controls[4][4]={
- {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,11,12}
+ {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,29,49}
 };
 #include "arrangement.c"
 typedef struct {
@@ -60,6 +61,11 @@ static timing_summary summarize(const timing *t)
 static unsigned control_for(unsigned knob)
 {
  if(debug)return debug==3&&knob==0?42:0;
+ if(page==3&&mix_tab){
+   static const uint8_t master_controls[]={11,12,50,51};
+   static const uint8_t reset_controls[]={52,0,0,0};
+   return mix_tab==1?master_controls[knob]:reset_controls[knob];
+ }
  return page==1?sound_controls[group][knob]:page_controls[page][knob];
 }
 static int switched(int state,int delta)
@@ -134,8 +140,24 @@ static void consume(void){
    if(!engine.keyboard_mode)engine.pending_key=0;
    sr_set_perfect_key(&engine,1);
    break;
+ case 49:t->mute=switched(t->mute,d);break;
+ case 50:engine.auto_gain=switched(engine.auto_gain,d);break;
+ case 51:engine.auto_level=switched(engine.auto_level,d);break;
+ case 55:engine.lock_textures=switched(engine.lock_textures,d);break;
+ case 54:engine.nature_audition=engine.running&&!engine.pending_lock&&d>0?SR_RATE*4u:0;break;
+ case 53:
+   engine.solo=SR_TRACKS;
+   engine.reverb_amount=.32f;engine.delay_amount=.18f;
+   engine.auto_gain=engine.auto_level=0;
+   for(unsigned i=0;i<SR_TRACKS;i++){
+     sr_track *track=&engine.tracks[i];
+     track->volume=i==SR_BASS?.88f:i==SR_DRUMS?1.f:.68f;
+     track->pan=((int)(i%4)-1)*.13f;track->send=1.f;track->mute=0;
+   }
+   break;
+ case 48:sr_set_frequency_lock(&engine,switched(engine.pending_lock,d));break;
  case 45:sr_set_frequency_auto(&engine,switched(engine.frequency_auto,d));break;
- case 44:engine.isolate=SR_ISOLATE_MIX;break;
+ case 44:engine.isolate=SR_ISOLATE_MIX;engine.nature_audition=0;break;
  case 43:engine.isolate=bounded(engine.isolate+d,SR_ISOLATE_MIX,SR_ISOLATE_FX);break;
  case 35:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
  }
@@ -225,13 +247,17 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(page==1)group=(group+1)%GROUP_COUNT;
+   if(page==3){mix_tab=(mix_tab+1)%3;mix_reset=0;}
    bank_confirm=0;bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=1;group=GROUP_BANKS;debug=0;}
  if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;page=1;group=group==GROUP_PERC?GROUP_HIT:GROUP_PERC;debug=0;}
  if(press&(1u<<B_LFO))send(debug?27:28,0);
- if((press&(1u<<B_SAVE))&&page==1&&group==GROUP_BANKS&&!debug){
+ if((press&(1u<<B_SAVE))&&page==3&&mix_tab==2&&!debug){
+    if(mix_reset)send(53,0);
+    mix_reset=0;
+ }else if((press&(1u<<B_SAVE))&&page==1&&group==GROUP_BANKS&&!debug){
     arrangement_execute();
     blocked_keys|=k;
  }else if((press&(1u<<B_SAVE))&&!requested_play&&!engine.running&&!engine.stop_frames){
@@ -250,7 +276,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  }
  oldkeys=k;
  int d=plat_enc(EN_ALGO);
- if(d&&!debug){page=bounded((int)page+d,0,3);bank_confirm=0;knob_until=0;dirty=1;}
+ if(d&&!debug){page=bounded((int)page+d,0,3);mix_reset=0;bank_confirm=0;knob_until=0;dirty=1;}
  d=plat_enc(EN_SELECT);
  if(d&&!debug){selected=bounded((int)selected+d,0,7);knob_until=0;dirty=1;}
  d=plat_enc(EN_PRESET);
@@ -263,6 +289,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
+    else if(control==52)mix_reset=d>0;
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
     else send(control,bounded(d,-8,8));
     knob_focus=i;
@@ -291,7 +318,7 @@ void app_frame(void)
       fx_stats=summarize(&fx);
       callback_stats=summarize(&callback);
       window_ms=now;
-      if(debug||(page==1&&(group==GROUP_PERC||group==GROUP_HIT)))dirty=1;
+      if(debug||(page==1&&(group==1||group==GROUP_PERC||group==GROUP_HIT)))dirty=1;
     }
     if(displayed_revision!=state_revision)dirty=1;
     if((page==2||(page==1&&group==GROUP_KEYS))&&shown_step!=engine.sequence_step){
@@ -306,7 +333,7 @@ void app_frame(void)
     if(animate){
       lastdraw=now;
       unsigned begin=plat_ticks24();
-      prepare_geometry();
+      if(page!=3)prepare_geometry();
       graphics_us=(plat_ticks24()-begin)/24;
     }
     if(animate||dirty){

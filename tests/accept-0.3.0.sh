@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 out="${1:?isolated evidence directory required}"
+version="${2:-0.4.0}"
 mkdir -p "$out"
 out="$(realpath "$out")"
 cc_cmd=(cc -Wall -Wextra -Werror -g -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include)
 for test in transport_hit next_acceptance dsp_acceptance stereo; do
-  "${cc_cmd[@]}" -O1 -fsanitize=address,undefined device/dsp/engine.c "tests/$test.c" -lm -o "$out/$test"
+  "${cc_cmd[@]}" -O1 -fsanitize=address,undefined -no-pie device/dsp/engine.c "tests/$test.c" -lm -o "$out/$test"
   ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 "$out/$test" > "$out/$test.log" 2>&1
 done
-python3 vendor/fm1-base/tools/build.py device --host --release 0.3.0 > "$out/host-build.log" 2>&1
+python3 vendor/fm1-base/tools/build.py device --host --release "$version" > "$out/host-build.log" 2>&1
 host=device/build/host/sound-healing_host
 "$host" tests/ui.txt "$out" > "$out/ui.log" 2>&1
 "$host" tests/motion_store.txt "$out" > "$out/motion-store.log" 2>&1
@@ -35,9 +36,9 @@ for mode in ok off late bad fault; do
   cmp "$out/crystals.png" "$out/worker-$mode/crystals.png"
 done
 echo 'PASS two distinct, evolving visualizers, bit-identical audio and deterministic crystal fallback across worker modes' > "$out/worker.log"
-python3 vendor/fm1-base/tools/build.py device --sdk vendor/ac79-package-files --release 0.3.0 > "$out/native.log" 2>&1
+python3 vendor/fm1-base/tools/build.py device --sdk vendor/ac79-package-files --release "$version" > "$out/native.log" 2>&1
 single="$(mktemp -d "$out/single-core-XXXXXX")"
 tar --exclude=build -cf - -C device . | tar -xf - -C "$single"
-FM1B_CPU2=0 python3 vendor/fm1-base/tools/build.py "$single" --sdk vendor/ac79-package-files --release 0.3.0 > "$out/singlecore.log" 2>&1
-python3 vendor/fm1-base/tools/build.py device --web --release 0.3.0 > "$out/web.log" 2>&1
-node vendor/fm1-base/tests/installer_ports_test.mjs device/build/sound-healing-0.3.0.fwsc > "$out/installer_ports.log" 2>&1
+FM1B_CPU2=0 python3 vendor/fm1-base/tools/build.py "$single" --sdk vendor/ac79-package-files --release "$version" > "$out/singlecore.log" 2>&1
+python3 vendor/fm1-base/tools/build.py device --web --release "$version" > "$out/web.log" 2>&1
+node vendor/fm1-base/tests/installer_ports_test.mjs "device/build/sound-healing-$version.fwsc" > "$out/installer_ports.log" 2>&1

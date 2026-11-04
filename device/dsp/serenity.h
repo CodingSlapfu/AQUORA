@@ -29,7 +29,7 @@ typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_r
 typedef struct {
   sr_track tracks[SR_TRACKS]; sr_voice voices[SR_VOICES];
   uint32_t rng, frame_count, tick_phase, tick_length, sequence_step, phrase;
-  uint8_t scene, frequency, tuning_432, running, bed_type, isolate, frequency_auto;
+  uint8_t scene, frequency, tuning_432, running, bed_type, isolate, frequency_auto, frequency_lock, pending_lock, lock_textures;
   uint8_t drums_enabled, drum_density, drum_kit, binaural_enabled;
   float master, reverb_amount, delay_amount, bed_level, current_energy;
   float wind_lp, rain_lp, limiter, dc_x, dc_y, low_bass;
@@ -37,14 +37,19 @@ typedef struct {
   float shaker_env, shaker_lp, hand_noise_lp;
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;
+  float lock_phase;
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
+  uint32_t nature_audition, bird_wait;
+  float nature_peak;
   uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;
   float sacred_hz_now;
   uint16_t stop_frames;
   float sacred_level, sacred_gain, sacred_harmonics, pitch_last[2], vibrato_phase[2];
   sr_motion motion[2];
+  uint8_t auto_gain, auto_level;
+  float input_peak[SR_TRACKS], gain_trim[SR_TRACKS], master_peak;
   uint32_t (*clock_ticks)(void);
   uint32_t fx_ticks;
   int16_t reverb[4][1789]; int16_t delay[16384];
@@ -61,6 +66,7 @@ extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
 void sr_init(sr_engine *e, uint32_t seed);
 void sr_set_scene(sr_engine *e, uint8_t scene);
+void sr_set_frequency_lock(sr_engine *e, uint8_t enabled);
 void sr_set_frequency_auto(sr_engine *e, uint8_t enabled);
 void sr_set_frequency(sr_engine *e, uint8_t frequency);
 void sr_set_perfect_key(sr_engine *e, uint8_t enabled);

@@ -20,8 +20,8 @@ static float sin_table[LUT+1];
 static uint8_t lut_ready = 0;
 
 const sr_patch sr_patches[SR_PATCHES] = {
-  {"Earth Sub", SR_SINE, .028f, .72f, .15f, .34f},
-  {"Warm Temple Bass", SR_TRI, .02f, .82f, .30f, .26f},
+  {"Earth Sub", SR_SINE, .028f, .72f, .33f, .39f},
+  {"Warm Temple Bass", SR_TRI, .02f, .82f, .37f, .31f},
   {"Sacred Pulse", SR_HOLLOW, .08f, 1.35f, .20f, .23f},
   {"Deep Halo Drone", SR_SINE, 1.8f, 3.4f, .28f, .23f},
   {"Evolving Warmth", SR_CHOIR_WAVE, 1.0f, 3.0f, .42f, .21f},
@@ -175,6 +175,13 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
   make_motif(e);
   retune_keys(e);
 }
+void sr_set_frequency_lock(sr_engine *e,uint8_t enabled){
+  e->pending_lock=!!enabled;
+  if(e->running&&e->pending_lock!=e->frequency_lock){
+    sr_stop(e);
+    e->restart=1;
+  }else if(!e->stop_frames)e->frequency_lock=e->pending_lock;
+}
 void sr_set_frequency_auto(sr_engine *e,uint8_t enabled){
   e->frequency_auto=!!enabled;
   if(enabled)e->frequency=sr_scenes[e->scene].frequency;
@@ -200,6 +207,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
+    e->gain_trim[t]=1.f;
     e->tracks[t].patch=default_patches[t];e->tracks[t].volume=t==SR_BASS?.88f:t==SR_DRUMS?1.f:.68f; e->tracks[t].send=1.f;
     e->tracks[t].pan=(float)(t%4-1)*.13f;
   }
@@ -220,6 +228,8 @@ static void clear_transport(sr_engine *e)
     e->rev_history=e->delay_history=0;
     e->reverb_wet=e->delay_wet=0;
     e->fx_mask=0;
+    e->lock_phase=0;
+    e->nature_audition=e->bird_wait=0;e->nature_peak=e->master_peak=0;
     e->kick_env=e->hand_env=e->shaker_env=e->drum_meter=0;
     e->binaural_env=e->transport_env=e->sacred_gain=e->limiter=0;
     e->wind_lp=e->rain_lp=e->hand_noise_lp=e->shaker_lp=e->bird_env=0;
@@ -449,21 +459,27 @@ static inline __attribute__((always_inline)) float bed(sr_engine *e){
   float rain=(e->rain_lp-e->wind_lp)*.26f;
   e->bed_phase+=.12f/SR_RATE;if(e->bed_phase>=1.f)e->bed_phase-=1.f;
   float swell=0;
-  if(e->bed_type==5||e->bed_type==7)swell=.55f+.45f*sine(e->bed_phase);
-  if(e->bird_env<.0001f && (rng(e)%220500u)==0)e->bird_env=1.f;
+  if(e->bed_type==2||e->bed_type==5||e->bed_type==7)swell=.55f+.45f*sine(e->bed_phase);
+  if(e->bed_type==4||e->bed_type==6){
+    if(e->bird_wait)e->bird_wait--;
+    else{
+      e->bird_env=1.f;
+      e->bird_wait=SR_RATE+(rng(e)&65535u);
+    }
+  }
   e->bird_env*=.99985f;
   e->bird_phase+=(1700.f+800.f*e->bird_env)/SR_RATE;
   if(e->bird_phase>=1.f)e->bird_phase-=1.f;
   float bird=0;
-  if(e->bed_type==4||e->bed_type==6)bird=sine(e->bird_phase)*e->bird_env*.035f;
+  if(e->bed_type==4||e->bed_type==6)bird=sine(e->bird_phase)*e->bird_env*.085f;
   switch(e->bed_type){
-   case 1:return wind*.6f+rain*.2f;
-   case 2:return rain*.7f+sine(e->bird_phase)*rain*.12f;
-   case 3:return rain*.85f;
-   case 4:return wind*.3f+bird;
-   case 5:return (wind*.5f+rain)*swell;
+   case 1:return wind*.95f+rain*.19f;
+   case 2:return (rain*.85f+(n-e->rain_lp)*.028f)*(.6f+swell*.55f);
+   case 3:return rain*.58f+(n-e->rain_lp)*.085f;
+   case 4:return wind*.45f+bird*.75f;
+   case 5:return (wind*.85f+rain*.85f)*swell;
    case 6:return bird;
-   case 7:return (n-e->rain_lp)*.025f*swell;
+   case 7:return (n-e->rain_lp)*.065f*swell;
    default:return 0.f;
   }
 }
@@ -494,7 +510,11 @@ __attribute__((section(".ram_text"), noinline))
 #endif
 static void render_samples(sr_engine *e,float *dry,size_t frames){
   float left[SR_TRACKS], right[SR_TRACKS], send[SR_TRACKS];
-  unsigned source=e->isolate;
+  int locked=e->frequency_lock;
+  float lock_hz=locked?sr_frequencies[e->frequency].hz:0;
+  int audition=!locked&&e->nature_audition>0;
+  unsigned source=audition?SR_ISOLATE_NATURE:e->isolate;
+  e->nature_peak*=1.f-(float)frames*.0005f;
   int full=source==SR_ISOLATE_MIX;
   struct voice_config {
     sr_voice *voice;
@@ -516,6 +536,17 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int t=0;t<SR_TRACKS;t++){
     sr_track *track=&e->tracks[t];
     float level=(track->mute||(e->solo<SR_TRACKS&&e->solo!=t))?0:track->volume;
+    if(!locked){
+      float peak=e->input_peak[t];
+      float target=e->auto_gain&&peak>.015f?clampf(.12f/peak,.72f,1.28f):1.f;
+      e->gain_trim[t]+=(target-e->gain_trim[t])*(float)frames*.000012f;
+      if(e->auto_gain)level*=e->gain_trim[t];
+      if(e->auto_level){
+        static const float balance[SR_TRACKS]={1.f,1.10f,.89f,.93f,.98f,.96f,.90f,1.06f};
+        level*=balance[t];
+      }
+    }
+    e->input_peak[t]*=1.f-(float)frames*.0005f;
     send[t]=level*track->send;
     if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
     left[t]=level*(.5f-.31f*track->pan);
@@ -571,6 +602,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
   for(size_t i=0;i<frames;i++){
     float l=0.f,r=0.f,mix=0.f;
+    float locked_sample=locked?advance(&e->lock_phase,lock_hz):0;
     for(unsigned a=0;a<count;a++){
       const struct voice_config *config=&active[a];
       sr_voice *v=config->voice;
@@ -582,6 +614,13 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       if(v->gate)v->env+=(v->peak-v->env)*v->attack_coef;
       else v->env-=v->env*v->release_coef;
       if(!v->gate && v->env<.0005f){v->active=0;continue;}
+      if(locked){
+        float z=locked_sample*v->env*.11f;
+        l+=z*config->left;r+=z*config->right;
+        float mag=fabsf(z)*(config->left+config->right);
+        if(mag>e->tracks[config->track].meter)e->tracks[config->track].meter=mag;
+        continue;
+      }
       v->increment+=config->step;
       v->phase+=v->increment;
       if(v->phase>=1.f)v->phase-=1.f;
@@ -597,19 +636,36 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       l+=z*config->left;
       r+=z*config->right;
       mix+=z*config->send;
-      float mag=fabsf(z)*(config->left+config->right);
+      float raw=fabsf(z);
+      if(e->auto_gain&&raw>e->input_peak[config->track])e->input_peak[config->track]=raw;
+      float mag=raw*(config->left+config->right);
       sr_track *track=&e->tracks[config->track];
       if(mag>track->meter)track->meter=mag;
     }
+    if(locked&&!e->lock_textures){
+      e->tracks[SR_DRUMS].meter=0;
+      dry[3*i]=l;dry[3*i+1]=r;dry[3*i+2]=0;
+      continue;
+    }
     float drums=drum_sample(e);
+    if(e->auto_gain&&fabsf(drums)>e->input_peak[SR_DRUMS])e->input_peak[SR_DRUMS]=fabsf(drums);
     l+=drums*left[SR_DRUMS];r+=drums*right[SR_DRUMS];
     mix+=drums*send[SR_DRUMS]*.5f;
     e->tracks[SR_DRUMS].meter=e->drum_meter*e->drum_level*(left[SR_DRUMS]+right[SR_DRUMS]);
     e->transport_env+=((e->running?1.f:0.f)-e->transport_env)*.0008f;
-    float nature=e->bed_level>0&&e->bed_type?bed(e)*e->bed_level*e->transport_env:0;
-    if(e->solo<SR_TRACKS)nature=0;
-    if(full||source==SR_ISOLATE_NATURE){l+=nature*.5f;r+=nature*.5f;}
+    float bed_gain=audition?.55f:e->bed_level;
+    float nature=bed_gain>0&&e->bed_type?bed(e)*bed_gain*e->transport_env:0;
+    if(!audition&&e->solo<SR_TRACKS)nature=0;
+    if(full||source==SR_ISOLATE_NATURE){
+      l+=nature*.72f;r+=nature*.72f;
+      float peak=fabsf(nature*.72f);
+      if(peak>e->nature_peak)e->nature_peak=peak;
+    }
     mix+=nature*.5f;
+    if(locked){
+      dry[3*i]=l;dry[3*i+1]=r;dry[3*i+2]=0;
+      continue;
+    }
     e->sacred_gain+=(target_bass-e->sacred_gain)*.001f;
     float sacred=0;
     if(e->sacred_gain>.00001f){
@@ -647,16 +703,19 @@ __attribute__((section(".ram_text"), noinline))
 #endif
 static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t frames)
 {
+  float ceiling=e->auto_level&&!e->frequency_lock?.70f:.78f;
+  float peak=e->master_peak*(1.f-(float)frames*.0005f);
   for(size_t i=0;i<frames;i++){
     float l=dry[3*i],r=dry[3*i+1];
     float binaural_l=0,binaural_r=0;
-    render_binaural(e,&binaural_l,&binaural_r);
+    if(!e->frequency_lock&&!e->nature_audition)render_binaural(e,&binaural_l,&binaural_r);
     if(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL){
       l+=binaural_l;r+=binaural_r;
     }
     // Soft-knee master saturation controls peaks without a dynamic allocation.
     float level=fmaxf(fabsf(l),fabsf(r));
-    float target=level>.78f?.78f/level:1.f;
+    if(level>peak)peak=level;
+    float target=level>ceiling?ceiling/level:1.f;
     if(target<e->limiter || e->limiter==0.f)e->limiter=target;
     else e->limiter+=(target-e->limiter)*.00018f;
     float gain=e->limiter*e->master;
@@ -664,6 +723,7 @@ static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t fra
     out[2*i]=sampleout(l*gain);out[2*i+1]=sampleout(r*gain);
     e->frame_count++;
   }
+  e->master_peak=peak;
 }
 
 /* Explicit indirect call spans XIP -> SRAM; control-rate events remain in flash. */
@@ -683,6 +743,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   if(e->running&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;
   if(e->stop_frames&&n>e->stop_frames)n=e->stop_frames;
   unsigned fading=e->stop_frames;
+  unsigned audition=e->nature_audition;
   render_block(e,dry,n);
   unsigned reverb=e->reverb_amount>0||e->reverb_wet>.00001f;
   unsigned delay=e->delay_amount>0||e->delay_wet>.00001f;
@@ -692,16 +753,18 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     if(!(fx_mask&2)){e->delay_history=0;e->delay_pos=0;e->delay_wet=0;}
   }
   e->fx_mask=(uint8_t)fx_mask;
-  if(fx_mask){
+  if(fx_mask&&!e->frequency_lock&&!audition){
     uint32_t begin=e->clock_ticks?e->clock_ticks():0;
     process_fx(e,dry,n);
     if(e->clock_ticks)e->fx_ticks+=e->clock_ticks()-begin;
   }
   finish_block(e,dry,out,n);
+  if(audition)e->nature_audition=audition>n?audition-(uint32_t)n:0;
   if(fading&&!e->stop_frames){
     unsigned restart=e->restart;
     clear_transport(e);
     e->restart=0;
+    e->frequency_lock=e->pending_lock;
     if(restart){e->running=1;e->sequence_step=0;e->loop_pos=0;e->tick_phase=e->tick_length;}
   }
   if(e->running&&!fading)e->tick_phase+=(uint32_t)n;

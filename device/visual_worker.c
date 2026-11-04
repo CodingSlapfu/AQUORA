@@ -43,46 +43,29 @@ static void visual_init(void)
     for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
 }
 
-/* Six crystalline stems with growing lateral facets and two resonant rings.
- * Table indices and vertex counts are fixed. All inputs are immutable snapshots. */
-static void crystal_point(unsigned stem,unsigned vertex,unsigned angle,float radius)
+/* Two offset wave origins and standing-mode lobes on a shallow basin.
+ * One bounded polyline per band, with shared lookup tables for both cores. */
+static void cymatics_job(void)
 {
-    vis_output.xy[stem][vertex][0]=120+(int)(radius*1.48f*vis_sine[(angle+32)&127]);
-    vis_output.xy[stem][vertex][1]=96+(int)(radius*.77f*vis_sine[angle&127]);
-}
-
-static void crystal_job(void)
-{
-    unsigned phase=vis_input.phase, family=vis_input.frequency;
-    float drum=vis_input.meter[SR_DRUMS]*75.f;
-    float bass=vis_input.meter[SR_BASS]*65.f;
-    for(unsigned stem=0;stem<6;stem++){
-        unsigned angle=stem*128/6+(phase>>3)+(vis_input.event[stem]&3u);
-        float growth=.85f+.15f*vis_sine[(phase+stem*7+family*9)&127];
-        float note=vis_input.meter[stem]*68.f;
-        float radius=(45.f+bass+note+drum+vis_input.atmosphere*8)*growth;
-        if(radius>59.f)radius=59.f;
-        unsigned vertex=0;
-        crystal_point(stem,vertex++,angle,0);
-        for(unsigned layer=1;layer<=3;layer++){
-            float branch=radius*(.19f*layer+.13f);
-            unsigned twist=4u+family%6u;
-            crystal_point(stem,vertex++,angle,branch);
-            crystal_point(stem,vertex++,angle+twist,branch+radius*.17f);
-            crystal_point(stem,vertex++,angle,branch);
-            crystal_point(stem,vertex++,angle-twist,branch+radius*.17f);
-            crystal_point(stem,vertex++,angle,branch);
-        }
-        crystal_point(stem,vertex++,angle,radius);
-        vis_output.count[stem]=(uint8_t)vertex;
-    }
-    for(unsigned ring=6;ring<8;ring++){
+    unsigned time=vis_input.phase, family=vis_input.frequency;
+    float pulse=vis_input.meter[SR_DRUMS]*18.f+vis_input.meter[SR_BASS]*25.f;
+    if(pulse>9.f)pulse=9.f;
+    for(unsigned ring=0;ring<SR_TRACKS;ring++){
+        unsigned travel=(time+ring*13u)%104u;
+        unsigned reflected=(ring&1u)!=0;
+        float center=120.f+(reflected?1.f:-1.f)*vis_sine[(time/3u+family*9u)&127]*12.f;
+        unsigned mode=2u+family%5u;
+        float radius=10.f+(float)(reflected?103u-travel:travel)*.83f;
+        float excitation=vis_input.meter[ring]*24.f+vis_input.atmosphere*3.f+pulse*.45f;
+        if(excitation>9.f)excitation=9.f;
         for(unsigned point=0;point<=32;point++){
-            unsigned angle=point*4;
-            float ripple=vis_sine[(angle*(family%4+3)+phase*2+vis_input.scene*11)&127];
-            float radius=(ring==6?17.f:39.f)+ripple*(2.f+vis_input.atmosphere*3)+drum*.6f;
-            if(radius>58.f)radius=58.f;
-            crystal_point(ring,point,angle,radius);
+            unsigned a=point*4u;
+            float standing=vis_sine[(a*mode+vis_input.scene*11u+vis_input.event[ring])&127];
+            float opposing=vis_sine[(a*(mode+1u)-time*2u+ring*19u)&127];
+            float displacement=standing*opposing*(3.f+excitation);
+            float r=radius+displacement;
+            vis_output.xy[ring][point][0]=(int)(center+r*vis_sine[(a+32u)&127]);
+            vis_output.xy[ring][point][1]=144+(int)(r*.88f*vis_sine[a&127]);
         }
         vis_output.count[ring]=33;
     }
@@ -92,7 +75,7 @@ static void visual_job(uint32_t unused)
 {
     (void)unused;
     unsigned begin=plat_ticks24();
-    if(vis_input.water)crystal_job();
+    if(vis_input.water)cymatics_job();
     else for(unsigned t=0;t<SR_TRACKS;t++){
       vis_output.count[t]=33;
       unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;
@@ -112,7 +95,7 @@ static void prepare_geometry(void)
 {
     vis_input.phase=plat_ms()/(visual_mode?35u:49u);
     unsigned flags=plat_lock();
-    vis_input.water=visual_mode;
+    vis_input.water=visual_mode&&page==0;
     vis_input.frequency=engine.frequency;
     vis_input.scene=engine.scene;
     vis_input.atmosphere=engine.transport_env*engine.bed_level+engine.reverb_wet*.6f;

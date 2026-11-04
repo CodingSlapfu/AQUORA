@@ -25,7 +25,7 @@ typedef struct {
     uint8_t drum_density, drum_kit, drum_hit, binaural_enabled;
     uint8_t freeze, perfect_key, solo, sacred_mode, visual;
     int8_t melody[16];
-    uint8_t frequency_auto; /* Legacy zero in the existing alignment padding. */
+    uint8_t frequency_auto, lock_textures; /* Legacy zero in the alignment padding. */
     struct {
         float volume, pan, send;
         uint8_t patch, mute;
@@ -35,7 +35,7 @@ typedef struct {
     float binaural_carrier, binaural_rate, binaural_level;
     float tone_level, energy, variation, sacred_level, sacred_harmonics;
     uint32_t legacy_crc;
-    uint8_t loop_length, keyboard_mode, tonic_override, pending_length, pending_key;
+    uint8_t loop_length, keyboard_mode, tonic_override, pending_length, pending_key, frequency_lock, auto_gain, auto_level;
     uint32_t crc;
 } arrangement;
 _Static_assert(sizeof(arrangement)<512,"Arrangement record budget");
@@ -69,11 +69,11 @@ static int arrangement_valid(const arrangement *r)
        (legacy?r->legacy_crc:r->crc)!=arrangement_crc(r)||
        (!legacy&&((r->loop_length!=16&&r->loop_length!=32&&r->loop_length!=64)||
         (r->pending_length&&r->pending_length!=16&&r->pending_length!=32&&r->pending_length!=64)||
-        r->keyboard_mode>1||r->pending_key>12||
+        r->keyboard_mode>1||r->pending_key>12||r->frequency_lock>1||r->auto_gain>1||r->auto_level>1||
         (r->tonic_override&&(r->tonic_override<36||r->tonic_override>47))))||
        r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>7||
        r->drum_kit>=SR_DRUM_KITS||r->drum_density>3||r->solo>SR_TRACKS||
-       r->frequency_auto>1||r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
+       r->frequency_auto>1||r->lock_textures>1||r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
        r->tuning_432>1||r->drums_enabled>1||r->binaural_enabled>1||
        r->freeze>1||r->perfect_key>1)return 0;
     if(!range(r->reverb_amount,0,.8f)||!range(r->delay_amount,0,.7f)||
@@ -135,11 +135,15 @@ static void arrangement_snapshot(arrangement *record)
         record->track[i].mute=engine.tracks[i].mute;
     }
     record->frequency_auto=engine.frequency_auto;
+    record->lock_textures=engine.lock_textures;
     record->loop_length=engine.loop_length;
     record->pending_length=engine.pending_length;
     record->keyboard_mode=engine.keyboard_mode;
     record->tonic_override=engine.tonic_override;
     record->pending_key=engine.pending_key;
+    record->frequency_lock=engine.frequency_lock;
+    record->auto_gain=engine.auto_gain;
+    record->auto_level=engine.auto_level;
     plat_unlock(irq);
     record->crc=arrangement_crc(record);
 }
@@ -151,12 +155,16 @@ static void arrangement_apply(const arrangement *record)
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
     engine.frequency_auto=record->frequency_auto;
+    engine.lock_textures=record->lock_textures;
     engine.loop_length=record->version==AQ_BANK_LEGACY?16:record->loop_length;
     engine.pending_length=record->pending_length;
     engine.loop_pos=0;
     engine.keyboard_mode=record->keyboard_mode;
     engine.tonic_override=record->tonic_override;
     engine.pending_key=record->pending_key;
+    engine.frequency_lock=engine.pending_lock=record->frequency_lock;
+    engine.auto_gain=record->auto_gain;
+    engine.auto_level=record->auto_level;
     if(engine.frequency_auto)engine.frequency=sr_scenes[engine.scene].frequency;
     engine.drum_hit=engine.drum_hit>SR_HIT_MAX?SR_HIT_MAX:engine.drum_hit;
     visual_mode=record->visual;

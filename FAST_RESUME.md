@@ -1,5 +1,7 @@
 # AQUORA fast resume
 
+**Latest resume:** Read the integrated 0.4.0 candidate section of CHECKPOINT.md before using any older notes below. The live release is 0.3.0. Reuse the verified candidate, SDK and compiler under the exclusive lock.
+
 **Flow renamed (2026-11-04):** Owner renamed existing scene **Flow** to **Flow State**. This label is already updated in development `device/dsp/engine.c` without changing scene ID 1, 58 BPM, its music or proposed scene Hz **417 Hz**; preserve name throughout the next firmware, manual and site, and ensure old saved banks at scene ID 1 show Flow State. This **has not been compiled or published**. Also preserve the recently recorded larger, immersive second Water Cymatics visualizer on PLAY (current 96px preview → target ~170–190px+), with 20 FPS audio-safe rendering.
 
 **Water Cymatics SIZE upgrade (2026-11-04):** Owner explicitly requests **the second visualizer be much BIGGER**. Current `device/ui.c::draw()` confines visualizer to two 48px rows (96px tall) on 240×240 LCD. Redesign PLAY/HOME as a large immersive **~170–190px+ water viewport** with compact, readable header/status and transient knob overlays; offer full-screen immersion, avoid covering functional MIX/settings pages, recompute authentic ripple/interference geometry at correct resolution (not bitmap stretch), keep Original available, and protect honest max/target 20 FPS and audio stability. Exact acceptance in `NEXT_BUILD_ACTIVE.md`. Not implemented yet.

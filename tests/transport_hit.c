@@ -173,6 +173,78 @@ static void loop_key_boundary(void)
     puts("PASS next-loop tonic and length changes at all three loop lengths");
 }
 
+static void frequency_lock_pcm(void)
+{
+    for(unsigned scene=0;scene<SR_SCENES;scene++){
+        sr_init(&a,721);
+        sr_set_scene(&a,scene);
+        sr_set_frequency_lock(&a,1);
+        a.tone_level=.10f;
+        a.sacred_mode=2;
+        a.binaural_enabled=1;
+        a.bed_level=1;
+        a.reverb_amount=.8f;
+        a.delay_amount=.7f;
+        for(unsigned t=0;t<SR_TRACKS;t++)a.tracks[t].pan=0;
+        sr_start(&a);
+        a.tick_phase=0;
+        a.tick_length=SR_RATE*2;
+        a.motion[0].vibrato_depth=50;
+        a.motion[1].glide_mode=2;
+        for(unsigned t=0;t<SR_DRUMS;t++)sr_key_down(&a,t,t);
+        unsigned expected=(unsigned)sr_frequencies[a.frequency].hz;
+        unsigned actual=rising_crossings();
+        assert(actual+2>=expected&&actual<=expected+1);
+        for(unsigned t=0;t<SR_TRACKS;t++)a.tracks[t].mute=1;
+        block(&a);
+        silence();
+        assert(!a.rev_history&&!a.delay_history);
+        sr_set_frequency_lock(&a,0);
+        block(&a);
+        assert(!a.frequency_lock&&a.running);
+        for(unsigned v=0;v<SR_VOICES;v++)assert(!a.voices[v].active);
+    }
+    puts("PASS strict Frequency Lock PCM in thirteen scenes, suppression of textures, and clean mode exit");
+}
+
+static unsigned nature_pcm_peak(unsigned type,float level)
+{
+    unsigned peak=0;
+    sr_init(&a,4321);
+    sr_start(&a);
+    a.isolate=SR_ISOLATE_NATURE;
+    a.bed_type=type;
+    a.bed_level=level;
+    for(unsigned n=0;n<900;n++){
+        block(&a);
+        for(unsigned i=0;i<512;i++){
+            int v=pcm[i];
+            unsigned mag=v<0?-v:v;
+            if(mag>peak)peak=mag;
+        }
+    }
+    return peak;
+}
+
+static void nature_audibility(void)
+{
+    for(unsigned type=1;type<=7;type++){
+        unsigned low=nature_pcm_peak(type,.18f);
+        unsigned middle=nature_pcm_peak(type,.5f);
+        unsigned high=nature_pcm_peak(type,1.f);
+        assert(low>30&&middle>low&&high>middle&&high<12000);
+        assert(nature_pcm_peak(type,0)==0);
+        printf("Nature %u peak at 18/50/100%%: %u/%u/%u\n",type,low,middle,high);
+    }
+    a.solo=SR_LEAD;
+    a.nature_audition=512;
+    block(&a);
+    assert(a.nature_audition==256&&a.solo==SR_LEAD);
+    block(&a);
+    assert(!a.nature_audition&&a.solo==SR_LEAD);
+    block(&a);silence();
+}
+
 static void hit_cap(void)
 {
     sr_init(&a,3131);
@@ -203,4 +275,4 @@ static void hit_cap(void)
     }
     puts("PASS HIT zero retains pulse and all thirteen scenes produce audible-range drum PCM");
 }
-int main(void){stopped_voices();fixed_reference_isolation();scene_frequency_isolation();loop_key_boundary();hit_cap();return 0;}
+int main(void){stopped_voices();fixed_reference_isolation();scene_frequency_isolation();loop_key_boundary();frequency_lock_pcm();nature_audibility();hit_cap();return 0;}

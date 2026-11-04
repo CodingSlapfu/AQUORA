@@ -13,17 +13,18 @@ ALGORITHM selects PLAY, SOUND, EVOLVE, MIX. SELECT chooses Lead, Bass, Pads, Har
 | PLAY | Scene | Energy | Fixed tone level | Nature level |
 | SOUND / Instrument | Patch or drum kit | Track level | Pan | FX send |
 | SOUND / Nature | Bed | Bed level | Reverb | Delay |
-| SOUND / Frequency | Fixed Hz | Tone level | A4 432/440 toggle |Hz Source Auto/Manual |
+| SOUND / Frequency | Fixed Hz | Tone level | Reference Layer / Frequency Lock | Hz Source Auto/Manual |
 | SOUND / Binaural | Carrier Hz | Difference (0.5 Hz steps) | Binaural level | Enable toggle |
 | SOUND / Percussion | Kit | Drum level | Density 0–3 | Enable toggle |
 | SOUND / Sacred Bass | Sacred level | Off / musical / reference | Harmonic blend | Fixed tone level |
 | SOUND / Lead / Bass Motion | Off / legato / always glide | Glide milliseconds | Vibrato rate in 0.1 Hz steps | Vibrato depth in cents, 0 disables |
 | SOUND / Track Routing | Track level | Pan | FX send | Solo / clear |
 | SOUND / Percussion HIT | HIT % (0–100) | Drum level | Density 0–3 | Drums ON/OFF |
-| SOUND / Visualizer | Original / Water Crystals | — | — | — |
+| SOUND / Visualizer | Original / Water Cymatics | — | — | — |
 | SOUND / Arrangement Banks | Bank 1–4 | LOAD / SAVE | Overwrite arm | Visualizer |
 | EVOLVE | Motif variation | Freeze toggle | Tempo | Loop steps 16/32/64 |
-| MIX | Track level | Pan | Reverb | Delay |
+| MIX / Channels | Track level | Pan | FX send | Mute |
+| MIX / Master FX | Reverb | Delay | Auto Gain | Auto Level |
 
 ENV toggles A4 432/440. FX toggles binaural tones. ARP opens Percussion and turns drums on. Enabling restores audible minimums if density, track level or drum level is too low, unmutes track 8, and clears a conflicting solo. K4 counterclockwise turns drums off. OCT+ switches between Percussion and Percussion HIT. SEQ freezes/unfreezes motif replacement. GLO cycles Performance, Callback/Core and Voice Inspector, then returns to the instrument. In Voice Inspector, K1 selects a voice and SEQ stops transport and clears it with the normal fade. LFO toggles Perfect Key on either diagnostics screen and solos the selected track on the instrument. Perfect Key defaults on and maps all 27 keys to ascending notes in the current scene scale. Stopped SAVE stores Perfect Key and both tracks’ motion settings. Legato glide needs an overlapping note on the same track. Always glide uses the last pitch on that track. Glide and vibrato produce brief continuous excursions around or between scale notes. REC forces single-core graphics until reboot. For ON/OFF encoders turn clockwise to enable and counterclockwise to disable. For Solo turn clockwise to solo the selected role and counterclockwise to clear.
 
@@ -36,7 +37,7 @@ Binaural mode defaults OFF. Left = carrier minus half the difference; right = ca
 24 original algorithmic patches cover bass, drones, piano, plucked strings/guitar, flutes, woodwinds, bells, choir, strings and atmospheric pads. Eight scenes vary scale, tempo, density and nature selection. Anti-Curse uses a grounded minor palette with Sacred Earth percussion. Positive Healing uses a major palette with Moonlit Felt percussion. Each changes bass progression, atmosphere and FX. These are artistic listening intentions. Motifs vary at phrase boundaries; Freeze preserves the motif while its arrangement continues. Sixteen bounded voices share seven pitched tracks. Fifteen synthesized percussion kits share the integrated eighth track. Seven procedural nature types avoid streaming/decoding loads.
 
 ## Diagnostics and engineering
-The first diagnostics screen separates Audio Processing (callback time excluding measured FX) from FX Processing (timed reverb/delay passes). It shows two-second mean, p95 and peak, callback budget use, DMA xruns, CPU percentage, and core status. The second shows total callback mean, p95/p99 and peak, visual time, active voices, worker fault reason and queue drops. Percentiles use 100-microsecond bins. These are real measurements only on the device. Host numbers are not FM-1 benchmarks. Graphics reduce refresh when reported audio load exceeds 60%. Core 1 optionally computes geometry from an isolated snapshot. A 2 ms worker timeout, invalid job or fault retires the worker and recomputes on core 0. At elevated load animation slows before control feedback. Original keeps the existing geometry. Water Crystals uses six branches and two evolving rings tied to frequency, scene and musical activity. No audio callback waits for it. REC forces single-core mode until reboot. No hardware speedup is claimed. Startup master is zero until ADC input arrives. The per-sample synthesis, FX and output passes run from SRAM; no dynamic allocation or decoding occurs in the renderer.
+The first diagnostics screen separates Audio Processing (callback time excluding measured FX) from FX Processing (timed reverb/delay passes). It shows two-second mean, p95 and peak, callback budget use, DMA xruns, CPU percentage, and core status. The second shows total callback mean, p95/p99 and peak, visual time, active voices, worker fault reason and queue drops. Percentiles use 100-microsecond bins. These are real measurements only on the device. Host numbers are not FM-1 benchmarks. Graphics reduce refresh when reported audio load exceeds 60%. Core 1 optionally computes geometry from an isolated snapshot. A 2 ms worker timeout, invalid job or fault retires the worker and recomputes on core 0. At elevated load animation slows before control feedback. Original keeps the existing geometry. Water Cymatics uses six branches and two evolving rings tied to frequency, scene and musical activity. No audio callback waits for it. REC forces single-core mode until reboot. No hardware speedup is claimed. Startup master is zero until ADC input arrives. The per-sample synthesis, FX and output passes run from SRAM; no dynamic allocation or decoding occurs in the renderer.
 
 ## Arrangement banks
 
@@ -72,3 +73,24 @@ the Play Along instrument. In Change Key, the keys map chromatically from F
 and select the new tonic without sounding a note. The last choice applies
 on the next loop downbeat. If transport stops first, the choice applies on
 the next PLAY. The active key and pending choice are shown on the screen.
+
+Frequency Lock uses the exact selected Hz for every pitched track, including
+Bass. Track timing, envelopes, level and pan still shape the unison. Drums,
+Nature, binaural, Sacred Bass, fixed reference and FX are suppressed while
+locked. Reference Layer restores the ordinary arrangement. ENV still toggles
+A4 tuning for Reference Layer.
+
+MIX shows eight channel strips. SELECT chooses a strip, SEL toggles mute and
+LFO toggles solo. EDIT cycles Channels, Master FX and Reset. On Reset, turn
+K1 to arm and press SAVE to restore default mix settings. This leaves saved
+banks intact. Auto Gain gently trims measured track levels. Auto Level uses
+role-specific balance and a lower peak ceiling; the two can run together.
+
+Water Cymatics fills the PLAY viewport with intersecting traveling and
+reflected waves. Turn a PLAY knob to reveal its control overlay. Original
+remains selectable under SOUND > Visualizer or Arrangement Banks.
+
+The Lock Textures group can explicitly add drums and Nature to Frequency Lock.
+This introduces other frequencies. Leave Extra Textures off for strict output.
+On Nature, turn K3 right to audition for four seconds. Turn it left or press
+HOME to exit. An intention change selects that intention's default Nature bed.
