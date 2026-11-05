@@ -23,6 +23,7 @@ static const struct { uint8_t id, page, tab, knob; } parameter_routes[]={
  {16,PAGE_DRUMS,1,0},
  {49,PAGE_DRUMS,2,0},{62,PAGE_DRUMS,2,2},
  {38,PAGE_SETUP,0,0},{56,PAGE_SETUP,0,1},{80,PAGE_SETUP,0,2},{81,PAGE_SETUP,0,3},
+ {90,PAGE_SETUP,6,0},{91,PAGE_SETUP,6,1},{92,PAGE_SETUP,6,2},
  {39,PAGE_SETUP,1,0},{40,PAGE_SETUP,1,1},{41,PAGE_SETUP,1,2},
  {66,PAGE_AIR,0,0},{67,PAGE_AIR,0,1},{68,PAGE_AIR,0,2},{69,PAGE_AIR,0,3},
  {57,PAGE_SETUP,4,0},
@@ -46,8 +47,9 @@ static void open_parameter(unsigned index)
     case PAGE_MIX:mix_tab=tab;break;
     case PAGE_DRUMS:drum_tab=tab;break;
     case PAGE_SETUP:
-        if(tab>=4)debug=tab==4?1:3;
-        else setup_tab=tab;
+        if(tab==6){setup_tab=0;display_subtab=1;}
+        else if(tab>=4)debug=tab==4?1:3;
+        else {setup_tab=tab;if(!tab)display_subtab=0;}
         break;
     default:break;
     }
