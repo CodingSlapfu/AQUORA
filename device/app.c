@@ -44,6 +44,34 @@ static unsigned intro_start, intro_samples, intro_master;
 static volatile unsigned intro_master_moved;
 static unsigned intro_inputs_seen;
 static float intro_gain;
+static float intro_sine_table[256], intro_fm_phase[6];
+/* Small original 3-voice FM startup signature. Fixed table / phase updates;
+ * never calls libc sin/exp or the full effects bus in the audio interrupt. */
+static inline float intro_sine(float phase)
+{
+    float p=phase*256.f;
+    int index=(int)p;
+    float f=p-(float)index;
+    float a=intro_sine_table[index&255];
+    return a+(intro_sine_table[(index+1)&255]-a)*f;
+}
+static inline float intro_note(unsigned elapsed)
+{
+    float t=elapsed*(1.f/SR_RATE);
+    static const float increment[6]={220.f/SR_RATE,440.f/SR_RATE,392.f/SR_RATE,
+                                      784.f/SR_RATE,659.f/SR_RATE,988.5f/SR_RATE};
+    for(unsigned k=0;k<6;k++){
+        intro_fm_phase[k]+=increment[k];
+        if(intro_fm_phase[k]>=1.f)intro_fm_phase[k]-=1.f;
+    }
+    float low=fm_clampf((t-.12f)*1.7f,0,1)*fm_clampf((8.f-t)*.38f,0,1);
+    float halo=fm_clampf((t-1.1f)*2.1f,0,1)*fm_clampf((7.7f-t)*.42f,0,1);
+    float crystal=fm_clampf((t-2.7f)*2.0f,0,1)*fm_clampf((7.8f-t)*.34f,0,1);
+    float warm=intro_sine(intro_fm_phase[0]+.10f*intro_sine(intro_fm_phase[1]));
+    float bloom=intro_sine(intro_fm_phase[2]+.29f*intro_sine(intro_fm_phase[3]));
+    float glass=intro_sine(intro_fm_phase[4]+.31f*intro_sine(intro_fm_phase[5]));
+    return (warm*440.f*low+bloom*460.f*halo+glass*245.f*crystal);
+}
 static uint32_t evolve_events[SR_TRACKS], evolve_step;
 static uint8_t evolve_history[64];
 static unsigned led_test, led_step;
@@ -146,7 +174,7 @@ static void mix_select(int delta)
  unsigned moves=delta>0?(unsigned)delta:(unsigned)-delta;
  while(moves){
    next+=direction;
-   if(next<0||next>=SR_TRACKS+SR_BUS_COUNT)break;
+   if(next<0||next>=(mix_tab==5?SR_TRACKS:SR_TRACKS+SR_BUS_COUNT))break;
    if(!mix_visible((unsigned)next))continue;
    mix_focus=(unsigned)next;
    moves--;
@@ -381,6 +409,9 @@ void app_init(void)
     plat_cpu2_set(1);
     output_gain=0;
     intro_active=intro_samples=intro_master_moved=intro_inputs_seen=0;
+    memset(intro_fm_phase,0,sizeof intro_fm_phase);
+    for(unsigned i=0;i<256;i++)
+      intro_sine_table[i]=fm_sinf(i*(6.28318530718f/256.f));
     intro_master=~0u;
     intro_gain=0;
     evolve_step=0;
@@ -423,15 +454,14 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     }
     unsigned intro=intro_samples;
     unsigned playing_intro=intro_active;
-    unsigned chime=intro<SR_RATE*3u&&(playing_intro||intro_gain>.0001f);
+    unsigned chime=intro<SR_RATE*8u&&(playing_intro||intro_gain>.0001f);
     for(unsigned i=0;i<n;i++){
       float bell=0;
       if(chime){
         intro_gain+=((float)playing_intro-intro_gain)*.003f;
-        float t=(intro+i)*(1.f/SR_RATE);
-        float a=fm_clampf(t*60.f,0,1)*fm_clampf(1.f-t*.38f,0,1);
-        float b=fm_clampf((t-.19f)*60.f,0,1)*fm_clampf(1.f-t*.36f,0,1);
-        bell=(fm_sinf(t*2764.6015f)*a+fm_sinf(t*4160.1589f)*b)*580.f*intro_gain;
+        /* Master zero remains real silence. The start of the synth timeline
+         * is the first ready audio callback, not an early boot wall clock. */
+        if(master)bell=intro_note(intro+i)*intro_gain;
       }
       output_gain+=(target-output_gain)*.002f;
       lr[2*i]=(int32_t)((pcm[2*i]+bell)*256.f*output_gain);
@@ -498,7 +528,13 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
  if(press&(1u<<B_REC))plat_cpu2_set(0);
  if(press&(1u<<B_ENV))send(14,0);
- if(press&(1u<<B_FX))send(6,0);
+ if(press&(1u<<B_FX)){
+   if(page==PAGE_MIX&&!debug){
+     mix_tab=mix_tab==5?0:5;
+     if(mix_focus>=SR_TRACKS)mix_focus=selected;
+     dirty=1;
+   }else send(6,0);
+ }
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
@@ -506,7 +542,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    if(page==PAGE_SOUND)sound_picker=!sound_picker;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%3;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%4;
-   if(page==3){mix_tab=(mix_tab+1)%5;mix_reset=0;}
+   if(page==3){mix_tab=(mix_tab+1)%6;mix_reset=0;}
    bank_confirm=song_arm=0;bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
@@ -540,7 +576,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=(int)i;
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
    }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
-   else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3))mix_select(d);
+   else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3||mix_tab==5))mix_select(d);
    else if(page==PAGE_SETUP&&setup_tab==0)display_subtab=bounded((int)display_subtab+d,0,1);
    else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
    knob_until=0;dirty=1;
@@ -825,7 +861,7 @@ int app_expect(const char *what,int *got){
    *got=1;
    /* UI-local actions and the passive scanner are exercised in their own
     * panel and radio fixtures. Here verify engine-queued edits and labels. */
-   static const uint8_t local[]={38,39,40,41,42,52,56,57,58,59,66,68,69,80,81};
+   static const uint8_t local[]={38,39,40,41,42,52,56,57,58,59,66,68,69,80,81,90,91,92};
    for(unsigned i=0;i<sizeof parameter_routes/sizeof parameter_routes[0];i++){
      unsigned id=parameter_routes[i].id, skip=0;
      for(unsigned j=0;j<sizeof local;j++)skip|=id==local[j];
@@ -883,6 +919,8 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"mix_focus"))*got=mix_focus;
  else if(!strcmp(what,"mix_bus"))*got=mix_bus;
  else if(!strcmp(what,"mix_tab"))*got=mix_tab;
+ else if(!strcmp(what,"volume_percent"))*got=(int)(engine.tracks[selected].volume*100.f+.5f);
+ else if(!strcmp(what,"pan_percent"))*got=(int)(engine.tracks[selected].pan*100.f+(engine.tracks[selected].pan<0?-.5f:.5f));
  else if(!strcmp(what,"isolation"))*got=engine.isolate;
  else if(!strcmp(what,"frequency_lock"))*got=engine.frequency_lock;
  else if(!strcmp(what,"reverb_percent"))*got=(int)(engine.reverb_amount*100.f+.5f);
