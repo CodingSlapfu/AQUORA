@@ -1,0 +1,29 @@
+master 2048
+expect visual 0
+turn ALGO 5
+expect page 5
+expect setup_tab 0
+turn SELECT 1
+expect display_subtab 1
+spin K1 2
+expect ui_theme 2
+spin K2 1
+expect ui_font 2
+spin K3 1
+expect ui_background 1
+spin K4 1
+expect visual 1
+wait 1500
+reboot
+expect visual 1
+expect ui_theme 2
+expect ui_font 2
+expect ui_background 1
+turn ALGO 5
+expect page 5
+turn SELECT 1
+expect display_subtab 1
+shot white-neon-large.png
+spin K3 -1
+expect ui_background 0
+shot black-neon-large.png
