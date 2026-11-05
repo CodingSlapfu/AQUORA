@@ -510,6 +510,7 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return;
   uint32_t beat=step&15u;
   unsigned bar=e->loop_length>16?step/16u:0;
+  if(e->variation>0.f&&e->phrase)bar^=(e->phrase/2u)&3u;
   unsigned hits=0;
   if(beat==0 || (beat==8 && e->drum_density>=2)){e->kick_env=1.f;hits++;}
   if((beat==4||beat==12) && (e->drum_density>=2 || (rng(e)&3u)==0)){
@@ -638,10 +639,11 @@ static void trigger(sr_engine *e){
   const sr_scene *sc=&sr_scenes[e->scene];
   int tonic=sr_tonic(e);
   uint8_t energy=(uint8_t)(1.f+e->energy*2.99f);
-  drum_trigger(e,s,energy);
   /* The absolute counter survives phrase wrap; idx is only the loop position. */
-  if(absolute&&idx==0&&(e->loop_length!=16||(absolute&31u)==0)
-      &&!e->freeze&&rnd(e)<e->variation){
+  unsigned pace=e->evolve_pace?1u<<e->evolve_pace:(e->loop_length==16?2u:1u);
+  if(absolute&&idx==0&&!e->freeze&&(e->evolve_next||
+      ((absolute/e->loop_length)%pace==0&&e->variation>0.f&&rnd(e)<e->variation))){
+    e->evolve_next=0;
     e->phrase++;
     if(e->phrase%4u==0)memcpy(e->melody,e->motif_home,sizeof e->melody);
     else make_motif(e);
@@ -654,6 +656,11 @@ static void trigger(sr_engine *e){
   unsigned bar=idx/16u;
   uint32_t phrase_seed=e->phrase*0x9e3779b9u+e->scene*31u+bar;
   unsigned contour=section==3?0u:section+1u;
+  if(evolving){
+    if(section==2&&energy>1)energy--;
+    if(section==1&&energy<3)energy++;
+  }
+  drum_trigger(e,s,energy);
   if(evolving&&(s&15u)==0&&e->drums_enabled&&e->drum_density)
     e->kick_env*=.83f+.04f*(song_draw(phrase_seed,SR_DRUMS)&3u);
   if((s&7u)==0){

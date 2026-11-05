@@ -49,7 +49,7 @@ typedef struct {
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
   uint16_t sound_locks;
   uint8_t drum_presence, play_grid, groove_mode, groove_strength;
-  uint8_t air_track;
+  uint8_t air_track, evolve_pace, evolve_next;
   float air_target, air_wet;
   float bus_meter[SR_BUS_COUNT];
   uint32_t play_queued, play_released;

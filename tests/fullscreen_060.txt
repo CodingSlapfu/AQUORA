@@ -17,6 +17,9 @@ expect fullscreen 1
 tap PLAY
 wait 200
 expect fullscreen 0
+expect running 1
+tap PLAY
+wait 200
 expect running 0
 turn ALGO 5
 tap EDIT

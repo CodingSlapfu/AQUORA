@@ -32,7 +32,7 @@ static void geometry(int offset)
  }
 }
 static const char *onoff(int enabled){return enabled?"ON":"OFF";}
-static const char *visual_name(void){return visual_mode?"Resonance":"Original";}
+static const char *visual_name(void){return visual_mode?"Polar Bloom":"Original";}
 static const char *patch_name(void)
 {
  return selected==SR_DRUMS?sr_drum_kits[engine.drum_kit].name:
@@ -90,6 +90,9 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 16:*name="DRUM KIT";return sr_drum_kits[engine.drum_kit].name;
  case 17:*name="DRUM LEVEL %";number=engine.drum_level*100;break;
  case 18:*name="ENERGY %";number=engine.energy*100;break;
+ case 82:*name="EVOLUTION";return engine.variation==0?"Stable":engine.variation<.4f?"Subtle":engine.variation<.7f?"Flowing":"Adventurous";
+ case 83:*name="PACE";{static const char *pace[]={"Intention","2 loops","4 loops","8 loops"};return pace[engine.evolve_pace];}
+ case 84:*name="NEXT PHRASE";return engine.evolve_next?"Queued":"Turn right";
  case 19:*name="VARIATION %";number=engine.variation*100;break;
  case 20:*name="FREEZE";return onoff(engine.freeze);
  case 21:*name="NATURE BED";return beds[engine.bed_type];
@@ -134,6 +137,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
  case 78:*name="NATURE MODE";return !engine.bed_type?"Off":(engine.sound_locks&SR_SOUND_NATURE)?"Manual":"Auto";
+ case 80:*name="LED TEST";return onoff(led_test);
+ case 81:*name=led_step<NKEYS?"KEY SLOT":"BUTTON SLOT";number=led_step<NKEYS?led_step+1:led_step-NKEYS+1;break;
  case 79:*name="NATURE STYLE";{static const char *styles[]={"Ambient","Organic","Rhythmic","Ethereal"};return styles[engine.nature_style];}
  case 54:*name="AUDITION";return engine.nature_audition?"Playing":"Turn right";
  case 49:*name="MUTE";return onoff(track->mute);
@@ -350,10 +355,17 @@ static void draw(int animate)
  unsigned revision=state_revision;
  for(int band=0;band<5;band++){
    int immersion=page==0&&visual_mode&&!debug;
-   int visual=fullscreen||band==1||band==2||(immersion&&band>=3);
+   int visual=intro_active||fullscreen||band==1||band==2||(immersion&&band>=3);
    if(debug ? !dirty : visual ? !animate&&!dirty : !dirty)continue;
    cv_begin(240,48,RGB(5,17,22));
-   if(debug)performance(band);
+   if(intro_active){
+     geometry(band*48);
+     if(band==2){
+       cv_text(68,1,&FONT_B,"A Q U O R A",C_WHITE);
+       cv_text(96,28,&FONT_XS,APP_VERSION,C_WHITE);
+     }
+     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",C_WHITE);
+   }else if(debug)performance(band);
    else if(fullscreen)geometry(band*48);
    else if(immersion&&band==4&&knob_until){
      for(unsigned k=0;k<4;k++){
@@ -370,9 +382,9 @@ static void draw(int animate)
    }else if(visual&&page==PAGE_AIR){
      if(band==1){
        cv_text(8,0,&FONT_B,"EXPERIMENTAL AIR",C_WHITE);
-       cv_text(8,23,&FONT_XS,"REQUIRES BLE MIDI ADVERTISER",C_WHITE);
+       cv_text(8,23,&FONT_XS,"PASSIVE BLE / CALIBRATE HAND AWAY",C_WHITE);
      }else{
-       label(8,0,"SIGNAL dBm",air_rssi);
+       label(8,0,"SIGNAL RAW",air_rssi);
        label(120,0,"MODULATION %",engine.air_wet*100.f);
      }
    }else if(visual&&page==PAGE_DRUMS){
@@ -406,13 +418,26 @@ static void draw(int animate)
        last_attack=track->attack;last_release=track->release;
      }
      int offset=(band-1)*48;
-     if(band==1)cv_text(8,0,&FONT_XS,"OSCILLATOR",C_WHITE);
+     if(band==1)cv_text(8,0,&FONT_XS,engine.running?"LIVE MIX / MODEL":"PATCH MODEL",C_WHITE);
      else cv_text(8,0,&FONT_XS,"ATTACK / RELEASE",C_WHITE);
+     int16_t captured[128];
+     if(band==1&&engine.running){
+       unsigned flags=plat_lock();
+       unsigned start=scope_write;
+       for(unsigned j=0;j<128;j++)captured[j]=scope[(start+j)&127u];
+       plat_unlock(flags);
+     }
      for(unsigned j=1;j<=128;j++){
        int y0=band==1?29+shape[j-1]:88-envelope[j-1];
        int y1=band==1?29+shape[j]:88-envelope[j];
        if(band==1||j!=41)
-         cv_line(7+(j-1)*225/128,y0-offset,7+j*225/128,y1-offset,colors[selected]);
+         cv_line(7+(j-1)*225/128,y0-offset,7+j*225/128,y1-offset,
+                 band==1&&engine.running?RGB(50,86,91):colors[selected]);
+       if(band==1&&engine.running&&j<128){
+         int live0=(int)fm_clampf(captured[j-1]*(1.f/800.f),-17,17);
+         int live1=(int)fm_clampf(captured[j]*(1.f/800.f),-17,17);
+         cv_line(7+(j-1)*225/128,29-live0,7+j*225/128,29-live1,colors[selected]);
+       }
      }
    }else if(visual&&page==PAGE_SETUP){
      if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY",C_WHITE);
@@ -421,6 +446,24 @@ static void draw(int animate)
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,C_WHITE);
          cv_text(8,26,&FONT_XS,"M-VAVE FM-1 / FM-1_73",C_WHITE);
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":"EDIT: TAB   GLO: PERFORMANCE",C_WHITE);
+     }
+   }else if(visual&&page==PAGE_EVOLVE){
+     if(band==1){
+       label(8,0,"STEP",engine.loop_pos+1);
+       label(86,0,"PHRASE",engine.phrase);
+       label(162,0,"SECTION",engine.phrase/4u%4u+1u);
+     }else{
+       for(unsigned t=0;t<SR_TRACKS;t++){
+         unsigned y=t*5u+3u;
+         for(unsigned j=0;j<64;j++){
+           unsigned index=(evolve_step+1u+j)&63u;
+           if(evolve_history[index]&(1u<<t)){
+             unsigned x=9+j*222u/64u;
+             cv_line(x,y,x+2,y,colors[t]);
+           }
+         }
+       }
+       cv_line(232,2,232,42,RGB(87,135,140));
      }
    }else if(visual&&page==3)mixer_band(band);
    else if(visual)geometry(band*48);
@@ -433,7 +476,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,RGB(147,221,207));
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(187,2,&FONT_XS,meter,C_WHITE);cv_text(212,2,&FONT_XS,"%",C_WHITE);
-     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),C_WHITE);
+     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),C_WHITE);
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));
