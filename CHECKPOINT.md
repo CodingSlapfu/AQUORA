@@ -83,3 +83,11 @@ Resumed exactly from 9456729; verified both previous archives. The repository is
 The original motif returns every fourth evolution. V3 banks store the original motif, with v1/v2 migration seeding it from the saved melody. Piano and pluck offbeats use bounded scene-specific sample-clock offsets after evolution. Bass, drums and downbeats stay on the step clock. Tests checked Flow State's exact offset, motif return, Freeze and 0.5.0 bank migration. Native, browser and staged installer evidence are in evidence/0.6.0/memory/. Production still serves 0.5.0.
 
 Next extend generator quantization to the full adjustable timing/strength profiles, then complete the dynamic mixer, navigation, flagship visualizer, AIR, performance and full acceptance. Recover the exact commit and verify the source and package hashes.
+
+### 0.6.0 controls, visualizer and experimental AIR candidate
+
+Resumed 2d3b6db under the lock and verified the memory archives. Added EVOLVE Groove Intention/Straight/Swing and 0–100% strength; bank-compatible defaults; All/Active adaptive musical channels; SETUP Quick Find; Resonance ribbons; separate performance timings; and intention-specific Lead/Bass motion. This mixer exposes the existing eight independently mixable musical tracks. Separate source/bus mixer controls remain open.
+
+AIR now compiles using the pinned own BLE central stack, boots disabled, and scans compatible BLE MIDI advertisers when enabled. It has calibration, target including drums, Hold and bounded send smoothing. The platform supplies coarse RSSI buckets; actual antenna response, audio under radio load, and LCD FPS must be tested physically. The SDK-backed BLE alternative needs the full AC79 SDK; the own stack builds with the pinned packaging SDK. GitHub branch writes remain unresolved; use this exact SHA and the independent archive fallback.
+
+Host controls, motif/grid, role evolution, stereo, AIR ramp, visual fallback, native, browser, and staged installer evidence are in evidence/0.6.0/integration/. The forced core-0 build was checked before the final intention motion presets. Production remains 0.5.0. Next complete the independent buses, full workflow/quantization acceptance and repeat final fallback/performance acceptance before any deployment. Do not treat the staged candidate as the released 0.6.0.

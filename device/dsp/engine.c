@@ -230,6 +230,17 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
   e->scene=scene; e->tick_length=(uint32_t)((float)SR_RATE*60.f/(float)sr_scenes[scene].bpm/4.f);
   if(!(e->sound_locks&SR_SOUND_NATURE))e->bed_type=sr_scenes[scene].ambiance;
   if(e->frequency_auto)e->frequency=sr_scenes[scene].frequency;
+  static const sr_motion intention_motion[SR_SCENES][2]={
+    {{120,0,0,45},{90,0,0,32}}, {{105,1,5,44},{125,1,0,31}},
+    {{70,1,4,49},{75,0,0,33}}, {{135,1,3,39},{165,1,0,29}},
+    {{185,1,8,36},{175,1,2,28}}, {{150,1,6,41},{135,1,1,30}},
+    {{100,1,3,46},{135,1,0,32}}, {{120,1,5,43},{125,1,0,32}},
+    {{75,1,7,48},{90,0,0,34}}, {{145,1,7,40},{130,1,1,30}},
+    {{65,1,4,51},{70,0,0,35}}, {{170,1,6,38},{165,1,1,29}},
+    {{95,1,6,46},{110,1,0,32}}
+  };
+  for(unsigned t=0;t<=SR_BASS;t++)
+    if(!(e->sound_locks&(1u<<t)))e->motion[t]=intention_motion[scene][t];
   if(scene==6||scene==7){
     if(!(e->sound_locks&(1u<<SR_DRUMS)))e->drum_kit=scene==6?13:3;
     if(!(e->sound_locks&SR_SOUND_FX))e->reverb_amount=scene==6?.37f:.41f;
@@ -276,7 +287,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   memset(e,0,sizeof(*e)); e->rng=seed?seed:0x73ac05u;
   if(!lut_ready){for(int i=0;i<=LUT;i++)sin_table[i]=sinf((float)i*2.f*PI/(float)LUT);lut_ready=1;}
   e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
-  e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
+  e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->groove_strength=100;e->air_track=SR_TRACKS;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
@@ -495,7 +506,9 @@ static void ornament(sr_engine *e,unsigned slot,uint8_t midi,uint8_t velocity,fl
                      unsigned step,unsigned evolving)
 {
   static const uint8_t feel[SR_SCENES]={0,5,3,2,7,4,2,4,6,7,4,3,5};
-  unsigned offset=evolving&&(step&15u)?e->tick_length*feel[e->scene]/64u:0;
+  unsigned feel_units=e->groove_mode==1?0:e->groove_mode==2?6:feel[e->scene];
+  unsigned offset=evolving&&(step&15u)?
+    (e->tick_length*feel_units*e->groove_strength+3200u)/6400u:0;
   if(offset&&offset<e->tick_length){
     e->ornaments[slot].phase=(uint16_t)offset;
     e->ornaments[slot].midi=midi;
@@ -681,6 +694,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     if(e->vibrato_phase[t]>=1)e->vibrato_phase[t]-=1;
     vibrato[t]=m->vibrato_depth?sine(e->vibrato_phase[t])*m->vibrato_depth*.0005776f:0;
   }
+  e->air_wet+=(e->air_target-e->air_wet)*((float)frames*.0004f);
   for(int t=0;t<SR_TRACKS;t++){
     sr_track *track=&e->tracks[t];
     float level=(track->mute||(e->solo<SR_TRACKS&&e->solo!=t))?0:track->volume;
@@ -696,7 +710,10 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     }
     e->input_peak[t]*=1.f-(float)frames*.0005f;
     if(t==SR_DRUMS)level*=1.f+((int)e->drum_presence-50)*.006f;
-    send[t]=level*track->send;
+    float send_level=track->send;
+    if(e->air_track==SR_TRACKS||e->air_track==t)
+      send_level+=(1.f-send_level)*e->air_wet;
+    send[t]=level*send_level;
     if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
     left[t]=level*(.5f-.31f*track->pan);
     right[t]=level*(.5f+.31f*track->pan);
@@ -837,7 +854,9 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
 {
   unsigned mask=e->fx_mask;
   int audible=e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_FX;
-  float reverb=e->reverb_amount, delay=e->delay_amount;
+  float reverb=e->reverb_amount;
+  if(e->air_track==SR_TRACKS)reverb+=(.8f-reverb)*e->air_wet*.35f;
+  float delay=e->delay_amount;
   for(size_t i=0;i<frames;i++){
     e->reverb_wet+=(reverb-e->reverb_wet)*.002f;
     e->delay_wet+=(delay-e->delay_wet)*.002f;
@@ -919,7 +938,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   unsigned fading=e->stop_frames;
   unsigned audition=e->nature_audition;
   render_block(e,dry,n);
-  unsigned reverb=e->reverb_amount>0||e->reverb_wet>.00001f;
+  unsigned reverb=e->reverb_amount>0||e->reverb_wet>.00001f||(e->air_track==SR_TRACKS&&e->air_wet>.00001f);
   unsigned delay=e->delay_amount>0||e->delay_wet>.00001f;
   unsigned fx_mask=(reverb?1u:0u)|((reverb||delay)?2u:0u);
   if(e->fx_mask&~fx_mask){

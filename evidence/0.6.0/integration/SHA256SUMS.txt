@@ -1,0 +1,2 @@
+9ea90d528a5fa03bc11f588c24c835ea1011ca965695b4c157989ec43425acf2  AQUORA-0.6.0-integration-source.tar.gz
+6dd9eafd876e7255677e9722242d316c3b610937e50d6ed6199d818da94a6208  AQUORA-0.6.0-integration-package.tar.gz

@@ -1,0 +1,14 @@
+  ok groove_mode == 1
+  ok groove_strength == 60
+  ok mix_tab == 0
+  ok mix_tab == 3
+  ok mix_tab == 0
+  ok page == 6
+  ok air_on == 0
+  ok air_track == 7
+  ok knobs_valid == 1
+  ok drops == 0
+  ok setup_tab == 3
+  ok page == 2
+  ok knobs_valid == 1
+host: 1525 ms simulated, 104 blits, render 0.0% of real time (host CPU)

@@ -116,3 +116,33 @@ EDIT opens it. SETUP groups lighting and visualizer controls with arrangement
 banks on its second tab. OCT− jumps to banks. GLO opens Performance, with
 K1 selecting the visual pacing policy. The displayed PLAY blit rate is a
 software count and still needs confirmation on the physical LCD.
+
+### Groove, MIX and experimental AIR
+
+EVOLVE EDIT cycles Loop, New Song and Groove. On Groove, K1 chooses Intention,
+Straight or Swing. K2 scales the timing offset from 0 to 100 percent. K3 is
+loop length and K4 is Freeze. The timing profile applies to evolving piano
+and pluck offbeats. Bass, drums and downbeats stay on the transport clock.
+
+MIX opens with all eight musical tracks visible. EDIT cycles All Channels,
+Master FX, Reset Mix and Active Channels. Active Channels hides muted and
+zero-level channels and hides Drums when disabled. SELECT still chooses the
+physical track for adjustment, with All Channels available to recover hidden
+tracks. These channels correspond to existing independently controlled
+tracks.
+
+AIR is an opt-in experiment. K1 enables scanning, K2 selects a track or All,
+K3 captures the first named compatible BLE MIDI advertiser as a reference,
+and K4 holds or releases modulation. AIR uses coarse signal changes and
+smooths its effect on the send. A single-track target needs an audible FX
+return. No signal or switching AIR off returns modulation toward zero unless
+Hold is active. The radio is off at startup. Real hand response and device
+audio performance require hardware validation.
+
+SETUP EDIT also opens Quick Find. K1 chooses a destination and K2 opens it.
+Performance separates geometry time from UI draw time and reports average
+Audio and FX times, callback percentiles, DMA XRUNs and active voices.
+
+Each intention has Lead and Bass glide/vibrato defaults. Lock the relevant
+track under EVOLVE / New Song to retain its manually selected motion when
+changing intention. Saved arrangements recall their exact motion values.

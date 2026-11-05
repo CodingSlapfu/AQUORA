@@ -43,29 +43,30 @@ static void visual_init(void)
     for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
 }
 
-/* A shallow membrane shown as eight perspective cross-sections.
- * Counter-traveling waves meet a standing mode tied to the selected Hz. */
-static void cymatics_job(void)
+/* Eight phase-linked ribbons. Each role drives its own amplitude and
+ * events push a ripple through the shared interference field. */
+static void resonance_job(void)
 {
     unsigned time=vis_input.phase;
     unsigned mode=2u+vis_input.frequency/160u;
-    float bass=vis_input.meter[SR_BASS]*18.f;
+    float bass=vis_input.meter[SR_BASS]*14.f;
     float drums=vis_input.meter[SR_DRUMS]*18.f;
     if(bass>6.f)bass=6.f;
     if(drums>7.f)drums=7.f;
     for(unsigned row=0;row<SR_TRACKS;row++){
-        unsigned depth=row*9u;
-        float width=68.f+row*6.f;
-        float note=vis_input.meter[row]*18.f;
-        if(note>6.f)note=6.f;
+        unsigned depth=row*11u;
+        float level=vis_input.meter[row]*40.f;
+        if(level>12.f)level=12.f;
+        unsigned hit=vis_input.event[row]*9u;
         for(unsigned x=0;x<=24;x++){
             unsigned u=x*5u;
-            float node=vis_sine[(u*mode+depth)&127]*vis_sine[(depth*(mode-1u))&127];
-            float wave=vis_sine[(u+depth+time*3u)&127]+vis_sine[(u-depth-time*2u)&127];
-            float pulse=vis_sine[(u*2u+depth*2u-time*5u+vis_input.event[SR_DRUMS])&127];
-            float dy=node*(8.f+note+vis_input.atmosphere*4.f)+wave*(2.f+bass*.5f)+pulse*drums;
-            vis_output.xy[row][x][0]=(int)(120.f+((float)x-12.f)*width/12.f);
-            vis_output.xy[row][x][1]=62+(int)(row*22u)+(int)dy;
+            float forward=vis_sine[(u*mode+depth+time*2u)&127];
+            float reflected=vis_sine[(u*(mode-1u)-depth-time)&127];
+            float pulse=vis_sine[(u*2u+depth-time*5u+hit)&127];
+            float dy=forward*reflected*(5.f+level)+pulse*(2.f+drums)
+                +vis_sine[(u+time+depth)&127]*(bass+vis_input.atmosphere*4.f);
+            vis_output.xy[row][x][0]=(int)(18u+x*8u+row*2u);
+            vis_output.xy[row][x][1]=62+(int)(row*21u)+(int)dy;
         }
         vis_output.count[row]=25;
     }
@@ -75,7 +76,7 @@ static void visual_job(uint32_t unused)
 {
     (void)unused;
     unsigned begin=plat_ticks24();
-    if(vis_input.water)cymatics_job();
+    if(vis_input.water)resonance_job();
     else for(unsigned t=0;t<SR_TRACKS;t++){
       vis_output.count[t]=33;
       unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;

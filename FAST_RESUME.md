@@ -1,4 +1,5 @@
 # AQUORA fast resume
+**Current 0.6.0:** Read the controls, visualizer and experimental AIR section of CHECKPOINT.md. Verify evidence/0.6.0/integration archives under the existing lock.
 **Current 0.6.0:** Resume from the motif memory and groove section of CHECKPOINT.md. Verify evidence/0.6.0/memory archives under the existing lock.
 **Current 0.6.0:** Read the role evolution section of CHECKPOINT.md. Recover evidence/0.6.0/roles archives and verify SHA256SUMS.txt. Acquire the existing lock before resuming.
 **Latest 0.6.0 development checkpoint:** See the Play Along grid section of CHECKPOINT.md. Recover both archives from evidence/0.6.0/grid/ and verify SHA256SUMS.txt. The live installer is still 0.5.0.
