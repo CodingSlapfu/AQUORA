@@ -1,0 +1,3 @@
+/tmp/visualmatrix063.py:16: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  assert sum(x==expected for x in im.crop((0,band*48,240,(band+1)*48)).getdata())>5760,(d,band)
+PASS 60 theme/font/background/visualizer combinations, 180 authentic frames, exact canvas all fullscreen bands and wake controls

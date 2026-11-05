@@ -1,20 +1,18 @@
 # AQUORA — active outstanding work
 
-**0.6.2 software release: Completed.** Firmware source/tag:
-`b6d452202bb12c955c29f1726fea5a02bcc91e61` (`v0.6.2`).
-[Eight-job acceptance run](https://github.com/CodingSlapfu/AQUORA/actions/runs/41998659763): passed.
-[GitHub release/backups](https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.2): verified.
-[Live installer](https://parallax8-studio.jminie66.chatgpt.site/install/?v=0.6.2): 0.6.2 visible; exact accepted installer/firmware/WASM/manual bytes verified.
-Site source `e04137a5b8324ef24f1e6bcf54a91590e31fadd8`, version 178.
+0.6.3 accepted source: 0f2716ba0499def94884860248f9b0e887b0fd0d.
+Seven software build/test/package gates passed in Actions run 42022969585.
 
-No remaining software publication task from this run. Completed work moved to
-`archive/2026-11-05-062-completed.md`; detailed issue evidence remains in
-`validation/integration-062/ISSUE_ACCEPTANCE.md` and `LIVE_PUBLICATION.json`.
-Do not repeat completed builds/tests without a new source change or defect.
-
-| Outstanding | State |
+| Requirement | State / evidence |
 |---|---|
-| Owner FM-1 acceptance | Unverified: first-post-install versus cold boot; callback/XRUN headroom; delivered LCD FPS; AIR RF/hand response; fitted LED output; battery readings; font/visual/drum/Nature listening; physical direct upgrade and long soak. |
-| Future advanced AIR gestures | Deferred design proposals pending reliable real RF/hand response; not claimed as implemented. Existing Reverb/Echo/combined/manual mappings shipped. |
+| Global one-press SAVE, consistent snapshot, overwrite/CRC/prior-good retention, explicit SEL recall, manual | Software completed: quicksave.c, native suspended-flash backend, async power-cut tests, all-page PLAY/STOP scripts and bank migration. Physical audio/suspend behavior unverified. |
+| Pure black/white fullscreen, panels/header, Appearance SEL safety | Software completed: renderer and accepted appearance/panel/release063 checks; 270 appearance frames. |
+| Latest intro/Polar/lighting directives | Software completed: no intro geometry worker; stationary nodal contours/audio envelopes; On/Keys continuous fitted key masks, Dance steady buttons/event pulses. Physical viewing/LED output unverified. |
+| Versioned release + independent downloadable backups | In progress: publish accepted artifacts without rebuilding. |
+| Matching live installer and AQUORA showcase/emulator/Studio | Pending deployment and exact asset verification. |
+| Owner FM-1 acceptance | Unverified: live SAVE under music/rapid input/power interruption, first-install/cold boot, XRUN/headroom, LCD FPS, LED mapping, RF hand response, battery/listening/direct upgrade/soak. |
+| Advanced AIR gestures | Deferred proposals awaiting reliable physical RF response; existing FX mappings retained. |
 
-Preserve both original development and recovery branches and all rollback releases.
+Issues #1–#21 and comments are snapshotted in validation/integration-063/issues-snapshot.json.
+Existing software work from #1–#18 remains covered by validation/integration-062/ISSUE_ACCEPTANCE.md;
+new owner directives are covered above. Do not repeat successful tests without a relevant change.

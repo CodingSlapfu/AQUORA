@@ -1,0 +1,8 @@
+expect intro 1
+expect reset_visual_counters 1
+wait 1000
+expect intro 1
+expect geometry_jobs 0
+expect worker_jobs 0
+wait 7200
+expect intro 0
