@@ -68,6 +68,29 @@ for number, skip in enumerate([f"tap {button}" for button in buttons]
                                   "expect intro 0", "expect page 0", "expect running 0"],
           AQUORA_TEST_INTRO="1")
 
+panel("intro-timeout", ["expect intro 1", "wait 500", "expect peak_db_max -27",
+                       "wait 9700", "expect intro 0", "expect running 0"],
+      AQUORA_TEST_INTRO="1")
+panel("intro-mute", ["expect intro 1", "wait 80", "master 0", "peakreset", "wait 400",
+                    "expect intro 0", "expect peak_db_max -110"],
+      AQUORA_TEST_INTRO="1")
+led_commands = ["wait 70", "leds", "turn ALGO 5", "spin K2 1", "expect lighting 1",
+                "key 6 down", "wait 40", "leds", "key 6 up", "wait 40", "leds",
+                "spin K2 1", "expect lighting 2", "leds", "tap SAVE", "reboot",
+                "expect lighting 2", "turn ALGO 5", "spin K2 1", "expect lighting 3",
+                "tap PLAY", "wait 40", "leds", "tap PLAY", "wait 200",
+                "spin K3 1", "expect led_slot 0", "leds"]
+for slot in range(1, 42):
+    led_commands += ["spin K4 1", f"expect led_slot {slot}", "leds"]
+led_folder = panel("led-modes", led_commands)
+leds = [line for line in (led_folder / "panel.log").read_text().splitlines() if "leds:" in line]
+assert "white ++++++++++++++++ black +++++++++++" in leds[0]
+assert leds[1].count("#") == 1 and "#" not in leds[2]
+assert "white ................ black ..........." in leds[3]
+assert "#" in leds[4] and "PLAY" in leds[4]
+assert all(line.count("#") == 1 for line in leds[5:32])
+assert all("buttons |" not in line for line in leds[32:])
+
 clip("startup", ["wait 100"], AQUORA_TEST_INTRO="1")
 clip("sound", ["tap PLAY", "turn ALGO 1", "wait 300"])
 clip("evolve", ["tap PLAY", "turn ALGO 2", "wait 1000"])

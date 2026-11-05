@@ -19,7 +19,7 @@ static unsigned window_ms;
 static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
-static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce;
+static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm;
 static unsigned drum_tab, setup_tab, sound_picker, fullscreen, last_control_ms;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
 static unsigned air_on, air_hold, air_poll;
@@ -35,7 +35,7 @@ extern void plat_air_enable(int on);
 static unsigned quick_item;
 static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature",
  "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate","Nature Style","Evolution","Master FX","Track Routing"};
-static const uint8_t sound_groups[]={0,6,1,14,2,3,5,7,12,11,13};
+static const uint8_t sound_groups[]={0,6,1,2,3,5,7,12,11,13,14};
 
 static volatile unsigned intro_active;
 static unsigned intro_start, intro_samples, intro_master;
@@ -186,7 +186,14 @@ static void consume(void){
    if(next!=engine.scene)sr_set_scene(&engine,next);
    break;
  }
- case 2:engine.sound_locks|=1u<<c.track;if(c.track==SR_DRUMS)sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));else sr_set_track_patch(&engine,c.track,bounded(t->patch+d,0,SR_PATCHES-1));break;
+ case 2:case 16:{
+   unsigned role=c.kind==16?SR_DRUMS:c.track;
+   engine.sound_locks|=1u<<role;
+   if(role==SR_DRUMS)sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));
+   else sr_set_track_patch(&engine,role,bounded(t->patch+d,0,SR_PATCHES-1));
+   sr_preview_sound(&engine,role);
+   break;
+ }
  case 3:if(!interrupted&&play&&((physical_keys&(1u<<d))||(engine.play_grid&&engine.play_strength&&!engine.keyboard_mode)))sr_key_down(&engine,c.track,(unsigned)d);break;
  case 4:sr_set_frequency(&engine,bounded(engine.frequency+d,0,SR_FREQUENCIES-1));break;
  case 5:engine.nature_level_manual=1;engine.bed_level=adjust(engine.bed_level,d,.02f,1);break;
@@ -200,7 +207,6 @@ static void consume(void){
  case 13:t->volume=adjust(t->volume,d,.03f,1);break;
  case 14:sr_set_tuning_432(&engine,switched(engine.tuning_432,d));break;
  case 15:t->mute=!t->mute;break;
- case 16:engine.sound_locks|=1u<<SR_DRUMS;sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));break;
  case 17:sr_set_drum_level(&engine,engine.drum_level+d*.02f);break;
  case 18:engine.energy=adjust(engine.energy,d,.05f,1);break;
  case 82:{
@@ -271,7 +277,7 @@ static void consume(void){
  case 85:engine.nature_activity=bounded(engine.nature_activity+d,0,4);break;
  case 86:engine.nature_distance=bounded(engine.nature_distance+d,0,4);break;
  case 54:
-   if(d>0&&!engine.pending_lock&&engine.bed_type)engine.nature_audition=SR_RATE*4u;
+   if(d>0&&!engine.pending_lock&&engine.bed_type){engine.preview_frames=0;engine.nature_audition=SR_RATE*4u;}
    else if(engine.nature_audition>1102u)engine.nature_audition=1102u;
    break;
  case 53:
@@ -422,11 +428,12 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    unsigned flags=plat_lock();
    blocked_keys|=k;
    bank_confirm=0;
+   song_arm=0;
    requested_play=!requested_play;
    if(!requested_play)stop_generation++;
    plat_unlock(flags);
  }
- if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=0;send(44,0);}
+ if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=0;send(44,0);}
  if((press&(1u<<B_SEL))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
@@ -441,7 +448,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%3;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%4;
    if(page==3){mix_tab=(mix_tab+1)%5;mix_reset=0;}
-   bank_confirm=0;bank_message=BANK_IDLE;
+   bank_confirm=song_arm=0;bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
@@ -450,6 +457,9 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if((press&(1u<<B_SAVE))&&page==3&&mix_tab==2&&!debug){
     if(mix_reset)send(53,0);
     mix_reset=0;
+ }else if((press&(1u<<B_SAVE))&&page==PAGE_EVOLVE&&song_tab==1&&!debug){
+    if(song_arm&&!requested_play&&!engine.running&&!engine.stop_frames)send(song_arm,1);
+    song_arm=0;
  }else if((press&(1u<<B_SAVE))&&page==PAGE_SETUP&&setup_tab==1&&!debug){
     arrangement_execute();
     blocked_keys|=k;
@@ -470,7 +480,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  }
  oldkeys=k;
  int d=enc[0];
- if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_AIR);sound_picker=0;mix_reset=0;bank_confirm=0;knob_until=0;dirty=1;}
+ if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_AIR);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
  d=enc[1];
  if(d&&!debug){
    if(page==PAGE_SOUND&&sound_picker){
@@ -530,6 +540,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
     else if(control==52)mix_reset=d>0;
+    else if(control==58||control==59)song_arm=d>0&&!requested_play&&!engine.running?control:0;
     else if(control==80||control==81){
       if(control==80){led_test=d>0;led_step=0;}
       else if(led_test)led_step=bounded((int)led_step+d,0,NKEYS+NB);
@@ -592,7 +603,7 @@ void app_ui_init(void){
     battery_level=battery_read();
     battery_fade=4;
     battery_dirty=1;
-#ifndef PLAT_HOST
+#if !defined(PLAT_HOST) || defined(PLAT_WEB)
     intro_active=1;
 #else
     intro_active=getenv("AQUORA_TEST_INTRO")!=0;
@@ -708,6 +719,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"mute"))*got=track->mute;
  else if(!strcmp(what,"solo"))*got=engine.solo;
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
+ else if(!strcmp(what,"song_armed"))*got=song_arm;
  else if(!strcmp(what,"directory_ok")){
    *got=1;
    for(unsigned i=0;i<sizeof parameter_routes/sizeof parameter_routes[0];i++){
@@ -718,7 +730,39 @@ int app_expect(const char *what,int *got){
      knob_value(id,&name,buffer);
      if(id!=parameter_routes[i].id||!*name)*got=0;
    }
-   page=PAGE_PLAY;debug=0;selected=0;dirty=1;
+   page=PAGE_PLAY;song_tab=debug=selected=0;dirty=1;
+ }
+ else if(!strcmp(what,"directory_edits")){
+   *got=1;
+   /* UI-local actions and the passive scanner are exercised in their own
+    * panel and radio fixtures. Here verify engine-queued edits and labels. */
+   static const uint8_t local[]={38,39,40,41,42,52,56,57,58,59,66,68,69,80,81};
+   for(unsigned i=0;i<sizeof parameter_routes/sizeof parameter_routes[0];i++){
+     unsigned id=parameter_routes[i].id, skip=0;
+     for(unsigned j=0;j<sizeof local;j++)skip|=id==local[j];
+     if(skip)continue;
+     open_parameter(i);
+     char old[64], buffer[16];
+     const char *name;
+     if(id==54){engine.bed_type=1;engine.pending_lock=0;}
+     if(id==84)engine.freeze=0;
+     if(id==46)engine.loop_length=16;
+     const char *before=knob_value(id,&name,buffer);
+     unsigned j=0;
+     while(before[j]&&j+1<sizeof old){old[j]=before[j];j++;}
+     old[j]=0;
+     send(id,1);
+     consume();
+     if(!strcmp(old,knob_value(id,&name,buffer))){
+       send(id,-1);
+       consume();
+     }
+     if(!strcmp(old,knob_value(id,&name,buffer))){
+       printf("Parameter edit did not change %u (%s)\n",id,name);
+       *got=0;
+     }
+   }
+   page=PAGE_PLAY;song_tab=debug=selected=0;dirty=1;
  }
  else if(!strcmp(what,"battery_level"))*got=battery_level;
  else if(!strcmp(what,"battery_fade"))*got=battery_fade;

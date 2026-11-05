@@ -377,10 +377,11 @@ static void clear_transport(sr_engine *e)
     e->reverb_wet=e->delay_wet=0;
     e->fx_mask=0;
     e->lock_phase=0;
+    e->preview_frames=0;
     e->nature_audition=e->bird_wait=0;
     e->bird_left=e->bird_note=0;
     e->nature_active=e->nature_from=0;
-    e->nature_mono=e->nature_side=e->nature_mono_old=e->nature_side_old=0;
+    e->nature_mono=e->nature_side=0;
     e->nature_blend=1.f;e->nature_peak=e->master_peak=0;
     e->kick_env=e->hand_env=e->shaker_env=e->drum_meter=0;
     e->binaural_env=e->transport_env=e->sacred_gain=e->limiter=0;
@@ -403,7 +404,7 @@ void sr_stop(sr_engine *e)
     e->running=0;
 }
 static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats){
-  if(!e->running||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
+  if((!e->running&&!e->preview_frames)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
   int slot=-1;float quiet=1.e9f;
   for(int i=0;i<SR_VOICES;i++){
     if(!e->voices[i].active){slot=i;break;}
@@ -552,6 +553,22 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   }
   e->tracks[SR_DRUMS].events+=hits;
 }
+void sr_preview_sound(sr_engine *e,unsigned role)
+{
+  if(e->running||e->stop_frames||e->frequency_lock||role>=SR_TRACKS)return;
+  if(!e->preview_frames)clear_transport(e);
+  e->nature_audition=0;
+  e->preview_role=role;
+  e->preview_frames=SR_RATE;
+  for(unsigned i=0;i<SR_VOICES;i++){
+    e->voices[i].gate=0;
+    e->voices[i].release_coef=.002f;
+  }
+  if(role==SR_DRUMS){
+    if(!e->tracks[role].mute){e->kick_env=.62f;e->hand_env=.51f;e->shaker_env=.4f;}
+  }else sr_note_on(e,role,(uint8_t)(sr_tonic(e)+(role==SR_BASS?0:24)),72,1.3f);
+}
+
 static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
   const sr_drum_kit *kit=&sr_drum_kits[e->drum_kit];float sound=0.f;
   unsigned fm=e->drum_kit>=15;
@@ -851,7 +868,8 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   int locked=e->frequency_lock;
   float lock_hz=locked?sr_frequencies[e->frequency].hz:0;
   int audition=!locked&&e->nature_audition>0;
-  unsigned source=audition?SR_ISOLATE_NATURE:e->isolate;
+  unsigned preview=e->preview_frames&&!e->running;
+  unsigned source=audition?SR_ISOLATE_NATURE:preview?SR_ISOLATE_TRACK1+e->preview_role:e->isolate;
   e->nature_peak*=1.f-(float)frames*.0005f;
   for(unsigned b=0;b<SR_BUS_COUNT;b++)e->bus_meter[b]*=1.f-(float)frames*.0005f;
   int full=source==SR_ISOLATE_MIX;
@@ -1028,18 +1046,18 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     e->transport_env+=((e->running||audition?1.f:0.f)-e->transport_env)*.0008f;
     float bed_gain=audition?e->bed_level*clampf(((float)e->nature_audition-i)*(1.f/1102.5f),0,1):e->bed_level;
     float nature=0, nature_side=0;
-    if((audition||e->solo==SR_TRACKS)&&bed_gain>0&&
+    if(!preview&&(audition||e->solo==SR_TRACKS)&&bed_gain>0&&
        (e->bed_type||e->nature_active||e->nature_blend<1.f||e->nature_mono||e->nature_side)){
       if((e->frame_count+i)&1u){
         nature=e->nature_mono;
         nature_side=e->nature_side;
       }else{
-        e->nature_mono_old=e->nature_mono;
-        e->nature_side_old=e->nature_side;
+        float previous_mono=e->nature_mono;
+        float previous_side=e->nature_side;
         e->nature_side=0;
         e->nature_mono=bed(e,&e->nature_side);
-        nature=.5f*(e->nature_mono+e->nature_mono_old);
-        nature_side=.5f*(e->nature_side+e->nature_side_old);
+        nature=.5f*(e->nature_mono+previous_mono);
+        nature_side=.5f*(e->nature_side+previous_side);
       }
       float gain=bed_gain*e->transport_env;
       nature*=gain;
@@ -1101,11 +1119,14 @@ static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t fra
 {
   float ceiling=e->auto_level&&!e->frequency_lock?.70f:.78f;
   float peak=e->master_peak*(1.f-(float)frames*.0005f);
+  int binaural=!e->frequency_lock&&!e->nature_audition&&!e->preview_frames&&
+     (e->binaural_env>=.00003f||(e->running&&e->binaural_enabled&&e->solo==SR_TRACKS));
+  if(!binaural&&e->binaural_env<.00003f)e->binaural_env=0;
   for(size_t i=0;i<frames;i++){
     float l=dry[3*i],r=dry[3*i+1];
     float binaural_l=0,binaural_r=0;
-    if(!e->frequency_lock&&!e->nature_audition)render_binaural(e,&binaural_l,&binaural_r);
-    if(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL){
+    if(binaural)render_binaural(e,&binaural_l,&binaural_r);
+    if(binaural&&(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL)){
       if(!(i&7u))bus_meter(e,SR_BUS_BINAURAL,fmaxf(fabsf(binaural_l),fabsf(binaural_r)));
       l+=binaural_l;r+=binaural_r;
     }
@@ -1116,6 +1137,8 @@ static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t fra
     if(target<e->limiter || e->limiter==0.f)e->limiter=target;
     else e->limiter+=(target-e->limiter)*.00018f;
     float gain=e->limiter*e->master;
+    if(e->preview_frames&&e->preview_frames-i<1102u)
+      gain*=(e->preview_frames-i)*(1.f/1102.f);
     if(e->stop_frames){gain*=e->stop_frames*(1.f/256.f);e->stop_frames--;}
     out[2*i]=sampleout(l*gain);out[2*i+1]=sampleout(r*gain);
     e->frame_count++;
@@ -1131,7 +1154,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
  float dry[64*3];
  e->fx_ticks=0;
  while(frames){
-  if(!e->running&&!e->stop_frames&&!e->nature_audition){
+  if(!e->running&&!e->stop_frames&&!e->nature_audition&&!e->preview_frames){
     memset(out,0,frames*2*sizeof(*out));
     return;
   }
@@ -1166,6 +1189,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   if(e->running&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;
   if(e->stop_frames&&n>e->stop_frames)n=e->stop_frames;
   if(e->nature_audition&&n>e->nature_audition)n=e->nature_audition;
+  if(e->preview_frames&&n>e->preview_frames)n=e->preview_frames;
   unsigned fading=e->stop_frames;
   unsigned audition=e->nature_audition;
   render_block(e,dry,n);
@@ -1177,12 +1201,13 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     if(!(fx_mask&2)){e->delay_history=0;e->delay_pos=0;e->delay_wet=0;}
   }
   e->fx_mask=(uint8_t)fx_mask;
-  if(fx_mask&&!e->frequency_lock&&!audition){
+  if(fx_mask&&!e->frequency_lock&&!audition&&!e->preview_frames){
     uint32_t begin=e->clock_ticks?e->clock_ticks():0;
     process_fx(e,dry,n);
     if(e->clock_ticks)e->fx_ticks+=e->clock_ticks()-begin;
   }
   finish_block(e,dry,out,n);
+  if(e->preview_frames)e->preview_frames-=(uint32_t)n;
   if(audition)e->nature_audition=audition>n?audition-(uint32_t)n:0;
   if(fading&&!e->stop_frames){
     unsigned restart=e->restart;

@@ -143,7 +143,8 @@ master-volume movement dismisses it. The first skip input is consumed. The
 startup chime follows the master level.
 
 Hold HOME and tap EDIT to open Quick Find. K1 selects a destination and K2
-opens it. On SOUND, EDIT toggles the category list. SELECT chooses a category
+opens it. The directory continues from category shortcuts to individual
+parameters and highlights the knob that edits the selected setting. On SOUND, EDIT toggles the category list. SELECT chooses a category
 while the list is open and a track while editing.
 
 | Destination | K1 | K2 | K3 | K4 |
@@ -155,7 +156,9 @@ while the list is open and a track while editing.
 | SETUP / Lights and Display | Visualizer | Lighting | LED test | LED slot |
 | AIR | Radio | Target | Calibrate | Hold |
 
-Editing a patch or kit locks that choice. Release it in EVOLVE / New Song by
+Editing a patch or kit locks that choice and auditions it while stopped.
+To generate a New Song or Reroll Sounds, turn its knob to arm the action,
+then press SAVE while stopped. Release it in EVOLVE / New Song by
 selecting the role and turning Track Lock left. A manually selected Nature
 Bed remains selected until you return Nature to Auto. On Nature K4, turn
 right for Auto or left for Off. Turn Audition right to isolate
@@ -188,3 +191,90 @@ The battery glyph reports the FM-1's coarse reading. An empty red outline
 means low battery. The lightning glyph means power from a USB host. ABOUT
 spells out the current reading. Fullscreen fades the glyph out by two
 seconds. A new low battery reading can bring it back briefly.
+
+### Quick Find parameter directory
+
+The same control can appear on more than one page. This table gives its
+direct Quick Find destination. Device settings are saved by pressing SAVE
+while stopped outside the arrangement and mix confirmation pages. Bank
+fields are saved with the arrangement.
+
+| ID | Parameter | Direct destination | Knob | Range or action | Saved scope |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Scene | PLAY / Main | K1 | 13 intentions | Bank |
+| 18 | Energy % | PLAY / Main | K2 | 0–100% | Bank |
+| 22 | Fixed Tone % | PLAY / Main | K3 | 0–10% | Bank |
+| 5 | Nature % | PLAY / Main | K4 | 0–100% | Bank |
+| 2 | Patch | SOUND / Instrument | K1 | 30 melodic patches | Bank |
+| 75 | Brightness | SOUND / Instrument | K2 | −7 to +7 | Bank |
+| 76 | Attack | SOUND / Instrument | K3 | −7 to +7 | Bank |
+| 77 | Release | SOUND / Instrument | K4 | −7 to +7 | Bank |
+| 21 | Nature Bed | SOUND / Nature | K1 | Off or 11 beds | Bank |
+| 54 | Audition | SOUND / Nature | K3 | 4-second audition | Session |
+| 78 | Nature Mode | SOUND / Nature | K4 | Auto, manual, off | Bank |
+| 4 | Fixed Hz | SOUND / Frequency | K1 | 13 reference tones | Bank |
+| 48 | Pitch Mode | SOUND / Frequency | K3 | Reference or frequency lock | Bank |
+| 45 | Hz Source | SOUND / Frequency | K4 | Auto or manual | Bank |
+| 8 | Carrier Hz | SOUND / Binaural | K1 | 80–1000 Hz | Bank |
+| 7 | Beat Hz | SOUND / Binaural | K2 | 0.5–40 Hz | Bank |
+| 23 | Binaural % | SOUND / Binaural | K3 | 0–10% | Bank |
+| 6 | Binaural | SOUND / Binaural | K4 | On/off | Bank |
+| 30 | Sacred Level % | SOUND / Sacred Bass | K1 | 0–20% | Bank |
+| 31 | Sacred Source | SOUND / Sacred Bass | K2 | Off, musical, reference | Bank |
+| 36 | Harmonic % | SOUND / Sacred Bass | K3 | 0–100% | Bank |
+| 32 | Glide Mode | SOUND / Motion | K1 | Off, legato, always | Settings and bank |
+| 33 | Glide Ms | SOUND / Motion | K2 | 10–800 ms | Settings and bank |
+| 34 | Vibrato Hz | SOUND / Motion | K3 | 0.5–8 Hz | Settings and bank |
+| 35 | Vibrato Cents | SOUND / Motion | K4 | 0–50 cents | Settings and bank |
+| 13 | Track % | SOUND / Track Routing | K1 | 0–100% | Bank |
+| 24 | Pan % | SOUND / Track Routing | K2 | −100 to +100% | Bank |
+| 29 | Fx Send % | SOUND / Track Routing | K3 | 0–100% | Bank |
+| 28 | Solo | SOUND / Track Routing | K4 | Off or selected role | Bank |
+| 43 | Isolate | SOUND / Source Isolate | K1 | Full mix, role or source | Session |
+| 47 | Keyboard | SOUND / Keyboard | K1 | Play Along or Change Key | Bank |
+| 63 | Play Grid | SOUND / Keyboard | K2 | Live, 1/16, 1/32, Auto, 1/8 | Bank |
+| 73 | Key Snap % | SOUND / Keyboard | K3 | 0–100% | Bank |
+| 74 | Key Feel | SOUND / Keyboard | K4 | Intention or straight | Bank |
+| 55 | Extra Textures | SOUND / Lock Textures | K1 | On/off | Bank |
+| 14 | A4 Tuning Hz | SOUND / Lock Textures | K2 | 432/440 Hz | Bank |
+| 79 | Nature Style | SOUND / Nature Character | K1 | 4 styles | Bank |
+| 85 | Bird Activity | SOUND / Nature Character | K2 | 0–4 | Bank |
+| 86 | Bird Distance | SOUND / Nature Character | K3 | 0–4 | Bank |
+| 19 | Variation % | EVOLVE / Loop | K1 | 0–100% | Bank |
+| 20 | Freeze | EVOLVE / Loop | K2 | On/off | Bank |
+| 25 | Tempo Bpm | EVOLVE / Loop | K3 | 30–120 BPM | Bank |
+| 46 | Loop Steps | EVOLVE / Loop | K4 | 16/32/64 | Bank |
+| 58 | New Song | EVOLVE / New Song | K1 | Arm then SAVE | Session |
+| 59 | Reroll Sounds | EVOLVE / New Song | K2 | Arm then SAVE | Session |
+| 60 | Track Lock | EVOLVE / New Song | K3 | On/off | Bank |
+| 61 | Nature / Fx Lock | EVOLVE / New Song | K4 | On/off | Bank |
+| 64 | Groove | EVOLVE / Groove | K1 | Intention, straight, swing | Bank |
+| 65 | Strength % | EVOLVE / Groove | K2 | 0–100% | Bank |
+| 82 | Evolution | EVOLVE / Development | K1 | 4 levels | Bank |
+| 83 | Pace | EVOLVE / Development | K3 | Intention or 2/4/8 loops | Bank |
+| 84 | Next Phrase | EVOLVE / Development | K4 | Queue next phrase | Session |
+| 11 | Reverb % | MIX / Master FX | K1 | 0–80% | Bank |
+| 12 | Delay % | MIX / Master FX | K2 | 0–70% | Bank |
+| 50 | Auto Gain | MIX / Master FX | K3 | On/off | Bank |
+| 51 | Auto Level | MIX / Master FX | K4 | On/off | Bank |
+| 52 | Reset Mix | MIX / Reset Mix | K1 | Arm then SAVE | Session |
+| 9 | Drums | DRUMS / Pattern | K1 | On/off | Bank |
+| 10 | Density | DRUMS / Pattern | K2 | 0–8 | Bank |
+| 37 | Hit % | DRUMS / Pattern | K3 | 0–100% | Bank |
+| 17 | Drum Level % | DRUMS / Pattern | K4 | 0–100% | Bank |
+| 16 | Drum Kit | DRUMS / Sound / Mix | K1 | 19 kits | Bank |
+| 49 | Mute | DRUMS / Mute / Solo | K1 | On/off | Bank |
+| 62 | Presence % | DRUMS / Mute / Solo | K3 | 0–100% | Bank |
+| 38 | Visualizer | SETUP / Lights / Display | K1 | Original or Polar Bloom | Bank |
+| 56 | Lights | SETUP / Lights / Display | K2 | On, Keys, Off, Dance | Settings |
+| 80 | Led Test | SETUP / Lights / Display | K3 | On/off | Session |
+| 81 | Led Slot | SETUP / Lights / Display | K4 | 42 outputs | Session |
+| 39 | Bank | SETUP / Banks | K1 | 1–4 | Session |
+| 40 | Action | SETUP / Banks | K2 | Load/save | Session |
+| 41 | Overwrite | SETUP / Banks | K3 | Arm/disarm | Session |
+| 66 | Air Radio | AIR / AIR | K1 | Off/passive | Session |
+| 67 | Air Target | AIR / AIR | K2 | All or selected role | Session |
+| 68 | Calibrate | AIR / AIR | K3 | Capture reference | Session |
+| 69 | Air Hold | AIR / AIR | K4 | On/off | Session |
+| 57 | Visual Fps | SETUP / Performance | K1 | Auto or 20 fps target | Settings |
+| 42 | Voice | SETUP / Voice Inspector | K1 | 1–16 | Session |

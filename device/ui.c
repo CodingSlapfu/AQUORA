@@ -102,10 +102,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 19:*name="VARIATION %";number=engine.variation*100;break;
  case 20:*name="FREEZE";return onoff(engine.freeze);
  case 21:*name="NATURE BED";return beds[engine.bed_type];
- case 22:*name="FIXED TONE %";number=engine.tone_level*100;break;
+ case 22:*name="FIXED TONE %";return tenth(buffer,(int)(engine.tone_level*1000.f+.5f));
  case 23:*name="BINAURAL %";number=engine.binaural_level*100;break;
  case 24:*name="PAN %";number=track->pan*100;break;
- case 25:*name="TEMPO BPM";number=(SR_RATE*15u+engine.tick_length/2)/engine.tick_length;break;
+ case 25:*name="TEMPO BPM";return tenth(buffer,(SR_RATE*150u+engine.tick_length/2u)/engine.tick_length);
  case 28:*name="SOLO";return engine.solo<SR_TRACKS?role_names[engine.solo]:"OFF";
  case 29:*name="FX SEND %";number=track->send*100;break;
  case 30:*name="SACRED LEVEL %";number=engine.sacred_level*100;break;
@@ -121,8 +121,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 40:*name="ACTION";return bank_action?"SAVE":"LOAD";
  case 41:*name="OVERWRITE";return bank_confirm?"ARMED":"LOCKED";
  case 55:*name="EXTRA TEXTURES";return engine.lock_textures?"ON / not pure":"OFF / strict";
- case 58:*name="NEW SONG";return engine.running?"Stop first":"Turn right";
- case 59:*name="REROLL SOUNDS";return engine.running?"Stop first":"Turn right";
+ case 58:*name="NEW SONG";return engine.running?"Stop first":song_arm==id?"SAVE to confirm":"Turn to arm";
+ case 59:*name="REROLL SOUNDS";return engine.running?"Stop first":song_arm==id?"SAVE to confirm":"Turn to arm";
  case 60:*name="TRACK LOCK";return onoff(engine.sound_locks&(1u<<selected));
  case 64:{static const char *m[]={"Intention","Straight","Swing"};*name="GROOVE";return m[engine.groove_mode];}
  case 65:*name="STRENGTH %";number=engine.groove_strength;break;
@@ -394,7 +394,7 @@ static void draw(int animate)
  for(int band=0;band<5;band++){
    int immersion=page==0&&visual_mode&&!debug;
    int visual=intro_active||fullscreen||band==1||band==2||(immersion&&band>=3);
-   if(!(band==0&&battery_dirty)&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
+   if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    cv_begin(240,48,RGB(5,17,22));
    if(intro_active){
      geometry(band*48);
@@ -457,10 +457,10 @@ static void draw(int animate)
        last_attack=track->attack;last_release=track->release;
      }
      int offset=(band-1)*48;
-     if(band==1)cv_text(8,0,&FONT_XS,engine.running?"LIVE ROLE / MODEL":"PATCH MODEL",C_WHITE);
+     if(band==1)cv_text(8,0,&FONT_XS,(engine.running||engine.preview_frames)?"LIVE ROLE / MODEL":"PATCH MODEL",C_WHITE);
      else cv_text(8,0,&FONT_XS,"ATTACK / RELEASE",C_WHITE);
      int16_t captured[128];
-     if(band==1&&engine.running){
+     if(band==1&&(engine.running||engine.preview_frames)){
        unsigned flags=plat_lock();
        unsigned start=engine.scope_write;
        for(unsigned j=0;j<128;j++)captured[j]=engine.scope[(start+j)&127u];
@@ -471,8 +471,8 @@ static void draw(int animate)
        int y1=band==1?29+shape[j]:88-envelope[j];
        if(band==1||j!=41)
          cv_line(7+(j-1)*225/128,y0-offset,7+j*225/128,y1-offset,
-                 band==1&&engine.running?RGB(50,86,91):colors[selected]);
-       if(band==1&&engine.running&&j<128){
+                 band==1&&(engine.running||engine.preview_frames)?RGB(50,86,91):colors[selected]);
+       if(band==1&&(engine.running||engine.preview_frames)&&j<128){
          int live0=(int)fm_clampf(captured[j-1]*(1.f/320.f),-17,17);
          int live1=(int)fm_clampf(captured[j]*(1.f/320.f),-17,17);
          cv_line(7+(j-1)*225/128,29-live0,7+j*225/128,29-live1,colors[selected]);
@@ -487,9 +487,32 @@ static void draw(int animate)
          limited_text(8,0,220,&FONT_B,groups[group],C_WHITE);
          cv_text(8,24,&FONT_XS,"LEVELS FROM AUDIO ENGINE",C_WHITE);
        }
+     }else if(group==6&&selected<=SR_BASS){
+       unsigned flags=plat_lock();
+       float pitch=0,target=0;
+       for(unsigned i=0;i<SR_VOICES;i++){
+         const sr_voice *voice=&engine.voices[i];
+         if(voice->active&&voice->gate&&voice->track==selected){
+           pitch=voice->increment*SR_RATE;
+           target=voice->freq;
+           break;
+         }
+       }
+       plat_unlock(flags);
+       label(8,1,"OUTPUT Hz",(int)(pitch+.5f));
+       label(125,1,"TARGET Hz",(int)(target+.5f));
+       unsigned length=(unsigned)fm_clampf(engine.motion[selected].glide_ms*.25f,0,200);
+       cv_line(8,37,8+length,37,colors[selected]);
+       cv_line(8+length,34,8+length,41,colors[selected]);
+     }else if(group==3){
+       float difference=engine.beat_now*.5f;
+       label(8,1,"LEFT CARRIER Hz",(int)(engine.carrier_now-difference+.5f));
+       label(125,1,"RIGHT CARRIER Hz",(int)(engine.carrier_now+difference+.5f));
+       int end=8+(int)fm_clampf(engine.bus_meter[SR_BUS_BINAURAL]*2200.f,0,222);
+       for(int y=34;y<39;y++)cv_line(8,y,end,y,colors[selected]);
      }else{
-       unsigned bus=group==3?SR_BUS_BINAURAL:group==2?SR_BUS_REFERENCE:group==5?SR_BUS_SACRED:SR_BUS_NATURE;
-       float level=group==1||group==14||group==2||group==3||group==5?
+       unsigned bus=group==2?SR_BUS_REFERENCE:group==5?SR_BUS_SACRED:SR_BUS_NATURE;
+       float level=group==1||group==14||group==2||group==5?
           engine.bus_meter[bus]:engine.tracks[selected].meter;
        int end=8+(int)fm_clampf(level*1200.f,0,222);
        for(int y=8;y<19;y++)cv_line(8,y,end,y,colors[selected]);
@@ -507,7 +530,7 @@ static void draw(int animate)
    }else if(visual&&page==PAGE_EVOLVE){
      if(band==1){
        label(8,0,"STEP",engine.loop_pos+1);
-       label(86,0,"PHRASE",engine.phrase);
+       label(86,0,engine.freeze?"FROZEN":engine.evolve_next?"NEXT QUEUED":"PHRASE",engine.phrase);
        static const char *sections[]={"Opening","Build","Resolve","Rest","Return"};
        cv_text(162,0,&FONT_XS,"SECTION",RGB(126,166,164));
        limited_text(162,15,72,&FONT_B,sections[engine.phrase/4u%5u],C_WHITE);

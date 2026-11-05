@@ -121,6 +121,24 @@ static void telemetry(void)
     for(unsigned i=0;i<128;i++)assert(!engine.scope[i]);
 }
 
+static void stopped_audition(void)
+{
+    for(unsigned role=0;role<SR_TRACKS;role++){
+        sr_init(&engine,223);
+        engine.tracks[role].patch=24u+role%6u;
+        engine.drum_kit=15;
+        sr_preview_sound(&engine,role);
+        unsigned sounding=0;
+        for(unsigned b=0;b<190;b++){
+            sr_render(&engine,pcm,256);
+            for(unsigned i=0;i<512;i++)sounding+=pcm[i]!=0;
+            assert(!engine.running&&!engine.sequence_step);
+        }
+        assert(sounding>200&&!engine.preview_frames);
+        for(unsigned i=0;i<512;i++)assert(!pcm[i]);
+    }
+}
+
 static void air_signal(void)
 {
     aq_air_sensor sensor={0};
@@ -142,6 +160,7 @@ int main(void)
     air_signal();
     telemetry();
     evolution();
-    puts("PASS 13 intentions x 4 styles x 32 seeds, manual/off locks, new sounds selected and stereo beds fade to silence");
+    stopped_audition();
+    puts("PASS sound profiles, stereo beds, AIR filtering, role scope, evolution levels and stopped audition");
     return 0;
 }
