@@ -251,6 +251,23 @@ static void performance(int band)
 }
 static void mixer_band(int band)
 {
+ if(mix_tab==4){
+   static const char *names[]={"Nature","Sacred","Ref","Binaural","FX"};
+   int offset=(band-1)*48;
+   for(unsigned b=0;b<SR_BUS_COUNT;b++){
+     int x=4+(int)b*47;
+     uint16_t color=colors[b];
+     if(band==1){
+       if(b==mix_bus)cv_line(x,0,x+43,0,C_WHITE);
+       limited_text(x+1,2,43,&FONT_XS,names[b],color);
+     }
+     float mag=fm_clampf(engine.bus_meter[b],0,1);
+     int meter=(int)(fm_sqrtf(fm_sqrtf(mag))*58.f);
+     cv_line(x+5,29-offset,x+5,87-offset,RGB(75,90,112));
+     if(meter)for(int w=0;w<6;w++)cv_line(x+8+w,87-meter-offset,x+8+w,87-offset,color);
+   }
+   return;
+ }
  if(band==2&&(mix_tab==1||mix_tab==2)){
    label(8,2,"MASTER PEAK %",(int)(engine.master_peak*100.f));
    label(93,2,"LIMITER %",(int)(engine.limiter*100.f));
@@ -365,7 +382,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,RGB(147,221,207));
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(187,2,&FONT_XS,meter,C_WHITE);cv_text(212,2,&FONT_XS,"%",C_WHITE);
-     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":"ACTIVE CHANNELS"):visual_name(),C_WHITE);
+     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),C_WHITE);
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));

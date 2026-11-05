@@ -19,6 +19,7 @@
 extern "C" {
 #endif
 
+enum {SR_BUS_NATURE, SR_BUS_SACRED, SR_BUS_REFERENCE, SR_BUS_BINAURAL, SR_BUS_FX, SR_BUS_COUNT};
 typedef enum {SR_LEAD, SR_BASS, SR_DRONE, SR_HARMONY, SR_PIANO, SR_GUITAR, SR_CHOIR, SR_DRUMS} sr_role;
 enum {SR_ISOLATE_MIX, SR_ISOLATE_TRACK1, SR_ISOLATE_FIXED=SR_TRACKS+1,
       SR_ISOLATE_SACRED, SR_ISOLATE_BINAURAL, SR_ISOLATE_NATURE, SR_ISOLATE_FX};
@@ -49,6 +50,7 @@ typedef struct {
   uint8_t drum_presence, play_grid, groove_mode, groove_strength;
   uint8_t air_track;
   float air_target, air_wet;
+  float bus_meter[SR_BUS_COUNT];
   uint32_t play_queued;
   uint8_t play_track[27];
   uint32_t nature_audition, bird_wait;

@@ -666,6 +666,11 @@ static inline __attribute__((always_inline)) float fx(sr_engine *e,unsigned mask
 static inline __attribute__((always_inline)) int16_t sampleout(float v){
   v=clampf(v,-.999f,.999f);return (int16_t)(v*32767.f);
 }
+static inline __attribute__((always_inline)) void bus_meter(sr_engine *e,unsigned bus,float value)
+{
+  float peak=fabsf(value);
+  if(peak>e->bus_meter[bus])e->bus_meter[bus]=peak;
+}
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 __attribute__((section(".ram_text"), noinline))
 #endif
@@ -676,6 +681,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   int audition=!locked&&e->nature_audition>0;
   unsigned source=audition?SR_ISOLATE_NATURE:e->isolate;
   e->nature_peak*=1.f-(float)frames*.0005f;
+  for(unsigned b=0;b<SR_BUS_COUNT;b++)e->bus_meter[b]*=1.f-(float)frames*.0005f;
   int full=source==SR_ISOLATE_MIX;
   struct voice_config {
     sr_voice *voice;
@@ -826,6 +832,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       l+=nature*.72f;r+=nature*.72f;
       float peak=fabsf(nature*.72f);
       if(peak>e->nature_peak)e->nature_peak=peak;
+      if(!(i&7u))bus_meter(e,SR_BUS_NATURE,nature*.72f);
     }
     mix+=nature*.5f;
     if(locked){
@@ -841,8 +848,8 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     sacred*=full?left[SR_BASS]+right[SR_BASS]:
       (e->tracks[SR_BASS].mute||(e->solo<SR_TRACKS&&e->solo!=SR_BASS)?0:e->tracks[SR_BASS].volume);
     float reference=e->tone_level>0&&e->solo==SR_TRACKS?advance(&e->tone_phase,sr_frequencies[e->frequency].hz)*e->tone_level*e->transport_env:0;
-    if(full||source==SR_ISOLATE_FIXED){l+=reference;r+=reference;}
-    if(full||source==SR_ISOLATE_SACRED){l+=sacred*.6f;r+=sacred*.6f;}
+    if(full||source==SR_ISOLATE_FIXED){l+=reference;r+=reference;if(!(i&7u))bus_meter(e,SR_BUS_REFERENCE,reference);}
+    if(full||source==SR_ISOLATE_SACRED){l+=sacred*.6f;r+=sacred*.6f;if(!(i&7u))bus_meter(e,SR_BUS_SACRED,sacred*.6f);}
     dry[3*i]=l; dry[3*i+1]=r; dry[3*i+2]=mix;
   }
 }
@@ -863,6 +870,7 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
     float width=0;
     float wet=fx(e,mask,dry[3*i+2],&width);
     if(audible){
+      if(!(i&7u))bus_meter(e,SR_BUS_FX,fmaxf(fabsf(wet+width),fabsf(wet-width)));
       dry[3*i]+=wet+width;
       dry[3*i+1]+=wet-width;
     }
@@ -881,6 +889,7 @@ static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t fra
     float binaural_l=0,binaural_r=0;
     if(!e->frequency_lock&&!e->nature_audition)render_binaural(e,&binaural_l,&binaural_r);
     if(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL){
+      if(!(i&7u))bus_meter(e,SR_BUS_BINAURAL,fmaxf(fabsf(binaural_l),fabsf(binaural_r)));
       l+=binaural_l;r+=binaural_r;
     }
     // Soft-knee master saturation controls peaks without a dynamic allocation.

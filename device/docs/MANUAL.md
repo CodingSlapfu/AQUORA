@@ -146,3 +146,8 @@ Audio and FX times, callback percentiles, DMA XRUNs and active voices.
 Each intention has Lead and Bass glide/vibrato defaults. Lock the relevant
 track under EVOLVE / New Song to retain its manually selected motion when
 changing intention. Saved arrangements recall their exact motion values.
+
+MIX EDIT also offers Source Buses. SELECT chooses Nature, Sacred Bass,
+Reference, Binaural, or FX, and the encoders adjust that bus's existing
+controls. Meters show sampled post-routing signal activity. Binaural keeps
+its stereo carrier routing and does not expose a pan control.

@@ -18,7 +18,7 @@ static unsigned window_ms;
 static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
-static unsigned mix_tab,mix_reset, song_tab, song_nonce;
+static unsigned mix_tab,mix_reset,mix_bus,song_tab,song_nonce;
 static unsigned drum_tab, setup_tab, sound_picker, fullscreen, last_control_ms;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
 static unsigned air_on, air_hold, air_calibrated, air_poll;
@@ -85,6 +85,11 @@ static unsigned control_for(unsigned knob)
  if(page==PAGE_EVOLVE&&song_tab){
    static const uint8_t ids[][4]={{58,59,60,61},{64,65,46,20}};
    return ids[song_tab-1][knob];
+ }
+ if(page==PAGE_MIX&&mix_tab==4){
+   static const uint8_t controls[SR_BUS_COUNT][4]={{5,21,54,0},{30,31,36,0},
+      {22,4,48,45},{23,6,7,8},{11,12,50,51}};
+   return controls[mix_bus][knob];
  }
  if(page==PAGE_MIX&&(mix_tab==1||mix_tab==2)){
    static const uint8_t master_controls[]={11,12,50,51};
@@ -316,7 +321,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    if(page==PAGE_SOUND)sound_picker=!sound_picker;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%3;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%4;
-   if(page==3){mix_tab=(mix_tab+1)%4;mix_reset=0;}
+   if(page==3){mix_tab=(mix_tab+1)%5;mix_reset=0;}
    bank_confirm=0;bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
@@ -353,7 +358,8 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
      int index=0;
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=(int)i;
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
-   }else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
+   }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
+   else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
    knob_until=0;dirty=1;
  }
  d=enc[2];
@@ -506,6 +512,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"groove_strength"))*got=engine.groove_strength;
  else if(!strcmp(what,"air_track"))*got=engine.air_track;
  else if(!strcmp(what,"air_on"))*got=air_on;
+ else if(!strcmp(what,"mix_bus"))*got=mix_bus;
  else if(!strcmp(what,"mix_tab"))*got=mix_tab;
  else if(!strcmp(what,"isolation"))*got=engine.isolate;
  else if(!strcmp(what,"frequency_lock"))*got=engine.frequency_lock;

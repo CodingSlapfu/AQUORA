@@ -15,6 +15,11 @@ tap EDIT
 expect mix_tab 3
 shot active.png
 tap EDIT
+expect mix_tab 4
+turn SELECT 3
+expect mix_bus 3
+shot buses.png
+tap EDIT
 expect mix_tab 0
 shot all.png
 turn ALGO 3
