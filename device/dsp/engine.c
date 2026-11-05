@@ -513,6 +513,15 @@ static void trigger(sr_engine *e){
     e->phrase++;
   }
   int k=motif_degree(e,idx);
+  /* At zero variation or before the first evolution, retain the original
+   * voicings. Role decisions are otherwise independent of the audio RNG. */
+  unsigned evolving=e->variation>0.f&&e->phrase!=0;
+  unsigned section=(e->phrase/4u)%4u;
+  unsigned bar=idx/16u;
+  uint32_t phrase_seed=e->phrase*0x9e3779b9u+e->scene*31u+bar;
+  unsigned contour=section==3?0u:section+1u;
+  if(evolving&&(s&15u)==0&&e->drums_enabled&&e->drum_density)
+    e->kick_env*=.83f+.04f*(song_draw(phrase_seed,SR_DRUMS)&3u);
   if((s&7u)==0){
     int bass_note=tonic;
     if(e->scene>=6){
@@ -521,29 +530,48 @@ static void trigger(sr_engine *e){
       };
       bass_note+=scale_notes[sc->scale][degrees[e->scene-6][(s/8u)&3u]];
     }
-    sr_note_on(e,SR_BASS,(uint8_t)bass_note,112,2.3f);
-    if((s&15u)==0)sr_note_on(e,SR_DRONE,(uint8_t)(tonic+12),e->scene==6?86:76,8.f);
+    unsigned bass_draw=evolving?song_draw(phrase_seed,SR_BASS):0;
+    if(evolving&&contour&&(s&8u))
+      bass_note=tonic+scale_notes[sc->scale][1u+bass_draw%4u];
+    sr_note_on(e,SR_BASS,(uint8_t)bass_note,112-(bass_draw&7u),2.3f);
+    if((s&15u)==0){
+      unsigned pad=evolving&&contour?song_draw(phrase_seed,SR_DRONE)%3u:0;
+      sr_note_on(e,SR_DRONE,(uint8_t)(tonic+12+scale_notes[sc->scale][pad]),
+                 e->scene==6?86:76,8.f);
+    }
   }
-  if((s&3u)==0 && (rng(e)%4u)<energy){
-    int note=tonic+24+scale_notes[sc->scale][rng(e)%5u];
-    sr_note_on(e,SR_PIANO,(uint8_t)note,e->scene==7?91:e->scene==6?61:80,1.45f);
+  if((s&3u)==0){
+    unsigned draw=evolving?song_draw(phrase_seed,SR_PIANO+(s&15u)*8u):rng(e);
+    if(draw%4u<energy){
+      unsigned degree=(evolving?draw>>8:rng(e))%5u;
+      int note=tonic+24+scale_notes[sc->scale][degree];
+      sr_note_on(e,SR_PIANO,(uint8_t)note,e->scene==7?91:e->scene==6?61:80,1.45f);
+    }
   }
   if(k>=0 && (s%2u)==0){
-    if(rng(e)%5u<=energy){
+    unsigned lead=evolving?song_draw(phrase_seed,SR_LEAD+(s&15u)*8u):rng(e);
+    if(lead%5u<=energy){
       int note=tonic+24+scale_notes[sc->scale][k];
-      sr_note_on(e,SR_LEAD,(uint8_t)note,65,2.3f);
+      sr_note_on(e,SR_LEAD,(uint8_t)note,65+(evolving?(lead>>8)&7u:0),2.3f);
     }
-    if(rng(e)%7u==0){
-      int note=tonic+36+scale_notes[sc->scale][k];
+    unsigned harmony=evolving?song_draw(phrase_seed,SR_HARMONY+(s&15u)*8u):rng(e);
+    if(harmony%7u==0){
+      unsigned degree=evolving&&contour?((unsigned)k+2u)%7u:(unsigned)k;
+      int note=tonic+36+scale_notes[sc->scale][degree];
       sr_note_on(e,SR_HARMONY,(uint8_t)note,47,1.8f);
     }
   }
-  if((s&7u)==4 && rng(e)%4u<energy){
-    int note=tonic+12+scale_notes[sc->scale][(s/4u)%5u];
-    sr_note_on(e,SR_GUITAR,(uint8_t)note,71,1.7f);
+  if((s&7u)==4){
+    unsigned draw=evolving?song_draw(phrase_seed,SR_GUITAR+(s&15u)*8u):rng(e);
+    if(draw%4u<energy){
+      unsigned degree=evolving?(draw>>8)%5u:(s/4u)%5u;
+      int note=tonic+12+scale_notes[sc->scale][degree];
+      sr_note_on(e,SR_GUITAR,(uint8_t)note,71,1.7f);
+    }
   }
   if((s&15u)==0){
-    int note=tonic+12+scale_notes[sc->scale][(s/16u)%5u];
+    unsigned degree=evolving&&contour?song_draw(phrase_seed,SR_CHOIR)%5u:(s/16u)%5u;
+    int note=tonic+12+scale_notes[sc->scale][degree];
     sr_note_on(e,SR_CHOIR,(uint8_t)note,e->scene==6?80:65,7.f);
     sr_note_on(e,SR_HARMONY,(uint8_t)(note+12),52,3.8f);
     if(e->scene>=6){

@@ -67,3 +67,11 @@ Recover the candidate under evidence/0.6.0 by concatenating each numbered set an
 SOUND > Keyboard K3 selects Off (legacy default), Step or Half step. Held Play Along notes fire at the exact next selected grid boundary on the audio sample clock, retaining scale mapping. Release before the boundary cancels the note. STOP and keyboard mode changes clear the queue. The grid setting uses spare CRC-protected bank bits. Targeted ASan/UBSan timing tests passed. The matching native and WASM builds and installer package are in evidence/0.6.0/grid/. This is still a candidate. Production remains 0.5.0.
 
 Next implement independent long-form arrangement layers and intention-aware generator quantization. Then finish mixer/UI, Vizz, waveform editing, intention motion, AIR and performance acceptance. Verify a GitHub ref can be written before release. This commit is recoverable by exact SHA.
+
+### 0.6.0 role evolution checkpoint
+
+Resumed from 3eab02a and verified both recovery archives. GitHub branch creation returned HTTP 422. The Work Git client had no credential helper or authenticated GitHub session, and a non-force push stopped before authentication. Production was untouched.
+
+Added phrase-level role choices based on intention, phrase and bar, separate from sample RNG. Bass answers, pad voicings, lead accents, harmony intervals, piano/pluck figures, choir and drum downbeat accents evolve. Before first evolution or at zero variation the earlier decisions remain. Sanitizer tests cover 64 loops for every intention and loop length, reference stability and Freeze, plus motif and Play Along grid regressions. Native, WASM and staged installer artifacts are in evidence/0.6.0/roles/. Physical audio performance and long-session musical quality remain unverified.
+
+Next implement returning motif memory and intention-aware generator quantization, then dynamic mixer, intuitive UI, flagship visualizer, AIR and full release acceptance. Fetch this exact commit if branch writes still fail. Production stays on 0.5.0 until acceptance.
