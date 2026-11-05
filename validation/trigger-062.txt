@@ -8,3 +8,5 @@ Revalidation checkpoint: saved UI themes, global visual, AIR live signal, drum D
 Checkpoint: correct display-only edit-route test, add cinematic FM intro, HYP-influenced mixer overview/focus strip. All 18 issues remain acceptance targets.
 
 Pass legacy controls_060 and new mixer_062 alongside corrective_061 after EDIT cycle fix.
+
+Binaural P0 (#7/#12): 8-sample stereo phase-step interpolation; 220/6, 432/8, 980/40 Hz, off/on/off and Frequency Lock tests. Host timings are proxy only and noisy; owner physical validation remains open. Development only; do not publish.
