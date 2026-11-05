@@ -26,7 +26,7 @@ int plat_aquora_save_begin(uint32_t obj,const void *src,uint32_t len)
     aq_store.base=st_sector(obj,h->slot);
     aq_flash_busy_base=aq_store.base;
     aq_store.pos=aq_store.resumed=aq_store.slices=0;
-    aq_store.phase=1;aq_store.busy=0;aq_store.wait_tick=T4_CNT;aq_store.phase_tick=aq_store.wait_tick;aq_store.suspends=0;
+    aq_store.phase=1;aq_store.busy=0;aq_store.wait_tick=plat_ticks24();aq_store.phase_tick=aq_store.wait_tick;aq_store.suspends=0;
     memset(aq_store.phase_us,0,sizeof aq_store.phase_us);
     return 0;
 }
@@ -37,7 +37,7 @@ int plat_aquora_save_poll(void)
 #if FM1B_CPU2
     if(plat_cpu2_busy()){
       aq_store.busy++;
-      if((uint32_t)(T4_CNT-aq_store.wait_tick)>480000u)plat_cpu2_wait();
+      if((uint32_t)(plat_ticks24()-aq_store.wait_tick)>480000u)plat_cpu2_wait();
       return 1;
     }
 #endif
@@ -49,7 +49,7 @@ int plat_aquora_save_poll(void)
         st_hdr_t chk;
         int ok=!st_head(aq_store.header.type,aq_store.header.slot,&chk)&&
             chk.seq==aq_store.header.seq&&!st_body(chk.type,chk.slot,&chk);
-        aq_store.phase_us[3]=(T4_CNT-aq_store.phase_tick)/24u;aq_store.phase=0;
+        aq_store.phase_us[3]=(plat_ticks24()-aq_store.phase_tick)/24u;aq_store.phase=0;
         return ok?0:-7;
     }
     uint32_t off=aq_store.base, n=0, cmd=0x20;
@@ -65,14 +65,14 @@ int plat_aquora_save_poll(void)
     uint32_t flags=irq_save();
     int rc=FL_FAR(aq_flash_slice)(cmd,off,data,n,aq_store.resumed);
     irq_restore(flags);
-    aq_store.phase_us[phase-1u]=(T4_CNT-aq_store.phase_tick)/24u;
+    aq_store.phase_us[phase-1u]=(plat_ticks24()-aq_store.phase_tick)/24u;
     if(rc<0){aq_store.phase=0;aq_flash_busy_base=0;return rc;}
     aq_store.resumed=rc!=0;
     if(rc){aq_store.suspends++;return 1;}
     fl_inval(off,phase==1?4096:n);
     if(phase==2){aq_store.pos+=n;if(aq_store.pos>=aq_store.header.len)aq_store.phase=3;}
     else aq_store.phase++;
-    if(aq_store.phase!=phase)aq_store.phase_tick=T4_CNT;
+    if(aq_store.phase!=phase)aq_store.phase_tick=plat_ticks24();
     return 1;
 }
 

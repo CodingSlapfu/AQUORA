@@ -151,7 +151,8 @@ static void tracks(void)
     for(unsigned scene=6;scene<8;scene++){
         sr_init(&engine,19);
         sr_set_scene(&engine,scene);
-        assert(engine.drum_kit<SR_DRUM_KITS); /* v064 chooses fresh unlocked intention kits. */
+        assert(engine.drum_kit<SR_DRUM_KITS); /* fresh unlocked intention kits */
+        engine.tracks[SR_BASS].patch=1; /* sustained legacy Sacred-gain fixture; new plucked FM basses have separate PCM acceptance */
         engine.solo=SR_BASS;
         engine.reverb_amount=engine.delay_amount=0;
         sr_start(&engine);

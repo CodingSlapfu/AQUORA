@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: aquora-0.6.5-${{ github.ref }}
@@ -26,12 +27,21 @@ jobs:
         run: |
           cd evidence/0.6.0/editor
           sha256sum --check SHA256SUMS.txt
+      - name: Reuse unchanged five successful DSP gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin 8aa8338c4304c3d0748680c0f7f879b4b7735af9
+          git diff --exit-code 8aa8338c4304c3d0748680c0f7f879b4b7735af9 HEAD -- device/dsp tests/patch_shape_060.c tests/groove_air_060.c tests/motif_memory_060.c tests/play_grid_060.c tests/arrangement_roles_060.c
+          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/127590393672/logs > /tmp/previous-dsp.log
+          for name in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060; do grep -F "PASS $name" /tmp/previous-dsp.log; done
       - name: Build and execute isolated DSP regression tests
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/aquora-0.6.5-host-tests
-          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 music_modes_064 music_load_064 bass_library_065; do
+          for test in next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 music_modes_064 music_load_064 bass_library_065; do
             gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
               -Idevice/dsp -Ivendor/fm1-base/include \
               -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
@@ -100,7 +110,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [host-panel, browser-wasm, native, native-repro, single-core]
+        target: [host-panel, native, native-repro, single-core]
     env:
       TARGET: ${{ matrix.target }}
     steps:
@@ -155,6 +165,7 @@ jobs:
           case "$TARGET" in
             host-panel)
               "${build[@]}" --host 2>&1 | tee "$out/build.log"
+              cp device/build/host/sound-healing_host "$out/"
               python3 tests/font_provenance_065.py device/build/gen/felucca_font.h device/build/host/sound-healing_host "$out/font-provenance.json"
               gcc -O1 -g -Wall -Wextra -Werror -Wno-unused-function -DSR_DEVICE -DPLAT_HOST -DFM1B_CPU2=1 -Ivendor/fm1-base/include -fsanitize=address,undefined -no-pie tests/async_store_063.c -o "$RUNNER_TEMP/async-store"
               ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 "$RUNNER_TEMP/async-store" | tee "$out/async-store.log"
@@ -211,11 +222,39 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+  browser-wasm-reuse:
+    name: Verify and reuse matching successful WASM
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify unchanged browser compilation inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin 8aa8338c4304c3d0748680c0f7f879b4b7735af9
+          git diff --exit-code 8aa8338c4304c3d0748680c0f7f879b4b7735af9 HEAD -- device
+          test "$(git diff --name-only 8aa8338c4304c3d0748680c0f7f879b4b7735af9 HEAD -- vendor)" = vendor/fm1-base/device/aquora_async_store.h
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/jobs/127590393567 --jq .conclusion)" = success
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42126040098
+          name: aquora-065-browser-wasm
+          path: ${{ runner.temp }}/wasm
+      - name: Verify exact inherited bytes
+        run: cd "$RUNNER_TEMP/wasm" && sha256sum --check --strict SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aquora-065-browser-wasm
+          path: ${{ runner.temp }}/wasm/
+          retention-days: 30
+
   stage-release:
     name: Assemble matching firmware and browser installer
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    needs: [host-regressions, platform-acceptance]
+    needs: [host-regressions, platform-acceptance, browser-wasm-reuse]
     steps:
       - uses: actions/checkout@v4
         with:

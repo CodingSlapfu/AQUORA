@@ -24,6 +24,7 @@ static uint32_t timer(void){
  return tick;
 }
 #define T4_CNT timer()
+uint32_t plat_ticks24(void){return timer();}
 #define RAMFN
 #define FL_FAR(fn) fn
 #define fl_inval(a,b) ((void)(a),(void)(b))
