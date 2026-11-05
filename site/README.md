@@ -1,23 +1,13 @@
-# AQUORA — Public Showcase & Studio
+# AQUORA public website and Studio — v0.6.2
 
-An independent, responsive marketing website plus working FM-1 browser emulator and live companion control desk. This site lives on branch \`aquora-showcase-site\` and is **separate from firmware development**.
+Standalone website branch: `aquora-showcase-site`. Built publication branch: `gh-pages`. No firmware branches are changed.
 
-## Verified, pinned release
-- Public content and embedded WebAssembly app are pinned to **AQUORA v0.6.1** — GitHub release \`v0.6.1\`, firmware source commit \`23c8db04538fec13171a6e380501bb153f949311\`.
-- The GitHub Actions build downloads \`AQUORA-0.6.1-package.tar.gz\` from that published release, preserves the actual \`emu/app.wasm\` and \`emu/worklet.js\`, and applies a tiny site-only HTML bridge with \`tools/patch_emu.py\`. It does **not** rebuild or modify the firmware.
-- Screenshot assets come from the independently validated \`aquora-061-host-panel\` artifact in successful run \`41969916116\`. The older mixer image is explicitly identified as a 0.6.x test view.
-- Source and site generation scripts are kept in this branch; generated output is published to the \`gh-pages\` branch by the isolated website workflow.
+**Verified content:** Published [v0.6.2 release](https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.2), [successful software and host-panel validation](https://github.com/CodingSlapfu/AQUORA/actions/runs/41998659763), source commit `b6d452202bb12c955c29f1726fea5a02bcc91e61`. Exact WebAssembly SHA256: `d9bd8745bed889ee34106febdda5b07ce16db1977c88b0bf0212369837dbb2c2`.
 
-## Pages
-If GitHub Pages has not yet been activated, visit **repository Settings → Pages → Build and deployment → Deploy from a branch → \`gh-pages\` / \`/ (root)\` → Save**. After GitHub Pages reports the deployment URL, verify the site and emulator from an unsigned browser session. GitHub's default project URL should be \`https://codingslapfu.github.io/AQUORA/\`, but only treat it as live after a successful browser check.
+Current firmware sources define 30 named patches, 19 drum kits, 13 intentions, eight roles and 83 Quick Find parameters. Nine genuinely new 240×240 gallery images come only from the successful v0.6.2 host-panel artifact, including the redesigned mixer, visualizers, sound editor, drum controls and appearance screen. The independent site build deletes all prior generated output and copies only new assets.
 
-The standalone workflow also attempts an Actions-based Pages deployment when enabled. If Pages has not been configured and no privileged Pages token is supplied, the deploy job may fail even when the public \`gh-pages\` source branch has been generated correctly.
+The publication workflow checks package version, checksum, PNG dimensions, displayed copy, excluded public names and JavaScript/WebAssembly compatibility, then publishes the independent `gh-pages` branch and backup artifact. Original framework licenses and legal notices remain in project source.
 
-## Studio controls
-The editor UI uses same-origin \`postMessage\` and the emulator's existing button/encoder handlers. Browser audio begins on a user click on **Switch on** inside the emulator. The editor cannot edit a connected physical FM-1 and does not provide a new preset export API; the existing firmware controls and browser store determine supported saving.
+Expected hosting URL: https://codingslapfu.github.io/AQUORA/ . Repository owner may need Settings → Pages → Deploy from a branch → `gh-pages` / `/(root)`.
 
-## Source credits and safety
-This site has original AQUORA layout and imagery from actual validation renders; the packaged emulator and fm1-base worklet remain credited to their upstream authors (including Charles Vestal, MPL-2.0). The marketing page credits HYP-1 and ChoralRoot as independent design references only. No proprietary logos/assets are copied. Artistic intention/frequency themes are not medical claims.
-
-## Updating the site after the next completed release
-Only bump the pinned release tag, screenshots and emulator after that exact firmware version has **passed all software acceptance gates and been officially published**. Never point the public emulator at an unaccepted development branch. Preserve older release assets and installers.
+Studio sends same-origin physical-control events to the verified emulator, not to connected hardware. Browser audio requires a user gesture. Use headphones for stereo binaural listening. Artistic frequency themes are not medical claims.

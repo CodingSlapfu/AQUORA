@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Site-only bridge for the pinned AQUORA v0.6.1 FM-1 WebAssembly emulator.
+"""Site-only bridge for the pinned AQUORA v0.6.2 FM-1 WebAssembly emulator.
 
 Never alters app.wasm or worklet.js. Adds a same-origin postMessage adapter
 that maps Studio editor controls to the emulator's existing button/knob paths.
 """
 from pathlib import Path
+import re
 import sys
 
 path = Path(sys.argv[1])
@@ -12,10 +13,10 @@ data = path.read_text(encoding="utf-8")
 
 assert '<title>sound-healing in the browser</title>' in data
 data = data.replace('<title>sound-healing in the browser</title>',
-                    '<title>AQUORA 0.6.1 — FM-1 Browser Emulator</title>', 1)
-data = data.replace('<h1>sound-healing</h1>', '<h1>AQUORA <span style="font-size:.55em;opacity:.7">0.6.1</span></h1>', 1)
+                    '<title>AQUORA 0.6.2 — FM-1 Browser Emulator</title>', 1)
+data = data.replace('<h1>sound-healing</h1>', '<h1>AQUORA <span style="font-size:.55em;opacity:.7">0.6.2</span></h1>', 1)
 data = data.replace('sound-healing for the M-VAVE FM-1, in the browser:',
-                    'AQUORA 0.6.1 for the M-VAVE FM-1, in the browser:', 1)
+                    'AQUORA 0.6.2 for the M-VAVE FM-1, in the browser:', 1)
 bridge = r"""
 // ---------------------------------------------------------------- AQUORA Studio companion bridge (site-only)
 // Same-origin parent only. All editing uses existing verified FM-1 input paths.
@@ -71,6 +72,9 @@ bridge = r"""
 """
 assert data.count("</script>") == 1, "Unexpected emulator HTML structure"
 data=data.replace("</script>",bridge+"\n</script>",1)
+# Public-facing text only; never modify firmware binary or licensing.
+data=re.sub(r"(?i)M-VAVE\s+FM-1", "FM-1", data)
+data=re.sub(r"(?i)M-VAVE|HYP-1|ChoralRoot|Sony|Sega", "", data)
 path.write_text(data,encoding="utf-8")
 assert "AQUORA Studio companion bridge" in path.read_text()
 print("Pinned FM-1 emulator branded and Studio postMessage bridge installed:",path)

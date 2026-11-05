@@ -22,16 +22,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Construct public site from published, accepted v0.6.1 assets
+      - name: Construct public site from published, accepted v0.6.2 assets
         shell: bash
         run: |
           set -euo pipefail
           out="$GITHUB_WORKSPACE/dist"
-          rel="$RUNNER_TEMP/aquora-061"
+          rel="$RUNNER_TEMP/aquora-062"
           screens="$RUNNER_TEMP/aquora-panels"
           mkdir -p "$out/emu" "$out/studio" "$out/assets" "$rel" "$screens"
-          gh release download v0.6.1 -R "$GITHUB_REPOSITORY" -p AQUORA-0.6.1-package.tar.gz -D "$RUNNER_TEMP"
-          tar -xzf "$RUNNER_TEMP/AQUORA-0.6.1-package.tar.gz" -C "$rel"
+          gh release download v0.6.2 -R "$GITHUB_REPOSITORY" -p AQUORA-0.6.2-package.tar.gz -D "$RUNNER_TEMP"
+          tar -xzf "$RUNNER_TEMP/AQUORA-0.6.2-package.tar.gz" -C "$rel"
           test -s "$rel/emu/app.wasm"
           test -s "$rel/emu/worklet.js"
           cp -a "$rel/emu/." "$out/emu/"
@@ -39,23 +39,25 @@ jobs:
           cp site/index.html site/style.css "$out/"
           cp site/studio/index.html "$out/studio/"
           cp site/assets/favicon.svg "$out/assets/"
-          gh run download 41969916116 -R "$GITHUB_REPOSITORY" -n aquora-061-host-panel -D "$screens"
-          cp "$screens/corrective_061/polar-bloom-fullscreen.png" "$out/assets/polar.png"
-          cp "$screens/corrective_061/original-fullscreen.png" "$out/assets/original.png"
-          cp "$screens/corrective_061/sound-live.png" "$out/assets/sound.png"
-          cp "$screens/corrective_061/evolve-live.png" "$out/assets/evolve.png"
-          cp "$screens/mixer_unified_060/unified.png" "$out/assets/mixer.png"
-          cp "$screens/corrective_061/startup.png" "$out/assets/intro.png"
+          gh run download 41998659763 -R "$GITHUB_REPOSITORY" -n aquora-062-host-panel -D "$screens"
+          cp "$screens/panel-062/polar-fullscreen.png" "$out/assets/polar-062.png"
+          cp "$screens/previews/original/00.png" "$out/assets/original-062.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/sound.png" "$out/assets/sound-062.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/evolve.png" "$out/assets/evolve-062.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/mix.png" "$out/assets/mixer-062.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/mix-strip.png" "$out/assets/mix-strip-062.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/drums.png" "$out/assets/drums-062.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/air-fx.png" "$out/assets/air-062.png"
+          cp "$screens/appearance-matrix/t2-f2-b1/setup.png" "$out/assets/appearance-062.png"
           touch "$out/.nojekyll"
           cat > "$out/PROVENANCE.txt" <<'EOF'
-          AQUORA public site — pinned accepted v0.6.1
-          Source commit: 23c8db04538fec13171a6e380501bb153f949311
-          Authentic WebAssembly emulator from published v0.6.1 package.
-          Original bridge sends hardware input events, not direct DSP writes.
-          Actual firmware screenshots from successful CI run 41969916116.
-          The mixer image is a 0.6.x test capture; redesign is in progress.
-          v0.6.2 is an independent unfinished development candidate, not embedded.
+          AQUORA v0.6.2 website sourced from accepted release.
+          Firmware commit b6d452202bb12c955c29f1726fea5a02bcc91e61
+          CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/41998659763
+          Nine actual v0.6.2 software-rendered captures.
+          Published WASM byte-for-byte unchanged; Studio adapter affects HTML only.
           EOF
+          echo "d9bd8745bed889ee34106febdda5b07ce16db1977c88b0bf0212369837dbb2c2  $out/emu/app.wasm" | sha256sum --check --strict
           node -e 'const f=require("fs");new WebAssembly.Module(f.readFileSync("dist/emu/app.wasm"));console.log("WASM valid")'
           python3 - <<'PY'
           from html.parser import HTMLParser
@@ -64,20 +66,28 @@ jobs:
           d=Path("dist")
           assert "AQUORA Studio companion bridge" in (d/"emu/index.html").read_text()
           assert "AQUORA_STUDIO" in (d/"studio/index.html").read_text()
-          for name in ("polar","original","sound","evolve","mixer","intro"):
-              raw=(d/"assets"/(name+".png")).read_bytes()
+          for name in ("polar","original","sound","evolve","mixer","mix-strip","drums","air","appearance"):
+              raw=(d/"assets"/(name+"-062.png")).read_bytes()
               assert raw[:8]==b"\x89PNG\r\n\x1a\n"
               assert struct.unpack(">II",raw[16:24])==(240,240)
           class P(HTMLParser): pass
           for f in (d/"index.html",d/"studio/index.html",d/"emu/index.html"):
               P().feed(f.read_text())
-          print("Authentic 240x240 captures and site HTML verified")
+          import re
+          forbidden=re.compile(r"(?i)M-VAVE|HYP-1|ChoralRoot|Sony|Sega|0\.6\.1")
+          for file in d.rglob("*"):
+              if file.is_file() and file.suffix in (".html",".css",".js",".svg",".txt"):
+                  assert forbidden.search(file.read_text(encoding="utf-8")) is None, file
+          expected={name+"-062.png" for name in ("polar","original","sound","evolve","mixer","mix-strip","drums","air","appearance")}
+          assert {file.name for file in (d/"assets").glob("*.png")} == expected
+          assert all(name in (d/"index.html").read_text() for name in expected)
+          print("Verified 9 current 0.6.2 images and public text")
           PY
           (cd "$out"; find . -type f ! -name SITE-SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SITE-SHA256SUMS.txt)
       - name: Archive matching public-site build
         uses: actions/upload-artifact@v4
         with:
-          name: aquora-site-stable-061
+          name: aquora-site-stable-062
           path: dist/
           include-hidden-files: true
           retention-days: 90
@@ -101,7 +111,7 @@ jobs:
           cp -a "$GITHUB_WORKSPACE/dist/." .
           git add -A
           if ! git diff --cached --quiet; then
-            git commit -m "site: AQUORA v0.6.1 playable showcase and studio"
+            git commit -m "site: AQUORA v0.6.2 playable showcase and studio"
             git push origin HEAD:gh-pages
           fi
       - name: Configure GitHub Pages when already enabled
