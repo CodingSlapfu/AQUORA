@@ -2,3 +2,5 @@ AQUORA 0.6.2 isolated software validation checkpoint
 Baseline: v0.6.1 / 23c8db04538fec13171a6e380501bb153f949311
 Candidate includes targeted #8 startup debounce/timing, #14 Polar PLAY restoration, and #15 hidden timeline/animation gating.
 THIS IS A DEVELOPMENT BUILD: not accepted, not published, not safe to call full 0.6.2.
+
+Revalidation checkpoint: saved UI themes, global visual, AIR live signal, drum DSP retune.
