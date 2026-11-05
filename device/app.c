@@ -41,8 +41,6 @@ static volatile unsigned intro_active;
 static unsigned intro_start, intro_samples, intro_master;
 static volatile unsigned intro_master_moved;
 static float intro_gain;
-static int16_t scope[128];
-static unsigned scope_write, scope_enabled;
 static uint32_t evolve_events[SR_TRACKS], evolve_step;
 static uint8_t evolve_history[64];
 static unsigned led_test, led_step;
@@ -58,7 +56,7 @@ enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,22},{32,33,34,35},{13,24,29,28},
- {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,63,73,74},{55,14,48,45},{79,5,54,78}
+ {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,63,73,74},{55,14,48,45},{79,85,86,54}
 };
 static const uint8_t page_controls[4][4]={
  {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,29,49}
@@ -155,6 +153,7 @@ static unsigned control_for(unsigned knob)
  }
  return page==1?sound_controls[group][knob]:page_controls[page][knob];
 }
+#include "quick_find.h"
 static int switched(int state,int delta)
 {
  return delta==0?!state:delta>0;
@@ -269,7 +268,12 @@ static void consume(void){
    else{engine.bed_type=0;engine.sound_locks|=SR_SOUND_NATURE;}
    break;
  case 79:engine.nature_style=bounded(engine.nature_style+d,0,3);sr_select_nature(&engine,engine.rng);break;
- case 54:engine.nature_audition=engine.running&&!engine.pending_lock&&d>0?SR_RATE*4u:0;break;
+ case 85:engine.nature_activity=bounded(engine.nature_activity+d,0,4);break;
+ case 86:engine.nature_distance=bounded(engine.nature_distance+d,0,4);break;
+ case 54:
+   if(d>0&&!engine.pending_lock&&engine.bed_type)engine.nature_audition=SR_RATE*4u;
+   else if(engine.nature_audition>1102u)engine.nature_audition=1102u;
+   break;
  case 53:
    engine.solo=SR_TRACKS;
    engine.reverb_amount=.32f;engine.delay_amount=.18f;
@@ -322,8 +326,7 @@ void app_init(void)
     intro_active=intro_samples=intro_master_moved=0;
     intro_master=~0u;
     intro_gain=0;
-    scope_write=scope_enabled=evolve_step=0;
-    memset(scope,0,sizeof scope);
+    evolve_step=0;
     memset(evolve_events,0,sizeof evolve_events);
     memset(evolve_history,0,sizeof evolve_history);
     qread=qwrite=0;
@@ -349,12 +352,6 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     consume();
     if(n>APP_BLOCK)n=APP_BLOCK;
     sr_render(&engine,pcm,n);
-    if(scope_enabled){
-      for(unsigned i=0;i<n;i+=2){
-        scope[scope_write]=(int16_t)(((int)pcm[2*i]+pcm[2*i+1])/2);
-        scope_write=(scope_write+1u)&127u;
-      }
-    }
     float target=(float)master*(1.f/4096.f);
     if(!master)output_gain=0;
     if(intro_active){
@@ -491,9 +488,10 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     d=enc[3+i];
     unsigned control=control_for(i);
     if(!d||!control)continue;
-    if(control==71)quick_item=bounded((int)quick_item+d,0,sizeof quick_names/sizeof quick_names[0]-1);
+    if(control==71)quick_item=bounded((int)quick_item+d,0,QUICK_COUNT-1u);
     else if(control==72&&d>0){
-      switch(quick_item){
+      if(quick_item>=QUICK_CATEGORIES)open_parameter(quick_item-QUICK_CATEGORIES);
+      else switch(quick_item){
       case 0:page=PAGE_DRUMS;drum_tab=0;break;
       case 1:page=PAGE_MIX;mix_tab=0;break;
       case 2:page=PAGE_SOUND;group=6;sound_picker=0;break;
@@ -543,8 +541,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     else if(control==57)fps_auto=switched(fps_auto,d);
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
     else send(control,bounded(d,-8,8));
-    knob_focus=i;
-    knob_until=plat_ms()+900;
+    if(control!=72){knob_focus=i;knob_until=plat_ms()+900;}
     dirty=1;
  }
  if(press)dirty=1;
@@ -606,7 +603,14 @@ void app_frame(void)
 {
     app_input_only();
     unsigned now=plat_ms();
-    scope_enabled=page==PAGE_SOUND&&!sound_picker&&!debug;
+    unsigned scope_track=page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;
+    if(scope_track!=engine.scope_track){
+      unsigned flags=plat_lock();
+      engine.scope_track=scope_track;
+      engine.scope_write=0;
+      memset(engine.scope,0,sizeof engine.scope);
+      plat_unlock(flags);
+    }
     unsigned step=engine.sequence_step;
     if(step!=evolve_step){
       if(step<evolve_step)memset(evolve_history,0,sizeof evolve_history);
@@ -704,6 +708,18 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"mute"))*got=track->mute;
  else if(!strcmp(what,"solo"))*got=engine.solo;
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
+ else if(!strcmp(what,"directory_ok")){
+   *got=1;
+   for(unsigned i=0;i<sizeof parameter_routes/sizeof parameter_routes[0];i++){
+     open_parameter(i);
+     char buffer[16];
+     const char *name;
+     unsigned id=control_for(parameter_routes[i].knob);
+     knob_value(id,&name,buffer);
+     if(id!=parameter_routes[i].id||!*name)*got=0;
+   }
+   page=PAGE_PLAY;debug=0;selected=0;dirty=1;
+ }
  else if(!strcmp(what,"battery_level"))*got=battery_level;
  else if(!strcmp(what,"battery_fade"))*got=battery_fade;
  else if(!strcmp(what,"intro"))*got=intro_active;

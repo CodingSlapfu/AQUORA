@@ -129,7 +129,14 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 66:*name="AIR RADIO";return FM1B_BLE_CENTRAL?(air_on?"Scanning":"Off"):"Unavailable";
  case 67:*name="AIR TARGET";return engine.air_track<SR_TRACKS?role_names[engine.air_track]:"All tracks";
  case 68:*name="CALIBRATE";return air_sensor.calibrated?"Ready":"Turn right";
- case 71:*name="QUICK FIND";return quick_names[quick_item];
+ case 71:
+   *name="QUICK FIND";
+   if(quick_item<QUICK_CATEGORIES)return quick_names[quick_item];
+   {
+     const char *parameter;
+     knob_value(parameter_routes[quick_item-QUICK_CATEGORIES].id,&parameter,buffer);
+     return parameter;
+   }
  case 72:*name="OPEN";return "Turn right";
  case 69:*name="AIR HOLD";return onoff(air_hold);
  case 75:*name="BRIGHTNESS";number=engine.tracks[selected].tone;break;
@@ -145,6 +152,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 78:*name="NATURE MODE";return !engine.bed_type?"Off":(engine.sound_locks&SR_SOUND_NATURE)?"Manual":"Auto";
  case 80:*name="LED TEST";return onoff(led_test);
  case 81:if(led_step==NKEYS+NB){*name="LED SLOT";return "PLAY green";}*name=led_step<NKEYS?"KEY SLOT":"BUTTON SLOT";number=led_step<NKEYS?led_step+1:led_step-NKEYS+1;break;
+ case 85:*name="BIRD ACTIVITY";number=engine.nature_activity;break;
+ case 86:*name="BIRD DISTANCE";number=engine.nature_distance;break;
  case 79:*name="NATURE STYLE";{static const char *styles[]={"Ambient","Organic","Rhythmic","Ethereal"};return styles[engine.nature_style];}
  case 54:*name="AUDITION";return engine.nature_audition?"Playing":"Turn right";
  case 49:*name="MUTE";return onoff(track->mute);
@@ -448,13 +457,13 @@ static void draw(int animate)
        last_attack=track->attack;last_release=track->release;
      }
      int offset=(band-1)*48;
-     if(band==1)cv_text(8,0,&FONT_XS,engine.running?"LIVE MIX / MODEL":"PATCH MODEL",C_WHITE);
+     if(band==1)cv_text(8,0,&FONT_XS,engine.running?"LIVE ROLE / MODEL":"PATCH MODEL",C_WHITE);
      else cv_text(8,0,&FONT_XS,"ATTACK / RELEASE",C_WHITE);
      int16_t captured[128];
      if(band==1&&engine.running){
        unsigned flags=plat_lock();
-       unsigned start=scope_write;
-       for(unsigned j=0;j<128;j++)captured[j]=scope[(start+j)&127u];
+       unsigned start=engine.scope_write;
+       for(unsigned j=0;j<128;j++)captured[j]=engine.scope[(start+j)&127u];
        plat_unlock(flags);
      }
      for(unsigned j=1;j<=128;j++){
@@ -464,8 +473,8 @@ static void draw(int animate)
          cv_line(7+(j-1)*225/128,y0-offset,7+j*225/128,y1-offset,
                  band==1&&engine.running?RGB(50,86,91):colors[selected]);
        if(band==1&&engine.running&&j<128){
-         int live0=(int)fm_clampf(captured[j-1]*(1.f/800.f),-17,17);
-         int live1=(int)fm_clampf(captured[j]*(1.f/800.f),-17,17);
+         int live0=(int)fm_clampf(captured[j-1]*(1.f/320.f),-17,17);
+         int live1=(int)fm_clampf(captured[j]*(1.f/320.f),-17,17);
          cv_line(7+(j-1)*225/128,29-live0,7+j*225/128,29-live1,colors[selected]);
        }
      }
@@ -499,7 +508,9 @@ static void draw(int animate)
      if(band==1){
        label(8,0,"STEP",engine.loop_pos+1);
        label(86,0,"PHRASE",engine.phrase);
-       label(162,0,"SECTION",engine.phrase/4u%4u+1u);
+       static const char *sections[]={"Opening","Build","Resolve","Rest","Return"};
+       cv_text(162,0,&FONT_XS,"SECTION",RGB(126,166,164));
+       limited_text(162,15,72,&FONT_B,sections[engine.phrase/4u%5u],C_WHITE);
      }else{
        for(unsigned t=0;t<SR_TRACKS;t++){
          unsigned y=t*5u+3u;

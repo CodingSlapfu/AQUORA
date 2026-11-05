@@ -50,13 +50,15 @@ typedef struct {
   uint16_t sound_locks;
   uint8_t drum_presence, play_grid, groove_mode, groove_strength;
   uint8_t air_track, evolve_pace, evolve_next;
+  uint8_t scope_track, scope_write;
+  int16_t scope[128];
   float air_target, air_wet;
   float bus_meter[SR_BUS_COUNT];
   uint32_t play_queued, play_released;
   uint8_t play_track[27], play_strength, play_feel;
   uint32_t play_due[27];
   uint32_t nature_audition, bird_wait, nature_rng;
-  uint8_t nature_active, nature_from, nature_style, nature_level_manual, bird_phrase, bird_note;
+  uint8_t nature_active, nature_from, nature_style, nature_level_manual, nature_activity, nature_distance, bird_phrase, bird_note;
   float nature_blend, bird_pitch, bird_pan;
   float nature_mono, nature_side, nature_mono_old, nature_side_old;
   uint16_t bird_left;

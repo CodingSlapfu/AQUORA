@@ -150,7 +150,7 @@ while the list is open and a track while editing.
 | --- | --- | --- | --- | --- |
 | SOUND / Instrument | Patch | Brightness | Attack | Release |
 | SOUND / Nature | Bed | Level | Audition | Auto / Off |
-| SOUND / Nature Character | Style | Level | Audition | Auto / Off |
+| SOUND / Nature Character | Style | Bird activity | Bird distance | Audition |
 | EVOLVE / Development | Evolution | Variation | Pace | Next phrase |
 | SETUP / Lights and Display | Visualizer | Lighting | LED test | LED slot |
 | AIR | Radio | Target | Calibrate | Hold |
@@ -158,10 +158,10 @@ while the list is open and a track while editing.
 Editing a patch or kit locks that choice. Release it in EVOLVE / New Song by
 selecting the role and turning Track Lock left. A manually selected Nature
 Bed remains selected until you return Nature to Auto. On Nature K4, turn
-right for Auto or left for Off. While playing, turn Audition right to isolate
+right for Auto or left for Off. Turn Audition right to isolate
 the bed for four seconds. Turn left or press HOME to end the audition.
 
-The SOUND Instrument graph shows the measured mono mix over the selected
+The SOUND Instrument graph shows the measured selected role over its
 patch model during play. The attack and release panel is a model of the
 selected patch's envelope. EVOLVE plots observed role events by step. A
 blank lane is an interval with no captured events.

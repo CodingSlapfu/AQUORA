@@ -129,6 +129,9 @@ jobs:
               base="$RUNNER_TEMP/baseline"
               gcc -O2 -DSR_DEVICE -DPLAT_HOST -I"$base/device/dsp" -I"$base/vendor/fm1-base/include" "$base/device/dsp/engine.c" tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark-base"
               "$RUNNER_TEMP/benchmark-base" | tee "$out/host-timing-v0.6.0.log"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -I"$base/device/dsp" -I"$base/vendor/fm1-base/include" "$base/device/dsp/engine.c" tests/listen_061.c -lm -o "$RUNNER_TEMP/listen-base"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/listen_061.c -lm -o "$RUNNER_TEMP/listen-new"
+              python3 tests/corrective_listening.py "$RUNNER_TEMP/listen-base" "$RUNNER_TEMP/listen-new" "$out/listening" | tee "$out/listening.log"
               ;;
             browser-wasm)
               source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
@@ -143,6 +146,9 @@ jobs:
               firmware=device/build/sound-healing-0.6.1.fwsc
               node vendor/fm1-base/tests/installer_ports_test.mjs "$firmware" | tee "$out/installer.log"
               cp "$firmware" "$out/"
+              stat --printf='firmware %s bytes\n' "$firmware" | tee "$out/footprint.log"
+              find device/build -type f -name '*.map' -exec cp {} "$out/" \;
+              rg -n 'image |bss |flash |SRAM|RAM ' "$out/build.log" >> "$out/footprint.log" || true
               ;;
           esac
           (

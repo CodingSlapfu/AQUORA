@@ -36,3 +36,4 @@ spin K3 1
 spin K4 5
 expect led_slot 5
 leds
+expect directory_ok 1

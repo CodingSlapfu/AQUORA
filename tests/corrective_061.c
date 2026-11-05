@@ -2,8 +2,9 @@
 #include "../device/air_sensor.h"
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
-static sr_engine engine;
+static sr_engine engine, reference;
 static int16_t pcm[512];
 
 static void profiles(void)
@@ -62,6 +63,64 @@ static void nature_render(void)
     }
 }
 
+static void evolution(void)
+{
+    static const float intensity[]={0.f,.25f,.55f,.85f};
+    for(unsigned scene=0;scene<SR_SCENES;scene++)
+      for(unsigned length=16;length<=64;length*=2)
+        for(unsigned seed=1;seed<=2;seed++){
+          unsigned previous=0;
+          for(unsigned level=0;level<4;level++){
+            sr_init(&engine,seed);
+            sr_set_scene(&engine,scene);
+            sr_set_loop_length(&engine,length);
+            engine.variation=intensity[level];
+            engine.bed_level=engine.reverb_amount=engine.delay_amount=0;
+            sr_start(&engine);
+            engine.tick_length=16;
+            uint32_t last[SR_TRACKS]={0};
+            unsigned loops=96;
+            for(unsigned loop=0;loop<loops;loop++){
+              for(unsigned step=0;step<length;step++)sr_render(&engine,pcm,16);
+              if(level==0){
+                for(unsigned role=0;role<SR_TRACKS;role++){
+                  unsigned count=engine.tracks[role].events;
+                  if(loop==0)last[role]=count;
+                  else assert(count==last[role]*(loop+1u));
+                }
+              }
+            }
+            if(level==0)assert(engine.phrase==0);
+            else assert(engine.phrase>previous);
+            previous=engine.phrase;
+            unsigned phrase=engine.phrase;
+            engine.freeze=1;
+            for(unsigned step=0;step<length*8u;step++)sr_render(&engine,pcm,16);
+            assert(engine.phrase==phrase);
+          }
+        }
+}
+
+static void telemetry(void)
+{
+    int16_t other[512];
+    sr_init(&engine,777);
+    sr_start(&engine);
+    reference=engine;
+    engine.scope_track=SR_BASS;
+    unsigned visible=0;
+    for(unsigned b=0;b<40;b++){
+        sr_render(&engine,pcm,256);
+        sr_render(&reference,other,256);
+        assert(!memcmp(pcm,other,sizeof pcm));
+        for(unsigned i=0;i<128;i++)visible+=engine.scope[i]!=0;
+    }
+    assert(visible>100);
+    engine.tracks[SR_BASS].mute=1;
+    for(unsigned b=0;b<4;b++)sr_render(&engine,pcm,256);
+    for(unsigned i=0;i<128;i++)assert(!engine.scope[i]);
+}
+
 static void air_signal(void)
 {
     aq_air_sensor sensor={0};
@@ -81,6 +140,8 @@ int main(void)
     profiles();
     nature_render();
     air_signal();
+    telemetry();
+    evolution();
     puts("PASS 13 intentions x 4 styles x 32 seeds, manual/off locks, new sounds selected and stereo beds fade to silence");
     return 0;
 }
