@@ -298,6 +298,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   e->perfect_key=1; e->solo=SR_TRACKS; e->sacred_level=.08f; e->sacred_mode=1; e->sacred_harmonics=.32f;
   e->motion[0]=(sr_motion){120,0,0,45}; e->motion[1]=(sr_motion){90,0,0,32};
   e->loop_length=16;
+  e->play_grid=3;
   e->frequency_auto=1;
   sr_set_scene(e,0);
 }
@@ -934,12 +935,15 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
 
   if(e->running&&e->play_queued){
     uint32_t phase=e->tick_phase, half=e->tick_length/2u;
-    if(!phase||(e->play_grid==2&&phase==half)){
+    unsigned grid=e->play_grid;
+    if(grid==3)grid=e->tick_length>7400u?2u:1u;
+    unsigned downbeat=!phase&&(grid!=4||((e->sequence_step-1u)&1u)==0u);
+    if(downbeat||(grid==2&&phase==half)){
       uint32_t queued=e->play_queued;
       e->play_queued=0;
       for(unsigned key=0;key<27;key++)
         if(queued&(1u<<key))play_key(e,e->play_track[key],key);
-    }else if(e->play_grid==2&&phase<half&&n>half-phase)n=half-phase;
+    }else if(grid==2&&phase<half&&n>half-phase)n=half-phase;
   }
 
   if(e->running&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;

@@ -66,3 +66,5 @@ Read CHECKPOINT.md and NEXT_BUILD_ACTIVE.md first. 0.3.0 release files are under
 Use a nonblocking flock on /workspace/.fm1-sound-healing-build.lock. Reconcile GitHub main and local work. Verify remote checkpoints before long work and avoid repeating unchanged acceptance.
 
 JieLi 20260730.1 archive SHA256 a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd. Set JIELI_TOOLCHAIN to the extracted directory containing pi32v2 and common. Emscripten 3.1.64 builds the browser emulator. Run tests/accept-0.3.0.sh with an isolated output directory. Preserve updater family FM-1_73.
+
+Current source checkpoint adds Auto and explicit Play Along grids. Rebuild only after bank round trips and the remaining Play Along changes. Verified binaries remain the 924fbeb buses candidate.

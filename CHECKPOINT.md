@@ -97,3 +97,9 @@ Host controls, motif/grid, role evolution, stereo, AIR ramp, visual fallback, na
 The development branch aquora-0.6.0-integration was created and verified at a12b10d without changing main or production. The candidate adds a Source Buses view with Nature, Sacred Bass, Reference, Binaural and FX controls and sampled post-routing meters. This view uses separate tabs from the eight musical channels. Binaural remains a stereo pair. Host workflow and four matched FX PCM signature comparisons passed. Native, forced core-0, browser and staged installer evidence is under evidence/0.6.0/buses/.
 
 Production remains 0.5.0. Resume from this commit under the same lock. Next close the full generator/Play Along profile requirements and unified mixer/workflow acceptance. Then validate AIR and visual/software performance at 16-voice load, run full release acceptance and publish only the matching verified release. Physical AIR, display FPS and DMA performance remain unverified.
+
+### 0.6.0 Play Along grid source checkpoint
+
+Play Along now defaults to Auto for new settings and legacy v1 banks. Auto uses 1/32 at slower tempos and 1/16 otherwise. Live, 1/8, 1/16 and 1/32 can be selected. The ASan/UBSan host test passed exact onset samples, released-key cancellation and STOP clearing with leak detection disabled for this sandbox. This is a source-only update. The verified native firmware, browser emulator and installer archives under evidence/0.6.0/buses/ correspond to 924fbeb, not to the new grid source.
+
+Next verify the new grid value through all four banks, then implement Play Along strength, feel and short-tap scheduling. Continue unified mixer and full software acceptance before building the release. Keep production 0.5.0.

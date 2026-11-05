@@ -123,7 +123,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 71:*name="QUICK FIND";return quick_names[quick_item];
  case 72:*name="OPEN";return "Turn right";
  case 69:*name="AIR HOLD";return onoff(air_hold);
- case 63:{static const char *grid[]={"Off","Step","Half step"};*name="PLAY GRID";return grid[engine.play_grid];}
+ case 63:{static const char *grid[]={"Live","1/16","1/32","Auto","1/8"};*name="PLAY GRID";return grid[engine.play_grid];}
  case 62:*name="PRESENCE %";number=engine.drum_presence;break;
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
  case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}

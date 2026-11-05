@@ -191,7 +191,7 @@ static void consume(void){
  case 65:engine.groove_strength=bounded(engine.groove_strength+d*5,0,100);break;
  case 67:engine.air_track=bounded(engine.air_track+d,0,SR_TRACKS);break;
  case 70:engine.air_target=bounded(d,0,100)*.01f;break;
- case 63:engine.play_grid=bounded(engine.play_grid+d,0,2);engine.play_queued=0;break;
+ case 63:engine.play_grid=bounded(engine.play_grid+d,0,4);engine.play_queued=0;break;
  case 62:engine.drum_presence=bounded(engine.drum_presence+d,0,100);break;
  case 61:if(d>0)engine.sound_locks|=SR_SOUND_NATURE|SR_SOUND_FX;else engine.sound_locks&=~(SR_SOUND_NATURE|SR_SOUND_FX);break;
  case 54:engine.nature_audition=engine.running&&!engine.pending_lock&&d>0?SR_RATE*4u:0;break;
