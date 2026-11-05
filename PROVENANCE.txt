@@ -1,0 +1,7 @@
+AQUORA public site — pinned accepted v0.6.1
+Source commit: 23c8db04538fec13171a6e380501bb153f949311
+Authentic WebAssembly emulator from published v0.6.1 package.
+Original bridge sends hardware input events, not direct DSP writes.
+Actual firmware screenshots from successful CI run 41969916116.
+The mixer image is a 0.6.x test capture; redesign is in progress.
+v0.6.2 is an independent unfinished development candidate, not embedded.
