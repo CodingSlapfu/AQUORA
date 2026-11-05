@@ -1,33 +1,30 @@
-# AQUORA 0.6.2 — resume this integration
+# AQUORA 0.6.2 — release complete
 
-Branch: aquora-0.6.2-release-integration. Verified remote integration parent:
-128662b4e32a1e5d534c24b1f64026f42f03fa39, retains primary e281f618 and recovery
-c056115 as parents. Use the newest verified tip of the integration branch.
+Firmware/tag: b6d452202bb12c955c29f1726fea5a02bcc91e61 / v0.6.2.
+Working branch: aquora-0.6.2-release-integration. The newest documentation tip
+records publication; the immutable firmware tag remains the accepted code.
+Primary e281f618 and recovery c056115 are preserved as original branches and
+integration parents. Never re-merge/restart their already reconciled changes.
 
-Check active writers and acquire /workspace/.aquora-release.lock nonblocking
-before edits/build/publication. Current owner uses /workspace/scratch/eccf36adefd2/aquora
-and isolated vendor/build tree /workspace/scratch/eccf36adefd2/build. Never
-modify the previous checkout /workspace/scratch/8dbedffa0b9d/aquora.
+Acceptance: https://github.com/CodingSlapfu/AQUORA/actions/runs/41998659763
+Release: https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.2
+Installer: https://parallax8-studio.jminie66.chatgpt.site/install/?v=0.6.2
+Identity FM-1_73000602; firmware SHA256:
+a0a0d0f4d7fb28f27231d23f0a21574345d38dabcd70802850d64065cafd0e73
 
-Read NEXT_BUILD_ACTIVE.md and validation/integration-062/RECONCILIATION.md.
-Both binaural tests remain: binaural_062.c includes engine.c and must compile
-alone; binaural_stereo_062.c links engine.c normally. Run long kernel mode
-with `long`. Font generator uses checked-in OFL Inter Tight source offline.
+Read NEXT_BUILD_ACTIVE.md and validation/integration-062/LIVE_PUBLICATION.json.
+Software release is finished; physical FM-1 acceptance belongs to the owner.
+Do not rebuild or republish solely to continue a previous interrupted request.
 
-Git CLI reads work but push lacks credentials. Use GitHub plugin Git-data
-trees/commits and update_ref with expected_sha; verify remote by fetching and
-comparing exact trees. Preserve both original remote branches. Do not blindly
-merge recovery or rewrite the development branch. Never publish until gates pass.
+For new authorized changes, first check writers and acquire the exclusive
+/workspace/.aquora-release.lock nonblocking. This checkout is
+/workspace/scratch/eccf36adefd2/aquora. Preserve earlier checkouts.
+Git CLI read/fetch works; use the GitHub plugin for writes with expected-head
+leases. Source fonts, both binaural suites and all fixes are already integrated.
 
-CI .github/workflows/aquora-062-validation.yml supports the integration branch;
-a changed validation/trigger-062.txt starts the isolated complete matrix.
-Host artifacts/results are under /workspace/scratch/eccf36adefd2/results.
-Site project appgprj_6ad6d0ae409c8191b45224ecdec724db is the existing public
-parallax8-studio.jminie66.chatgpt.site installer. Source checkout is
-/workspace/scratch/eccf36adefd2/site; hosting static directory is out.
-Use renewed Sites credentials via stdin; never store them. Site source
-opening requires git init in an otherwise empty local directory in this runtime.
-
-Next: complete matrix, audit results, back up source and artifacts, package
-matching 0.6.2, publish and verify installer firmware identity FM-1_73000602
-and exact bytes. Physical FM-1 checks are the owner's responsibility.
+Existing public Site project appgprj_6ad6d0ae409c8191b45224ecdec724db,
+source e04137a5b8324ef24f1e6bcf54a91590e31fadd8, saved version 178.
+Site checkout /workspace/scratch/eccf36adefd2/site uses tracked out/ as source;
+dist/ is archival. Run tools/verify_aquora062.py and compare the committed Git
+tree and packaged archive before publishing; verify deployed asset bytes after.
+Never assume deployment success means the installer metadata was updated.

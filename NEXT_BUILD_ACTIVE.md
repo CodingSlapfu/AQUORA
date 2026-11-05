@@ -1,15 +1,20 @@
-# AQUORA 0.6.2 — active release queue
+# AQUORA — active outstanding work
 
-Authoritative requirements: GitHub Issues #1–#18 and comments retrieved
-November 5, 2026. Resume `aquora-0.6.2-release-integration`; both prior branches
-and parents e281f618 / c056115 are preserved. Do not restart development.
+**0.6.2 software release: Completed.** Firmware source/tag:
+`b6d452202bb12c955c29f1726fea5a02bcc91e61` (`v0.6.2`).
+[Eight-job acceptance run](https://github.com/CodingSlapfu/AQUORA/actions/runs/41998659763): passed.
+[GitHub release/backups](https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.2): verified.
+[Live installer](https://parallax8-studio.jminie66.chatgpt.site/install/?v=0.6.2): 0.6.2 visible; exact accepted installer/firmware/WASM/manual bytes verified.
+Site source `e04137a5b8324ef24f1e6bcf54a91590e31fadd8`, version 178.
 
-| Item | State / evidence |
+No remaining software publication task from this run. Completed work moved to
+`archive/2026-11-05-062-completed.md`; detailed issue evidence remains in
+`validation/integration-062/ISSUE_ACCEPTANCE.md` and `LIVE_PUBLICATION.json`.
+Do not repeat completed builds/tests without a new source change or defect.
+
+| Outstanding | State |
 |---|---|
-| Reconciliation / Sans | Completed source integration; both independent binaural suites, actual three-hour kernel, optical font generation and host panel checks in validation/integration-062. |
-| AIR / SOUND / Polar Bloom | Implemented; real DSP mappings/depth/neutral restoration, persisted FX/depth, direct editable SOUND, thirteen distinct profiles, frequency/audio geometry checks and 83-ID directory. Final native acceptance pending. |
-| Host UI / visibility | Passed current host suite, 49 startup skips, battery fade, both fullscreen returns, directory edits, zero hidden geometry/worker/scope/history/blit counters in checked intervals. |
-| Sound / performance evidence | All-kit old/new renders and 247 intention/kit mixed-output probes; baseline 0.6.1 and matched binaural software timing. Desktop timing is not device headroom proof. |
-| Final acceptance | Pending isolated native/repro/single-core/WASM, sanitized DSP, migration, artifacts and staged updater matrix at exact release commit. |
-| Publication | Pending complete gates, matching GitHub source/artifact backup, browser installer deployment and byte/identity verification. |
-| Physical FM-1 | Owner-unverified: first-post-install/cold-boot audio, actual deadline/XRUNs, RF hand response, LED outputs, delivered FPS, typography/visual/audio listening. |
+| Owner FM-1 acceptance | Unverified: first-post-install versus cold boot; callback/XRUN headroom; delivered LCD FPS; AIR RF/hand response; fitted LED output; battery readings; font/visual/drum/Nature listening; physical direct upgrade and long soak. |
+| Future advanced AIR gestures | Deferred design proposals pending reliable real RF/hand response; not claimed as implemented. Existing Reverb/Echo/combined/manual mappings shipped. |
+
+Preserve both original development and recovery branches and all rollback releases.
