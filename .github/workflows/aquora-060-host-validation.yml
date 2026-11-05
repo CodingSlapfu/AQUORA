@@ -88,6 +88,8 @@ jobs:
           cd "$work"
           sha256sum --check --strict "$input/FIRMWARE-SHA256.txt"
           test -s stage/install/index.html
+          grep -Fq '"product": "FM-1_73000600"' stage/install/index.html
+          grep -Fq '../firmware/sound-healing-0.6.0.fwsc' stage/install/index.html
           test -s stage/emu/app.wasm
           test -s stage/manual/index.html
           node source/vendor/fm1-base/tests/installer_ports_test.mjs stage/firmware/sound-healing-0.6.0.fwsc | tee "$RUNNER_TEMP/aquora-candidate/installer.log"
@@ -97,4 +99,103 @@ jobs:
           name: aquora-060-verified-candidate
           path: ${{ runner.temp }}/aquora-candidate/
           if-no-files-found: error
+          retention-days: 30
+
+  platform-acceptance:
+    name: ${{ matrix.target }} acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [host-panel, browser-wasm, native, single-core]
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Restore verified source and pinned vendor inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source" "$RUNNER_TEMP/results"
+          cd evidence/0.6.0/editor
+          sha256sum --check --strict SHA256SUMS.txt
+          tar --no-same-owner -xzf AQUORA-0.6.0-editor-source.tar.gz -C "$RUNNER_TEMP/source"
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/python" -m pip install --disable-pip-version-check Pillow==11.3.0
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+      - name: Install Emscripten 3.1.64
+        if: matrix.target == 'browser-wasm'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+      - name: Restore checksummed JieLi 20260730.1
+        if: matrix.target == 'native' || matrix.target == 'single-core'
+        shell: bash
+        env:
+          TOOLCHAIN_URL: ${{ secrets.AQUORA_JIELI_ARCHIVE_URL }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$TOOLCHAIN_URL" ]]; then
+            echo "::error::Configure the repository secret AQUORA_JIELI_ARCHIVE_URL with a GitHub-runner-accessible URL to the pinned JieLi 20260730.1 archive."
+            exit 1
+          fi
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 180 -o "$RUNNER_TEMP/jieli.tar.xz" "$TOOLCHAIN_URL"
+          printf '%s  %s\n' a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd "$RUNNER_TEMP/jieli.tar.xz" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/jieli"
+          tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
+          mapfile -t compilers < <(find "$RUNNER_TEMP/jieli" -type d -name pi32v2)
+          test "${#compilers[@]}" -eq 1
+          toolchain="$(dirname "${compilers[0]}")"
+          test -d "$toolchain/common"
+          printf 'JIELI_TOOLCHAIN=%s\n' "$toolchain" >> "$GITHUB_ENV"
+      - name: Build and test selected target
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          out="$RUNNER_TEMP/results"
+          build=(python3 vendor/fm1-base/tools/build.py device --release 0.6.0)
+          case "$TARGET" in
+            host-panel)
+              "${build[@]}" --host 2>&1 | tee "$out/build.log"
+              for test in controls_060 fullscreen_060 mixer_unified_060 patch_shape_060 play_panel_060 reachability_060; do
+                mkdir "$out/$test"
+                device/build/host/sound-healing_host "tests/$test.txt" "$out/$test" 2>&1 | tee "$out/$test.log"
+              done
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark"
+              "$RUNNER_TEMP/benchmark" | tee "$out/host-timing.log"
+              ;;
+            browser-wasm)
+              source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+              "${build[@]}" --web 2>&1 | tee "$out/build.log"
+              node -e 'const fs = require("node:fs"); new WebAssembly.Module(fs.readFileSync(process.argv[1]));' device/build/emu/app.wasm
+              cp -r device/build/emu "$out/"
+              ;;
+            native|single-core)
+              if [[ "$TARGET" == single-core ]]; then export FM1B_CPU2=0; fi
+              "${build[@]}" --sdk vendor/ac79-package-files 2>&1 | tee "$out/build.log"
+              grep -Fq 'identity FM-1_73000600' "$out/build.log"
+              firmware=device/build/sound-healing-0.6.0.fwsc
+              node vendor/fm1-base/tests/installer_ports_test.mjs "$firmware" | tee "$out/installer.log"
+              cp "$firmware" "$out/"
+              ;;
+          esac
+          (
+            cd "$out"
+            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+      - name: Preserve logs and build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aquora-060-${{ matrix.target }}
+          path: ${{ runner.temp }}/results/
+          if-no-files-found: ignore
           retention-days: 30
