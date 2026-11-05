@@ -10,6 +10,12 @@ static command queue[64];
 static volatile unsigned qread,qwrite,state_revision;
 static unsigned displayed_revision;
 static unsigned dropped,page,selected,group,oldkeys,oldbuttons,lastdraw,dirty=1,debug;
+#ifdef PLAT_HOST
+static unsigned geometry_jobs,history_updates,ui_blits,worker_jobs,worker_waits;
+#define AQ_VIS_COUNT(x) (++(x))
+#else
+#define AQ_VIS_COUNT(x) ((void)0)
+#endif
 static float output_gain;
 typedef struct { unsigned max, count, sum, bins[64]; } timing;
 typedef struct { unsigned mean, p95, p99, peak; } timing_summary;
@@ -628,7 +634,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
       case 17:page=PAGE_SOUND;group=14;sound_picker=0;break;
       case 18:page=PAGE_EVOLVE;song_tab=3;break;
       case 19:page=PAGE_MIX;mix_tab=1;break;
-      case 20:page=PAGE_SOUND;group=7;sound_picker=0;break;
+      case 20:page=PAGE_MIX;mix_tab=5;mix_focus=selected;break;
       }
     }else if(control==66){
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
@@ -757,7 +763,7 @@ void app_frame(void)
           if(count!=evolve_events[t])events|=1u<<t;
           evolve_events[t]=count;
         }
-        evolve_history[step&63u]=(uint8_t)events;
+        evolve_history[step&63u]=(uint8_t)events;AQ_VIS_COUNT(history_updates);
         evolve_step=step;
       }
     }
@@ -905,6 +911,32 @@ int app_expect(const char *what,int *got){
      }
    }
    page=PAGE_PLAY;song_tab=debug=selected=0;dirty=1;
+ }
+ else if(!strcmp(what,"geometry_jobs"))*got=geometry_jobs;
+ else if(!strcmp(what,"history_updates"))*got=history_updates;
+ else if(!strcmp(what,"ui_blits"))*got=ui_blits;
+ else if(!strcmp(what,"worker_jobs"))*got=worker_jobs;
+ else if(!strcmp(what,"worker_waits"))*got=worker_waits;
+ else if(!strcmp(what,"scope_samples"))*got=engine.scope_samples;
+ else if(!strcmp(what,"reset_visual_counters")){geometry_jobs=history_updates=ui_blits=worker_jobs=worker_waits=engine.scope_samples=0;*got=1;}
+ else if(!strcmp(what,"crystal_profiles")){
+   *got=1;uint32_t signatures[SR_SCENES];
+   memset(&vis_input,0,sizeof vis_input);vis_input.water=vis_input.full=1;vis_input.frequency=528;
+   for(unsigned scene=0;scene<SR_SCENES;scene++){
+     vis_input.scene=scene;memset(crystal_shape,0,sizeof crystal_shape);resonance_job();
+     uint32_t hash=2166136261u;
+     for(unsigned t=0;t<SR_TRACKS;t++)for(unsigned j=0;j<33;j++)for(unsigned axis=0;axis<2;axis++){
+       int xy=vis_output.xy[t][j][axis];if(xy < -256||xy>496)*got=0;
+       hash=(hash^(uint16_t)xy)*16777619u;
+     }
+     for(unsigned prior=0;prior<scene;prior++)if(signatures[prior]==hash)*got=0;
+     signatures[scene]=hash;
+   }
+   int16_t before[sizeof vis_output.xy/sizeof(int16_t)];memcpy(before,vis_output.xy,sizeof before);
+   vis_input.frequency=852;resonance_job();if(!memcmp(before,vis_output.xy,sizeof before))*got=0;
+   memcpy(before,vis_output.xy,sizeof before);vis_input.meter[SR_BASS]=.2f;vis_input.onset[SR_DRUMS]=1.f;
+   resonance_job();if(!memcmp(before,vis_output.xy,sizeof before))*got=0;
+   memset(crystal_shape,0,sizeof crystal_shape);dirty=1;
  }
  else if(!strcmp(what,"battery_level"))*got=battery_level;
  else if(!strcmp(what,"battery_fade"))*got=battery_fade;

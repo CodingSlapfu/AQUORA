@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/aquora-0.6.2-host-tests
-          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062; do
+          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 bank_migration_040; do
             gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
               -Idevice/dsp -Ivendor/fm1-base/include \
               -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
@@ -116,7 +116,8 @@ jobs:
           case "$TARGET" in
             host-panel)
               "${build[@]}" --host 2>&1 | tee "$out/build.log"
-              for test in controls_060 fullscreen_060 mixer_unified_060 patch_shape_060 play_panel_060 reachability_060 arrangements workflow_050 appearance_062 mixer_062 integration_062; do
+              python3 tests/parameter_registry_062.py "$out/parameter-registry.json" | tee "$out/parameter-registry.log"
+              for test in controls_060 fullscreen_060 mixer_unified_060 patch_shape_060 play_panel_060 reachability_060 arrangements workflow_050 appearance_062 mixer_062 integration_062 visibility_062; do
                 mkdir "$out/$test"
                 device/build/host/sound-healing_host "tests/$test.txt" "$out/$test" 2>&1 | tee "$out/$test.log"
               done

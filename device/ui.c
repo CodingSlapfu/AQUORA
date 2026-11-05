@@ -5,7 +5,7 @@ static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS
 #define FONT_B (*ui_value_font())
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain"};
-static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character"};
+static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character"};
 /* Original RGB565 panel skin palettes; all colors static and resolved only
  * at UI draw time. Fullscreen graphics use their art-directed background. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
@@ -719,7 +719,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"SOURCE BUSES"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
@@ -794,7 +794,7 @@ static void draw(int animate)
      }
    }
    if(band==0&&!intro_active)battery_glyph();
-   cv_blit(0,band*48);
+   cv_blit(0,band*48);AQ_VIS_COUNT(ui_blits);
  }
  dirty=0;
  battery_dirty=0;

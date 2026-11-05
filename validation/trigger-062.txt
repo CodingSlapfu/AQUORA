@@ -1,12 +1,1 @@
-AQUORA 0.6.2 isolated software validation checkpoint
-Baseline: v0.6.1 / 23c8db04538fec13171a6e380501bb153f949311
-Candidate includes targeted #8 startup debounce/timing, #14 Polar PLAY restoration, and #15 hidden timeline/animation gating.
-THIS IS A DEVELOPMENT BUILD: not accepted, not published, not safe to call full 0.6.2.
-
-Revalidation checkpoint: saved UI themes, global visual, AIR live signal, drum DSP retune.
-
-Checkpoint: correct display-only edit-route test, add cinematic FM intro, HYP-influenced mixer overview/focus strip. All 18 issues remain acceptance targets.
-
-Pass legacy controls_060 and new mixer_062 alongside corrective_061 after EDIT cycle fix.
-
-Binaural P0 (#7/#12): 8-sample stereo phase-step interpolation; 220/6, 432/8, 980/40 Hz, off/on/off and Frequency Lock tests. Host timings are proxy only and noisy; owner physical validation remains open. Development only; do not publish.
+Integrated exact-settling binaural + both suites, AQUORA Sans, AIR FX, direct SOUND, profiles, registry, hidden-work counters. Full 0.6.2 release gates.

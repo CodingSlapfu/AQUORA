@@ -51,6 +51,9 @@ typedef struct {
   uint8_t drum_presence, play_grid, groove_mode, groove_strength;
   uint8_t air_track, air_fx, air_depth, evolve_pace, evolve_next;
   uint8_t scope_track, scope_write;
+#ifdef PLAT_HOST
+  uint32_t scope_samples;
+#endif
   int16_t scope[128];
   float air_target, air_wet;
   float bus_meter[SR_BUS_COUNT];

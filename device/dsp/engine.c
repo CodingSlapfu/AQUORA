@@ -1071,6 +1071,9 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     if(locked&&!e->lock_textures){
       if(capture){
         e->scope[e->scope_write]=sampleout(scope);
+#ifdef PLAT_HOST
+      e->scope_samples++;
+#endif
         e->scope_write=(e->scope_write+1u)&127u;
       }
       e->tracks[SR_DRUMS].meter=0;
@@ -1081,6 +1084,9 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     if(capture){
       if(scope_track==SR_DRUMS)scope=drums*(left[SR_DRUMS]+right[SR_DRUMS]);
       e->scope[e->scope_write]=sampleout(scope);
+#ifdef PLAT_HOST
+      e->scope_samples++;
+#endif
       e->scope_write=(e->scope_write+1u)&127u;
     }
     if(e->auto_gain&&fabsf(drums)>e->input_peak[SR_DRUMS])e->input_peak[SR_DRUMS]=fabsf(drums);

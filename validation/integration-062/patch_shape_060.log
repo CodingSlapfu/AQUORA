@@ -3,4 +3,4 @@
   ok knobs_valid == 1
   ok knobs_valid == 1
   ok drops == 0
-host: 887 ms simulated, 44 blits, render 0.5% of real time (host CPU)
+host: 887 ms simulated, 44 blits, render 0.4% of real time (host CPU)

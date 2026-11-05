@@ -125,6 +125,7 @@ static void visual_job(uint32_t unused)
 
 static void prepare_geometry(void)
 {
+    AQ_VIS_COUNT(geometry_jobs);
     vis_input.phase=plat_ms()/(visual_mode?35u:49u);
     unsigned flags=plat_lock();
     vis_input.water=visual_mode&&page==0;
@@ -142,6 +143,7 @@ static void prepare_geometry(void)
     plat_cpu2_sync();
     unsigned begin=plat_ticks24();
     if(plat_cpu2_run(visual_job,0)){
+      AQ_VIS_COUNT(worker_jobs);AQ_VIS_COUNT(worker_waits);
       if(plat_cpu2_wait()!=0){worker_fallbacks++;visual_job(0);}
     }else visual_job(0);
     worker_wait_us=(plat_ticks24()-begin)/24;

@@ -1,0 +1,11 @@
+DSP state bytes 49208, sample rate 44100
+quiet: mean 0.2 us p95 0.1 us p99 0.2 us peak 70.2 us, PCM peak 0 RMS 0
+  audio p95/p99 0.1 / 0.2 us, FX p95/p99 0.0 / 0.0 us
+pitched dry: mean 61.5 us p95 129.7 us p99 226.9 us peak 1198.1 us, PCM peak 8496 RMS 2152
+  audio p95/p99 129.7 / 226.9 us, FX p95/p99 0.0 / 0.0 us
+all + wet: mean 84.8 us p95 184.8 us p99 265.0 us peak 901.1 us, PCM peak 18000 RMS 4821
+  audio p95/p99 170.0 / 255.9 us, FX p95/p99 7.5 / 64.8 us
+FM / Forest / dense: mean 122.3 us p95 249.2 us p99 509.0 us peak 5038.9 us, PCM peak 11960 RMS 3466
+  audio p95/p99 235.5 / 465.8 us, FX p95/p99 8.0 / 71.5 us
+FM / Birds / AIR: mean 112.1 us p95 224.9 us p99 360.9 us peak 2873.8 us, PCM peak 11829 RMS 3415
+  audio p95/p99 210.1 / 349.7 us, FX p95/p99 7.9 / 71.3 us
