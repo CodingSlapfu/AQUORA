@@ -1,11 +1,12 @@
-# Resume existing AQUORA0.6.5
+# Resume existing AQUORA 0.6.5
 
-Branch aquora-0.6.5-development. Check exclusive /workspace/.aquora-release.lock;
-current owner session42993. Latest pushed source is authoritative, not local scratch.
-Base7416185f passed run42095962464 (all platforms, DSP, actual PCM SNR83.61dB,
-48 fallback/pressure renderer cases). Preserve it and PR25 ancestry2794f26.
-Read NEXT_BUILD_ACTIVE.md. Latest comments2,16,24,26–30 and PR25 read on resume.
-Expanded source is not yet accepted. Current tests/build files document reproduction.
-Do not publish741 alone: SAVE/library/UI/spiral scope was added afterward.
-Remaining: focused expanded tests and full acceptance of modified inputs, then
-verified GitHub release/backups, installer and showcase. No further permission.
+Check exclusive /workspace/.aquora-release.lock before editing/publishing.
+Branch aquora-0.6.5-development; latest pushed branch head authoritative.
+Read CHECKPOINT.md and NEXT_BUILD_ACTIVE.md only; requirements map in
+validation/integration-065/REQUIREMENTS.md. Source45c02ebb; run42128145960.
+All current requirements implemented. Preserve native/repro/single-core/WASM and
+host gates already accepted; workflow reuses exact matching binaries and successful
+tests with input-diff guards. Finish only remaining gates/package and publication.
+
+Do not publish7416185f alone: later SAVE/library/UI/spiral scope supersedes it.
+Preserve v0.6.4 and PR25 ancestry. No permission needed; physical FM-1 testing owner.
