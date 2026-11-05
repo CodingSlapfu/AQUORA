@@ -87,7 +87,13 @@ jobs:
           assert 'screen-carousel.js' in (d/"index.html").read_text()
           assert all(name in carousel for name in expected), "slideshow is missing an accepted screen"
           assert 'VISIBLE MUSIC' not in (d/"index.html").read_text()
-          print("Verified interactive 10-screen slideshow and no obsolete hero label")
+          assert 'hero-screen-toolbar' not in (d/"index.html").read_text()
+          assert 'hero-screen-previous' not in (d/"index.html").read_text()
+          assert 'hero-screen-next' not in (d/"index.html").read_text()
+          assert 'hero-screen-pause' not in (d/"index.html").read_text()
+          assert 'window.setInterval(advance, 4000)' in carousel
+          assert 'document.hidden' in carousel
+          print("Verified automatic ten-screen slideshow without controls or obsolete hero label")
           print("Verified 10 current 0.6.2 captures including PLAY hero and public text")
           PY
           (cd "$out"; find . -type f ! -name SITE-SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SITE-SHA256SUMS.txt)
