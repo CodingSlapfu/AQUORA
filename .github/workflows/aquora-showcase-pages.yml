@@ -121,6 +121,11 @@ jobs:
           assert 'hero-screen-pause' not in (d/"index.html").read_text()
           assert 'window.setInterval(advance, 4000)' in carousel
           assert 'document.hidden' in carousel
+          css=(d/"style.css").read_text()
+          assert ".hero-screen-stage{width:min(100%,240px);max-width:240px}" in css
+          assert ".hero-play-screen{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:contain;border:0;" in css
+          assert "transform:rotateY" not in css
+          print("Verified screenshot displayed at native 240px without upscaling or inset border")
           print("Verified automatic eight-screen slideshow without controls or obsolete hero label")
           print("Verified 8 current 0.6.3 interface captures including PLAY hero and public text")
           PY
