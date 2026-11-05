@@ -36,6 +36,13 @@ def clip(name, setup, **fixtures):
         assert len({frame.crop((15, 52, 225, 95)).tobytes() for frame in frames}) > 5
         assert len({frame.crop((15, 145, 225, 190)).tobytes() for frame in frames}) > 5
         assert len({frame.crop((60, 97, 212, 142)).tobytes() for frame in frames}) == 1
+        # Every unused corner is now a bright, saturated intro-only color,
+        # never the dark/white canvas of the ordinary PLAY UI.
+        corners = [frame.getpixel((2, 2)) for frame in frames]
+        assert len(set(corners)) == 1
+        bg = corners[0]
+        assert max(bg) >= 185 and max(bg) - min(bg) >= 45, bg
+        assert 4 < min(bg) < 165, bg
     frames[0].save(folder / "preview.gif", save_all=True, append_images=frames[1:],
                    duration=67, loop=0)
     for path in files[1:]:
