@@ -24,7 +24,8 @@ enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAG
 static unsigned air_on, air_hold, air_calibrated, air_poll;
 static char air_source[21];
 static unsigned quick_item;
-static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature"};
+static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature",
+ "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate"};
 static int air_reference, air_rssi;
 static const uint8_t sound_groups[]={0,6,1,2,3,5,7,12,11,13};
 
@@ -126,6 +127,10 @@ static unsigned control_for(unsigned knob)
    static const uint8_t reset_controls[]={52,0,0,0};
    return mix_tab==1?master_controls[knob]:reset_controls[knob];
  }
+ if(page==PAGE_SOUND&&group==0&&selected<SR_DRUMS){
+   static const uint8_t shape[]={2,75,76,77};
+   return shape[knob];
+ }
  return page==1?sound_controls[group][knob]:page_controls[page][knob];
 }
 static int switched(int state,int delta)
@@ -221,6 +226,12 @@ static void consume(void){
  case 65:engine.groove_strength=bounded(engine.groove_strength+d*5,0,100);break;
  case 67:engine.air_track=bounded(engine.air_track+d,0,SR_TRACKS);break;
  case 70:engine.air_target=bounded(d,0,100)*.01f;break;
+ case 75:case 76:case 77:
+   if(c.track<SR_DRUMS){
+     int8_t *edit=c.kind==75?&t->tone:c.kind==76?&t->attack:&t->release;
+     *edit=bounded(*edit+d,-7,7);
+   }
+   break;
  case 73:engine.play_strength=bounded(engine.play_strength+d*5,0,100);engine.play_queued=0;break;
  case 74:engine.play_feel=switched(engine.play_feel,d);engine.play_queued=0;break;
  case 63:engine.play_grid=bounded(engine.play_grid+d,0,4);engine.play_queued=0;break;
@@ -401,7 +412,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     d=enc[3+i];
     unsigned control=control_for(i);
     if(!d||!control)continue;
-    if(control==71)quick_item=bounded((int)quick_item+d,0,8);
+    if(control==71)quick_item=bounded((int)quick_item+d,0,sizeof quick_names/sizeof quick_names[0]-1);
     else if(control==72&&d>0){
       switch(quick_item){
       case 0:page=PAGE_DRUMS;drum_tab=0;break;
@@ -413,6 +424,14 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
       case 6:debug=1;break;
       case 7:page=PAGE_SOUND;group=GROUP_KEYS;sound_picker=0;break;
       case 8:page=PAGE_SOUND;group=1;sound_picker=0;break;
+      case 9:page=PAGE_SOUND;group=0;sound_picker=0;break;
+      case 10:page=PAGE_SOUND;group=2;sound_picker=0;break;
+      case 11:page=PAGE_SOUND;group=3;sound_picker=0;break;
+      case 12:page=PAGE_SOUND;group=5;sound_picker=0;break;
+      case 13:page=PAGE_EVOLVE;song_tab=1;break;
+      case 14:setup_tab=0;break;
+      case 15:setup_tab=2;break;
+      case 16:page=PAGE_SOUND;group=GROUP_ISOLATE;sound_picker=0;break;
       }
     }else if(control==66){
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)

@@ -123,6 +123,9 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 71:*name="QUICK FIND";return quick_names[quick_item];
  case 72:*name="OPEN";return "Turn right";
  case 69:*name="AIR HOLD";return onoff(air_hold);
+ case 75:*name="BRIGHTNESS";number=engine.tracks[selected].tone;break;
+ case 76:*name="ATTACK";number=engine.tracks[selected].attack;break;
+ case 77:*name="RELEASE";number=engine.tracks[selected].release;break;
  case 73:*name="KEY SNAP %";number=engine.play_strength;break;
  case 74:*name="KEY FEEL";return engine.play_feel?"Intention":"Straight";
  case 63:{static const char *grid[]={"Live","1/16","1/32","Auto","1/8"};*name="PLAY GRID";return grid[engine.play_grid];}
@@ -388,22 +391,34 @@ static void draw(int animate)
      }else limited_text(8,8,225,&FONT_B,groups[group],colors[SR_LEAD]);
    }else if(visual&&page==PAGE_SOUND&&group==0&&selected<SR_DRUMS){
      static unsigned last_patch=SR_PATCHES;
-     static int8_t shape[129];
-     unsigned patch=engine.tracks[selected].patch;
-     if(patch!=last_patch){
-       for(unsigned j=0;j<=128;j++)shape[j]=(int8_t)(sr_patch_preview(patch,j*(1.f/128.f))*35.f);
-       last_patch=patch;
+     static int last_tone,last_attack,last_release;
+     static int8_t shape[129],envelope[129];
+     const sr_track *track=&engine.tracks[selected];
+     if(track->patch!=last_patch||track->tone!=last_tone||
+        track->attack!=last_attack||track->release!=last_release){
+       for(unsigned j=0;j<=128;j++){
+         shape[j]=(int8_t)(sr_patch_preview(track,j*(1.f/128.f))*18.f);
+         envelope[j]=(int8_t)(sr_patch_envelope(track,j<=40?j*.015f:(j-41)*.04f,j>40)*30.f);
+       }
+       last_patch=track->patch;last_tone=track->tone;
+       last_attack=track->attack;last_release=track->release;
      }
      int offset=(band-1)*48;
-     for(unsigned j=1;j<=128;j++)
-       cv_line(7+(j-1)*225/128,48+shape[j-1]-offset,7+j*225/128,48+shape[j]-offset,colors[selected]);
+     if(band==1)cv_text(8,0,&FONT_XS,"OSCILLATOR",C_WHITE);
+     else cv_text(8,0,&FONT_XS,"ATTACK / RELEASE",C_WHITE);
+     for(unsigned j=1;j<=128;j++){
+       int y0=band==1?29+shape[j-1]:88-envelope[j-1];
+       int y1=band==1?29+shape[j]:88-envelope[j];
+       if(band==1||j!=41)
+         cv_line(7+(j-1)*225/128,y0-offset,7+j*225/128,y1-offset,colors[selected]);
+     }
    }else if(visual&&page==PAGE_SETUP){
      if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY",C_WHITE);
      if(band==2){
        if(setup_tab==2){
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,C_WHITE);
          cv_text(8,26,&FONT_XS,"M-VAVE FM-1 / FM-1_73",C_WHITE);
-       }else cv_text(8,10,&FONT_XS,"EDIT: TAB   GLO: PERFORMANCE",C_WHITE);
+       }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":"EDIT: TAB   GLO: PERFORMANCE",C_WHITE);
      }
    }else if(visual&&page==3)mixer_band(band);
    else if(visual)geometry(band*48);

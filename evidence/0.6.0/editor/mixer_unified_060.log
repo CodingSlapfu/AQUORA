@@ -1,0 +1,14 @@
+  ok mix_tab == 0
+  ok mix_focus == 8
+  ok mix_bus == 0
+  ok knobs_valid == 1
+  ok mix_focus == 11
+  ok mix_bus == 3
+  ok binaural == 1
+  ok mix_focus == 0
+  ok mute == 0
+  ok mute == 1
+  ok mix_tab == 3
+  ok mix_focus == 1
+  ok knobs_valid == 1
+host: 805 ms simulated, 59 blits, render 0.0% of real time (host CPU)

@@ -1,0 +1,11 @@
+  ok fullscreen == 0
+  ok fullscreen == 1
+  ok fullscreen == 1
+  ok fullscreen == 0
+  ok page == 0
+  ok page == 1
+  ok fullscreen == 1
+  ok fullscreen == 0
+  ok running == 0
+  ok setup_tab == 2
+host: 21940 ms simulated, 762 blits, render 0.6% of real time (host CPU)

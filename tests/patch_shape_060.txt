@@ -1,0 +1,19 @@
+master 2048
+turn ALGO 1
+expect page 1
+expect sound_group 0
+expect knobs_valid 1
+shot shape-default.png
+spin K2 6
+spin K3 5
+spin K4 -5
+wait 150
+shot shape-edited.png
+expect knobs_valid 1
+tap PLAY
+key 6 down
+wait 300
+key 6 up
+wait 150
+tap PLAY
+expect drops 0

@@ -91,6 +91,9 @@ int main(int argc,char **argv)
             engine.tracks[t].pan=(int)t*.2f-.7f;
             engine.tracks[t].send=(t+slot)*.07f;
             engine.tracks[t].mute=(t+slot)&1;
+            engine.tracks[t].tone=(int)t-3;
+            engine.tracks[t].attack=(int)slot-3;
+            engine.tracks[t].release=7-(int)t;
         }
         arrangement expected;
         arrangement_snapshot(&expected);

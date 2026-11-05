@@ -1,0 +1,115 @@
+../aq6final/route-0.txt
+  ok setup_tab == 3
+  ok page == 4
+  ok drum_tab == 0
+  ok knobs_valid == 1
+  ok drops == 0
+host: 681 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-1.txt
+  ok setup_tab == 3
+  ok page == 3
+  ok mix_tab == 0
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-10.txt
+  ok setup_tab == 3
+  ok page == 1
+  ok sound_group == 2
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-11.txt
+  ok setup_tab == 3
+  ok page == 1
+  ok sound_group == 3
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-12.txt
+  ok setup_tab == 3
+  ok page == 1
+  ok sound_group == 5
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-13.txt
+  ok setup_tab == 3
+  ok page == 2
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-14.txt
+  ok setup_tab == 3
+  ok page == 5
+  ok setup_tab == 0
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-15.txt
+  ok setup_tab == 3
+  ok page == 5
+  ok setup_tab == 2
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-16.txt
+  ok setup_tab == 3
+  ok page == 1
+  ok sound_group == 11
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-2.txt
+  ok setup_tab == 3
+  ok page == 1
+  ok sound_group == 6
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-3.txt
+  ok setup_tab == 3
+  ok page == 2
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-4.txt
+  ok setup_tab == 3
+  ok page == 6
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-5.txt
+  ok setup_tab == 3
+  ok page == 5
+  ok setup_tab == 1
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-6.txt
+  ok setup_tab == 3
+  ok page == 5
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-7.txt
+  ok setup_tab == 3
+  ok page == 1
+  ok sound_group == 12
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-8.txt
+  ok setup_tab == 3
+  ok page == 1
+  ok sound_group == 1
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)
+../aq6final/route-9.txt
+  ok setup_tab == 3
+  ok page == 1
+  ok sound_group == 0
+  ok knobs_valid == 1
+  ok drops == 0
+host: 682 ms simulated, 47 blits, render 0.0% of real time (host CPU)

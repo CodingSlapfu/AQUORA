@@ -114,11 +114,26 @@ static inline __attribute__((always_inline)) float sacred_hz(const sr_engine *e)
   return hz;
 }
 float sr_sacred_bass_frequency(const sr_engine *e){return sacred_hz(e);}
-float sr_patch_preview(unsigned patch,float phase)
+static inline __attribute__((always_inline)) float patch_tone(const sr_patch *patch,const sr_track *track)
 {
-  if(patch>=SR_PATCHES)return 0.f;
-  const sr_patch *p=&sr_patches[patch];
-  return wave(p->wave,phase,p->brightness);
+  return clampf(patch->brightness+.075f*track->tone,0.f,1.f);
+}
+static inline float patch_time(float seconds,int edit)
+{
+  return seconds*(1.f+.125f*edit);
+}
+float sr_patch_preview(const sr_track *track,float phase)
+{
+  const sr_patch *patch=&sr_patches[track->patch];
+  return wave(patch->wave,phase,patch_tone(patch,track));
+}
+float sr_patch_envelope(const sr_track *track,float seconds,int releasing)
+{
+  const sr_patch *patch=&sr_patches[track->patch];
+  float time=releasing?fmaxf(patch_time(patch->release,track->release),.04f):
+    fmaxf(patch_time(patch->attack,track->attack),.001f);
+  float decay=expf(-seconds/time);
+  return releasing?decay:1.f-decay;
 }
 static void make_motif(sr_engine *e){
   for(int i=0;i<16;i++){
@@ -363,8 +378,8 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   v->increment=v->pitch*(1.f/SR_RATE);
   e->tracks[track].events++;
   v->peak=(float)velocity/127.f;
-  v->attack_coef=1.f-expf(-1.f/(fmaxf(p->attack,.001f)*SR_RATE));
-  v->release_coef=1.f-expf(-1.f/(fmaxf(p->release,.04f)*SR_RATE));
+  v->attack_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->attack,e->tracks[track].attack),.001f)*SR_RATE));
+  v->release_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->release,e->tracks[track].release),.04f)*SR_RATE));
   v->remain=(uint32_t)clampf(beats*4.f*(float)e->tick_length,1.f,9.e6f);
   return v;
 }
@@ -531,19 +546,30 @@ static inline __attribute__((always_inline)) void render_binaural(sr_engine *e,f
   *left+=advance(&e->binaural_phase_l,hz_left)*e->binaural_level*e->binaural_env;
   *right+=advance(&e->binaural_phase_r,hz_right)*e->binaural_level*e->binaural_env;
 }
-/* Piano and pluck offbeats may lean behind the shared step clock.
+static const uint8_t ornament_track[]={SR_PIANO,SR_GUITAR,SR_LEAD,SR_HARMONY};
+static const float ornament_gate[]={1.45f,1.7f,2.3f,1.8f};
+_Static_assert(sizeof ornament_track==sizeof(((sr_engine *)0)->ornaments)/
+    sizeof(((sr_engine *)0)->ornaments[0]), "Ornament slots must match roles");
+
+/* Pitched offbeats may lean behind the shared step clock.
  * Bass, drums and the downbeat stay on the clock. Units are 1/64 step. */
 static void ornament(sr_engine *e,unsigned slot,uint8_t midi,uint8_t velocity,float beats,
                      unsigned step,unsigned evolving)
 {
   unsigned feel_units=e->groove_mode==1?0:e->groove_mode==2?6:intention_feel[e->scene];
-  unsigned offset=evolving&&(step&15u)?
+  if(slot>=2){
+    /* Fast patches tolerate a wider offset. Slow attacks already soften the pulse. */
+    const sr_patch *patch=&sr_patches[e->tracks[ornament_track[slot]].patch];
+    if(slot==2||patch->attack>.35f)feel_units=(feel_units+1u)/2u;
+    if(e->tick_length>12000u)feel_units=(feel_units+1u)/2u;
+  }
+  unsigned offset=evolving&&!e->frequency_lock&&(step&15u)?
     (e->tick_length*feel_units*e->groove_strength+3200u)/6400u:0;
   if(offset&&offset<e->tick_length){
     e->ornaments[slot].phase=(uint16_t)offset;
     e->ornaments[slot].midi=midi;
     e->ornaments[slot].velocity=velocity;
-  }else sr_note_on(e,slot?SR_GUITAR:SR_PIANO,midi,velocity,beats);
+  }else sr_note_on(e,ornament_track[slot],midi,velocity,beats);
 }
 static void trigger(sr_engine *e){
   if(!e->loop_pos){
@@ -614,13 +640,13 @@ static void trigger(sr_engine *e){
     unsigned lead=evolving?song_draw(phrase_seed,SR_LEAD+(s&15u)*8u):rng(e);
     if(lead%5u<=energy){
       int note=tonic+24+scale_notes[sc->scale][k];
-      sr_note_on(e,SR_LEAD,(uint8_t)note,65+(evolving?(lead>>8)&7u:0),2.3f);
+      ornament(e,2,(uint8_t)note,65+(evolving?(lead>>8)&7u:0),2.3f,s,evolving);
     }
     unsigned harmony=evolving?song_draw(phrase_seed,SR_HARMONY+(s&15u)*8u):rng(e);
     if(harmony%7u==0){
       unsigned degree=evolving&&contour?((unsigned)k+2u)%7u:(unsigned)k;
       int note=tonic+36+scale_notes[sc->scale][degree];
-      sr_note_on(e,SR_HARMONY,(uint8_t)note,47,1.8f);
+      ornament(e,3,(uint8_t)note,47,1.8f,s,evolving);
     }
   }
   if((s&7u)==4){
@@ -773,8 +799,9 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     config->track=v->track;
     config->wave=patch->wave;
     config->chorus=patch->wave==SR_CHOIR_WAVE||track->patch>=20;
-    config->brightness=patch->brightness*(v->freq>3000.f?.15f:1.f);
-    config->cutoff=.028f+patch->brightness*.24f;
+    float brightness=patch_tone(patch,track);
+    config->brightness=brightness*(v->freq>3000.f?.15f:1.f);
+    config->cutoff=.028f+brightness*.24f;
     config->gain=patch->gain;
     config->left=left[v->track];
     config->right=right[v->track];
@@ -950,14 +977,15 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   }
   if(e->running&&e->tick_phase>=e->tick_length){e->tick_phase=0;memset(e->ornaments,0,sizeof e->ornaments);trigger(e);}
   size_t n=frames>64?64:frames;
-  if(e->running&&(e->ornaments[0].phase||e->ornaments[1].phase)){
-    for(unsigned slot=0;slot<2;slot++){
+  if(e->running&&(e->ornaments[0].phase||e->ornaments[1].phase||
+                 e->ornaments[2].phase||e->ornaments[3].phase)){
+    for(unsigned slot=0;slot<sizeof ornament_track;slot++){
       unsigned phase=e->ornaments[slot].phase;
       if(!phase)continue;
       if(phase==e->tick_phase){
         e->ornaments[slot].phase=0;
-        sr_note_on(e,slot?SR_GUITAR:SR_PIANO,e->ornaments[slot].midi,
-                   e->ornaments[slot].velocity,slot?1.7f:1.45f);
+        sr_note_on(e,ornament_track[slot],e->ornaments[slot].midi,
+                   e->ornaments[slot].velocity,ornament_gate[slot]);
       }else if(phase>e->tick_phase&&n>phase-e->tick_phase)n=phase-e->tick_phase;
     }
   }

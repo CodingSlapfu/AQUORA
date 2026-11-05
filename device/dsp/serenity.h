@@ -28,7 +28,7 @@ typedef struct { const char *name; sr_wave wave; float attack, release, brightne
 typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance, tonic, frequency; } sr_scene;
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
-typedef struct { uint8_t patch, mute; float volume, pan, meter, send; uint32_t events; } sr_track;
+typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; } sr_track;
 typedef struct { uint8_t active, track, gate, midi, key; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {
@@ -70,7 +70,7 @@ typedef struct {
   float reverb_wet, delay_wet;
   uint8_t loop_length, loop_pos, pending_length, keyboard_mode, tonic_override, pending_key, pending_physical_key;
   int8_t melody[16], motif_home[16];
-  struct { uint16_t phase; uint8_t midi, velocity; } ornaments[2];
+  struct { uint16_t phase; uint8_t midi, velocity; } ornaments[4];
 } sr_engine;
 
 extern const sr_patch sr_patches[SR_PATCHES];
@@ -87,7 +87,8 @@ void sr_set_frequency(sr_engine *e, uint8_t frequency);
 void sr_set_perfect_key(sr_engine *e, uint8_t enabled);
 void sr_set_tuning_432(sr_engine *e, uint8_t enabled);
 void sr_set_drums(sr_engine *e, uint8_t enabled);
-float sr_patch_preview(unsigned patch,float phase);
+float sr_patch_preview(const sr_track *track,float phase);
+float sr_patch_envelope(const sr_track *track,float seconds,int releasing);
 void sr_set_drum_level(sr_engine *e, float level);
 void sr_set_drum_density(sr_engine *e, uint8_t density);
 void sr_set_drum_kit(sr_engine *e, uint8_t kit);

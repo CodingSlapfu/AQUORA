@@ -30,6 +30,8 @@ typedef struct {
     struct {
         float volume, pan, send;
         uint8_t patch, mute;
+        int8_t tone;
+        uint8_t contour; /* Signed attack and release nibbles, zero for legacy banks. */
     } track[SR_TRACKS];
     sr_motion motion[2];
     float reverb_amount, delay_amount, bed_level, drum_level;
@@ -91,7 +93,8 @@ static int arrangement_valid(const arrangement *r)
         if(r->version==AQ_BANK_VERSION&&(r->motif_home[i]<-1||r->motif_home[i]>6))return 0;
     }
     for(unsigned i=0;i<SR_TRACKS;i++){
-        if(r->track[i].patch>=SR_PATCHES||r->track[i].mute>1||
+        if((r->version==AQ_BANK_VERSION&&(r->track[i].tone<-7||r->track[i].tone>7||
+            (r->track[i].contour&15)==8||(r->track[i].contour>>4)==8))||r->track[i].patch>=SR_PATCHES||r->track[i].mute>1||
            !range(r->track[i].volume,0,1)||!range(r->track[i].pan,-1,1)||
            !range(r->track[i].send,0,1))return 0;
     }
@@ -146,6 +149,8 @@ static void arrangement_snapshot(arrangement *record)
         record->track[i].send=engine.tracks[i].send;
         record->track[i].patch=engine.tracks[i].patch;
         record->track[i].mute=engine.tracks[i].mute;
+        record->track[i].tone=engine.tracks[i].tone;
+        record->track[i].contour=(engine.tracks[i].attack&15)|((engine.tracks[i].release&15)<<4);
     }
     record->frequency_auto=engine.frequency_auto;
     record->lock_textures=engine.lock_textures;
@@ -207,6 +212,11 @@ static void arrangement_apply(const arrangement *record)
         engine.tracks[i].send=record->track[i].send;
         engine.tracks[i].patch=record->track[i].patch;
         engine.tracks[i].mute=record->track[i].mute;
+        unsigned contour=record->version==AQ_BANK_VERSION?record->track[i].contour:0;
+        int attack=contour&15, release=contour>>4;
+        engine.tracks[i].tone=record->version==AQ_BANK_VERSION?record->track[i].tone:0;
+        engine.tracks[i].attack=attack<8?attack:attack-16;
+        engine.tracks[i].release=release<8?release:release-16;
     }
     engine.restart=0;
     qread=qwrite;

@@ -11,7 +11,8 @@ Turn ALGORITHM to choose a page. HOME returns to PLAY. ARP jumps to DRUMS, OCTâˆ
 | Page or SOUND group | K1 | K2 | K3 | K4 |
 |---|---|---|---|---|
 | PLAY | Scene | Energy | Fixed tone level | Nature level |
-| SOUND / Instrument | Patch or drum kit | Track level | Pan | FX send |
+| SOUND / Instrument (pitched) | Patch | Brightness | Attack | Release |
+| SOUND / Track Routing | Track level | Pan | FX send | Solo / clear |
 | SOUND / Nature | Bed | Bed level | Reverb | Delay |
 | SOUND / Frequency | Fixed Hz | Tone level | Reference Layer / Frequency Lock | Hz Source Auto/Manual |
 | SOUND / Binaural | Carrier Hz | Difference (0.5 Hz steps) | Binaural level | Enable toggle |
@@ -114,8 +115,7 @@ software count and still needs confirmation on the physical LCD.
 
 EVOLVE EDIT cycles Loop, New Song and Groove. On Groove, K1 chooses Intention,
 Straight or Swing. K2 scales the timing offset from 0 to 100 percent. K3 is
-loop length and K4 is Freeze. The timing profile applies to evolving piano
-and pluck offbeats. Bass, drums and downbeats stay on the transport clock.
+loop length and K4 is Freeze. The timing profile applies to evolving piano, pluck, lead and harmony offbeats. Lead and harmony use smaller offsets with slow patches or at slow tempos. Frequency Lock uses straight timing. Bass, drums and downbeats stay on the transport clock.
 
 MIX opens with musical channels and source buses together. Turn SELECT through the tracks and buses to change the focused controls. EDIT cycles All Channels, Master FX, Reset Mix, Active Channels and the taller Source Buses view. Use All Channels to recover muted or disabled sources. SEL and LFO mute and solo musical tracks. Bus controls retain their own routing. For example, Binaural keeps its stereo separation.
 
@@ -126,6 +126,8 @@ smooths its effect on the send. A single-track target needs an audible FX
 return. No signal or switching AIR off returns modulation toward zero unless
 Hold is active. The radio is off at startup. Real hand response and device
 audio performance require hardware validation.
+
+SOUND / Instrument shows a cached oscillator and attack/release preview. Brightness affects held notes. Attack and release apply to newly triggered notes. Set each control to zero to use the patch default. The four banks save these edits per track.
 
 SETUP EDIT also opens Quick Find. K1 chooses a destination and K2 opens it.
 Performance separates geometry time from UI draw time and reports average
