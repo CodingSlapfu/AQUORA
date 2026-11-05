@@ -20,7 +20,7 @@ static uint16_t skin_text(void){return skins[ui_theme][ui_background].text;}
 static uint16_t skin_dim(void){return skins[ui_theme][ui_background].dim;}
 static uint16_t skin_accent(void){return skins[ui_theme][ui_background].accent;}
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
-static void label(int x,int y,const char *name,int value){char v[12];num(v,value);cv_text(x,y,&FONT_XS,name,RGB(126,166,164));cv_text(x,y+15,&FONT_B,v,RGB(218,240,220));}
+static void label(int x,int y,const char *name,int value){char v[12];num(v,value);cv_text(x,y,&FONT_XS,name,skin_dim());cv_text(x,y+15,&FONT_B,v,skin_text());}
 static const char *role_names[SR_TRACKS]={
  "Lead","Bass","Pads","Harmony","Piano","Plucks","Choir","Drums"
 };
@@ -215,12 +215,17 @@ static void knob_cell(unsigned knob,int x)
  const char *name;
  const char *shown=knob_value(control_for(knob),&name,value);
  tag[1]=(char)('1'+knob);
- int label_x=cv_text(x,0,&FONT_XS,tag,RGB(143,213,201));
- limited_text(label_x,0,108-(label_x-x),&FONT_XS,name,RGB(126,166,164));
+ const felucca_font_t *caption=ui_font_size==2?&FONT_S:&FONT_XS;
+ int label_x=cv_text(x,0,caption,tag,skin_accent());
+ limited_text(label_x,0,108-(label_x-x),caption,name,skin_dim());
  int focus=knob_until&&knob_focus==knob;
- const felucca_font_t *font=focus&&knob<2&&text_pixels(&FONT_M,shown)<=108?&FONT_M:&FONT_B;
+ const felucca_font_t *font=ui_font_size==2?&FONT_M:ui_font_size==0?&FONT_S:&FONT_B;
+ if(ui_font_size==2){
+    for(const char *q=shown;*q;q++)if(*q>='a'&&*q<='z'){font=&FONT_B;break;}
+ }
+ if(text_pixels(font,shown)>108)font=&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_XS;
- limited_text(x,14,108,font,shown,focus?RGB(255,229,156):RGB(218,240,220));
+ limited_text(x,ui_font_size==2?18:14,108,font,shown,focus?skin_accent():skin_text());
 }
 static void voice_diagnostics(int band)
 {
@@ -235,7 +240,7 @@ static void voice_diagnostics(int band)
    cv_text(8,25,&FONT_XS,"K1 SELECT   SEQ ALL NOTES OFF",skin_text());
  }else if(band==1){
    label(8,0,"VOICE SLOT",voice_slot+1);
-   cv_text(126,0,&FONT_XS,"ROLE / ORIGIN",RGB(126,166,164));
+   cv_text(126,0,&FONT_XS,"ROLE / ORIGIN",skin_dim());
    cv_text(126,15,&FONT_B,voice.active?role_names[voice.track]:"Idle",skin_text());
    const char *origin=voice.key?"Physical key":"Generator";
    if(voice.active&&engine.tracks[voice.track].mute)origin=voice.key?"Key / muted":"Gen / muted";
@@ -278,7 +283,7 @@ static void performance(int band)
  }
  if(band==0){
    cv_text(8,1,&FONT_B,"PERFORMANCE " APP_VERSION,skin_text());
-   cv_text(8,25,&FONT_XS,fps_auto?"K1 VISUAL FPS: AUTO (20 TARGET)":"K1 VISUAL FPS: 20 TARGET",RGB(147,221,207));
+   cv_text(8,25,&FONT_XS,fps_auto?"K1 VISUAL FPS: AUTO (20 TARGET)":"K1 VISUAL FPS: 20 TARGET",skin_accent());
  }else if(band==1){
    label(8,0,"PLAY BLITS FPS x10",shown_fps10);
    label(127,0,"MISSED / 2s",shown_missed);
@@ -436,10 +441,10 @@ static void draw(int animate)
    if(intro_active){
      geometry(band*48);
      if(band==2){
-       cv_text(68,1,&FONT_B,"A Q U O R A",skin_text());
-       cv_text(96,28,&FONT_XS,APP_VERSION,skin_text());
+       cv_text(68,1,&FONT_B,"A Q U O R A",ui_background?RGB(235,248,251):skin_text());
+       cv_text(96,28,&FONT_XS,APP_VERSION,ui_background?RGB(235,248,251):skin_text());
      }
-     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",skin_text());
+     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",ui_background?RGB(235,248,251):skin_text());
    }else if(debug)performance(band);
    else if(fullscreen)geometry(band*48);
    else if(visual&&page==PAGE_AIR){
@@ -570,7 +575,7 @@ static void draw(int animate)
        label(8,0,"STEP",engine.loop_pos+1);
        label(86,0,engine.freeze?"FROZEN":engine.evolve_next?"NEXT QUEUED":"PHRASE",engine.phrase);
        static const char *sections[]={"Opening","Build","Resolve","Rest","Return"};
-       cv_text(162,0,&FONT_XS,"SECTION",RGB(126,166,164));
+       cv_text(162,0,&FONT_XS,"SECTION",skin_dim());
        limited_text(162,15,72,&FONT_B,sections[engine.phrase/4u%5u],skin_text());
      }else{
        for(unsigned t=0;t<SR_TRACKS;t++){
@@ -588,27 +593,27 @@ static void draw(int animate)
    }else if(visual&&page==3)mixer_band(band);
    else if(visual)geometry(band*48);
    else if(band==0){
-     cv_text(8,0,&FONT_XS,"ALGO",RGB(126,166,164));
-     cv_text(46,0,&FONT_B,pages[page],RGB(174,236,208));
+     cv_text(8,0,&FONT_XS,"ALGO",skin_dim());
+     cv_text(46,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS){
        char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
        int x=cv_text(104,2,&FONT_XS,"PULSE ",skin_text());
-       cv_text(x,2,&FONT_XS,count,RGB(147,221,207));
+       cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(page!=0){
-     cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));
+     cv_text(8,25,&FONT_XS,"SEL",skin_dim());
      cv_text(30,25,&FONT_XS,track,skin_text());
      limited_text(44,25,55,&FONT_XS,role_names[selected],skin_text());
      }
-     cv_text(101,25,&FONT_XS,"PRE",RGB(126,166,164));
+     cv_text(101,25,&FONT_XS,"PRE",skin_dim());
      limited_text(127,25,105,&FONT_XS,page==0?sr_scenes[engine.scene].name:patch_name(),skin_text());
      if(page==0){
-       cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",RGB(119,255,243));
+       cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",skin_accent());
        const char *mode=engine.frequency_lock?"LOCK":engine.tone_level>0?"REF ON":"REF OFF";
-       int x=cv_text(107,2,&FONT_XS,mode,RGB(119,255,243));
+       int x=cv_text(107,2,&FONT_XS,mode,skin_accent());
        cv_text(x+4,2,&FONT_XS,sr_frequencies[engine.frequency].name,skin_text());
      }
    }else{
@@ -617,7 +622,7 @@ static void draw(int animate)
      knob_cell(start+1,126);
      if(band==4){
        if(page==PAGE_DRUMS){
-         int x=cv_text(8,33,&FONT_XS,drum_status(),RGB(147,221,207));
+         int x=cv_text(8,33,&FONT_XS,drum_status(),skin_accent());
          char hit[12];num(hit,engine.drum_hit);
          x=cv_text(x+8,33,&FONT_XS,"HIT %",skin_text());
          cv_text(x+5,33,&FONT_XS,hit,skin_text());
@@ -627,7 +632,7 @@ static void draw(int animate)
           engine.solo<SR_TRACKS?"NATURE MUTED BY SOLO":"NATURE PEAK %";
          int x=cv_text(8,33,&FONT_XS,hint,skin_text());
          char value[12];num(value,(int)(engine.nature_peak*100.f));
-         cv_text(x+6,33,&FONT_XS,value,RGB(119,255,243));
+         cv_text(x+6,33,&FONT_XS,value,skin_accent());
        }else if(page==1&&group==6){
          cv_text(8,33,&FONT_XS,selected>SR_BASS?"TURN SELECT TO LEAD OR BASS":
             "LEGATO: OVERLAP NOTES  /  ALWAYS: SLIDE",skin_text());
@@ -647,7 +652,7 @@ static void draw(int animate)
        }else if(page==PAGE_SETUP&&setup_tab==1){
          static const char *messages[]={"SAVE RUNS ACTION","STOP FIRST","EMPTY BANK",
            "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED"};
-         cv_text(8,33,&FONT_XS,bank_status[bank_slot]==1?"SAVED":bank_status[bank_slot]==2?"INVALID":"EMPTY",RGB(147,221,207));
+         cv_text(8,33,&FONT_XS,bank_status[bank_slot]==1?"SAVED":bank_status[bank_slot]==2?"INVALID":"EMPTY",skin_accent());
          limited_text(62,33,170,&FONT_XS,messages[bank_message],skin_text());
        }else{
          const char *status=engine.running?"PLAYING":"STOPPED";
@@ -659,14 +664,14 @@ static void draw(int animate)
            const char *name;
            const char *value=knob_value(control_for(knob_focus),&name,buffer);
            tag[1]=(char)('1'+knob_focus);
-           int x=cv_text(8,33,&FONT_XS,tag,RGB(147,221,207));
+           int x=cv_text(8,33,&FONT_XS,tag,skin_accent());
            x=cv_text(x,33,&FONT_XS,name,skin_text());
            limited_text(x+7,33,225-x,&FONT_B,value,skin_text());
            status=0;
          }
          if(engine.frequency_lock&&status)status=engine.lock_textures?"UNISON / TEXTURES ON":"UNISON / TEXTURES OFF";
          if(engine.isolate&&status)status="SOURCE ISOLATION ON";
-         if(status)cv_text(8,33,&FONT_XS,status,RGB(147,221,207));
+         if(status)cv_text(8,33,&FONT_XS,status,skin_accent());
        }
      }
    }
