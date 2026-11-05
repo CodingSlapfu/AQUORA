@@ -10,10 +10,11 @@
 #define SR_SOUND_LOCK_MASK 1023u
 #define SR_TRACKS 8
 #define SR_VOICES 16
-#define SR_PATCHES 24
+#define SR_PATCHES 30
 #define SR_SCENES 13
+#define SR_BEDS 12
 #define SR_FREQUENCIES 13
-#define SR_DRUM_KITS 15
+#define SR_DRUM_KITS 19
 #define SR_BEAT_PRESETS 8
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +55,10 @@ typedef struct {
   uint32_t play_queued, play_released;
   uint8_t play_track[27], play_strength, play_feel;
   uint32_t play_due[27];
-  uint32_t nature_audition, bird_wait;
+  uint32_t nature_audition, bird_wait, nature_rng;
+  uint8_t nature_active, nature_from, nature_style, bird_phrase, bird_note;
+  float nature_blend, bird_pitch, bird_pan;
+  uint16_t bird_left;
   float nature_peak;
   uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;
   float sacred_hz_now;
@@ -80,6 +84,7 @@ extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
 void sr_init(sr_engine *e, uint32_t seed);
 void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only);
+void sr_select_nature(sr_engine *e, uint32_t seed);
 void sr_set_scene(sr_engine *e, uint8_t scene);
 void sr_set_frequency_lock(sr_engine *e, uint8_t enabled);
 void sr_set_frequency_auto(sr_engine *e, uint8_t enabled);

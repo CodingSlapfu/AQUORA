@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
-static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves"};
+static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures"};
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
 static void label(int x,int y,const char *name,int value){char v[12];num(v,value);cv_text(x,y,&FONT_XS,name,RGB(126,166,164));cv_text(x,y+15,&FONT_B,v,RGB(218,240,220));}
@@ -133,6 +133,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
  case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
+ case 78:*name="NATURE MODE";return !engine.bed_type?"Off":(engine.sound_locks&SR_SOUND_NATURE)?"Manual":"Auto";
+ case 79:*name="NATURE STYLE";{static const char *styles[]={"Ambient","Organic","Rhythmic","Ethereal"};return styles[engine.nature_style];}
  case 54:*name="AUDITION";return engine.nature_audition?"Playing":"Turn right";
  case 49:*name="MUTE";return onoff(track->mute);
  case 50:*name="AUTO GAIN";return onoff(engine.auto_gain);

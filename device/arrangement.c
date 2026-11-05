@@ -77,7 +77,7 @@ static int arrangement_valid(const arrangement *r)
         (r->pending_length&&r->pending_length!=16&&r->pending_length!=32&&r->pending_length!=64)||
         r->keyboard_mode>1||r->pending_key>12||r->frequency_lock>1||r->auto_gain>1||r->auto_level>1||
         (r->tonic_override&&(r->tonic_override<36||r->tonic_override>47))))||
-       r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>7||
+       r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>=SR_BEDS||
        r->drum_kit>=SR_DRUM_KITS||r->drum_density>SR_DENSITY_MAX||r->solo>SR_TRACKS||
        r->frequency_auto>1||r->lock_textures>1||r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
        r->tuning_432>1||r->drums_enabled>1||r->binaural_enabled>1||
@@ -134,7 +134,7 @@ static void arrangement_snapshot(arrangement *record)
     memset(record,0,sizeof(*record));
     unsigned irq=plat_lock();
     record->version=AQ_BANK_VERSION;
-    record->v2_crc=(engine.play_strength+1u)|((uint32_t)engine.play_feel<<7);
+    record->v2_crc=(engine.play_strength+1u)|((uint32_t)engine.play_feel<<7)|((uint32_t)engine.nature_style<<8);
     record->legacy_crc=engine.sound_locks|((uint32_t)(engine.drum_presence+1u)<<10)|((uint32_t)(engine.play_grid&3u)<<17)|((uint32_t)(engine.play_grid>>2)<<28)|((uint32_t)engine.groove_mode<<19)|((uint32_t)(engine.groove_strength+1u)<<21);
 #define COPY_FIELD(field) record->field=engine.field;
     AQ_BANK_FIELDS(COPY_FIELD)
@@ -181,6 +181,8 @@ static void arrangement_apply(const arrangement *record)
     unsigned snap=key_timing&127u;
     engine.play_strength=snap&&snap<=101?snap-1u:100;
     engine.play_feel=(key_timing>>7)&1u;
+    engine.nature_style=(key_timing>>8)&3u;
+    if(!engine.bed_type)engine.sound_locks|=SR_SOUND_NATURE;
     unsigned groove=record->version==AQ_BANK_LEGACY?0:(record->legacy_crc>>19)&3u;
     unsigned strength=record->version==AQ_BANK_LEGACY?0:(record->legacy_crc>>21)&127u;
     engine.groove_mode=groove<=2?groove:0;
