@@ -31,6 +31,13 @@ int main(void)
         assert(!keyed(6)&&!keyed(8));
         sr_render(&engine,pcm,1);
         assert(keyed(6)&&!keyed(8));
+        unsigned taps=0;
+        for(unsigned i=0;i<SR_VOICES;i++){
+            sr_voice *voice=&engine.voices[i];
+            taps+=voice->gate&&!voice->key&&voice->track==SR_LEAD&&
+                  voice->midi==sr_key_note(&engine,8)&&voice->remain==engine.tick_length/4u;
+        }
+        assert(taps==1);
         sr_key_up(&engine,6);
         assert(!keyed(6));
         sr_key_down(&engine,SR_LEAD,2);
@@ -39,5 +46,5 @@ int main(void)
         sr_render(&engine,pcm,128);
         assert(!engine.play_queued&&!keyed(2));
     }
-    puts("PASS Play Along snaps to the exact configured or automatic sample, cancels released keys and clears on STOP");
+    puts("PASS Play Along snaps to the exact configured or automatic sample, plays short taps and clears on STOP");
 }

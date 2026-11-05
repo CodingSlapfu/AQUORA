@@ -223,6 +223,7 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
 }
 void sr_set_scene(sr_engine *e,uint8_t scene){
   if(scene>=SR_SCENES)return;
+  if(scene!=e->scene)e->play_queued=0;
   if(e->running&&scene!=e->scene)for(int i=0;i<SR_VOICES;i++){
     sr_voice *v=&e->voices[i];
     if(!v->key){e->note_offs+=v->gate!=0;v->gate=0;v->remain=0;v->release_coef=.0012f;}
@@ -307,6 +308,7 @@ void sr_init(sr_engine *e,uint32_t seed){
 static void clear_transport(sr_engine *e)
 {
     e->play_queued=0;
+    e->play_released=0;
     memset(e->ornaments,0,sizeof e->ornaments);
     for(unsigned i=0;i<SR_VOICES;i++)e->note_offs+=e->voices[i].gate!=0;
     memset(e->voices,0,sizeof(e->voices));
@@ -362,7 +364,7 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   v->peak=(float)velocity/127.f;
   v->attack_coef=1.f-expf(-1.f/(fmaxf(p->attack,.001f)*SR_RATE));
   v->release_coef=1.f-expf(-1.f/(fmaxf(p->release,.04f)*SR_RATE));
-  v->remain=(uint32_t)clampf(beats*(float)SR_RATE*60.f/sr_scenes[e->scene].bpm,1.f,9.e6f);
+  v->remain=(uint32_t)clampf(beats*4.f*(float)e->tick_length,1.f,9.e6f);
   return v;
 }
 void sr_note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats)
@@ -382,7 +384,7 @@ uint8_t sr_key_note(const sr_engine *e,unsigned key)
     }
     return 127;
 }
-static void play_key(sr_engine *e,uint8_t track,unsigned key)
+static void play_key(sr_engine *e,uint8_t track,unsigned key,unsigned tap)
 {
     if(!e->perfect_key)sr_set_perfect_key(e,1);
     if(track==SR_DRUMS){
@@ -395,7 +397,10 @@ static void play_key(sr_engine *e,uint8_t track,unsigned key)
     }
     for(unsigned i=0;i<SR_VOICES;i++)if(e->voices[i].gate&&e->voices[i].key==key+1)return;
     sr_voice *voice=note_on(e,track,sr_key_note(e,key),96,1.f);
-    if(voice){voice->key=(uint8_t)(key+1);voice->remain=SR_RATE*8u;}
+    if(voice){
+      voice->key=tap?0:(uint8_t)(key+1);
+      voice->remain=tap?(e->tick_length/4u+1u):SR_RATE*8u;
+    }
 }
 void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
 {
@@ -407,13 +412,14 @@ void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
     }
     if(e->play_grid){
       e->play_track[key]=track;
+      e->play_released&=~(1u<<key);
       e->play_queued|=1u<<key;
-    }else play_key(e,track,key);
+    }else play_key(e,track,key,0);
 }
 void sr_key_up(sr_engine *e,unsigned key)
 {
     if(key>=27)return;
-    e->play_queued&=~(1u<<key);
+    e->play_released|=e->play_queued&(1u<<key);
     for(int j=0;j<SR_VOICES;j++)if(e->voices[j].key==key+1){
       e->note_offs+=e->voices[j].gate!=0;
       e->voices[j].gate=0;
@@ -942,7 +948,8 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
       uint32_t queued=e->play_queued;
       e->play_queued=0;
       for(unsigned key=0;key<27;key++)
-        if(queued&(1u<<key))play_key(e,e->play_track[key],key);
+        if(queued&(1u<<key))play_key(e,e->play_track[key],key,e->play_released&(1u<<key));
+      e->play_released=0;
     }else if(grid==2&&phase<half&&n>half-phase)n=half-phase;
   }
 

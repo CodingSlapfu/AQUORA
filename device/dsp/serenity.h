@@ -51,7 +51,7 @@ typedef struct {
   uint8_t air_track;
   float air_target, air_wet;
   float bus_meter[SR_BUS_COUNT];
-  uint32_t play_queued;
+  uint32_t play_queued, play_released;
   uint8_t play_track[27];
   uint32_t nature_audition, bird_wait;
   float nature_peak;

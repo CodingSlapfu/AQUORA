@@ -105,3 +105,7 @@ Play Along now defaults to Auto for new settings and legacy v1 banks. Auto uses 
 Next verify the new grid value through all four banks, then implement Play Along strength, feel and short-tap scheduling. Continue unified mixer and full software acceptance before building the release. Keep production 0.5.0.
 
 Archived 0.5.0 bank migration and all four new grid settings passed an ASan/UBSan save/reboot/load round trip. Next implement Play Along strength, feel and short-tap scheduling.
+
+### 0.6.0 short-tap and transport gate source checkpoint
+
+Quantized key taps released before onset now play once at the chosen grid with a bounded quarter-step gate. Held keys use the existing release reconciliation. Scene changes discard queued onsets and STOP clears them. Generated note lengths now use the live transport period. ASan/UBSan grid coverage checks exact onset, one bounded tap, held key release and STOP. Next add strength and groove feel, test the actual panel path and audition the duration change against 0.5.0. The verified staged firmware and installer remain the 924fbeb package.

@@ -134,7 +134,7 @@ static void consume(void){
    break;
  }
  case 2:if(c.track==SR_DRUMS)sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));else sr_set_track_patch(&engine,c.track,bounded(t->patch+d,0,SR_PATCHES-1));break;
- case 3:if(!interrupted&&play&&(physical_keys&(1u<<d)))sr_key_down(&engine,c.track,(unsigned)d);break;
+ case 3:if(!interrupted&&play&&((physical_keys&(1u<<d))||(engine.play_grid&&!engine.keyboard_mode)))sr_key_down(&engine,c.track,(unsigned)d);break;
  case 4:sr_set_frequency(&engine,bounded(engine.frequency+d,0,SR_FREQUENCIES-1));break;
  case 5:engine.bed_level=adjust(engine.bed_level,d,.02f,1);break;
  case 6:sr_set_binaural(&engine,switched(engine.binaural_enabled,d));break;
@@ -212,7 +212,7 @@ static void consume(void){
  case 35:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
  }
  }
- engine.play_queued&=physical_keys;
+ engine.play_released|=engine.play_queued&~physical_keys;
  for(unsigned i=0;i<SR_VOICES;i++){
    sr_voice *v=&engine.voices[i];
    if(v->gate&&v->key&&!(physical_keys&(1u<<(v->key-1)))){engine.note_offs+=v->gate!=0;v->gate=0;}
