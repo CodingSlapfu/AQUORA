@@ -5,7 +5,7 @@
 
 static sr_engine engine;
 static int16_t pcm[512];
-static unsigned bits(uint32_t mask)
+static unsigned bits(uint64_t mask)
 {
     unsigned n=0;
     for(;mask;mask&=mask-1)n++;
@@ -15,13 +15,13 @@ static unsigned bits(uint32_t mask)
 int main(void)
 {
     for(unsigned scene=0;scene<SR_SCENES;scene++){
-        uint32_t patches[SR_DRUMS]={0}, kits=0,beds=0;
+        uint64_t patches[SR_DRUMS]={0}, kits=0,beds=0;
         uint32_t hashes[8];
         for(unsigned seed=0;seed<128;seed++){
             sr_init(&engine,821);
             sr_set_scene(&engine,scene);
             sr_generate_song(&engine,seed,0);
-            for(unsigned t=0;t<SR_DRUMS;t++)patches[t]|=1u<<engine.tracks[t].patch;
+            for(unsigned t=0;t<SR_DRUMS;t++)patches[t]|=UINT64_C(1)<<engine.tracks[t].patch;
             kits|=1u<<engine.drum_kit;
             beds|=1u<<engine.bed_type;
             assert(engine.frequency==sr_scenes[scene].frequency);

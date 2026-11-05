@@ -1,1 +1,1 @@
-Complete only unreached acceptance; exact native/repro/singlecore/WASM and passed host gates preserved from42126704211.
+Extend test coverage masks to36 patches, preserve all matching successful platform gates; finish remaining DSP/migration/parity/package.

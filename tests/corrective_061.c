@@ -9,11 +9,14 @@ static int16_t pcm[512];
 
 static void profiles(void)
 {
-    unsigned beds=0, kits=0, patches=0;
+    unsigned beds=0, kits=0;
+    uint64_t patches=0;
+    for(unsigned mode=0;mode<3;mode++)
     for(unsigned scene=0;scene<SR_SCENES;scene++)
       for(unsigned style=0;style<4;style++)
         for(unsigned seed=1;seed<=32;seed++){
             sr_init(&engine,seed);
+            sr_set_music_mode(&engine,mode);
             engine.nature_style=style;
             sr_set_scene(&engine,scene);
             sr_generate_song(&engine,seed,0);
@@ -21,7 +24,7 @@ static void profiles(void)
             beds|=1u<<engine.bed_type;
             kits|=1u<<engine.drum_kit;
             for(unsigned t=0;t<SR_DRUMS;t++)
-                patches|=1u<<engine.tracks[t].patch;
+                patches|=UINT64_C(1)<<engine.tracks[t].patch;
             unsigned before=engine.bed_type;
             sr_select_nature(&engine,seed);
             assert(engine.bed_type==before);
@@ -36,7 +39,7 @@ static void profiles(void)
         }
     assert((beds&0xf00u)==0xf00u);
     assert((kits&0x78000u)==0x78000u);
-    assert((patches&0x3f000000u)==0x3f000000u);
+    assert((patches&UINT64_C(0xfff000000))==UINT64_C(0xfff000000));
 }
 
 static void nature_render(void)

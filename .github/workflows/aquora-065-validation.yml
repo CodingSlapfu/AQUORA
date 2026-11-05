@@ -46,12 +46,20 @@ jobs:
           gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/127592616019/logs > /tmp/aquora-0.6.5-host-tests/inherited-dsp.log
           for name in next_acceptance dsp_acceptance stereo; do grep -F "PASS $name" /tmp/aquora-0.6.5-host-tests/inherited-dsp.log; done
           cp /tmp/previous-dsp.log /tmp/aquora-0.6.5-host-tests/inherited-first-five.log
+      - name: Preserve successful unchanged transport test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --no-tags --depth=1 origin 83fa23433112df3fdb4da9248286a4f41e4bb852
+          git diff --exit-code 83fa23433112df3fdb4da9248286a4f41e4bb852 HEAD -- device/dsp tests/transport_hit.c
+          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/127596418193/logs > /tmp/aquora-0.6.5-host-tests/inherited-transport.log
+          grep -F 'PASS transport_hit' /tmp/aquora-0.6.5-host-tests/inherited-transport.log
       - name: Build and execute isolated DSP regression tests
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/aquora-0.6.5-host-tests
-          for test in transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 music_modes_064 music_load_064 bass_library_065; do
+          for test in corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 music_modes_064 music_load_064 bass_library_065; do
             gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
               -Idevice/dsp -Ivendor/fm1-base/include \
               -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
@@ -114,51 +122,33 @@ jobs:
           retention-days: 30
 
   platform-acceptance:
-    name: Reuse unchanged native targets and finish host-panel acceptance
+    name: Verify and reuse complete matching platform acceptance
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Verify unchanged compilation inputs and prior successful gates
+      - name: Verify unchanged compilation and panel test inputs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 origin 50eb07a6c807980c4e709d5e29c13f2434380dfa
-          git diff --exit-code 50eb07a6c807980c4e709d5e29c13f2434380dfa HEAD -- device vendor
-          for job in 127592616130 127592616280 127592616313; do
-            test "$(gh api repos/$GITHUB_REPOSITORY/actions/jobs/$job --jq .conclusion)" = success
-          done
-          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/127592616323/logs > /tmp/prior-panel.log
-          grep -F 'PASS canonical routes, SEL/SAVE/arm/cancel' /tmp/prior-panel.log
-          grep -F 'PASS both visualizers move' /tmp/prior-panel.log
-          grep -F 'PASS 270 actual' /tmp/prior-panel.log
+          git fetch --no-tags --depth=1 origin 83fa23433112df3fdb4da9248286a4f41e4bb852
+          git diff --exit-code 83fa23433112df3fdb4da9248286a4f41e4bb852 HEAD -- device vendor tests/panel_062_regressions.py
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/jobs/127596418013 --jq .conclusion)" = success
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: 42126704211
-          pattern: aquora-065-*
-          path: ${{ runner.temp }}/accepted
-      - name: Finish only unreached panel regression and benchmarks
+          run-id: 42127815685
+          name: aquora-065-platform-bundle
+          path: ${{ runner.temp }}/platform
+      - name: Verify exact accepted bytes
         run: |
-          set -euo pipefail
-          out="$RUNNER_TEMP/accepted/aquora-065-host-panel"
-          python3 -m pip install Pillow==11.3.0
-          chmod +x "$out/sound-healing_host"
-          python3 tests/panel_062_regressions.py "$out/sound-healing_host" "$out/panel-065" | tee "$out/panel-065.log"
-          gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/benchmark.c -lm -o /tmp/benchmark
-          /tmp/benchmark | tee "$out/host-timing.log"
-          gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/binaural_benchmark_062.c -lm -o /tmp/binaural-bench
-          /tmp/binaural-bench | tee "$out/binaural-host-timing.log"
-          cp /tmp/prior-panel.log "$out/inherited-panel.log"
-          (cd "$out" && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
-          for target in native native-repro single-core; do
-            (cd "$RUNNER_TEMP/accepted/aquora-065-$target" && sha256sum --check --strict SHA256SUMS.txt)
+          for target in native native-repro single-core host-panel; do
+            (cd "$RUNNER_TEMP/platform/aquora-065-$target" && sha256sum --check --strict SHA256SUMS.txt)
           done
       - uses: actions/upload-artifact@v4
         with:
           name: aquora-065-platform-bundle
-          path: ${{ runner.temp }}/accepted/
+          path: ${{ runner.temp }}/platform/
           retention-days: 30
 
   browser-wasm-reuse:
