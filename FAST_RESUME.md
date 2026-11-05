@@ -1,16 +1,14 @@
-# Resume AQUORA 0.6.4
+# AQUORA v0.6.4 — complete, published and verified
 
-Branch aquora-0.6.4-development. Check exclusive ownership before editing.
-Parent v063 checkpoint 2e7049fb; accepted v063 firmware 0f2716ba / Actions42022969585.
-Read NEXT_BUILD_ACTIVE.md. Issues22/23 and latest ground-up cymatics directive are scope.
-Implementation in current checkpoint; 1404 music cases and UI captures passed locally.
-New field is Resonance Plate; no startup geometry. Four genuine APNGs + three PCM previews
-are reproducible with tests/capture_ui_064.py. CI workflow aquora-064-validation.yml
-runs independent compilation/acceptance. Inspect latest run before repeating tests.
-Complete remaining queue through verified publication; no further owner permission needed.
+No paused software build remains. Check ownership before any new authorized work.
+Firmware/tag50b8a1e02e215aff1e0a7b738d40f63769d4f502; accepted Actions42087112438.
+Firmware inputs2eaea586 passed five platform jobs in42085609310 and were reused,
+not rebuilt. Successful DSP gates are inherited with verified logs.
 
-Independent run42085609310: host-panel, WASM, native, native-repro and single-core
-passed on2eaea586. DSP stopped at obsolete fixed-kit assertion in next_acceptance.
-Corrected assertion checks valid kit; mode suite enforces freshness. Subsequent
-workflow reuses those exact five build artifacts only after source diff/hash checks.
-Do not recompile them unless firmware inputs change.
+Read NEXT_BUILD_ACTIVE.md and validation/integration-064/LIVE_PUBLICATION.json.
+GitHub release contains complete pinned source, package, native/single-core,
+acceptance archive, independent recovery ZIP and SHA256SUMS. v0.6.3 preserved.
+Website source aquora-showcase-site3cabb1be; gh-pages f9ead038; Pages42088802806.
+Installer Site182; source7d4148e1; 35 committed/packaged asset hashes verified.
+Reconstruct publication from release package + gh-pages; prepare/verify helpers
+are saved in validation/integration-064. Physical FM-1 acceptance belongs to owner.

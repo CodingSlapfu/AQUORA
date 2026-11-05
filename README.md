@@ -4,11 +4,11 @@
 
 AQUORA is the new, independent FM-1 sound-healing-inspired generative music firmware project. Features include generative instruments, Solfeggio frequency tones, gentle drums, stereo binaural beats, living soundscapes, and a seven-page UI.
 
-**Stable release: AQUORA 0.6.3. v0.6.4 hotfix acceptance is in progress.**
+**Stable release: AQUORA 0.6.4 — published and verified.**
 See [active queue](NEXT_BUILD_ACTIVE.md), [resume checkpoint](FAST_RESUME.md),
 and [v0.6.4 notes](release/0.6.4/RELEASE.md). The hotfix adds three musical modes,
 fresh intention realizations, automatic expressive motion, and Resonance Plate.
-Publication is complete only after the matching installer and website are verified.
+The matching installer and website are live; publication evidence is in validation/integration-064/LIVE_PUBLICATION.json. Physical FM-1 testing belongs to the owner.
 
 ## Project entry point
 

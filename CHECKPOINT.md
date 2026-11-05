@@ -1,18 +1,16 @@
-# AQUORA 0.6.4 — implementation backed up, acceptance in progress
+# AQUORA v0.6.4 — verified publication checkpoint
 
-Branch aquora-0.6.4-development. Follow FAST_RESUME.md and NEXT_BUILD_ACTIVE.md.
-Firmware inputs from2eaea586 passed all five platform jobs in42085609310.
-Follow-up8b60a664 continues new music/load/migration and installer packaging gates,
-reusing successful builds and all14 successful DSP suites. No firmware rebuild
-is warranted for test-fixture/compiler-warning-only corrections.
+Firmware/tag:50b8a1e02e215aff1e0a7b738d40f63769d4f502 / v0.6.4.
+Acceptance42087112438; publisher42088028814; release backups and digests verified.
+Installer:https://parallax8-studio.jminie66.chatgpt.site/install/
+Showcase:https://codingslapfu.github.io/AQUORA/
 
-v0.6.3 remains live and untouched until complete accepted v0.6.4 publication.
-Exclusive lock /workspace/.aquora-release.lock owned by current noninteractive
-session56959; do not start a concurrent writer. If this environment is lost,
-check remote Actions and newest checkpoint before reacquiring ownership.
+Site182 source7d4148e1ae64068ce1af20df6e5aabb57b93d786, deployment
+appgdep_6aecd1792a9c8191911bee6487c51ad7 succeeded. All35 committed and packaged
+asset bytes verified, including exact accepted firmware/WASM and installer.
+Showcase source3cabb1be; Pagesf9ead038; native Pages42088802806 succeeded.
+Read NEXT_BUILD_ACTIVE.md and validation/integration-064/LIVE_PUBLICATION.json.
 
-Outstanding: final software gate; publish accepted GitHub release; update source
-branch aquora-showcase-site; verify native Pages and live Sites installer.
-Sites project appgprj_6ad6d0ae409c8191b45224ecdec724db, existing version180.
-Use existing site checkout; verify committed and packaged asset hashes, with
-`git add --renormalize out` to avoid preserved-timestamp cache omissions.
+No software milestone remains; do not restart or repeat accepted work. Acquire
+/workspace/.aquora-release.lock before future authorized edits. Preserve all old
+releases/checkpoints. Physical device tests remain owner-unverified.

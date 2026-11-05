@@ -4,6 +4,8 @@
   "platform_run": 42085609310,
   "continued_dsp_run": 42086488836,
   "final_acceptance_run": 42087112438,
-  "site_source_prepared": "6babd7222cda84ce1db443ee3deb06617fb59a43",
-  "physical_tests": "owner-unverified"
+  "physical_tests": "owner-unverified",
+  "site_source_final": "3cabb1be61348f556db0b425782a3bba9f2f127c",
+  "site_run_final": 42088732679,
+  "site182_source": "7d4148e1ae64068ce1af20df6e5aabb57b93d786"
 }
