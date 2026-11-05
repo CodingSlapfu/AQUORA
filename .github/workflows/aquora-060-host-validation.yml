@@ -49,4 +49,52 @@ jobs:
           name: aquora-060-host-logs
           path: /tmp/aquora-0.6.0-host-tests/*.log
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 30
+
+  candidate-package:
+    name: Inspect and preserve the checksummed release candidate
+    runs-on: ubuntu-24.04
+    needs: host-regressions
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify candidate archives and record contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/aquora-candidate"
+          mkdir -p "$output"
+          cd evidence/0.6.0/editor
+          sha256sum --check --strict SHA256SUMS.txt
+          for kind in source package; do
+            archive="AQUORA-0.6.0-editor-$kind.tar.gz"
+            tar -tzf "$archive" > "$output/$kind-files.txt"
+            test -s "$output/$kind-files.txt"
+            cp "$archive" "$output/"
+          done
+          cp SHA256SUMS.txt "$output/"
+          printf '%s\n' "$GITHUB_SHA" > "$output/validation-commit.txt"
+      - name: Run installer protocol tests and verify staged payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          input="$PWD/evidence/0.6.0/editor"
+          work="$(mktemp -d)"
+          mkdir -p "$work/source" "$work/stage"
+          tar --no-same-owner -xzf "$input/AQUORA-0.6.0-editor-source.tar.gz" -C "$work/source"
+          tar --no-same-owner -xzf "$input/AQUORA-0.6.0-editor-package.tar.gz" -C "$work/stage"
+          cd "$work"
+          sha256sum --check --strict "$input/FIRMWARE-SHA256.txt"
+          test -s stage/install/index.html
+          test -s stage/emu/app.wasm
+          test -s stage/manual/index.html
+          node source/vendor/fm1-base/tests/installer_ports_test.mjs stage/firmware/sound-healing-0.6.0.fwsc | tee "$RUNNER_TEMP/aquora-candidate/installer.log"
+      - name: Upload verified candidate archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: aquora-060-verified-candidate
+          path: ${{ runner.temp }}/aquora-candidate/
+          if-no-files-found: error
+          retention-days: 30
