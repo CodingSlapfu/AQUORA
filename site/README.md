@@ -14,4 +14,4 @@ Studio sends same-origin physical-control events to the verified emulator, not t
 
 ## Homepage hero overlay
 
-The Polar Bloom hero artwork retains a dedicated, readable two-line badge: **VISIBLE MUSIC** above **Polar Bloom / 01**. Preserve this feature in future homepage redesigns. The linked image remains an authentic accepted v0.6.2 renderer capture.
+The homepage hero features the **Original (stock) visualizer**, with an authentic accepted v0.6.2 renderer capture (`assets/original-062.png`) and a dedicated floating two-line badge: **VISIBLE MUSIC** above **Original / 01**. Preserve both the imagery and readable badge in future homepage redesigns. Polar Bloom remains available in the screenshot gallery and browser emulator.
