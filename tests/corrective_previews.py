@@ -29,7 +29,20 @@ def clip(name, setup, **fixtures):
     files = sorted(folder.glob("*.png"))
     frames = [Image.open(path).convert("RGB") for path in files]
     assert len(frames) == 30 and all(frame.size == (240, 240) for frame in frames)
-    assert len({frame.tobytes() for frame in frames}) == 1 if name == "startup" else len({frame.tobytes() for frame in frames}) > 5
+    assert len({frame.tobytes() for frame in frames}) > 5, name + " did not animate"
+    if name == "startup":
+        # Intro animation is independent of both music visualizers: only the
+        # decorative upper/lower pulses move; the branding remains readable.
+        assert len({frame.crop((15, 52, 225, 95)).tobytes() for frame in frames}) > 5
+        assert len({frame.crop((15, 145, 225, 190)).tobytes() for frame in frames}) > 5
+        assert len({frame.crop((60, 97, 212, 142)).tobytes() for frame in frames}) == 1
+        # Every unused corner is now a bright, saturated intro-only color,
+        # never the dark/white canvas of the ordinary PLAY UI.
+        corners = [frame.getpixel((2, 2)) for frame in frames]
+        assert len(set(corners)) == 1
+        bg = corners[0]
+        assert max(bg) >= 185 and max(bg) - min(bg) >= 45, bg
+        assert 4 < min(bg) < 165, bg
     frames[0].save(folder / "preview.gif", save_all=True, append_images=frames[1:],
                    duration=67, loop=0)
     for path in files[1:]:
@@ -92,6 +105,13 @@ assert all(line.count("#") == 1 for line in leds[5:32])
 assert all("buttons |" not in line for line in leds[32:])
 
 clip("startup", ["wait 100"], AQUORA_TEST_INTRO="1")
+# Screens animate at startup, but the costly normal-PLAY visualizer pipeline
+# stays switched off throughout the branded introduction.
+panel("intro-no-hidden-visualizer", [
+    "expect intro 1", "expect reset_visual_counters 1",
+    "wait 900", "expect intro 1", "expect geometry_jobs 0",
+    "expect worker_jobs 0", "expect history_updates 0",
+], AQUORA_TEST_INTRO="1")
 clip("sound", ["tap PLAY", "turn ALGO 1", "wait 300"])
 clip("evolve", ["tap PLAY", "turn ALGO 2", "wait 1000"])
 clip("original", ["tap PLAY", "wait 12300"])

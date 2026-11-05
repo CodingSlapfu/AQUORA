@@ -536,7 +536,15 @@ static void draw(int animate)
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug);
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    const int artwork=intro_active||fullscreen;
-   const uint16_t bg=ui_background?RGB(255,255,255):RGB(0,0,0);
+   /* Intro-only vibrant flat color fills the unused screen area. RGB565
+    * palette is chosen once, not per pixel; normal UI still follows user
+    * Black/White preference on entering PLAY. */
+   static const uint16_t intro_palette[5]={
+     RGB(44,204,255), RGB(37,239,177), RGB(255,114,169),
+     RGB(255,204,66), RGB(181,115,255)
+   };
+   const uint16_t bg=intro_active?intro_palette[ui_theme%5]:
+                     ui_background?RGB(255,255,255):RGB(0,0,0);
    cv_begin(240,48,bg);
    /* One surface per logical region; no boxes around 48px transfer bands.
     * The PLAY preview spans two bands with no nested frame. */
@@ -554,12 +562,33 @@ static void draw(int animate)
      }
    }
    if(intro_active){
-     /* Branded static presentation; no visualizer or ribbon at startup. */
-     if(band==2){
-       cv_text(68,1,&FONT_B,"A Q U O R A",skin_text());
-       cv_text(96,28,&FONT_XS,APP_VERSION,skin_text());
+     /* Independent AQUORA intro: flowing sound-pulse typography, never the
+      * selected musical visualizer. Uses a precomputed sine LUT and up to 42
+      * short LCD strokes per frame; no worker job or audio ISR computation. */
+     unsigned elapsed=plat_ms()-intro_start;
+     unsigned phase=(elapsed/35u)&127u;
+     if(band==1||band==3){
+       const int center=band==1?27:20;
+       const uint16_t ink=RGB(4,57,79); /* high contrast on bright intro */
+       for(unsigned j=0;j<21u;j++){
+         float pulse=vis_sine[(phase+j*7u)&127u];
+         if(pulse<0.f)pulse=-pulse;
+         int h=3+(int)(pulse*(band==1?13.f:11.f));
+         int x=24+(int)(j*190u/20u);
+         cv_line(x,center-h,x,center+h,ink);
+       }
      }
-     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",skin_text());
+     if(band==2){
+       cv_text(68,1,&FONT_B,"A Q U O R A",RGB(5,24,39));
+       cv_text(96,28,&FONT_XS,APP_VERSION,RGB(5,24,39));
+     }
+     if(band==4){
+       /* Progress fills gently across the intro; never touches audio logic. */
+       unsigned progress=elapsed>=8000u?176u:(elapsed*176u)/8000u;
+       cv_line(32,6,208,6,RGB(22,108,120));
+       if(progress)cv_line(32,6,32+(int)progress,6,RGB(5,24,39));
+       cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",RGB(5,24,39));
+     }
    }else if(debug)performance(band);
    else if(fullscreen)geometry(band*48);
    else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){
