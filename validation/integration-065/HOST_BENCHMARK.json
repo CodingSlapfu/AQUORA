@@ -1,0 +1,20 @@
+{
+  "scope": "three-pass median of host means; not FM-1 timing",
+  "matched_bass_patch": 1,
+  "results": {
+    "before": {
+      "quiet": 0.6,
+      "pitched dry": 47.6,
+      "all + wet": 57.2,
+      "FM / Forest / dense": 74.0,
+      "FM / Birds / AIR": 74.2
+    },
+    "after": {
+      "quiet": 0.7,
+      "pitched dry": 43.2,
+      "all + wet": 52.0,
+      "FM / Forest / dense": 73.8,
+      "FM / Birds / AIR": 74.0
+    }
+  }
+}

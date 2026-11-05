@@ -18,6 +18,9 @@ MIX MASTER FX exposes K3 Auto Gain/K4 Auto Level. EDIT counters explain sections
 canonical routes remove repeated controls. SEL confirms armed New Song/Reroll
 and Reset Mix; SAVE always stores a bank. Channel strip K4 solos, SEL mutes.
 
-Publication requires complete matching native/repro/single-core/host/WASM and
-installer acceptance. Physical FM-1 performance, SAVE latency, flashing and
+Software acceptance: [independent run42128145960](https://github.com/CodingSlapfu/AQUORA/actions/runs/42128145960), accepted source45c02ebb17e93684092227b16378277bbe3841d3. Matching native/repro/single-core/host/WASM and installer acceptance; unchanged successful gates retain input-diff and checksum provenance.
+
+Legacy PCM:39 matched mode/intention comparisons,82.30dB SNR and maximum1/32768 difference. Six new FM basses intentionally expand the curated palettes. Four real audio-active240×240 APNGs accompany the updated showcase.
+
+ Physical FM-1 performance, SAVE latency, flashing and
 listening remain owner-unverified; host numbers are not device measurements.

@@ -31,7 +31,9 @@ jobs:
       - name: Verify accepted artifact hashes and source record
         run: |
           set -euo pipefail
-          cp -a "$RUNNER_TEMP/accepted/aquora-065-platform-bundle/"* "$RUNNER_TEMP/accepted/"
+          for target in native native-repro single-core host-panel; do
+            cp -a "$RUNNER_TEMP/accepted/aquora-065-platform-bundle/aquora-065-$target" "$RUNNER_TEMP/accepted/"
+          done
           rm -rf "$RUNNER_TEMP/accepted/aquora-065-platform-bundle"
           cd "$RUNNER_TEMP/accepted"
           for folder in aquora-065-native aquora-065-native-repro aquora-065-browser-wasm aquora-065-single-core aquora-065-release-ready; do
