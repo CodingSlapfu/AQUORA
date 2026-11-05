@@ -85,6 +85,8 @@ jobs:
           from pathlib import Path
           import struct
           d=Path("dist")
+          assert "AQUORA 0.6.4" in (d/"emu/index.html").read_text()
+          assert "0.6.3" not in (d/"emu/index.html").read_text()
           assert "AQUORA Studio companion bridge" in (d/"emu/index.html").read_text()
           assert "AQUORA_STUDIO" in (d/"studio/index.html").read_text()
           installer=(d/"install/index.html").read_text()

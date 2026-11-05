@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Site-only bridge for the pinned AQUORA v0.6.3 FM-1 WebAssembly emulator.
+"""Site-only bridge for the pinned AQUORA v0.6.4 FM-1 WebAssembly emulator.
 
 Never alters app.wasm or worklet.js. Adds a same-origin postMessage adapter
 that maps Studio editor controls to the emulator's existing button/knob paths.
@@ -13,10 +13,10 @@ data = path.read_text(encoding="utf-8")
 
 assert '<title>sound-healing in the browser</title>' in data
 data = data.replace('<title>sound-healing in the browser</title>',
-                    '<title>AQUORA 0.6.3 — FM-1 Browser Emulator</title>', 1)
-data = data.replace('<h1>sound-healing</h1>', '<h1>AQUORA <span style="font-size:.55em;opacity:.7">0.6.3</span></h1>', 1)
+                    '<title>AQUORA 0.6.4 — FM-1 Browser Emulator</title>', 1)
+data = data.replace('<h1>sound-healing</h1>', '<h1>AQUORA <span style="font-size:.55em;opacity:.7">0.6.4</span></h1>', 1)
 data = data.replace('sound-healing for the M-VAVE FM-1, in the browser:',
-                    'AQUORA 0.6.3 for the M-VAVE FM-1, in the browser:', 1)
+                    'AQUORA 0.6.4 for the M-VAVE FM-1, in the browser:', 1)
 bridge = r"""
 // ---------------------------------------------------------------- AQUORA Studio companion bridge (site-only)
 // Same-origin parent only. All editing uses existing verified FM-1 input paths.
