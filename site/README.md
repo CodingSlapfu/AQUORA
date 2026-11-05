@@ -11,3 +11,7 @@ The publication workflow checks package version, checksum, PNG dimensions, displ
 Expected hosting URL: https://codingslapfu.github.io/AQUORA/ . Repository owner may need Settings → Pages → Deploy from a branch → `gh-pages` / `/(root)`.
 
 Studio sends same-origin physical-control events to the verified emulator, not to connected hardware. Browser audio requires a user gesture. Use headphones for stereo binaural listening. Artistic frequency themes are not medical claims.
+
+## Homepage hero overlay
+
+The Polar Bloom hero artwork retains a dedicated, readable two-line badge: **VISIBLE MUSIC** above **Polar Bloom / 01**. Preserve this feature in future homepage redesigns. The linked image remains an authentic accepted v0.6.2 renderer capture.
