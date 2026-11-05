@@ -12,6 +12,8 @@ Expected hosting URL: https://codingslapfu.github.io/AQUORA/ . Repository owner 
 
 Studio sends same-origin physical-control events to the verified emulator, not to connected hardware. Browser audio requires a user gesture. Use headphones for stereo binaural listening. Artistic frequency themes are not medical claims.
 
-## Homepage PLAY screen
+## Homepage slideshow of accepted FM-1 screens
 
-The homepage hero is **only a genuine v0.6.2 PLAY page screen**, without any floating visualizer badge. The new screenshot `assets/play-062.png` is copied from `panel-062/original-normal.png` in the accepted 0.6.2 host-panel workflow (run 41998659763). This screen is the normal PLAY page with musical controls, not a fullscreen visualizer. The other nine v0.6.2 captures remain in the separate gallery. Preserve this homepage design in later redesigns.
+The homepage hero cycles automatically through **all ten accepted v0.6.2 screen captures** (PLAY, SOUND, EVOLVE, full MIXER, mixer channel, DRUMS, AIR FX, Appearance, Original visualizer and Polar Bloom). The first frame is the actual normal PLAY page, `assets/play-062.png`, captured in `panel-062/original-normal.png` by acceptance run 41998659763. Screens are authentic software-rendered captures, not website mockups or moving on-device video.
+
+The user can select previous/next or Pause/Play under the screen; the slideshow holds while hovered or focused, pauses in background tabs, and respects reduced-motion preferences. It uses the ten existing approved v0.6.2 captures, preserves the separate gallery, and never reinstates the floating "VISIBLE MUSIC" label. Client behavior is in `site/screen-carousel.js`; all ten image paths and syntax are checked by the publication workflow.

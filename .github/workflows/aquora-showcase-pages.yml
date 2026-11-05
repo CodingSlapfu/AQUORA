@@ -34,7 +34,7 @@ jobs:
           test -s "$rel/emu/worklet.js"
           cp -a "$rel/emu/." "$out/emu/"
           python3 site/tools/patch_emu.py "$out/emu/index.html"
-          cp site/index.html site/style.css "$out/"
+          cp site/index.html site/style.css site/screen-carousel.js "$out/"
           cp site/studio/index.html "$out/studio/"
           cp site/assets/favicon.svg "$out/assets/"
           gh run download 41998659763 -R "$GITHUB_REPOSITORY" -n aquora-062-host-panel -D "$screens"
@@ -58,6 +58,7 @@ jobs:
           EOF
           echo "d9bd8745bed889ee34106febdda5b07ce16db1977c88b0bf0212369837dbb2c2  $out/emu/app.wasm" | sha256sum --check --strict
           node -e 'const f=require("fs");new WebAssembly.Module(f.readFileSync("dist/emu/app.wasm"));console.log("WASM valid")'
+          node --check "$out/screen-carousel.js"
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
@@ -80,6 +81,13 @@ jobs:
           expected={name+"-062.png" for name in ("play","polar","original","sound","evolve","mixer","mix-strip","drums","air","appearance")}
           assert {file.name for file in (d/"assets").glob("*.png")} == expected
           assert all(name in (d/"index.html").read_text() for name in expected)
+          carousel=(d/"screen-carousel.js").read_text()
+          assert 'id="hero-screen-carousel"' in (d/"index.html").read_text()
+          assert 'id="hero-screen-image"' in (d/"index.html").read_text()
+          assert 'screen-carousel.js' in (d/"index.html").read_text()
+          assert all(name in carousel for name in expected), "slideshow is missing an accepted screen"
+          assert 'VISIBLE MUSIC' not in (d/"index.html").read_text()
+          print("Verified interactive 10-screen slideshow and no obsolete hero label")
           print("Verified 10 current 0.6.2 captures including PLAY hero and public text")
           PY
           (cd "$out"; find . -type f ! -name SITE-SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SITE-SHA256SUMS.txt)
