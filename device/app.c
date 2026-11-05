@@ -20,11 +20,13 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm;
-static unsigned drum_tab, setup_tab, sound_picker, fullscreen, last_control_ms;
+static unsigned drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, last_control_ms;
+static unsigned ui_theme, ui_font_size=1, ui_background, preferences_dirty, preferences_changed;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
 static unsigned air_on, air_hold, air_poll;
 static aq_air_sensor air_sensor;
-static unsigned air_packets;
+static unsigned air_packets, air_packet_window, air_packet_rate, air_last_packet_ms, air_packet_total;
+static unsigned air_window_start;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
 static unsigned air_sent;
 #endif
@@ -67,7 +69,38 @@ typedef struct {
     uint32_t version;
     sr_motion motion[2];
     uint8_t perfect_key, lighting, fps_auto;
+} aq_settings_legacy;
+typedef struct {
+    uint32_t version;
+    sr_motion motion[2];
+    uint8_t perfect_key, lighting, fps_auto;
+    uint8_t visual, theme, font_size, background;
 } aq_settings;
+
+/* Never write flash in the callback. All preference edits are coalesced and
+ * committed only after the transport has stopped. The setting object is
+ * separate from arrangement banks and preserves the pre-0.6.2 schema. */
+static int save_preferences(void)
+{
+    aq_settings settings={0};
+    unsigned flags=plat_lock();
+    settings.version=0x41513033u;
+    settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
+    settings.perfect_key=engine.perfect_key;
+    settings.lighting=lighting;settings.fps_auto=fps_auto;
+    settings.visual=visual_mode;settings.theme=ui_theme;
+    settings.font_size=ui_font_size;settings.background=ui_background;
+    plat_unlock(flags);
+    int result=plat_store_save(OBJ_SETTINGS,&settings,sizeof(settings));
+    if(!result)preferences_dirty=0;
+    return result;
+}
+static void preferences_changed_now(void)
+{
+    preferences_dirty=1;
+    preferences_changed=plat_ms();
+    dirty=1;
+}
 
 static void measure(timing *t,unsigned us)
 {
@@ -130,6 +163,10 @@ static unsigned control_for(unsigned knob)
    return controls[drum_tab][knob];
  }
  if(page==PAGE_SETUP){
+   if(setup_tab==0&&display_subtab){
+     static const uint8_t appearance[]={90,91,92,38};
+     return appearance[knob];
+   }
    if(setup_tab==3)return knob==0?71:knob==1?72:0;
    return setup_tab==2?0:(!setup_tab&&knob>=2?80u+knob-2u:sound_controls[setup_tab?GROUP_BANKS:GROUP_VISUAL][knob]);
  }
@@ -315,8 +352,12 @@ void app_init(void)
     sr_init(&engine,song_nonce^7301u);
     sr_generate_song(&engine,song_nonce,0);
     engine.clock_ticks=plat_ticks24;
-    aq_settings settings;
-    if(plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==(int)sizeof(settings)&&settings.version==0x41513032u){
+    aq_settings settings={0};
+    int prefs_size=plat_store_size(OBJ_SETTINGS);
+    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==(int)sizeof(settings))&&
+       plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==prefs_size&&
+       (settings.version==0x41513032u||
+        (settings.version==0x41513033u&&prefs_size==(int)sizeof(settings)))){
       for(unsigned i=0;i<2;i++){
         sr_motion m=settings.motion[i];
         if(m.glide_mode<=2&&m.glide_ms>=10&&m.glide_ms<=800&&
@@ -325,8 +366,17 @@ void app_init(void)
       engine.perfect_key=!!settings.perfect_key;
       lighting=settings.lighting<=3?settings.lighting:0;
       fps_auto=!!settings.fps_auto;
+      if(settings.version==0x41513033u){
+        ui_theme=settings.theme<=4?settings.theme:0;
+        ui_font_size=settings.font_size<=2?settings.font_size:1;
+        ui_background=settings.background<=1?settings.background:0;
+      }
     }
     arrangement_init();
+    /* arrangement_init resets its bank cursor and visual slot. Restore the
+     * saved global visualizer before first intro frame, independent of banks. */
+    if(settings.version==0x41513033u&&prefs_size==(int)sizeof(settings))
+      visual_mode=settings.visual<=1?settings.visual:0;
     visual_init();
     plat_cpu2_set(1);
     output_gain=0;
@@ -338,7 +388,10 @@ void app_init(void)
     memset(evolve_history,0,sizeof evolve_history);
     qread=qwrite=0;
     requested_play=stop_generation=applied_stop=physical_keys=0;
-    page=selected=group=debug=0;
+    page=selected=group=debug=display_subtab=0;
+    preferences_dirty=preferences_changed=0;
+    air_packet_window=air_packet_rate=air_packet_total=air_last_packet_ms=0;
+    air_window_start=plat_ms();
     oldkeys=oldbuttons=blocked_keys=voice_slot=knob_until=redraw_ui_ms=0;
     dirty=1;
 }
@@ -470,14 +523,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     arrangement_execute();
     blocked_keys|=k;
  }else if((press&(1u<<B_SAVE))&&!requested_play&&!engine.running&&!engine.stop_frames){
-    aq_settings settings={0};
-    unsigned flags=plat_lock();
-    settings.version=0x41513032u;
-    settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
-    settings.perfect_key=engine.perfect_key;
-    settings.lighting=lighting;settings.fps_auto=fps_auto;
-    plat_unlock(flags);
-    saved_status=plat_store_save(OBJ_SETTINGS,&settings,sizeof(settings))==0?1:2;
+    saved_status=save_preferences()==0?1:2;
  }
  blocked_keys&=k;
  physical_keys=k&~blocked_keys;
@@ -495,6 +541,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
    }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
    else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3))mix_select(d);
+   else if(page==PAGE_SETUP&&setup_tab==0)display_subtab=bounded((int)display_subtab+d,0,1);
    else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
    knob_until=0;dirty=1;
  }
@@ -534,6 +581,8 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
       air_on=d>0;
       air_packets=air_sent=air_hold=0;
+      air_packet_window=air_packet_rate=air_packet_total=air_last_packet_ms=0;
+      air_window_start=plat_ms();
       air_sensor=(aq_air_sensor){0};
       if(!air_on)send(70,0);
       plat_air_enable(air_on);
@@ -541,7 +590,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     }else if(control==68){
       if(d>0&&air_on)aq_air_calibrate(&air_sensor,plat_ms());
     }else if(control==69)air_hold=d>0;
-    else if(control==38)visual_mode=d>0;
+    else if(control==38){visual_mode=d>0;preferences_changed_now();}
     else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
@@ -554,8 +603,11 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
       if(led_test)plat_aquora_led_test_log(led_step);
 #endif
     }
-    else if(control==56)lighting=bounded((int)lighting+d,0,3);
-    else if(control==57)fps_auto=switched(fps_auto,d);
+    else if(control==56){lighting=bounded((int)lighting+d,0,3);preferences_changed_now();}
+    else if(control==57){fps_auto=switched(fps_auto,d);preferences_changed_now();}
+    else if(control==90){ui_theme=bounded((int)ui_theme+d,0,4);preferences_changed_now();}
+    else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
+    else if(control==92){ui_background=bounded((int)ui_background+d,0,1);preferences_changed_now();}
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
     else send(control,bounded(d,-8,8));
     if(control!=72){knob_focus=i;knob_until=plat_ms()+900;}
@@ -621,6 +673,8 @@ void app_frame(void)
 {
     app_input_only();
     unsigned now=plat_ms();
+    if(preferences_dirty&&!engine.running&&!requested_play&&!engine.stop_frames&&
+       now-preferences_changed>=1200u)save_preferences();
     unsigned scope_track=page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;
     if(scope_track!=engine.scope_track){
       unsigned flags=plat_lock();
@@ -658,9 +712,18 @@ void app_frame(void)
       air_poll=now;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
       unsigned raw=plat_air_sample(&air_packets);
+      air_packet_window+=air_packets;
+      air_packet_total+=air_packets;
+      if(air_packets)air_last_packet_ms=now;
       unsigned target=aq_air_update(&air_sensor,raw,air_packets,now);
       if((!air_hold||!air_sensor.raw)&&target!=air_sent){send(70,target);air_sent=target;}
 #endif
+      if(now-air_window_start>=2000u){
+        unsigned span=now-air_window_start;
+        air_packet_rate=span?air_packet_window*1000u/span:0;
+        air_packet_window=0;
+        air_window_start=now;
+      }
       if(page==PAGE_AIR)dirty=1;
     }
     if(now-window_ms>=2000){
@@ -796,6 +859,12 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"nature_bed"))*got=engine.bed_type;
  else if(!strcmp(what,"nature_style"))*got=engine.nature_style;
  else if(!strcmp(what,"lighting"))*got=lighting;
+ else if(!strcmp(what,"air_rate"))*got=air_packet_rate;
+ else if(!strcmp(what,"air_packets_total"))*got=air_packet_total;
+ else if(!strcmp(what,"ui_theme"))*got=ui_theme;
+ else if(!strcmp(what,"ui_font"))*got=ui_font_size;
+ else if(!strcmp(what,"ui_background"))*got=ui_background;
+ else if(!strcmp(what,"display_subtab"))*got=display_subtab;
  else if(!strcmp(what,"led_slot"))*got=led_step;
  else if(!strcmp(what,"fullscreen"))*got=fullscreen;
  else if(!strcmp(what,"setup_tab"))*got=setup_tab;
