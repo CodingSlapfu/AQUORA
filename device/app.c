@@ -846,18 +846,29 @@ void app_frame(void)
     if(fade!=battery_fade){battery_fade=fade;battery_dirty=1;}
     if(now-redraw_ui_ms<FRAME_MIN_MS)return;
     unsigned elapsed=now-lastdraw;
+    /* Never latch a frozen image: reduce optional cadence under sustained
+     * pressure, then recover automatically. Audio ISR always owns priority. */
+    unsigned visual_interval=FRAME_MIN_MS;
+    if(!intro_active&&engine.running){
+      unsigned load=callback_stats.p95;
+#ifdef PLAT_HOST
+      const char *pressure=getenv("AQUORA_TEST_CALLBACK_US");
+      if(pressure)load=(unsigned)atoi(pressure); /* scheduling fixture only */
+#endif
+      if(load>=5400u||xrun_delta)visual_interval=150u;
+      else if(load>=4900u)visual_interval=100u;
+      else if(load>=4400u)visual_interval=75u;
+    }
     /* Only pages with actually displayed live content schedule animation.
      * Static SOUND category pickers, stopped timelines and hidden mixer
      * views do not schedule recurrent blits. */
     int live_sound=page==PAGE_SOUND&&!sound_picker&&(engine.running||engine.preview_frames);
     int live_mix=page==PAGE_MIX&&engine.running;
     int live_evolve=page==PAGE_EVOLVE&&engine.running;
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve)&&elapsed>=FRAME_MIN_MS;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve)&&elapsed>=visual_interval;
     if(animate&&page==0){
-      missed+=elapsed/FRAME_MIN_MS-1u;
-      if(callback_stats.p95>=(fps_auto?5500u:5700u)){
-        animate=0;missed++;lastdraw=now;
-      }
+      missed+=elapsed/visual_interval-1u;
+
     }
     if(animate){
       lastdraw=now;
@@ -929,6 +940,9 @@ int app_expect(const char *what,int *got){
    }
    page=PAGE_PLAY;song_tab=debug=selected=0;dirty=1;
  }
+ else if(!strcmp(what,"perf_sample")){
+   printf("PERF %u %u %u %u %u %u\n",graphics_us,frame_us,callback_stats.p95,vis_output.node_count,worker_fallbacks,geometry_jobs);*got=1;
+ }
  else if(!strcmp(what,"geometry_jobs"))*got=geometry_jobs;
  else if(!strcmp(what,"history_updates"))*got=history_updates;
  else if(!strcmp(what,"ui_blits"))*got=ui_blits;
@@ -942,7 +956,7 @@ int app_expect(const char *what,int *got){
    vis_input.meter[SR_BASS]=.04f;nodal_level=1;
    for(unsigned scene=0;scene<SR_SCENES;scene++){
      vis_input.scene=scene;resonance_job();uint32_t hash=vis_output.node_count;
-     if(!hash||hash>512)*got=0;
+     if(!hash||hash>256)*got=0;
      for(unsigned j=0;j<vis_output.node_count;j++)for(unsigned k=0;k<4;k++){
        int xy=vis_output.nodes[j][k];if(xy<0||xy>239)*got=0;
        hash=(hash^(uint16_t)xy)*16777619u;
@@ -950,7 +964,7 @@ int app_expect(const char *what,int *got){
      for(unsigned prior=0;prior<scene;prior++)if(signatures[prior]==hash)*got=0;
      signatures[scene]=hash;
    }
-   int16_t before[512][4];memcpy(before,vis_output.nodes,sizeof before);
+   int16_t before[256][4];memcpy(before,vis_output.nodes,sizeof before);
    vis_input.frequency=852;resonance_job();if(!memcmp(before,vis_output.nodes,sizeof before))*got=0;
    memcpy(before,vis_output.nodes,sizeof before);vis_input.meter[SR_BASS]=.2f;vis_input.onset[SR_DRUMS]=1.f;
    resonance_job();if(!memcmp(before,vis_output.nodes,sizeof before))*got=0;

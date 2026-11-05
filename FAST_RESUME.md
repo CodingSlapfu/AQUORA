@@ -1,14 +1,12 @@
-# AQUORA v0.6.4 — complete, published and verified
+# Resume AQUORA0.6.5 urgent performance hotfix
 
-No paused software build remains. Check ownership before any new authorized work.
-Firmware/tag50b8a1e02e215aff1e0a7b738d40f63769d4f502; accepted Actions42087112438.
-Firmware inputs2eaea586 passed five platform jobs in42085609310 and were reused,
-not rebuilt. Successful DSP gates are inherited with verified logs.
-
-Read NEXT_BUILD_ACTIVE.md and validation/integration-064/LIVE_PUBLICATION.json.
-GitHub release contains complete pinned source, package, native/single-core,
-acceptance archive, independent recovery ZIP and SHA256SUMS. v0.6.3 preserved.
-Website source aquora-showcase-site3cabb1be; gh-pages f9ead038; Pages42088802806.
-Installer Site182; source7d4148e1; 35 committed/packaged asset hashes verified.
-Reconstruct publication from release package + gh-pages; prepare/verify helpers
-are saved in validation/integration-064. Physical FM-1 acceptance belongs to owner.
+Exclusive lock8626 owns /workspace/.aquora-release.lock in current workspace.
+Check owner before editing. Base PR25 HEAD2794f26 preserves animated/vibrant intro;
+production064/tag50b8a1e and backups remain immutable. Issues26/24 + PR25 read.
+Current source reduces nodal grid25→17, hoists separable trigs, caps256 nodes,
+Original33→17 points, clips band lines before rasterization, replaces permanent
+frame suppression with bounded adaptive pacing. Audio table optimization is
+candidate only: require real A/B regressions before accepting; preserve music.
+Run targeted performance_065 and full independent aquora-065-validation workflow.
+Do not reuse old064 firmware artifacts after UI/DSP changes. Finish publication
+end-to-end with release/source/ZIP/hashes, exact installer and current website.

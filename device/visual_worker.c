@@ -35,7 +35,7 @@ static struct {
     float onset[SR_TRACKS];
     float meter[SR_TRACKS];
 } vis_input __attribute__((aligned(64)));
-static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[512][4];uint16_t node_count;} vis_output __attribute__((aligned(64)));
+static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[256][4];uint16_t node_count;} vis_output __attribute__((aligned(64)));
 static float vis_sine[128];
 static unsigned worker_wait_us,worker_fallbacks;
 
@@ -46,11 +46,11 @@ static void visual_init(void)
 }
 
 /* Resonance Plate: Chladni-like standing-wave interference sampled on a fixed
- * 25x25 circular plate. Marching zero-crossings yields nodal contours, not
+ * 17x17 circular plate. Marching zero-crossings yields nodal contours, not
  * eight role rings. A radial term evokes water resonance; this is artwork,
- * not a scientific simulation. Fixed memory/512-segment cap, display only. */
+ * not a scientific simulation. Fixed memory/256-segment cap, display only. */
 static float nodal_level;
-static float nodal_field[25][25];
+static float nodal_field[17][17];
 static float visual_sin(float phase)
 {
     int a=(int)phase;float f=phase-a;
@@ -60,7 +60,7 @@ static float visual_sin(float phase)
 }
 static void nodal_segment(float ax,float ay,float bx,float by)
 {
-    if(vis_output.node_count>=512)return;
+    if(vis_output.node_count>=256)return;
     int16_t *p=vis_output.nodes[vis_output.node_count++];
     float sy=vis_input.full?110.f:44.f;
     float cy=vis_input.full?120.f:96.f;
@@ -80,17 +80,22 @@ static void resonance_job(void)
     float hz=(vis_input.frequency%241u)*(1.f/241.f);
     float radial=.12f+fm_clampf(vis_input.meter[SR_BASS]*9.f,0,.35f);
     float mix=.78f+.12f*visual_sin(vis_input.phase*.12f)+hit*.4f;
-    for(unsigned y=0;y<25;y++)for(unsigned x=0;x<25;x++){
-      float px=(x-12.f)/12.f,py=(y-12.f)/12.f;
-      float a=visual_sin((px+1.f)*32.f*m)*visual_sin((py+1.f)*32.f*n);
-      float b=visual_sin((px+1.f)*32.f*n)*visual_sin((py+1.f)*32.f*m);
-      /* Squared radius avoids sqrt/trig calls in frame work. */
-      float r2=px*px+py*py;
-      nodal_field[y][x]=a-mix*b+radial*visual_sin(r2*(85.f+hz*40.f)+32.f);
+    /* Separable standing modes: 68 LUT evaluations instead of 2500.
+     * The circular radial term remains per grid point. */
+    float mx[17],nx[17];
+    for(unsigned x=0;x<17;x++){
+      float px=(x-8.f)/8.f;
+      mx[x]=visual_sin((px+1.f)*32.f*m);
+      nx[x]=visual_sin((px+1.f)*32.f*n);
     }
-    for(unsigned y=0;y<24;y++)for(unsigned x=0;x<24;x++){
-      float px=(x-12.f)/12.f,py=(y-12.f)/12.f;
-      if((px+.0417f)*(px+.0417f)+(py+.0417f)*(py+.0417f)>.91f)continue;
+    for(unsigned y=0;y<17;y++)for(unsigned x=0;x<17;x++){
+      float px=(x-8.f)/8.f,py=(y-8.f)/8.f;
+      float r2=px*px+py*py;
+      nodal_field[y][x]=mx[x]*nx[y]-mix*nx[x]*mx[y]+radial*visual_sin(r2*(85.f+hz*40.f)+32.f);
+    }
+    for(unsigned y=0;y<16;y++)for(unsigned x=0;x<16;x++){
+      float px=(x-8.f)/8.f,py=(y-8.f)/8.f;
+      if((px+.0625f)*(px+.0625f)+(py+.0625f)*(py+.0625f)>.91f)continue;
       float v[4]={nodal_field[y][x],nodal_field[y][x+1],nodal_field[y+1][x+1],nodal_field[y+1][x]};
       const float dx[4]={0,1,1,0},dy[4]={0,0,1,1};
       float ex[4],ey[4];unsigned count=0;
@@ -98,8 +103,8 @@ static void resonance_job(void)
         unsigned next=(k+1)&3;
         if((v[k]<0)!=(v[next]<0)){
           float f=v[k]/(v[k]-v[next]);
-          ex[count]=px+(dx[k]+f*(dx[next]-dx[k]))/12.f;
-          ey[count]=py+(dy[k]+f*(dy[next]-dy[k]))/12.f;count++;
+          ex[count]=px+(dx[k]+f*(dx[next]-dx[k]))/8.f;
+          ey[count]=py+(dy[k]+f*(dy[next]-dy[k]))/8.f;count++;
         }
       }
       for(unsigned k=1;k<count;k+=2)nodal_segment(ex[k-1],ey[k-1],ex[k],ey[k]);
@@ -112,12 +117,12 @@ static void visual_job(uint32_t unused)
     unsigned begin=plat_ticks24();
     if(vis_input.water)resonance_job();
     else for(unsigned t=0;t<SR_TRACKS;t++){
-      vis_output.count[t]=33;
+      vis_output.count[t]=17;
       unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;
       float pulse=vis_input.meter[t]*55.f;
       float radius=(vis_input.full?52.f+t*9.f:45.f+t*6.f)+(pulse>13.f?13.f:pulse);
-      for(unsigned j=0;j<=32;j++){
-        unsigned a=j*4;
+      for(unsigned j=0;j<=16;j++){
+        unsigned a=j*8;
         float petal=radius*(.82f+.18f*vis_sine[(3*a+phase)&127]);
         vis_output.xy[t][j][0]=120+(int)(petal*vis_sine[(a+phase)&127]);
         vis_output.xy[t][j][1]= (vis_input.full?120:96)+(int)(petal*(vis_input.full?1.04f:.44f)*vis_sine[(2*a+phase)&127]);

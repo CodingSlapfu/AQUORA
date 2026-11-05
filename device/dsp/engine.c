@@ -19,6 +19,10 @@ extern void *memcpy(void *, const void *, size_t);
 #define LUT_MASK (LUT-1)
 static float sin_table[LUT+1];
 static uint8_t lut_ready = 0;
+/* SRAM harmonic basis tables: two interpolations replace up to three
+ * independent phase conversions/LUT walks per voice sample. */
+#define WAVE_LUT 512u
+static float wave_base[6][WAVE_LUT+1],wave_color[6][WAVE_LUT+1];
 
 const sr_patch sr_patches[SR_PATCHES] = {
   {"Earth Sub", SR_SINE, .028f, .72f, .33f, .39f},
@@ -113,7 +117,7 @@ static inline __attribute__((always_inline)) float sine(float phase){
   float a=sin_table[i&LUT_MASK];
   return a+(sin_table[(i+1)&LUT_MASK]-a)*f;
 }
-static inline __attribute__((always_inline)) float wave(sr_wave w,float phase,float brightness){
+static inline __attribute__((always_inline)) float wave_reference(sr_wave w,float phase,float brightness){
   float a=sine(phase);
   switch(w){
    case SR_SINE:return a + brightness*.12f*sine(phase*2.f);
@@ -125,6 +129,14 @@ static inline __attribute__((always_inline)) float wave(sr_wave w,float phase,fl
    default:return a;
   }
 }
+static inline __attribute__((always_inline)) float wave(sr_wave w,float phase,float brightness){
+  float p=phase*WAVE_LUT;unsigned i=(unsigned)p&(WAVE_LUT-1u);float f=p-(unsigned)p;
+  const float *base=wave_base[w],*color=wave_color[w];
+  float a=base[i]+(base[i+1]-base[i])*f;
+  float b=color[i]+(color[i+1]-color[i])*f;
+  return a+brightness*b;
+}
+
 float sr_note_frequency(const sr_engine *e,int midi){
   return (e->tuning_432?432.f:440.f)*expf(((float)midi-69.f)*.05776226505f);
 }
@@ -402,7 +414,11 @@ void sr_set_binaural_carrier(sr_engine *e,float hz){if(isfinite(hz)&&hz>=80.f&&h
 void sr_set_track_patch(sr_engine *e,uint8_t t,uint8_t patch){if(t<SR_TRACKS&&patch<SR_PATCHES)e->tracks[t].patch=patch;}
 void sr_init(sr_engine *e,uint32_t seed){
   memset(e,0,sizeof(*e)); e->rng=seed?seed:0x73ac05u;
-  if(!lut_ready){for(int i=0;i<=LUT;i++)sin_table[i]=sinf((float)i*2.f*PI/(float)LUT);lut_ready=1;}
+  if(!lut_ready){for(int i=0;i<=LUT;i++)sin_table[i]=sinf((float)i*2.f*PI/(float)LUT);for(unsigned w=0;w<6;w++)for(unsigned i=0;i<=WAVE_LUT;i++){
+    float phase=(float)i/WAVE_LUT;
+    float base=wave_reference((sr_wave)w,phase,0);
+    wave_base[w][i]=base;wave_color[w][i]=wave_reference((sr_wave)w,phase,1)-base;
+  }lut_ready=1;}
   e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
   e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;

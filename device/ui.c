@@ -37,6 +37,16 @@ static const uint16_t colors[SR_TRACKS]={
   RGB(97,241,244),RGB(250,171,64),RGB(106,179,255),RGB(213,130,255),
   RGB(143,255,165),RGB(245,139,162),RGB(206,203,255),RGB(255,207,103)
  };
+/* Clip to this DMA band BEFORE Bresenham walks pixels. The old cv_pset
+ * clipping discarded pixels only after repeatedly walking the entire line. */
+static void band_line(int x0,int y0,int x1,int y1,uint16_t color)
+{
+ if((y0<0&&y1<0)||(y0>=48&&y1>=48))return;
+ if(y0>y1){int t=x0;x0=x1;x1=t;t=y0;y0=y1;y1=t;}
+ if(y0<0){x0+=(x1-x0)*(-y0)/(y1-y0);y0=0;}
+ if(y1>=48){x1=x0+(x1-x0)*(47-y0)/(y1-y0);y1=47;}
+ cv_line(x0,y0,x1,y1,color);
+}
 static void geometry(int offset)
 {
  if(vis_input.water){
@@ -46,7 +56,7 @@ static void geometry(int offset)
    for(unsigned i=0;i<vis_output.node_count;i++){
      const int16_t *p=vis_output.nodes[i];int y0=p[1]-offset,y1=p[3]-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
-     cv_line(p[0],y0,p[2],y1,ink[ui_background][shade]);
+     band_line(p[0],y0,p[2],y1,ink[ui_background][shade]);
    }
    return;
  }
@@ -56,7 +66,7 @@ static void geometry(int offset)
    for(unsigned j=1;j<vis_output.count[t];j++){
      int y0=vis_output.xy[t][j-1][1]-offset,y1=vis_output.xy[t][j][1]-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
-     cv_line(vis_output.xy[t][j-1][0],y0,vis_output.xy[t][j][0],y1,c);
+     band_line(vis_output.xy[t][j-1][0],y0,vis_output.xy[t][j][0],y1,c);
    }
  }
 }
