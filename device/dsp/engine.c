@@ -110,7 +110,8 @@ static inline __attribute__((always_inline)) uint32_t rng(sr_engine *e){e->rng=e
 static inline __attribute__((always_inline)) float rnd(sr_engine *e){return (float)(rng(e)>>8)*(1.0f/16777216.0f);}
 static inline __attribute__((always_inline)) float sine(float phase){
   float p=phase*(float)LUT; int i=(int)p; float f=p-(float)i;
-  return sin_table[i&LUT_MASK]*(1.0f-f)+sin_table[(i+1)&LUT_MASK]*f;
+  float a=sin_table[i&LUT_MASK];
+  return a+(sin_table[(i+1)&LUT_MASK]-a)*f;
 }
 static inline __attribute__((always_inline)) float wave(sr_wave w,float phase,float brightness){
   float a=sine(phase);
@@ -377,6 +378,7 @@ static void clear_transport(sr_engine *e)
     e->nature_audition=e->bird_wait=0;
     e->bird_left=e->bird_note=0;
     e->nature_active=e->nature_from=0;
+    e->nature_mono=e->nature_side=e->nature_mono_old=e->nature_side_old=0;
     e->nature_blend=1.f;e->nature_peak=e->master_peak=0;
     e->kick_env=e->hand_env=e->shaker_env=e->drum_meter=0;
     e->binaural_env=e->transport_env=e->sacred_gain=e->limiter=0;
@@ -743,20 +745,20 @@ static inline __attribute__((always_inline)) float birds(sr_engine *e,float nois
       e->bird_pan=noise*.52f;
     }
     unsigned call=e->bird_phrase;
-    e->bird_left=calls[call].length;
+    e->bird_left=calls[call].length/2u;
     e->bird_env=1.f/e->bird_left;
     e->bird_pitch=calls[call].pitch+e->bird_note*170+noise*140.f;
     if(++e->bird_note==calls[call].notes){
       e->bird_note=0;
-      e->bird_wait=2u*SR_RATE+((e->nature_rng>>12)&0x3ffffu);
-    }else e->bird_wait=2400u+((e->nature_rng>>19)&4095u);
+      e->bird_wait=SR_RATE+((e->nature_rng>>12)&0x1ffffu);
+    }else e->bird_wait=1200u+((e->nature_rng>>19)&2047u);
   }
   unsigned call=e->bird_phrase;
   float progress=e->bird_left*e->bird_env;
   float env=progress*(1.f-progress)*4.f;
   e->bird_left--;
   float hz=e->bird_pitch+calls[call].sweep*progress*progress;
-  float fundamental=advance(&e->bird_phase,hz);
+  float fundamental=advance(&e->bird_phase,2.f*hz);
   return (fundamental*.077f+sine(e->bird_phase*2.f)*.014f+noise*.009f)*env*env;
 }
 
@@ -787,12 +789,12 @@ static inline __attribute__((always_inline)) float bed(sr_engine *e,float *side)
   }
   if(!e->nature_active&&e->nature_blend>=1.f)return 0;
   float n=nature_noise(e);
-  e->wind_lp+=(n-e->wind_lp)*.0008f;
-  e->rain_lp+=(n-e->rain_lp)*.06f;
+  e->wind_lp+=(n-e->wind_lp)*.0016f;
+  e->rain_lp+=(n-e->rain_lp)*.1164f;
   float wind=e->wind_lp*3.5f;
   float rain=(e->rain_lp-e->wind_lp)*.26f;
   float air=n-e->rain_lp;
-  float swell=.55f+.45f*advance(&e->bed_phase,.12f);
+  float swell=.55f+.45f*advance(&e->bed_phase,.24f);
   unsigned mask=(1u<<e->nature_active)|(e->nature_blend<1.f?(1u<<e->nature_from):0);
   float bird=(mask&((1u<<4)|(1u<<6)|(1u<<8)|(1u<<9)))?birds(e,n):0;
   float pan=e->bird_pan;
@@ -804,7 +806,7 @@ static inline __attribute__((always_inline)) float bed(sr_engine *e,float *side)
     stereo=previous_stereo+(stereo-previous_stereo)*e->nature_blend;
     float previous=bed_color(e->nature_from,wind,rain,air,swell,bird,&previous_pan);
     value=previous+(value-previous)*e->nature_blend;
-    e->nature_blend+=1.f/(.5f*SR_RATE);
+    e->nature_blend+=2.f/(.5f*SR_RATE);
   }
   *side=(bird*pan*.34f+air*(swell-.55f)*.018f)*stereo;
   return value;
@@ -1009,8 +1011,18 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     float bed_gain=audition?.55f:e->bed_level;
     float nature=0, nature_side=0;
     if((audition||e->solo==SR_TRACKS)&&bed_gain>0&&
-       (e->bed_type||e->nature_active||e->nature_blend<1.f)){
-      nature=bed(e,&nature_side);
+       (e->bed_type||e->nature_active||e->nature_blend<1.f||e->nature_mono||e->nature_side)){
+      if((e->frame_count+i)&1u){
+        nature=e->nature_mono;
+        nature_side=e->nature_side;
+      }else{
+        e->nature_mono_old=e->nature_mono;
+        e->nature_side_old=e->nature_side;
+        e->nature_side=0;
+        e->nature_mono=bed(e,&e->nature_side);
+        nature=.5f*(e->nature_mono+e->nature_mono_old);
+        nature_side=.5f*(e->nature_side+e->nature_side_old);
+      }
       float gain=bed_gain*e->transport_env;
       nature*=gain;
       nature_side*=gain;

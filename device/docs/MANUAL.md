@@ -113,19 +113,13 @@ software count and still needs confirmation on the physical LCD.
 
 ### Groove, MIX and experimental AIR
 
-EVOLVE EDIT cycles Loop, New Song and Groove. On Groove, K1 chooses Intention,
+EVOLVE EDIT cycles Loop, New Song, Groove and Development. On Groove, K1 chooses Intention,
 Straight or Swing. K2 scales the timing offset from 0 to 100 percent. K3 is
 loop length and K4 is Freeze. The timing profile applies to evolving piano, pluck, lead and harmony offbeats. Lead and harmony use smaller offsets with slow patches or at slow tempos. Frequency Lock uses straight timing. Bass, drums and downbeats stay on the transport clock.
 
 MIX opens with musical channels and source buses together. Turn SELECT through the tracks and buses to change the focused controls. EDIT cycles All Channels, Master FX, Reset Mix, Active Channels and the taller Source Buses view. Use All Channels to recover muted or disabled sources. SEL and LFO mute and solo musical tracks. Bus controls retain their own routing. For example, Binaural keeps its stereo separation.
 
-AIR is an opt-in experiment. K1 enables scanning, K2 selects a track or All,
-K3 captures the first named compatible BLE MIDI advertiser as a reference,
-and K4 holds or releases modulation. AIR uses coarse signal changes and
-smooths its effect on the send. A single-track target needs an audible FX
-return. No signal or switching AIR off returns modulation toward zero unless
-Hold is active. The radio is off at startup. Real hand response and device
-audio performance require hardware validation.
+AIR is an opt-in experiment. See Corrective firmware controls for calibration and diagnostics.
 
 SOUND / Instrument shows a cached oscillator and attack/release preview. Brightness affects held notes. Attack and release apply to newly triggered notes. Set each control to zero to use the patch default. The four banks save these edits per track.
 
@@ -141,3 +135,56 @@ MIX EDIT also offers Source Buses. SELECT chooses Nature, Sacred Bass,
 Reference, Binaural, or FX, and the encoders adjust that bus's existing
 controls. Meters show sampled post-routing signal activity. Binaural keeps
 its stereo carrier routing and does not expose a pan control.
+
+### Corrective firmware controls
+
+The introduction starts after initialization. A key, button, panel encoder or
+master-volume movement dismisses it. The first skip input is consumed. The
+startup chime follows the master level.
+
+Hold HOME and tap EDIT to open Quick Find. K1 selects a destination and K2
+opens it. On SOUND, EDIT toggles the category list. SELECT chooses a category
+while the list is open and a track while editing.
+
+| Destination | K1 | K2 | K3 | K4 |
+| --- | --- | --- | --- | --- |
+| SOUND / Instrument | Patch | Brightness | Attack | Release |
+| SOUND / Nature | Bed | Level | Audition | Auto / Off |
+| SOUND / Nature Character | Style | Level | Audition | Auto / Off |
+| EVOLVE / Development | Evolution | Variation | Pace | Next phrase |
+| SETUP / Lights and Display | Visualizer | Lighting | LED test | LED slot |
+| AIR | Radio | Target | Calibrate | Hold |
+
+Editing a patch or kit locks that choice. Release it in EVOLVE / New Song by
+selecting the role and turning Track Lock left. A manually selected Nature
+Bed remains selected until you return Nature to Auto. On Nature K4, turn
+right for Auto or left for Off. While playing, turn Audition right to isolate
+the bed for four seconds. Turn left or press HOME to end the audition.
+
+The SOUND Instrument graph shows the measured mono mix over the selected
+patch model during play. The attack and release panel is a model of the
+selected patch's envelope. EVOLVE plots observed role events by step. A
+blank lane is an interval with no captured events.
+
+Select Original or Polar Bloom under SETUP / Lights and Display. After ten
+seconds of PLAY inactivity the selected scene uses the full LCD. Piano keys
+continue to play. A deliberate button or encoder input exits fullscreen.
+
+On illuminates supported keys and controls at low brightness. Keys shows
+held keys and the pending key change. Off extinguishes decorative lighting.
+Dance uses note and percussion events to trigger brief pulses. PLAY uses
+its green LED when running. LED Test steps the 27 piano keys, 14 button
+outputs and PLAY green. On FM-1 the diagnostic prints the active matrix
+column and packed row to the platform log. Compare with the pinned board
+map and confirm each light independently. Leave test mode before playback.
+
+AIR listens for legacy Bluetooth LE advertisements. Calibrate with your
+hand away while packets are arriving. The raw signal and packet count show
+whether there is a usable source. A drop below the calibrated reference
+increases FX wet modulation. Stale signal returns the modulation toward zero.
+AIR and physical FM-1 response are hardware-unverified.
+
+The battery glyph reports the FM-1's coarse reading. An empty red outline
+means low battery. The lightning glyph means power from a USB host. ABOUT
+spells out the current reading. Fullscreen fades the glyph out by two
+seconds. A new low battery reading can bring it back briefly.

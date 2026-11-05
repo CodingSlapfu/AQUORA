@@ -2,6 +2,7 @@
  * Original Sound Healing application. Audio owns engine state; UI produces a bounded queue. */
 #include "serenity.h"
 #include "fastmath.h"
+#include "air_sensor.h"
 static sr_engine engine PLAT_POOL;
 static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
 typedef struct {int kind,value; unsigned track;} command;
@@ -21,12 +22,12 @@ static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce;
 static unsigned drum_tab, setup_tab, sound_picker, fullscreen, last_control_ms;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
-static unsigned air_on, air_hold, air_calibrated, air_poll;
+static unsigned air_on, air_hold, air_poll;
+static aq_air_sensor air_sensor;
 static unsigned air_packets;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-static unsigned air_last_signal, air_sent;
+static unsigned air_sent;
 #endif
-static float air_filtered;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
 extern unsigned plat_air_sample(unsigned *packets);
 extern void plat_air_enable(int on);
@@ -34,7 +35,6 @@ extern void plat_air_enable(int on);
 static unsigned quick_item;
 static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature",
  "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate","Nature Style","Evolution","Master FX","Track Routing"};
-static int air_reference, air_rssi;
 static const uint8_t sound_groups[]={0,6,1,14,2,3,5,7,12,11,13};
 
 static volatile unsigned intro_active;
@@ -46,6 +46,11 @@ static unsigned scope_write, scope_enabled;
 static uint32_t evolve_events[SR_TRACKS], evolve_step;
 static uint8_t evolve_history[64];
 static unsigned led_test, led_step;
+static int battery_level=-1;
+static unsigned battery_poll_ms, battery_overlay_ms, battery_fade, battery_dirty;
+#ifndef PLAT_HOST
+extern void plat_aquora_led_test_log(unsigned slot);
+#endif
 static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
@@ -335,6 +340,7 @@ void app_panic(void)
     engine.restart=0;
     engine.master=0;
     intro_active=0;
+    intro_gain=0;
     output_gain=0;
 }
 void app_render(int32_t *lr,uint32_t n,uint32_t master)
@@ -403,6 +409,10 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
      press=0;
      for(unsigned i=0;i<7;i++)enc[i]=0;
    }
+ }
+ if((press&(1u<<B_EDIT))&&(b&(1u<<B_HOME))){
+   page=PAGE_SETUP;setup_tab=3;debug=0;bank_confirm=0;dirty=1;
+   press&=~((1u<<B_EDIT)|(1u<<B_HOME));
  }
  if(debug==3 && (press&(1u<<B_SEQ))){
    unsigned flags=plat_lock();
@@ -509,21 +519,26 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     }else if(control==66){
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
       air_on=d>0;
-      air_calibrated=air_packets=air_rssi=air_sent=0;
-      air_filtered=0;
+      air_packets=air_sent=air_hold=0;
+      air_sensor=(aq_air_sensor){0};
       if(!air_on)send(70,0);
       plat_air_enable(air_on);
 #endif
     }else if(control==68){
-      if(d>0&&air_on&&air_packets){air_reference=(int)air_filtered;air_calibrated=1;}
+      if(d>0&&air_on)aq_air_calibrate(&air_sensor,plat_ms());
     }else if(control==69)air_hold=d>0;
     else if(control==38)visual_mode=d>0;
     else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
     else if(control==52)mix_reset=d>0;
-    else if(control==80){led_test=d>0;led_step=0;}
-    else if(control==81&&led_test)led_step=bounded((int)led_step+d,0,NKEYS+NB);
+    else if(control==80||control==81){
+      if(control==80){led_test=d>0;led_step=0;}
+      else if(led_test)led_step=bounded((int)led_step+d,0,NKEYS+NB);
+#ifndef PLAT_HOST
+      if(led_test)plat_aquora_led_test_log(led_step);
+#endif
+    }
     else if(control==56)lighting=bounded((int)lighting+d,0,3);
     else if(control==57)fps_auto=switched(fps_auto,d);
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
@@ -567,8 +582,19 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
 }
 #include "ui.c"
 enum { FRAME_MIN_MS = 50 };
+static int battery_read(void)
+{
+#if defined(PLAT_HOST) && !defined(PLAT_WEB)
+    const char *fixture=getenv("AQUORA_TEST_BATTERY");
+    if(fixture)return atoi(fixture);
+#endif
+    return plat_battery();
+}
 void app_ui_init(void){
-    intro_start=redraw_ui_ms=lastdraw=last_control_ms=plat_ms();
+    intro_start=redraw_ui_ms=lastdraw=last_control_ms=battery_poll_ms=plat_ms();
+    battery_level=battery_read();
+    battery_fade=4;
+    battery_dirty=1;
 #ifndef PLAT_HOST
     intro_active=1;
 #else
@@ -597,17 +623,8 @@ void app_frame(void)
       air_poll=now;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
       unsigned raw=plat_air_sample(&air_packets);
-      if(air_packets){
-        air_rssi=(int)raw;
-        if(!air_filtered)air_filtered=(float)raw;
-        air_filtered+=((float)raw-air_filtered)*.24f;
-        air_last_signal=now;
-      }
-      unsigned live=air_filtered&&now-air_last_signal<800u;
-      unsigned target=live&&air_calibrated?
-        (unsigned)bounded((air_reference-(int)air_filtered-2)*9,0,100):0;
-      if(!live)air_rssi=0;
-      if(!air_hold&&target!=air_sent){send(70,target);air_sent=target;}
+      unsigned target=aq_air_update(&air_sensor,raw,air_packets,now);
+      if((!air_hold||!air_sensor.raw)&&target!=air_sent){send(70,target);air_sent=target;}
 #endif
       if(page==PAGE_AIR)dirty=1;
     }
@@ -638,8 +655,24 @@ void app_frame(void)
     }
     if(knob_until&&(int32_t)(now-knob_until)>=0){knob_until=0;dirty=1;}
     if(!intro_active&&!fullscreen&&!debug&&page==PAGE_PLAY&&now-last_control_ms>=10000u){
-      fullscreen=1;dirty=1;
+      fullscreen=1;battery_overlay_ms=now;dirty=1;
     }
+    if(now-battery_poll_ms>=500u){
+      battery_poll_ms=now;
+      int level=battery_read();
+      if(level!=battery_level){
+        if(fullscreen&&level==0&&battery_level>0&&battery_level<4)
+          battery_overlay_ms=now;
+        battery_level=level;
+        if(!fullscreen||battery_fade)battery_dirty=1;
+      }
+    }
+    unsigned fade=4;
+    if(fullscreen){
+      unsigned age=now-battery_overlay_ms;
+      fade=age>=2000u?0:age<=1200u?4:4-(age-1200u)/200u;
+    }
+    if(fade!=battery_fade){battery_fade=fade;battery_dirty=1;}
     if(now-redraw_ui_ms<FRAME_MIN_MS)return;
     unsigned elapsed=now-lastdraw;
     int animate=!debug&&(intro_active||page==PAGE_PLAY||page==PAGE_MIX||page==PAGE_SOUND||page==PAGE_EVOLVE)&&elapsed>=FRAME_MIN_MS;
@@ -655,7 +688,7 @@ void app_frame(void)
       if(page==PAGE_PLAY)prepare_geometry();
       graphics_us=(plat_ticks24()-begin)/24;
     }
-    if(animate||dirty){
+    if(animate||dirty||battery_dirty){
       redraw_ui_ms=now;
       unsigned draw_start=plat_ticks24();
       draw(animate);
@@ -671,6 +704,8 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"mute"))*got=track->mute;
  else if(!strcmp(what,"solo"))*got=engine.solo;
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
+ else if(!strcmp(what,"battery_level"))*got=battery_level;
+ else if(!strcmp(what,"battery_fade"))*got=battery_fade;
  else if(!strcmp(what,"intro"))*got=intro_active;
  else if(!strcmp(what,"nature_bed"))*got=engine.bed_type;
  else if(!strcmp(what,"nature_style"))*got=engine.nature_style;

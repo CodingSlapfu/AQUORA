@@ -29,6 +29,12 @@ static void geometry(int offset)
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
      cv_line(vis_output.xy[t][j-1][0],y0,vis_output.xy[t][j][0],y1,c);
    }
+   if(vis_input.water&&t>0)
+     for(unsigned j=t&1u;j<32;j+=4){
+       int y0=vis_output.xy[t-1][j][1]-offset,y1=vis_output.xy[t][j][1]-offset;
+       if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
+       cv_line(vis_output.xy[t-1][j][0],y0,vis_output.xy[t][j][0],y1,RGB(29,74,94));
+     }
  }
 }
 static const char *onoff(int enabled){return enabled?"ON":"OFF";}
@@ -122,7 +128,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 65:*name="STRENGTH %";number=engine.groove_strength;break;
  case 66:*name="AIR RADIO";return FM1B_BLE_CENTRAL?(air_on?"Scanning":"Off"):"Unavailable";
  case 67:*name="AIR TARGET";return engine.air_track<SR_TRACKS?role_names[engine.air_track]:"All tracks";
- case 68:*name="CALIBRATE";return air_calibrated?"Ready":"Turn right";
+ case 68:*name="CALIBRATE";return air_sensor.calibrated?"Ready":"Turn right";
  case 71:*name="QUICK FIND";return quick_names[quick_item];
  case 72:*name="OPEN";return "Turn right";
  case 69:*name="AIR HOLD";return onoff(air_hold);
@@ -138,7 +144,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
  case 78:*name="NATURE MODE";return !engine.bed_type?"Off":(engine.sound_locks&SR_SOUND_NATURE)?"Manual":"Auto";
  case 80:*name="LED TEST";return onoff(led_test);
- case 81:*name=led_step<NKEYS?"KEY SLOT":"BUTTON SLOT";number=led_step<NKEYS?led_step+1:led_step-NKEYS+1;break;
+ case 81:if(led_step==NKEYS+NB){*name="LED SLOT";return "PLAY green";}*name=led_step<NKEYS?"KEY SLOT":"BUTTON SLOT";number=led_step<NKEYS?led_step+1:led_step-NKEYS+1;break;
  case 79:*name="NATURE STYLE";{static const char *styles[]={"Ambient","Organic","Rhythmic","Ethereal"};return styles[engine.nature_style];}
  case 54:*name="AUDITION";return engine.nature_audition?"Playing":"Turn right";
  case 49:*name="MUTE";return onoff(track->mute);
@@ -350,13 +356,36 @@ static void mixer_band(int band)
    if(meter)for(int w=0;w<5;w++)cv_line(x+3+w,87-meter-offset,x+3+w,87-offset,color);
  }
 }
+static void battery_glyph(void)
+{
+ if(battery_level<0||battery_level>4||!battery_fade)return;
+ unsigned r=battery_level==0?246u:battery_level==4?106u:144u;
+ unsigned g=battery_level==0?98u:battery_level==4?211u:218u;
+ unsigned b=battery_level==0?89u:190u;
+ unsigned fade=battery_fade;
+ uint16_t ink=RGB(r*fade/4u,g*fade/4u,b*fade/4u);
+ cv_line(218,5,233,5,ink);
+ cv_line(218,15,233,15,ink);
+ cv_line(218,5,218,15,ink);
+ cv_line(233,5,233,15,ink);
+ cv_line(234,9,235,9,ink);
+ cv_line(234,11,235,11,ink);
+ if(battery_level==4){
+   cv_line(227,7,223,11,ink);
+   cv_line(223,11,228,11,ink);
+   cv_line(228,11,225,14,ink);
+ }else for(int bar=0;bar<battery_level;bar++){
+   int x=220+4*bar;
+   for(int y=8;y<=12;y++)cv_line(x,y,x+2,y,ink);
+ }
+}
 static void draw(int animate)
 {
  unsigned revision=state_revision;
  for(int band=0;band<5;band++){
    int immersion=page==0&&visual_mode&&!debug;
    int visual=intro_active||fullscreen||band==1||band==2||(immersion&&band>=3);
-   if(debug ? !dirty : visual ? !animate&&!dirty : !dirty)continue;
+   if(!(band==0&&battery_dirty)&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    cv_begin(240,48,RGB(5,17,22));
    if(intro_active){
      geometry(band*48);
@@ -384,8 +413,9 @@ static void draw(int animate)
        cv_text(8,0,&FONT_B,"EXPERIMENTAL AIR",C_WHITE);
        cv_text(8,23,&FONT_XS,"PASSIVE BLE / CALIBRATE HAND AWAY",C_WHITE);
      }else{
-       label(8,0,"SIGNAL RAW",air_rssi);
-       label(120,0,"MODULATION %",engine.air_wet*100.f);
+       label(8,0,air_sensor.raw?"SIGNAL RAW":"NO SIGNAL",air_sensor.raw);
+       label(185,0,"PACKETS",air_packets);
+       label(90,0,"WET %",engine.air_wet*100.f);
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
@@ -439,12 +469,30 @@ static void draw(int animate)
          cv_line(7+(j-1)*225/128,29-live0,7+j*225/128,29-live1,colors[selected]);
        }
      }
+   }else if(visual&&page==PAGE_SOUND){
+     if(band==1){
+       if(group==1||group==14){
+         limited_text(8,0,220,&FONT_B,beds[engine.bed_type],C_WHITE);
+         cv_text(8,24,&FONT_XS,!engine.bed_type?"OFF":engine.sound_locks&SR_SOUND_NATURE?"MANUAL":"AUTO / INTENTION + STYLE",C_WHITE);
+       }else{
+         limited_text(8,0,220,&FONT_B,groups[group],C_WHITE);
+         cv_text(8,24,&FONT_XS,"LEVELS FROM AUDIO ENGINE",C_WHITE);
+       }
+     }else{
+       unsigned bus=group==3?SR_BUS_BINAURAL:group==2?SR_BUS_REFERENCE:group==5?SR_BUS_SACRED:SR_BUS_NATURE;
+       float level=group==1||group==14||group==2||group==3||group==5?
+          engine.bus_meter[bus]:engine.tracks[selected].meter;
+       int end=8+(int)fm_clampf(level*1200.f,0,222);
+       for(int y=8;y<19;y++)cv_line(8,y,end,y,colors[selected]);
+       label(8,24,"POST MIX PEAK %",(int)(level*100.f));
+     }
    }else if(visual&&page==PAGE_SETUP){
      if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY",C_WHITE);
      if(band==2){
        if(setup_tab==2){
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,C_WHITE);
-         cv_text(8,26,&FONT_XS,"M-VAVE FM-1 / FM-1_73",C_WHITE);
+         static const char *power[]={"BATTERY LOW","BATTERY 1 / 3","BATTERY 2 / 3","BATTERY FULL","USB POWER"};
+         cv_text(8,26,&FONT_XS,battery_level>=0&&battery_level<=4?power[battery_level]:"BATTERY UNREAD",C_WHITE);
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":"EDIT: TAB   GLO: PERFORMANCE",C_WHITE);
      }
    }else if(visual&&page==PAGE_EVOLVE){
@@ -475,8 +523,8 @@ static void draw(int animate)
        int x=cv_text(104,2,&FONT_XS,"PULSE ",C_WHITE);
        cv_text(x,2,&FONT_XS,count,RGB(147,221,207));
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
-       cv_text(187,2,&FONT_XS,meter,C_WHITE);cv_text(212,2,&FONT_XS,"%",C_WHITE);
-     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),C_WHITE);
+       cv_text(181,2,&FONT_XS,meter,C_WHITE);cv_text(205,2,&FONT_XS,"%",C_WHITE);
+     }else if(page!=0)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),C_WHITE);
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));
@@ -550,8 +598,10 @@ static void draw(int animate)
        }
      }
    }
+   if(band==0&&!intro_active)battery_glyph();
    cv_blit(0,band*48);
  }
  dirty=0;
+ battery_dirty=0;
  displayed_revision=revision;
 }

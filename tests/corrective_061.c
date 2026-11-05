@@ -1,4 +1,5 @@
 #include "serenity.h"
+#include "../device/air_sensor.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -61,10 +62,25 @@ static void nature_render(void)
     }
 }
 
+static void air_signal(void)
+{
+    aq_air_sensor sensor={0};
+    assert(!aq_air_calibrate(&sensor,0));
+    assert(!aq_air_update(&sensor,200,5,80));
+    assert(aq_air_calibrate(&sensor,80));
+    unsigned target=0;
+    for(unsigned t=160;t<=640;t+=80)target=aq_air_update(&sensor,182,7,t);
+    assert(target>70);
+    assert(!aq_air_update(&sensor,0,0,1440));
+    assert(!aq_air_calibrate(&sensor,1440));
+    assert(!aq_air_update(&sensor,200,6,1520));
+}
+
 int main(void)
 {
     profiles();
     nature_render();
+    air_signal();
     puts("PASS 13 intentions x 4 styles x 32 seeds, manual/off locks, new sounds selected and stereo beds fade to silence");
     return 0;
 }

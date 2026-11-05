@@ -76,6 +76,19 @@ static void led_pos_init(void)
                     led_pos[id] = (uint8_t)((p << 3) | r);
     }
 }
+/* AQUORA diagnostic slot follows its UI ordering, using the active panel map. */
+void plat_aquora_led_test_log(unsigned slot)
+{
+    uint32_t pos=slot<NKEYS?led_pos[14u+slot]:
+        slot<NKEYS+NB?led_pos[panel.btn[slot-NKEYS]]:(8u<<3)|1u;
+    char line[]="AQ LED col=00 row=0";
+    if(pos==0xffu){plat_log("AQ LED unmapped");return;}
+    unsigned col=pos>>3;
+    line[11]=(char)('0'+col/10u);
+    line[12]=(char)('0'+col%10u);
+    line[18]=(char)('0'+(pos&7u));
+    plat_log(line);
+}
 /* the dim ones: felucca-bsp's glow, a short pulse on every scan frame, in two strengths (fm1_led_dim_level) */
 void plat_lights(uint32_t buttons, uint32_t keys, uint32_t dim_buttons, uint32_t dim_keys, int glow)
 {
