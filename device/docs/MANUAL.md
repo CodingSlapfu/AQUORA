@@ -1,4 +1,4 @@
-# AQUORA 0.6.4 — FM-1 guide
+# AQUORA 0.6.5 — FM-1 guide
 
 Generative Sound Sanctuary · Sound • Water • Resonance
 
@@ -28,7 +28,7 @@ parameter IDs and setters. MIX owns channel level/pan/send/mute/solo; SOUND
 MIX SHORTCUT and PLAY level shortcuts edit those same values. Bus shortcuts
 edit the same Nature/frequency/binaural controls, without independent state.
 
-**EVOLVE:** EDIT cycles Loop, New Song, Groove, Development. New Song and
+**EVOLVE:** EDIT cycles Loop, New Song, Groove, Development, Music Mode. New Song and
 Reroll require STOP; turn the action knob to arm and press SEL to execute.
 Reroll keeps motif identity and locked sounds. Freeze holds phrase evolution.
 Development is Stable / Subtle / Flowing / Adventurous with selectable pace;
@@ -44,7 +44,7 @@ Kick/hand transients and kit-dependent timbres are brighter in 0.6.2.
 
 **MIX:** eight-track console; SELECT focuses a track or source bus.
 FX opens the large channel strip; FX returns to the overview.
-K1 level, K2 pan, K3 FX send, K4 mute. SEL toggles mute; LFO toggles solo.
+K1 level, K2 pan, K3 FX send, K4 solo. SEL toggles mute; LFO toggles solo.
 EDIT cycles All, Master FX, Reset, Active, Bus Shortcuts. Reset needs its
 arm and press SEL. Master FX includes reverb, delay, Auto Gain and Auto Level.
 Meters are real engine peaks. The channel strip shows level/peak/clip/pan/send.
@@ -75,7 +75,7 @@ a loop boundary. Strength/feel and groove are separate from key quantization.
 **AIR:** opt-in receive-only BLE-strength experiment, OFF by default.
 First tab K1 radio, K2 send target, K3 far calibration, K4 Hold. EDIT opens
 FX mapping: K1 Reverb Bloom / Echo Throw / Bloom + Echo, K2 depth, K3 manual
-modulation, K4 target. EDIT returns to the sensor tab. FX choice/depth persist;
+modulation; target has its single home on the sensor section. EDIT returns to the sensor tab. FX choice/depth persist;
 radio, temporary output and Hold reset safely at boot. Existing manual FX
 amounts are preserved; disabling or signal loss returns modulation to zero.
 The shared FX bus is global; target chooses the role whose send is modulated.
@@ -167,7 +167,7 @@ the actual on-device routing. Repeated performance shortcuts use the same ID.
 | 13 | TRACK % | MIX / 5 | K1 |
 | 24 | PAN % | MIX / 5 | K2 |
 | 29 | FX SEND % | MIX / 5 | K3 |
-| 28 | SOLO | SOUND / 7 | K4 |
+| 28 | SOLO | MIX / 5 | K4 |
 | 43 | ISOLATE | SOUND / 11 | K1 |
 | 47 | KEYBOARD | SOUND / 12 | K1 |
 | 63 | PLAY GRID | SOUND / 12 | K2 |
@@ -178,7 +178,7 @@ the actual on-device routing. Repeated performance shortcuts use the same ID.
 | 79 | NATURE STYLE | SOUND / 14 | K1 |
 | 85 | BIRD ACTIVITY | SOUND / 14 | K2 |
 | 86 | BIRD DISTANCE | SOUND / 14 | K3 |
-| 19 | VARIATION % | EVOLVE / 0 | K1 |
+| 19 | VARIATION % | EVOLVE / 3 | K2 |
 | 20 | FREEZE | EVOLVE / 0 | K2 |
 | 25 | TEMPO BPM | EVOLVE / 0 | K3 |
 | 46 |  | EVOLVE / 0 | K4 |
@@ -203,7 +203,7 @@ the actual on-device routing. Repeated performance shortcuts use the same ID.
 | 16 | DRUM KIT | DRUMS / 1 | K1 |
 | 49 | MUTE | DRUMS / 2 | K1 |
 | 62 | PRESENCE % | DRUMS / 2 | K3 |
-| 38 | VISUALIZER | SETUP / 0 | K1 |
+| 38 | VISUALIZER | SETUP / 6 | K4 |
 | 56 | LIGHTS | SETUP / 0 | K2 |
 | 80 | LED TEST | SETUP / 0 | K3 |
 | 81 | LED SLOT | SETUP / 0 | K4 |
@@ -239,7 +239,7 @@ soak. Delivered 20 FPS, RF behavior, first-install state and audio quality
 remain owner verification.
 
 
-## MUSIC MODE and automatic motion (0.6.4)
+## MUSIC MODE and automatic motion (0.6.5)
 EVOLVE → EDIT four times → MUSIC MODE: K1 Standard / Cinematic / Neoclassical.
 Standard retains balanced ambient grammar. Cinematic adds long sustained harmony,
 spacious bass and sparse pulses; Neoclassical uses piano arpeggios, plucks and
@@ -256,3 +256,48 @@ field and interpolated nodal contours over a circular medium. Intention and
 reference frequency shape the field; actual role energy and onsets excite it,
 and silence lets it decay. It is artistic cymatics, not a scientific simulator.
 It does not appear in the static branded startup. Original remains available.
+
+
+## v0.6.5 workflow and safe SAVE
+ALGORITHM chooses the main page; EDIT advances the numbered section. Turning
+SELECT chooses a role/item; pressing SEL performs the action shown on screen.
+HOME returns to PLAY. MIX overview K1/FX opens the channel strip. SEL mutes,
+LFO or strip K4 solos. MASTER FX is EDIT2/5: K1 Reverb, K2 Delay, K3 Auto Gain,
+K4 Auto Level. Auto Gain gently balances input peaks; Auto Level applies ensemble
+balance and output ceiling. These are distinct controls, not extra sound tracks.
+Bus shortcuts now open the canonical sound/FX home with K1, rather than duplicate
+editable settings. The existing eight musical tracks and five source buses remain.
+
+EVOLVE Loop owns tempo, Freeze and16/32/64 steps. Development owns variation,
+evolution, pace and next phrase. Groove owns style/strength. Empty cells do nothing.
+New Song/Reroll require STOP: turn K1/K2 to arm, then SEL confirms once. SAVE only
+stores the active bank; it never confirms a song/reset action. PLAY/STOP, EDIT,
+HOME or changing main page cancels armed actions. Reroll retains motif and locks.
+
+SAVE uses a bounded command fence and captures the selected destination before
+writing. Optional geometry yields to save progress. The inactive flash sector is
+committed with CRC/readback; only then does Saved appear. A five-second watchdog
+reports failure without falsely declaring success; any in-flight flash operation
+is safely drained before retry. Fullscreen defers while saving; SAVE wakes a
+fullscreen display. SETUP/About shows snapshot/flash/total times and truthful state. Rotate SELECT on About for per-phase flash elapsed times
+(erase/payload/header/CRC verification), request/retry counts, worker-busy and
+suspend counts. These are main-loop latency diagnostics, not extra audio work.
+
+Six appended FM bass patches (IDs30–35): Pure Sub FM, Rounded Ember FM, Wood
+Resonance FM, Harmonic Root FM, Plucked Earth FM, Cinema Depth FM. Old IDs and
+banks remain valid. Curated mode/intention pools use the new unlocked basses;
+manual locks remain authoritative. There are36 patches, eight tracks,16 voices.
+
+Startup is an independent rotating/drawing, palette-colored spiral over a bright
+theme field, with a stable AQUORA title/version and preserved soft FM chime.
+Neither regular visualizer runs during intro. Every deliberate control skips it.
+White panels are vivid; textual ink remains dark. AQUORA Sans is required at
+compile time and its atlas fingerprint is visible in About. A small precomputed
+italic face appears only in expressive Music Mode descriptions; navigation,
+numeric readings and safety/confirmation text remain upright and high contrast.
+
+Performance cadence targets20FPS when headroom permits, reduces optional refresh
+under pressure, and recovers without a permanent freeze. Grid17×17, separable
+standing modes, cap256 contours, band-clipped lines and reduced Original geometry
+bound fallback cost. Host software acceptance cannot prove actual FM-1 FPS,
+callback deadlines/XRUNs, RF response, flash latency or listening quality.

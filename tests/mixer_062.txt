@@ -16,6 +16,9 @@ wait 60
 expect send_percent 90
 spin K4 1
 wait 60
+expect solo 0
+tap SEL
+wait 60
 expect mute 1
 tap SEL
 wait 60

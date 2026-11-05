@@ -28,7 +28,7 @@ for name,nav in pages.items():
   with Image.open(target) as im:assert im.n_frames>=6 and im.size==(240,240)
   assert target.stat().st_size<1600000,(name,target.stat().st_size)
   provenance.append({'page':name,'transport':'PLAY','frames':40,'fps':10,'seconds':4,'unique_frames':unique,'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'source':'actual host RGB565 LCD renderer + live sr_render'})
-# Independent branded startup is static and never submits a visualizer job.
+# Independent branded startup visibly animates and never submits a visualizer job.
 run('intro',['expect intro 1','expect reset_visual_counters 1','wait 500','shot a.png','wait 500','shot b.png','expect geometry_jobs 0','expect worker_jobs 0'],{'AQUORA_TEST_INTRO':'1'})
 assert Image.open(out/'intro/a.png').tobytes()!=Image.open(out/'intro/b.png').tobytes()
 # New secondary field: animated, foreground on both canvases, hidden on intro.
@@ -47,4 +47,4 @@ for mode in range(3):
  norm=array.array('h',(round(x*gain) for x in pcm))
  with wave.open(str(out/f'mode-{mode}-matched.wav'),'wb') as w:w.setparams(params);w.writeframes(norm.tobytes())
 (out/'provenance.json').write_text(json.dumps(provenance,indent=2)+'\n')
-print('PASS four real 40-frame/240px APNGs, eight UI stills, static intro, new field worker paths, three level-matched music previews')
+print('PASS four real 40-frame/240px APNGs, eight UI stills, animated spiral intro, new field worker paths, three level-matched music previews')

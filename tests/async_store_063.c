@@ -55,8 +55,9 @@ static uint8_t fl_rdsr(uint8_t c){
 static int fl_wait_ready(uint32_t max,uint32_t *took){(void)max;*took=0;while(remain)timer();return 0;}
 static uint32_t irq_save(void){irq_start=tick;return 0;}
 static void irq_restore(uint32_t f){(void)f;uint32_t dt=(tick-irq_start)/24;if(dt>max_irq)max_irq=dt;}
-int plat_cpu2_busy(void){return 0;}
-int plat_cpu2_wait(void){return 0;}
+static unsigned worker_busy,worker_retires;
+int plat_cpu2_busy(void){return worker_busy;}
+int plat_cpu2_wait(void){worker_busy=0;worker_retires++;return -1;}
 #include "../vendor/fm1-base/device/aquora_async_store.h"
 static void reset_job(void){memset(&aq_store,0,sizeof aq_store);aq_flash_busy_base=0;remain=suspended=0;}
 int main(void){
@@ -83,5 +84,11 @@ int main(void){
   uint32_t base=aq_store.base;nor[base+256]^=1; /* bad payload -> previous CRC-valid copy */
   assert(st_load(OBJ_BANK1+bank,got,400)==400);assert(!memcmp(got,previous,400));
  }
+ memcpy(nor,baseline,sizeof nor);reset_job();worker_busy=1;
+ assert(!plat_aquora_save_begin(OBJ_BANK1,next,400));
+ int rc=1;unsigned polls=0;
+ while(rc==1&&polls++<200){tick+=24000;rc=plat_aquora_save_poll();}
+ assert(!rc&&worker_retires==1&&aq_store.busy>0);
+ assert(st_load(OBJ_BANK1,got,400)==400&&!memcmp(got,next,400));
  assert(max_irq<150);printf("PASS async live save: CRC fallback, prior-good preservation; modeled IRQ slice max %u us (not device timing)\n",max_irq);
 }

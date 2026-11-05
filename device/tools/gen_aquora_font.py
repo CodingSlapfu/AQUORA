@@ -54,7 +54,7 @@ def render(*args):
             for y in range(height):
                 shift=min(extra,(height-1-y)//4)
                 for x in range(width):slanted[y*(width+extra)+x+shift]=pixels[y*width+x]
-            glyphs[i]=(advance+extra,width+extra,slanted)
+            glyphs[i]=(advance+1,width+extra,slanted)
     return height, glyphs
 
 

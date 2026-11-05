@@ -1,4 +1,5 @@
 _Static_assert(AQUORA_FONT_FAMILY==0x41515335u,"AQUORA Sans atlas required");
+static const char aquora_font_provenance[]="AQUORA Sans:" AQUORA_FONT_ATLAS_SHA256;
 /* SPDX-License-Identifier: MPL-2.0 */
 static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?&FONT_S:&FONT_XS;}
 static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_M:&FONT_B;}
@@ -413,7 +414,7 @@ static void mixer_console(int band)
    limited_text(7,1,99,&FONT_B,role_names[t],skin_accent());
    cv_text(114,1,&FONT_XS,tr->mute?"MUTED":engine.solo==t?"SOLO":"ACTIVE",skin_text());
    num(v,(int)(tr->meter*100.f));cv_text(193,1,&FONT_XS,v,skin_text());
-   limited_text(8,26,224,&FONT_XS,"FX: STRIP / SELECT: CH / LFO: SOLO",skin_dim());
+   limited_text(8,26,224,&FONT_XS,"K1/FX: STRIP  SELECT: CH",skin_dim());
  }
 }
 static void mixer_focus_strip(int band)
@@ -424,7 +425,7 @@ static void mixer_focus_strip(int band)
  if(band==1){
    limited_text(9,1,200,ui_font_size==2?&FONT_M:&FONT_B,big[t],skin_accent());
    cv_text(8,31,&FONT_XS,tr->mute?"MUTE":engine.solo==t?"SOLO":"CHANNEL STRIP",skin_text());
-   cv_text(143,31,&FONT_XS,"FX: OVERVIEW",skin_dim());
+   cv_text(143,31,&FONT_XS,"SEL MUTE / LFO SOLO",skin_dim());
  }else if(band==2){
    float mag=fm_clampf(tr->meter,0,1);
    int fader=(int)(tr->volume*185.f);
@@ -450,8 +451,8 @@ static void mixer_focus_strip(int band)
  }else if(band==4){
    char a[14],b[14],c[14];num(a,(int)(tr->volume*100.f));
    num(b,(int)(tr->pan*100.f));num(c,(int)(tr->send*100.f));
-   static const char *names[]={"K1 LVL","K2 PAN","K3 SEND","K4 MUTE"};
-   const char *values[]={a,b,c,tr->mute?"ON":"OFF"};
+   static const char *names[]={"K1 LVL","K2 PAN","K3 SEND","K4 SOLO"};
+   const char *values[]={a,b,c,engine.solo==t?"ON":"OFF"};
    for(unsigned k=0;k<4;k++){
      int x=7+k*58;
      limited_text(x,1,55,&FONT_XS,names[k],skin_dim());
@@ -461,6 +462,10 @@ static void mixer_focus_strip(int band)
 }
 static void mixer_band(int band)
 {
+ if(band==1&&(mix_tab==1||mix_tab==2)){
+   limited_text(8,1,224,&FONT_B,mix_tab==1?"MASTER FX":"RESET MIX",skin_accent());
+   limited_text(8,27,224,&FONT_XS,mix_tab==1?"K3 AUTO GAIN / K4 AUTO LEVEL":mix_reset?"MIX RESET ARMED":"TURN K1 TO ARM",skin_text());return;
+ }
  if(mix_tab==0||mix_tab==3){mixer_overview(band);return;}
  if(mix_tab==4){
    static const char *names[]={"Nature","Sacred","Ref","Binaural","FX"};
@@ -483,7 +488,7 @@ static void mixer_band(int band)
    label(8,2,"PEAK %",(int)(engine.master_peak*100.f));
    label(87,2,"LIMIT %",(int)(engine.limiter*100.f));
    label(166,2,"GAIN %",(int)(engine.gain_trim[selected]*100.f));
-   if(ui_font_size!=2)cv_text(8,30,&FONT_XS,"EDIT: TAB   LFO: SOLO   SEL: MUTE",skin_text());
+
    return;
  }
  unsigned ids[SR_TRACKS], count=0;
@@ -546,7 +551,7 @@ static void draw(int animate)
  for(int band=0;band<5;band++){
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
-   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug);
+   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    const int artwork=intro_active||fullscreen;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
@@ -588,8 +593,9 @@ static void draw(int animate)
          unsigned angle=(j*7u+phase)&127u;float radius=j*1.65f;
          int x=120+(int)(radius*vis_sine[angle]);
          int y=116+(int)(radius*vis_sine[(angle+32u)&127u])-(int)(band*48u);
-         band_line(px+1,py+1,x+1,y+1,RGB(5,24,39));
-         band_line(px,py,x,y,spiral_ink[(j/8u+elapsed/300u)%6]);px=x;py=y;
+         band_line(px+2,py+2,x+2,y+2,RGB(5,24,39));
+         band_line(px,py,x,y,spiral_ink[(j/8u+elapsed/300u)%6]);
+         band_line(px+1,py,x+1,y,spiral_ink[(j/8u+elapsed/300u)%6]);px=x;py=y;
        }
      }
      if(band==0){
@@ -672,7 +678,7 @@ static void draw(int animate)
        last_attack=track->attack;last_release=track->release;
      }
      int offset=(band-1)*48;
-     if(band==1)cv_text(8,0,&FONT_XS,(engine.running||engine.preview_frames)?"LIVE ROLE / MODEL":"PATCH MODEL",skin_text());
+     if(band==1){cv_text(8,0,&FONT_B,role_names[selected],skin_accent());limited_text(105,0,125,&FONT_XS,(engine.running||engine.preview_frames)?"LIVE SCOPE":"PATCH MODEL",skin_text());}
      else cv_text(8,0,&FONT_XS,"ATTACK / RELEASE",skin_text());
      int16_t captured[128];
      if(band==1&&(engine.running||engine.preview_frames)){
@@ -734,17 +740,21 @@ static void draw(int animate)
        label(8,ui_font_size==2?0:24,"POST MIX PEAK %",(int)(level*100.f));
      }
    }else if(visual&&page==PAGE_SETUP){
-     if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
+     if(band==1&&setup_tab==2){limited_text(8,1,224,&FONT_B,"AQUORA SANS / ABOUT",skin_text());limited_text(8,28,224,&FONT_T,aquora_font_provenance,skin_dim());}
+     else if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
      if(band==2){
        if(setup_tab==2){
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,skin_text());
-         static const char *power[]={"BATTERY LOW","BATTERY 1 / 3","BATTERY 2 / 3","BATTERY FULL","USB POWER"};
-         cv_text(8,26,&FONT_XS,battery_level>=0&&battery_level<=4?power[battery_level]:"BATTERY UNREAD",skin_text());
+         limited_text(8,26,224,&FONT_XS,save_info==0?"SELECT: SAVE SUMMARY 1/3":save_info==1?"SELECT: FLASH TIMES 2/3":"SELECT: COUNTERS 3/3",skin_text());
        }else if(setup_tab==1&&ui_font_size==2){
          static const char *messages[]={"SEL: LOAD / SAVE: STORE","STOP FIRST","EMPTY BANK","K3: ARM OVERWRITE","SAVED","LOADED","BANK ERROR","SAVING..."};
          limited_text(8,10,224,&FONT_XS,messages[bank_message],skin_accent());
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":setup_tab==0?(display_subtab?"TURN SELECT: LIGHTS":"TURN SELECT: APPEARANCE"):"SEL: LOAD / SAVE: STORE",skin_text());
      }
+   }else if(visual&&page==PAGE_EVOLVE&&song_tab==1){
+     if(band==1){limited_text(8,1,224,&FONT_B,"NEW SONG / REROLL",skin_accent());
+       limited_text(8,27,224,&FONT_XS,engine.running?"STOP TO GENERATE":song_arm==58?"NEW SONG ARMED":song_arm==59?"REROLL ARMED":"TURN K1 / K2 TO ARM",skin_text());}
+     if(band==2){limited_text(8,1,224,&FONT_XS,"SEL: CONFIRM / SAVE: BANK",skin_text());limited_text(8,27,224,&FONT_XS,"REROLL KEEPS MOTIF / LOCKS",skin_dim());}
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==4){
      if(band==1){limited_text(8,1,224,&FONT_B,music_modes[engine.music_mode],skin_accent());
        limited_text(8,27,224,&FONT_I,engine.music_mode==0?"Ambient balance":engine.music_mode==1?"Spacious expression":"Chamber movement",skin_text());}
@@ -772,8 +782,8 @@ static void draw(int animate)
        }
        cv_line(232,2,232,42,RGB(87,135,140));
      }
-   }else if(visual&&page==3)mixer_band(band);
-   else if(visual)geometry(band*48);
+   }else if(visual&&page==3&&band<3)mixer_band(band);
+   else if(visual&&page==PAGE_PLAY)geometry(band*48);
    else if(band==0){
      cv_text(8,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS&&ui_font_size!=2){
@@ -799,7 +809,7 @@ static void draw(int animate)
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
-       limited_text(x+3,25,232-x,&FONT_XS,page==PAGE_MIX&&mix_tab==5?"FX: OVERVIEW":"NEXT SECTION",skin_text());
+       limited_text(x+3,25,232-x,&FONT_XS,page==PAGE_MIX&&mix_tab==5?"SEL MUTE / LFO SOLO":"NEXT SECTION",skin_text());
      }
      if(page==0){
        cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",skin_accent());
@@ -809,8 +819,20 @@ static void draw(int animate)
        cv_text(x+4,2,&FONT_XS,sr_frequencies[engine.frequency].name,skin_text());
      }
    }else if(page==PAGE_SETUP&&setup_tab==2){
-     if(band==3){label(8,0,"SAVE SNAP ms",quick_snapshot_ms-quick_request_ms);label(127,0,"FLASH ms",quick_flash_ms);}
-     if(band==4){label(8,0,"SAVE TOTAL ms",quick_total_ms);label(127,0,"STAGE / BUSY",quick_progress[0]);}
+     if(save_info==0){
+       if(band==3){label(8,0,"SNAPSHOT ms",quick_snapshot_ms>=quick_request_ms?quick_snapshot_ms-quick_request_ms:0);label(127,0,"FLASH ms",quick_flash_ms);}
+       if(band==4){label(8,0,"TOTAL ms",quick_total_ms);
+         limited_text(127,0,105,&FONT_XS,"SAVE STATE",skin_dim());
+         const char *state=quick_timeout?"TIMEOUT":quick_started?"WRITING":quick_pending?"QUEUED":quick_last_result<0?"FAILED":quick_has_save?"VERIFIED":"IDLE";
+         limited_text(127,18,105,&FONT_B,state,skin_text());
+       }
+     }else if(save_info==1){
+       if(band==3){label(8,0,"ERASE us",quick_progress[4]);label(127,0,"PAYLOAD us",quick_progress[5]);}
+       if(band==4){label(8,0,"HEADER us",quick_progress[6]);label(127,0,"VERIFY us",quick_progress[7]);}
+     }else{
+       if(band==3){label(8,0,"REQUESTS",quick_requests);label(127,0,"RETRIES",quick_retries);}
+       if(band==4){label(8,0,"WORKER BUSY",quick_progress[2]);label(127,0,"SUSPENDS",quick_progress[8]);}
+     }
    }else{
      unsigned start=band==3?0:2;
      knob_cell(start,8);

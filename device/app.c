@@ -26,7 +26,7 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm;
-static unsigned drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, last_control_ms;
+static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, last_control_ms;
 static unsigned ui_theme, ui_font_size=1, ui_background, preferences_dirty, preferences_changed;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
 static unsigned air_on, air_hold, air_poll, air_tab;
@@ -195,7 +195,7 @@ static void mix_select(int delta)
 static unsigned control_for(unsigned knob)
 {
  if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
- if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,67}};return controls[air_tab][knob];}
+ if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0}};
    return controls[drum_tab][knob];
@@ -221,6 +221,7 @@ static unsigned control_for(unsigned knob)
    static const uint8_t reset_controls[]={52,0,0,0};
    return mix_tab==1?master_controls[knob]:reset_controls[knob];
  }
+ if(page==PAGE_MIX&&mix_tab==5){static const uint8_t strip[]={13,24,29,28};return strip[knob];}
  if(page==PAGE_SOUND&&group==0&&selected<SR_DRUMS){
    static const uint8_t shape[]={2,75,76,77};
    return shape[knob];
@@ -448,6 +449,7 @@ void app_init(void)
     quick_started=quick_pending=quick_timeout=quick_finished_ms=0;
     requested_play=stop_generation=applied_stop=physical_keys=0;
     page=selected=group=debug=display_subtab=0;
+    mix_tab=mix_reset=mix_focus=mix_bus=song_tab=song_arm=setup_tab=drum_tab=air_tab=save_info=0;
     preferences_dirty=preferences_changed=0;
     air_packet_window=air_packet_rate=air_packet_total=air_last_packet_ms=0;
     air_window_start=plat_ms();
@@ -545,12 +547,12 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    unsigned flags=plat_lock();
    blocked_keys|=k;
    bank_confirm=0;
-   song_arm=0;
+   song_arm=mix_reset=0;
    requested_play=!requested_play;
    if(!requested_play)stop_generation++;
    plat_unlock(flags);
  }
- if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=0;send(44,0);}
+ if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=mix_reset=0;send(44,0);}
  if((press&(1u<<B_SEL))&&page==PAGE_SETUP&&setup_tab==0){display_subtab=!display_subtab;dirty=1;}
  else if((press&(1u<<B_SEL))&&(page==PAGE_PLAY||page==PAGE_SOUND||(page==PAGE_MIX&&mix_tab!=2))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
@@ -608,6 +610,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
    }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
    else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3||mix_tab==5))mix_select(d);
+   else if(page==PAGE_SETUP&&setup_tab==2)save_info=bounded((int)save_info+d,0,2);
    else if(page==PAGE_SETUP&&setup_tab==0)display_subtab=bounded((int)display_subtab+d,0,1);
    else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
    knob_until=0;dirty=1;
@@ -910,7 +913,7 @@ int app_expect(const char *what,int *got){
      const char *name;
      unsigned id=control_for(parameter_routes[i].knob);
      knob_value(id,&name,buffer);
-     if(id!=parameter_routes[i].id||!*name)*got=0;
+     if(id!=parameter_routes[i].id||!*name){printf("BAD ROUTE id %u actual %u\n",parameter_routes[i].id,id);*got=0;}
    }
    page=PAGE_PLAY;song_tab=debug=selected=0;dirty=1;
  }
@@ -948,6 +951,46 @@ int app_expect(const char *what,int *got){
  }
  else if(!strcmp(what,"perf_sample")){
    printf("PERF %u %u %u %u %u %u\n",graphics_us,frame_us,callback_stats.p95,vis_output.node_count,worker_fallbacks,geometry_jobs);*got=1;
+ }
+ else if(!strcmp(what,"save_timeout"))*got=quick_timeout;
+ else if(!strcmp(what,"save_polls"))*got=quick_polls;
+ else if(!strcmp(what,"save_stage"))*got=quick_progress[0];
+ else if(!strcmp(what,"bass_patch"))*got=engine.tracks[SR_BASS].patch;
+ else if(!strcmp(what,"mix_reset_armed"))*got=mix_reset;
+ else if(!strcmp(what,"font_family"))*got=AQUORA_FONT_FAMILY==0x41515335u;
+ else if(!strcmp(what,"all_roles")){
+   for(unsigned t=0;t<SR_DRUMS;t++)sr_note_on(&engine,t,48+t*2,90,5.f);
+   engine.kick_env=engine.hand_env=1.f;*got=1;
+ }
+ else if(!strcmp(what,"remember_song")||!strcmp(what,"song_unchanged")){
+   static uint32_t remembered;arrangement r;arrangement_snapshot(&r);
+   if(!strcmp(what,"remember_song")){remembered=r.crc4;*got=1;}else *got=remembered==r.crc4;
+ }
+ else if(!strcmp(what,"remember_motif")||!strcmp(what,"motif_unchanged")){
+   static int8_t remembered[16],home[16];static unsigned patches[8];
+   if(!strcmp(what,"remember_motif")){memcpy(remembered,engine.melody,sizeof remembered);memcpy(home,engine.motif_home,sizeof home);for(unsigned t=0;t<8;t++)patches[t]=engine.tracks[t].patch;*got=1;}
+   else{*got=!memcmp(remembered,engine.melody,sizeof remembered)&&!memcmp(home,engine.motif_home,sizeof home);for(unsigned t=0;t<8;t++)if((engine.sound_locks&(1u<<t))&&engine.tracks[t].patch!=patches[t])*got=0;}
+ }
+ else if(!strcmp(what,"route_unique")){
+   unsigned saved_page=page,saved_group=group,saved_song=song_tab,saved_mix=mix_tab,saved_setup=setup_tab,saved_sub=display_subtab,saved_drum=drum_tab,saved_air=air_tab,saved_debug=debug,saved_focus=mix_focus;
+   *got=1;debug=0;mix_focus=0;
+   for(unsigned p=PAGE_SOUND;p<=PAGE_AIR;p++){
+     unsigned seen[128]={0};page=p;
+     unsigned count=p==PAGE_SOUND?sizeof(sound_groups):p==PAGE_EVOLVE?5:p==PAGE_MIX?6:p==PAGE_DRUMS?3:p==PAGE_SETUP?5:2;
+     for(unsigned tab=0;tab<count;tab++){
+       if(p==PAGE_SOUND)group=sound_groups[tab];
+       if(p==PAGE_EVOLVE)song_tab=tab;
+       if(p==PAGE_MIX)mix_tab=tab;
+       if(p==PAGE_DRUMS)drum_tab=tab;
+       if(p==PAGE_SETUP){setup_tab=tab==4?0:tab;display_subtab=tab==4;}
+       if(p==PAGE_AIR)air_tab=tab;
+       for(unsigned k=0;k<4;k++){
+         unsigned id=control_for(k);printf("ROUTE %u %u %u %u\n",p,tab,k,id);
+         if(id&&id<99&&seen[id]++)*got=0;
+       }
+     }
+   }
+   page=saved_page;group=saved_group;song_tab=saved_song;mix_tab=saved_mix;setup_tab=saved_setup;display_subtab=saved_sub;drum_tab=saved_drum;air_tab=saved_air;debug=saved_debug;mix_focus=saved_focus;dirty=1;
  }
  else if(!strcmp(what,"geometry_jobs"))*got=geometry_jobs;
  else if(!strcmp(what,"history_updates"))*got=history_updates;

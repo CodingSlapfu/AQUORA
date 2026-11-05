@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/aquora-0.6.5-host-tests
-          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 music_modes_064 music_load_064; do
+          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 music_modes_064 music_load_064 bass_library_065; do
             gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
               -Idevice/dsp -Ivendor/fm1-base/include \
               -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
@@ -67,8 +67,10 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=1 origin 50b8a1e02e215aff1e0a7b738d40f63769d4f502
-          git show 50b8a1e02e215aff1e0a7b738d40f63769d4f502:device/dsp/engine.c > /tmp/engine064.c
-          gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include -c /tmp/engine064.c -o /tmp/old.o
+          mkdir -p /tmp/baseline064
+          git show 50b8a1e02e215aff1e0a7b738d40f63769d4f502:device/dsp/serenity.h > /tmp/baseline064/serenity.h
+          git show 50b8a1e02e215aff1e0a7b738d40f63769d4f502:device/dsp/engine.c > /tmp/baseline064/engine.c
+          gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include -c /tmp/baseline064/engine.c -o /tmp/old.o
           python3 - <<'PYOBJ'
           import subprocess
           names=[l.split()[-1] for l in subprocess.check_output(['nm','-g','--defined-only','/tmp/old.o'],text=True).splitlines() if l.split()[-1].startswith('sr_')]
@@ -76,8 +78,8 @@ jobs:
           PYOBJ
           gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/audio_parity_065.c /tmp/old.o -lm -o /tmp/parity
           /tmp/parity | tee /tmp/aquora-0.6.5-host-tests/audio-parity.log
-          gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include /tmp/engine064.c tests/benchmark.c -lm -o /tmp/bench064
-          gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/benchmark.c -lm -o /tmp/bench065
+          gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include /tmp/baseline064/engine.c tests/benchmark_065.c -lm -o /tmp/bench064
+          gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/benchmark_065.c -lm -o /tmp/bench065
           for pass in 1 2 3; do
             /tmp/bench064 > /tmp/aquora-0.6.5-host-tests/before-$pass.log
             /tmp/bench065 > /tmp/aquora-0.6.5-host-tests/after-$pass.log
@@ -153,6 +155,7 @@ jobs:
           case "$TARGET" in
             host-panel)
               "${build[@]}" --host 2>&1 | tee "$out/build.log"
+              python3 tests/font_provenance_065.py device/build/gen/felucca_font.h device/build/host/sound-healing_host "$out/font-provenance.json"
               gcc -O1 -g -Wall -Wextra -Werror -Wno-unused-function -DSR_DEVICE -DPLAT_HOST -DFM1B_CPU2=1 -Ivendor/fm1-base/include -fsanitize=address,undefined -no-pie tests/async_store_063.c -o "$RUNNER_TEMP/async-store"
               ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 "$RUNNER_TEMP/async-store" | tee "$out/async-store.log"
               python3 tests/release_063.py "$PWD/device/build/host/sound-healing_host" "$out/release065" | tee "$out/release065.log"
@@ -163,6 +166,7 @@ jobs:
               done
               mkdir "$out/corrective_061"
               AQUORA_TEST_INTRO=1 device/build/host/sound-healing_host tests/corrective_061.txt "$out/corrective_061" 2>&1 | tee "$out/corrective_061.log"
+              python3 tests/hotfix_ui_065.py "$PWD/device/build/host/sound-healing_host" "$out/hotfix065" | tee "$out/hotfix065.log"
               python3 tests/performance_065.py "$PWD/device/build/host/sound-healing_host" "$out/performance065" | tee "$out/performance065.log"
               python3 tests/capture_ui_065.py "$PWD/device/build/host/sound-healing_host" "$out/captures065" | tee "$out/captures065.log"
               python3 tests/corrective_previews.py "$PWD/device/build/host/sound-healing_host" "$out/previews" | tee "$out/previews.log"
@@ -177,12 +181,14 @@ jobs:
               source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
               "${build[@]}" --web 2>&1 | tee "$out/build.log"
               node -e 'const fs = require("node:fs"); new WebAssembly.Module(fs.readFileSync(process.argv[1]));' device/build/emu/app.wasm
+              python3 tests/font_provenance_065.py device/build/gen/felucca_font.h device/build/emu/app.wasm "$out/font-provenance.json"
               cp -r device/build/emu device/web/words "$out/"
               ;;
             native|native-repro|single-core)
               if [[ "$TARGET" == single-core ]]; then export FM1B_CPU2=0; fi
               "${build[@]}" --sdk vendor/ac79-package-files 2>&1 | tee "$out/build.log"
               grep -Fq 'identity FM-1_73000605' "$out/build.log"
+              python3 tests/font_provenance_065.py device/build/gen/felucca_font.h device/build/sound-healing.bin "$out/font-provenance.json"
               firmware=device/build/sound-healing-0.6.5.fwsc
               node vendor/fm1-base/tests/installer_ports_test.mjs "$firmware" | tee "$out/installer.log"
               cp "$firmware" "$out/"
@@ -191,6 +197,7 @@ jobs:
               rg -n 'image |bss |flash |SRAM|RAM ' "$out/build.log" >> "$out/footprint.log" || true
               ;;
           esac
+          cp device/build/gen/felucca_font.h "$out/felucca_font.h"
           (
             cd "$out"
             find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt

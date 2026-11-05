@@ -8,9 +8,13 @@ expect knobs_valid 1
 spin SELECT 3
 expect mix_focus 11
 expect mix_bus 3
-spin K2 1
+spin K1 1
+expect page 1
+spin K1 1
 wait 100
 expect binaural 1
+tap HOME
+turn ALGO 3
 tap SEL
 spin SELECT -11
 expect mix_focus 0

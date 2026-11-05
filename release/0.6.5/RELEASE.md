@@ -1,12 +1,23 @@
-# AQUORA0.6.5 — audio-first visual performance correction
+# AQUORA0.6.5 — performance, reliability and workflow hotfix
 
-Preserves PR25 animated AQUORA intro and vibrant theme fields; normal visualizers
-remain hidden throughout startup. Resonance Plate uses separable17×17 standing
-modes and bounded256 contours; Original uses17 points/role. Lines are clipped
-before walking pixels. Adaptive50/75/100/150ms cadence replaces permanent
-headroom suppression, maintaining motion even under pressure and recovering.
+Keeps all three music modes and the existing eight-track/16-voice architecture.
+Bounded separable geometry and clipped raster lines reduce optional work;
+adaptive cadence replaces indefinite frame suppression. Harmonic lookup tables
+preserve legacy PCM within one count in the matched-palette acceptance test.
 
-Audio optimization is under acceptance; preserve all modes, sounds, controls
-and exact bank formats. Native/single-core/WASM and installer must match065.
-Actual FM-1 callback headroom, delivered FPS, lag and long-soak validation remain
-owner physical tests. Host measurements are not physical device proof.
+SAVE now uses a finite command fence and captured bank destination, gives flash
+progress priority over optional workers, retires a stuck busy worker, and reports
+explicit timeout/failure without false success. Existing alternating-sector CRC
+and readback/power-interruption recovery remain. Fullscreen never masks a write.
+
+Independent vibrant multicolor spiral startup preserves the skippable FM chime.
+Six appended FM basses expand the library to36 without changing old patch IDs or
+banks. Actual AQUORA Sans atlas fingerprint, bold hierarchy and a small real
+precomputed italic face; vivid White panels and contrast-safe MIX labels.
+MIX MASTER FX exposes K3 Auto Gain/K4 Auto Level. EDIT counters explain sections;
+canonical routes remove repeated controls. SEL confirms armed New Song/Reroll
+and Reset Mix; SAVE always stores a bank. Channel strip K4 solos, SEL mutes.
+
+Publication requires complete matching native/repro/single-core/host/WASM and
+installer acceptance. Physical FM-1 performance, SAVE latency, flashing and
+listening remain owner-unverified; host numbers are not device measurements.
