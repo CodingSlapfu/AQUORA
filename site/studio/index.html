@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#061015"><meta name="description" content="Edit AQUORA from a browser: virtual FM-1 instrument, live parameters and musical controls powered by the actual 0.6.1 WebAssembly firmware.">
+<title>AQUORA Studio — Play & Edit the FM-1</title>
+<link rel="stylesheet" href="../style.css"><link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+</head><body>
+<header class="site-header"><nav class="container nav"><a href="../" class="logo"><span class="logo-mark"></span>AQUORA</a><div class="menu"><a href="../#features">The instrument</a><a href="../#screens">Screenshots</a><a href="../#try">Emulator</a></div><a class="nav-action" href="../emu/">FULL EMULATOR ↗</a></nav></header>
+<main><section class="editor-hero container"><span class="eyebrow">AQUORA STUDIO / LIVE CONTROL WORKSPACE</span><h1>Your sound. <span class="gradient-text">Your direction.</span></h1><p>Shape the real AQUORA 0.6.1 browser firmware using a companion control desk. All edits travel through the same button and encoder interface as the FM-1, with the virtual display showing the current firmware values.</p></section>
+<section class="container workspace">
+<div class="studio-emulator"><div class="browser-window"><div class="window-bar"><i></i><i></i><i></i><span style="margin-left:12px">AUTHENTIC WEBASSEMBLY · 0.6.1</span><span style="margin-left:auto">240 × 240 LCD</span></div><iframe id="emulator" class="embed" title="Live AQUORA FM-1 browser emulator" src="../emu/" allow="autoplay"></iframe></div>
+<p class="disclaimer">Press <strong>Switch on</strong> inside the virtual instrument to enable browser audio, then use PLAY. For stereo binaural listening, use headphones. Studio controls affect the current emulator only; this is not remote editing of a connected physical FM-1.</p></div>
+<aside class="studio-desk" aria-label="AQUORA live firmware editor">
+<span class="eyebrow">YOUR EDITOR DESK</span><h2>Live controls</h2>
+<p class="desk-intro">Use the page selector to jump to a firmware screen. Turn knobs, switch instruments and perform by watching the on-screen values.</p>
+<div id="studio-status" class="studio-status" role="status"><span class="status-light"></span>Switch on the emulator to connect.</div>
+<label class="field-label">01 / Choose a page</label>
+<div class="page-choices" role="group" aria-label="Firmware page">
+<button type="button" data-page="PLAY" aria-pressed="true">PLAY</button>
+<button type="button" data-page="SOUND" aria-pressed="false">SOUND</button>
+<button type="button" data-page="EVOLVE" aria-pressed="false">EVOLVE</button>
+<button type="button" data-page="MIX" aria-pressed="false">MIXER</button>
+<button type="button" data-page="DRUMS" aria-pressed="false">DRUMS</button>
+<button type="button" data-page="SETUP" aria-pressed="false">SETUP</button>
+<button type="button" data-page="AIR" aria-pressed="false">AIR</button>
+</div>
+<div class="panel-rule"></div>
+<label class="field-label">02 / Turn the instrument knobs</label>
+<div class="control-grid" role="group" aria-label="Virtual encoder controls">
+<div class="control-pair"><button type="button" data-enc="KNOB1" data-dir="-1" aria-label="Decrease knob one">−</button><strong>K1</strong><button type="button" data-enc="KNOB1" data-dir="1" aria-label="Increase knob one">+</button></div>
+<div class="control-pair"><button type="button" data-enc="KNOB2" data-dir="-1" aria-label="Decrease knob two">−</button><strong>K2</strong><button type="button" data-enc="KNOB2" data-dir="1" aria-label="Increase knob two">+</button></div>
+<div class="control-pair"><button type="button" data-enc="KNOB3" data-dir="-1" aria-label="Decrease knob three">−</button><strong>K3</strong><button type="button" data-enc="KNOB3" data-dir="1" aria-label="Increase knob three">+</button></div>
+<div class="control-pair"><button type="button" data-enc="KNOB4" data-dir="-1" aria-label="Decrease knob four">−</button><strong>K4</strong><button type="button" data-enc="KNOB4" data-dir="1" aria-label="Increase knob four">+</button></div>
+<div class="control-pair"><button type="button" data-enc="SELECT" data-dir="-1" aria-label="Select previous instrument">−</button><strong>SELECT</strong><button type="button" data-enc="SELECT" data-dir="1" aria-label="Select next instrument">+</button></div>
+<div class="control-pair"><button type="button" data-enc="MASTER" data-dir="-1" aria-label="Decrease volume">−</button><strong>MASTER</strong><button type="button" data-enc="MASTER" data-dir="1" aria-label="Increase volume">+</button></div>
+</div>
+<div class="panel-rule"></div>
+<label class="field-label">03 / Transport &amp; shortcuts</label>
+<div class="transport" role="group" aria-label="Device buttons">
+<button type="button" class="primary-btn" data-button="PLAY">PLAY / STOP</button>
+<button type="button" data-button="HOME">HOME</button>
+<button type="button" data-button="EDIT">EDIT</button>
+<button type="button" data-button="SAVE">SAVE</button>
+<button type="button" data-button="SEL">SEL</button>
+<button type="button" data-button="ARP">DRUMS</button>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="panel-rule"></div>
+<p class="editor-help"><strong>How this editor works:</strong> all actions are real hardware button/encoder events sent to the running firmware, not invented controls. K1–K4 change meaning depending on the displayed page. The LCD is the source of truth. For patches, use SOUND; for level and routing, use MIXER; for rhythms, use DRUMS. Use the emulator's own save functions to keep supported settings in this browser.</p>
+<div class="version-line">STABLE CODE · AQUORA 0.6.1</div>
+</aside>
+</section>
+</main><footer class="foot"><div class="container foot-inner"><a class="logo" href="../"><span class="logo-mark"></span>AQUORA</a><div class="foot-links"><a href="../">Home</a><a href="../emu/">Full emulator</a><a href="https://github.com/CodingSlapfu/AQUORA">GitHub</a></div></div></footer>
+<script>
+"use strict";
+const frame = document.getElementById("emulator");
+const stateEl = document.getElementById("studio-status");
+const toast = document.getElementById("toast");
+let powered = false;
+function post(command) {
+  if (!frame.contentWindow) return;
+  frame.contentWindow.postMessage(Object.assign({source:"AQUORA_STUDIO"},command),location.origin);
+}
+function showStatus(msg,on) {
+  powered = !!on;
+  const led = '<span class="status-light' + (powered?' on':'') + '"></span>';
+  stateEl.innerHTML = led + msg;
+}
+function hint(message) { toast.textContent = message; }
+window.addEventListener("message",e=>{
+  if (e.origin !== location.origin || e.source !== frame.contentWindow) return;
+  const m=e.data;
+  if(!m || m.source!=="AQUORA_EMU")return;
+  if(m.type==="state")showStatus(m.on?"Emulator online — live editing enabled.":"Switch on the emulator to connect.",m.on);
+  if(m.type==="off")showStatus("Press Switch on in the emulator first.",false);
+  if(m.type==="ack")hint(m.message || "Control received.");
+});
+frame.addEventListener("load",()=>{post({action:"status"});});
+for(const button of document.querySelectorAll("[data-page]")) {
+  button.addEventListener("click",()=>{
+    const page=button.dataset.page;
+    if (!powered) {hint("Switch on the FM-1 emulator first.");return;}
+    post({action:"page",page});
+    document.querySelectorAll("[data-page]").forEach(b=>b.setAttribute("aria-pressed",String(b===button)));
+    hint("Opening "+page+" on the virtual LCD.");
+  });
+}
+for(const button of document.querySelectorAll("[data-enc]")) {
+  button.addEventListener("click",()=>{
+    if(!powered){hint("Switch on the FM-1 emulator first.");return;}
+    const role=button.dataset.enc, steps=Number(button.dataset.dir)||1;
+    post({action:"turn",role,steps});
+    hint(role+" "+(steps>0?"+":"−") +" · see LCD for current value");
+  });
+}
+for(const button of document.querySelectorAll("[data-button]")) {
+  button.addEventListener("click",()=>{
+    if(!powered){hint("Switch on the FM-1 emulator first.");return;}
+    post({action:"button",button:button.dataset.button});
+    hint(button.dataset.button+" pressed on virtual instrument.");
+  });
+}
+</script></body></html>
