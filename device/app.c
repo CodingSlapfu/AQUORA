@@ -40,6 +40,7 @@ static const uint8_t sound_groups[]={0,6,1,2,3,5,7,12,11,13,14};
 static volatile unsigned intro_active;
 static unsigned intro_start, intro_samples, intro_master;
 static volatile unsigned intro_master_moved;
+static unsigned intro_inputs_seen;
 static float intro_gain;
 static uint32_t evolve_events[SR_TRACKS], evolve_step;
 static uint8_t evolve_history[64];
@@ -329,7 +330,7 @@ void app_init(void)
     visual_init();
     plat_cpu2_set(1);
     output_gain=0;
-    intro_active=intro_samples=intro_master_moved=0;
+    intro_active=intro_samples=intro_master_moved=intro_inputs_seen=0;
     intro_master=~0u;
     intro_gain=0;
     evolve_step=0;
@@ -361,8 +362,11 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     float target=(float)master*(1.f/4096.f);
     if(!master)output_gain=0;
     if(intro_active){
-      if(intro_master!=~0u&&master!=intro_master)intro_master_moved=1;
-      intro_master=master;
+      /* Sample startup ADC settling before taking a master-knob skip edge.
+       * Ordinary 12-bit ADC noise must not abort the introduction. */
+      if(intro_master==~0u||intro_samples<SR_RATE/2u)intro_master=master;
+      else if((master>intro_master?master-intro_master:intro_master-master)>160u)
+        intro_master_moved=1;
     }
     unsigned intro=intro_samples;
     unsigned playing_intro=intro_active;
@@ -396,7 +400,9 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  for(unsigned i=0;i<7;i++)control|=enc[i]!=0;
  if(intro_active){
    unsigned now=plat_ms();
-   if(control||(k&~oldkeys)||intro_master_moved||now-intro_start>=10000u){
+   /* First sample after power-on is a baseline, not a user input edge. */
+   if(!intro_inputs_seen){intro_inputs_seen=1;oldkeys=k;return;}
+   if(control||(k&~oldkeys)||intro_master_moved||now-intro_start>=8000u){
      intro_active=0;
      last_control_ms=now;
      blocked_keys|=k;
@@ -599,6 +605,7 @@ static int battery_read(void)
     return plat_battery();
 }
 void app_ui_init(void){
+    intro_inputs_seen=0;
     intro_start=redraw_ui_ms=lastdraw=last_control_ms=battery_poll_ms=plat_ms();
     battery_level=battery_read();
     battery_fade=4;
@@ -622,17 +629,30 @@ void app_frame(void)
       memset(engine.scope,0,sizeof engine.scope);
       plat_unlock(flags);
     }
-    unsigned step=engine.sequence_step;
-    if(step!=evolve_step){
-      if(step<evolve_step)memset(evolve_history,0,sizeof evolve_history);
-      unsigned events=0;
-      for(unsigned t=0;t<SR_TRACKS;t++){
-        uint32_t count=engine.tracks[t].events;
-        if(count!=evolve_events[t])events|=1u<<t;
-        evolve_events[t]=count;
+    /* The event timeline is display-only telemetry: never maintain it when
+     * EVOLVE is hidden. Musical evolution continues independently in DSP. */
+    static unsigned evolve_was_visible;
+    unsigned evolve_visible=page==PAGE_EVOLVE&&!debug&&!intro_active&&!fullscreen;
+    if(evolve_visible&&!evolve_was_visible){
+      memset(evolve_history,0,sizeof evolve_history);
+      for(unsigned t=0;t<SR_TRACKS;t++)
+        evolve_events[t]=engine.tracks[t].events;
+      evolve_step=engine.sequence_step;
+    }
+    evolve_was_visible=evolve_visible;
+    if(evolve_visible){
+      unsigned step=engine.sequence_step;
+      if(step!=evolve_step){
+        if(step<evolve_step)memset(evolve_history,0,sizeof evolve_history);
+        unsigned events=0;
+        for(unsigned t=0;t<SR_TRACKS;t++){
+          uint32_t count=engine.tracks[t].events;
+          if(count!=evolve_events[t])events|=1u<<t;
+          evolve_events[t]=count;
+        }
+        evolve_history[step&63u]=(uint8_t)events;
+        evolve_step=step;
       }
-      evolve_history[step&63u]=(uint8_t)events;
-      evolve_step=step;
     }
     if(air_on&&now-air_poll>=80u){
       air_poll=now;
@@ -690,7 +710,13 @@ void app_frame(void)
     if(fade!=battery_fade){battery_fade=fade;battery_dirty=1;}
     if(now-redraw_ui_ms<FRAME_MIN_MS)return;
     unsigned elapsed=now-lastdraw;
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||page==PAGE_MIX||page==PAGE_SOUND||page==PAGE_EVOLVE)&&elapsed>=FRAME_MIN_MS;
+    /* Only pages with actually displayed live content schedule animation.
+     * Static SOUND category pickers, stopped timelines and hidden mixer
+     * views do not schedule recurrent blits. */
+    int live_sound=page==PAGE_SOUND&&!sound_picker&&(engine.running||engine.preview_frames);
+    int live_mix=page==PAGE_MIX&&engine.running;
+    int live_evolve=page==PAGE_EVOLVE&&engine.running;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve)&&elapsed>=FRAME_MIN_MS;
     if(animate&&page==0){
       missed+=elapsed/FRAME_MIN_MS-1u;
       if(callback_stats.p95>=(fps_auto?5500u:5700u)){
