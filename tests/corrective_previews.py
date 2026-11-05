@@ -76,7 +76,7 @@ panel("intro-mute", ["expect intro 1", "wait 80", "master 0", "peakreset", "wait
       AQUORA_TEST_INTRO="1")
 led_commands = ["wait 70", "leds", "turn ALGO 5", "spin K2 1", "expect lighting 1",
                 "key 6 down", "wait 40", "leds", "key 6 up", "wait 40", "leds",
-                "spin K2 1", "expect lighting 2", "leds", "tap SAVE", "reboot",
+                "spin K2 1", "expect lighting 2", "leds", "wait 1500", "reboot",
                 "expect lighting 2", "turn ALGO 5", "spin K2 1", "expect lighting 3",
                 "tap PLAY", "wait 40", "leds", "tap PLAY", "wait 200",
                 "spin K3 1", "expect led_slot 0", "leds"]
@@ -84,10 +84,10 @@ for slot in range(1, 42):
     led_commands += ["spin K4 1", f"expect led_slot {slot}", "leds"]
 led_folder = panel("led-modes", led_commands)
 leds = [line for line in (led_folder / "panel.log").read_text().splitlines() if "leds:" in line]
-assert "white ++++++++++++++++ black +++++++++++" in leds[0]
-assert leds[1].count("#") == 1 and "#" not in leds[2]
+assert "white ################ black ###########" in leds[0]
+assert leds[1].count("#") == 27 and leds[2].count("#") == 27
 assert "white ................ black ..........." in leds[3]
-assert "#" in leds[4] and "PLAY" in leds[4]
+assert "PLAY" in leds[4] and "FX SEL ENV" in leds[4]
 assert all(line.count("#") == 1 for line in leds[5:32])
 assert all("buttons |" not in line for line in leds[32:])
 

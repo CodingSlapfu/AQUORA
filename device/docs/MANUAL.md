@@ -1,4 +1,4 @@
-# AQUORA 0.6.2 — FM-1 guide
+# AQUORA 0.6.3 — FM-1 guide
 
 Generative Sound Sanctuary · Sound • Water • Resonance
 
@@ -29,7 +29,7 @@ MIX SHORTCUT and PLAY level shortcuts edit those same values. Bus shortcuts
 edit the same Nature/frequency/binaural controls, without independent state.
 
 **EVOLVE:** EDIT cycles Loop, New Song, Groove, Development. New Song and
-Reroll require STOP; turn the action knob to arm and SAVE to execute.
+Reroll require STOP; turn the action knob to arm and press SEL to execute.
 Reroll keeps motif identity and locked sounds. Freeze holds phrase evolution.
 Development is Stable / Subtle / Flowing / Adventurous with selectable pace;
 Next requests a boundary evolution. The event graph shows observed events,
@@ -46,7 +46,7 @@ Kick/hand transients and kit-dependent timbres are brighter in 0.6.2.
 FX opens the large channel strip; FX returns to the overview.
 K1 level, K2 pan, K3 FX send, K4 mute. SEL toggles mute; LFO toggles solo.
 EDIT cycles All, Master FX, Reset, Active, Bus Shortcuts. Reset needs its
-arm and SAVE. Master FX includes reverb, delay, Auto Gain and Auto Level.
+arm and press SEL. Master FX includes reverb, delay, Auto Gain and Auto Level.
 Meters are real engine peaks. The channel strip shows level/peak/clip/pan/send.
 Meters are sampled peaks, not a calibrated loudness meter.
 
@@ -86,22 +86,35 @@ hand response still require the owner's FM-1 test. Advanced gesture presets
 are not included because real gesture reliability is not established.
 
 **SETUP:** EDIT cycles Display/Lights, Banks, About, Quick Find. In the first
-tab SELECT switches Lights and Appearance. Appearance K1 selects the panel
+tab rotate the SELECT encoder (or press SEL) to switch Lights and Appearance. Appearance K1 selects the panel
 skin (Stock/Aurora/Neon Lagoon/Solar Bloom/Midnight Prism), K2 Small/Medium/
 Large AQUORA Sans, K3 Black/White background, K4 Original/Polar Bloom.
-Stopped preferences save automatically after 1.2 seconds; SAVE also stores
-preferences while stopped. Display choices are independent of arrangement
+Global preferences save automatically after 1.2 seconds while stopped. Display choices are independent of arrangement
 banks. Large values use full cells; bank confirmations occupy an upper row.
 
-Lights On lights the fitted outputs, Keys follows keys, Off disables decorative
+Lights On lights the fitted outputs, Keys lights all fitted keys with decorative buttons off, Off disables decorative
 lights, Dance follows actual musical events. LED Test steps matrix slots;
 physical LED mapping/brightness still needs owner verification.
 
-OCT− opens four arrangement banks. K1 bank, K2 Load/Save, K3 overwrite arm;
-SAVE executes while stopped. Bank CRC guards corrupt records. Old bank IDs,
-patch IDs and kit IDs remain stable. New global appearance/AIR settings migrate
-separately from musical banks. Bank save/recall preserves motion, locks,
-Nature style/activity/distance, play grid/strength/feel and evolution pace.
+**SAVE:** press the physical SAVE button once on any page, while playing or
+stopped, to store the complete current song in the active Bank 1–4 (default 1).
+The PLAY header shows B1–B4. An existing save is replaced without arming.
+“Saving Bank N” remains visible until CRC-protected flash commit and readback
+complete; only then does “Saved to Bank N” appear. If a write fails, retry SAVE.
+The preceding valid sector remains available after an interrupted write.
+Do not remove power until confirmation; a live flash save can take seconds.
+Repeated SAVE coalesces one further snapshot of the latest state.
+
+OCT− opens Banks; K1 chooses the destination and **press SEL explicitly loads**
+the selected bank while stopped. SAVE always stores; it never loads, resets
+the mixer, creates a New Song or rerolls sounds. New Song/Reroll and Reset Mix
+use their labelled arm knob followed by SEL, while stopped as applicable.
+Bank fields preserve all eight roles/patches, melodic and returning motifs,
+intentions, tuning/reference/binaural, FX, mixer/mutes/solo, drums, Nature,
+locks, keyboard grid/strength/feel, loop length, motion and evolution pace.
+Appearance, lighting, AIR mapping and active bank cursor are global preferences,
+saved automatically when stopped; stop briefly before powering off to persist
+changes to those global preferences. Old bank/patch/kit IDs remain compatible.
 
 **Visuals:** idle PLAY enters fullscreen after ten seconds. Deliberate panel
 interaction exits without applying that first edit; keys continue to play.

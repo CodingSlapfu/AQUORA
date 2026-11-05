@@ -838,12 +838,12 @@ static void safe_main(void)
                 ota_frame_done();
         }
         ota_service();
-        if (usb.ota_req) {
+        if (usb.ota_req && !aq_flash_busy_base) {
             usb.ota_req = 0;
             if (flash_ok)
                 ota_session();                      /* an install commits and resets; else back here */
         }
-        if (usb.uboot_req)
+        if (usb.uboot_req && !aq_flash_busy_base)
             enter_uboot("UBOOT (USB)");
         if ((fm1_in.buttons & rec) && fm1_ms - t0 > 500u)
             enter_uboot("UPDATE MODE (REC)");
@@ -1039,14 +1039,14 @@ static void fm1_main(void)
 #if FM1B_MIRROR
         mirror_step();                              /* the screen mirrored: input reports, redraws, timeouts */
 #endif
-        if (usb.ota_req) {
+        if (usb.ota_req && !aq_flash_busy_base) {
             usb.ota_req = 0;
             app_panic();                            /* silence: the update rewrites the flash */
             if (flash_ok)
                 ota_session();                      /* returns only if nothing was committed */
             app_ui_init();
         }
-        if (usb.uboot_req)
+        if (usb.uboot_req && !aq_flash_busy_base)
             enter_uboot("UBOOT (USB)");
 #if FM1B_CDC
         cdc_task();

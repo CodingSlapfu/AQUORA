@@ -6,8 +6,7 @@ static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character"};
-/* Original RGB565 panel skin palettes; all colors static and resolved only
- * at UI draw time. Fullscreen graphics use their art-directed background. */
+/* Static panel palettes. Canvas is independently exact black or white. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
  {{RGB(5,17,22),RGB(10,32,38),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
   {RGB(246,250,251),RGB(229,239,241),RGB(108,154,161),RGB(10,106,99),RGB(20,38,47),RGB(70,91,97)}},
@@ -377,8 +376,11 @@ static void mixer_console(int band)
    if(y0<0)y0=0;
    if(y1>47)y1=47;
    if(y1>=y0){
-     cv_rect(x+3,y0,18,y1-y0+1,skins[ui_theme][ui_background].border);
-     cv_rect(x+4,y0+1,16,y1-y0-1,skins[ui_theme][ui_background].canvas);
+     cv_rect(x+3,y0,18,y1-y0+1,skins[ui_theme][ui_background].panel);
+     cv_line(x+3,y0,x+3,y1,skins[ui_theme][ui_background].border);
+     cv_line(x+21,y0,x+21,y1,skins[ui_theme][ui_background].border);
+     if(top>=offset&&top<offset+48)cv_line(x+3,top-offset,x+21,top-offset,skin_dim());
+     if(bottom>=offset&&bottom<offset+48)cv_line(x+3,bottom-offset,x+21,bottom-offset,skin_dim());
      float mag=fm_clampf(tr->meter,0,1);
      int meter=(int)(fm_sqrtf(fm_sqrtf(mag))*78.f);
      int hi=bottom-meter;
@@ -532,19 +534,24 @@ static void draw(int animate)
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug);
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    const int artwork=intro_active||fullscreen;
-   const uint16_t bg=artwork?RGB(5,17,22):ui_background?skins[ui_theme][1].canvas:RGB(0,0,0);
+   const uint16_t bg=ui_background?RGB(255,255,255):RGB(0,0,0);
    cv_begin(240,48,bg);
-   if(!artwork&&!debug&&ui_theme){
+   /* One surface per logical region; no boxes around 48px transfer bands.
+    * The PLAY preview spans two bands with no nested frame. */
+   if(!artwork&&!debug){
      const uint16_t panel=skins[ui_theme][ui_background].panel;
      const uint16_t edge=skins[ui_theme][ui_background].border;
-     cv_rect(2,1,236,46,panel);
-     cv_line(2,1,237,1,edge);cv_line(2,46,237,46,edge);
-     cv_line(2,1,2,46,edge);cv_line(237,1,237,46,edge);
-     if(band>=3){cv_line(120,4,120,44,edge);cv_line(5,44,234,44,edge);}
-     if(band==0){cv_rect(6,3,3,38,skins[ui_theme][ui_background].accent);}
+     if(band==0){cv_line(8,47,231,47,edge);}
+     else if(band>=3&&page!=PAGE_MIX){
+       cv_rect(6,2,110,42,panel);cv_rect(124,2,110,42,panel);
+       if(ui_theme==2||ui_theme==4){
+         cv_line(6,2,115,2,edge);cv_line(124,2,233,2,edge);
+       }else if(ui_theme==3){
+         cv_line(6,43,115,43,edge);cv_line(124,43,233,43,edge);
+       }
+     }
    }
    if(intro_active){
-     geometry(band*48);
      /* New AQUORA water/crystal ribbon: an independent original startup
       * choreography transitioning over the stored visualizer. Fixed 32-line
       * budget, theme-aware, with no hidden work once introduction exits. */
@@ -559,15 +566,15 @@ static void draw(int animate)
        if(j){
          int y0=old_y-band*48,y1=y-band*48;
          if(!((y0<0&&y1<0)||(y0>=48&&y1>=48)))
-           cv_line(old_x,y0,x,y1,skins[ui_theme][0].accent);
+           cv_line(old_x,y0,x,y1,skin_accent());
        }
        old_x=x;old_y=y;
      }
      if(band==2){
-       cv_text(68,1,&FONT_B,"A Q U O R A",ui_background?RGB(235,248,251):skin_text());
-       cv_text(96,28,&FONT_XS,APP_VERSION,ui_background?RGB(235,248,251):skin_text());
+       cv_text(68,1,&FONT_B,"A Q U O R A",skin_text());
+       cv_text(96,28,&FONT_XS,APP_VERSION,skin_text());
      }
-     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",ui_background?RGB(235,248,251):skin_text());
+     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",skin_text());
    }else if(debug)performance(band);
    else if(fullscreen)geometry(band*48);
    else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){
@@ -706,9 +713,9 @@ static void draw(int animate)
          static const char *power[]={"BATTERY LOW","BATTERY 1 / 3","BATTERY 2 / 3","BATTERY FULL","USB POWER"};
          cv_text(8,26,&FONT_XS,battery_level>=0&&battery_level<=4?power[battery_level]:"BATTERY UNREAD",skin_text());
        }else if(setup_tab==1&&ui_font_size==2){
-         static const char *messages[]={"SAVE: RUN ACTION","STOP FIRST","EMPTY BANK","K3: ARM OVERWRITE","SAVED","LOADED","BANK ERROR"};
+         static const char *messages[]={"SEL: LOAD / SAVE: STORE","STOP FIRST","EMPTY BANK","K3: ARM OVERWRITE","SAVED","LOADED","BANK ERROR","SAVING..."};
          limited_text(8,10,224,&FONT_XS,messages[bank_message],skin_accent());
-       }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":"EDIT: TAB   GLO: PERFORMANCE",skin_text());
+       }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":setup_tab==0?(display_subtab?"TURN SELECT: LIGHTS":"TURN SELECT: APPEARANCE"):"SEL: LOAD / SAVE: STORE",skin_text());
      }
    }else if(visual&&page==PAGE_EVOLVE){
      if(band==1){
@@ -733,8 +740,7 @@ static void draw(int animate)
    }else if(visual&&page==3)mixer_band(band);
    else if(visual)geometry(band*48);
    else if(band==0){
-     cv_text(8,0,&FONT_XS,"ALGO",skin_dim());
-     cv_text(46,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
+     cv_text(8,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS&&ui_font_size!=2){
        char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
        int x=cv_text(104,2,&FONT_XS,"PULSE ",skin_text());
@@ -792,8 +798,8 @@ static void draw(int animate)
          unsigned next=engine.pending_key;
          if(next){x=cv_text(x+3,33,&FONT_XS," > ",skin_text());cv_text(x,33,&FONT_XS,notes[(next-1)%12],RGB(250,171,64));}
        }else if(page==PAGE_SETUP&&setup_tab==1){
-         static const char *messages[]={"SAVE RUNS ACTION","STOP FIRST","EMPTY BANK",
-           "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED"};
+         static const char *messages[]={"SEL LOAD / SAVE STORE","STOP FIRST","EMPTY BANK",
+           "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED","SAVING..."};
          cv_text(8,33,&FONT_XS,bank_status[bank_slot]==1?"SAVED":bank_status[bank_slot]==2?"INVALID":"EMPTY",skin_accent());
          limited_text(62,33,170,&FONT_XS,messages[bank_message],skin_text());
        }else{
@@ -816,6 +822,18 @@ static void draw(int animate)
          if(status)cv_text(8,33,&FONT_XS,status,skin_accent());
        }
      }
+   }
+   if(band==4&&!intro_active&&(quick_started||quick_pending||
+      (quick_finished_ms&&plat_ms()-quick_finished_ms<3000u))){
+     cv_rect(4,17,232,29,ui_background?RGB(255,255,255):RGB(0,0,0));
+     char bank[12];num(bank,quick_slot+1);
+     const char *message=quick_started||quick_pending?"Saving Bank ":bank_message==BANK_ERROR?"SAVE FAILED - RETRY ":"Saved to Bank ";
+     int x=cv_text(8,21,&FONT_XS,message,skin_accent());
+     cv_text(x,21,&FONT_XS,bank,skin_text());
+   }
+   if(band==0&&!intro_active&&!fullscreen&&page==PAGE_PLAY){
+     char tag[]="B1";tag[1]=(char)('1'+bank_slot);
+     cv_text(205,25,&FONT_XS,tag,skin_dim());
    }
    if(band==0&&!intro_active)battery_glyph();
    cv_blit(0,band*48);AQ_VIS_COUNT(ui_blits);

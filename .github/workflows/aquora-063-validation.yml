@@ -1,0 +1,317 @@
+name: AQUORA 0.6.3 isolated host validation
+
+on:
+  push:
+    branches: [aquora-0.6.3-development, aquora-0.6.3-release-integration]
+    paths: ['validation/trigger-063.txt']
+  workflow_dispatch:
+  pull_request:
+    branches: [aquora-0.6.3-development, aquora-0.6.3-release-integration]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aquora-0.6.3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-regressions:
+    name: Verify archives and sanitized host DSP tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify versioned recovery archives
+        run: |
+          cd evidence/0.6.0/editor
+          sha256sum --check SHA256SUMS.txt
+      - name: Build and execute isolated DSP regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/aquora-0.6.3-host-tests
+          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062; do
+            gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
+              -Idevice/dsp -Ivendor/fm1-base/include \
+              -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
+              $(if [[ "$test" != binaural_062 ]]; then echo device/dsp/engine.c; fi) "tests/${test}.c" -lm \
+              -o "/tmp/aquora-0.6.3-host-tests/${test}"
+            ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 \
+              "/tmp/aquora-0.6.3-host-tests/${test}" \
+              > "/tmp/aquora-0.6.3-host-tests/${test}.log" 2>&1 || {
+                cat "/tmp/aquora-0.6.3-host-tests/${test}.log"
+                exit 1
+              }
+            echo "PASS ${test}"
+          done
+      - name: Verify archived serializer migration and four bank roundtrips
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$RUNNER_TEMP/migration-base"
+          mkdir -p "$base"
+          tar -xzf evidence/0.6.0/editor/AQUORA-0.6.0-editor-source.tar.gz -C "$base"
+          gcc -Wall -Wextra -Werror -Wno-unused-function -O1 -DSR_DEVICE -DPLAT_HOST -DLEGACY_FIXTURE \
+            -DAQ_ARRANGEMENT="\"$base/device/arrangement.c\"" \
+            -I"$base/device/dsp" -I"$base/vendor/fm1-base/include" \
+            "$base/device/dsp/engine.c" tests/bank_migration_040.c -lm -o "$RUNNER_TEMP/bank-writer"
+          "$RUNNER_TEMP/bank-writer" "$RUNNER_TEMP/bank.bin"
+          gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
+            '-DAQ_ARRANGEMENT="../device/arrangement.c"' -Idevice/dsp -Ivendor/fm1-base/include \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
+            device/dsp/engine.c tests/bank_migration_040.c -lm -o "$RUNNER_TEMP/bank-reader"
+          ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 \
+            "$RUNNER_TEMP/bank-reader" "$RUNNER_TEMP/bank.bin" | tee /tmp/aquora-0.6.3-host-tests/bank-migration.log
+      - name: Upload compact test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aquora-063-host-logs
+          path: /tmp/aquora-0.6.3-host-tests/*.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+  platform-acceptance:
+    name: ${{ matrix.target }} acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [host-panel, browser-wasm, native, native-repro, single-core]
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Restore verified source and pinned vendor inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source" "$RUNNER_TEMP/results"
+          cd evidence/0.6.0/editor
+          sha256sum --check --strict SHA256SUMS.txt
+          tar --no-same-owner -xzf AQUORA-0.6.0-editor-source.tar.gz -C "$RUNNER_TEMP/source"
+          cd "$GITHUB_WORKSPACE"
+          git archive "$GITHUB_SHA" device tests vendor | tar -xf - -C "$RUNNER_TEMP/source"
+          cd "$RUNNER_TEMP/source"
+          patch --batch --forward -p1 < vendor/patches/aquora-passive-air.patch
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/python" -m pip install --disable-pip-version-check Pillow==11.3.0
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+      - name: Install Emscripten 3.1.64
+        if: matrix.target == 'browser-wasm'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+      - name: Restore checksummed JieLi 20260730.1
+        if: matrix.target == 'native' || matrix.target == 'native-repro' || matrix.target == 'single-core'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 180 --retry 2 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
+          printf '%s  %s\n' a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd "$RUNNER_TEMP/jieli.tar.xz" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/jieli"
+          tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
+          mapfile -t compilers < <(find "$RUNNER_TEMP/jieli" -type d -name pi32v2)
+          test "${#compilers[@]}" -eq 1
+          toolchain="$(dirname "${compilers[0]}")"
+          test -d "$toolchain/common"
+          printf 'JIELI_TOOLCHAIN=%s\n' "$toolchain" >> "$GITHUB_ENV"
+      - name: Build and test selected target
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          out="$RUNNER_TEMP/results"
+          build=(python3 vendor/fm1-base/tools/build.py device --release 0.6.3)
+          case "$TARGET" in
+            host-panel)
+              "${build[@]}" --host 2>&1 | tee "$out/build.log"
+              gcc -O1 -g -Wall -Wextra -Werror -Wno-unused-function -DSR_DEVICE -DPLAT_HOST -DFM1B_CPU2=1 -Ivendor/fm1-base/include -fsanitize=address,undefined -no-pie tests/async_store_063.c -o "$RUNNER_TEMP/async-store"
+              ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 "$RUNNER_TEMP/async-store" | tee "$out/async-store.log"
+              python3 tests/release_063.py "$PWD/device/build/host/sound-healing_host" "$out/release063" | tee "$out/release063.log"
+              python3 tests/parameter_registry_062.py "$out/parameter-registry.json" | tee "$out/parameter-registry.log"
+              for test in controls_060 fullscreen_060 mixer_unified_060 patch_shape_060 play_panel_060 reachability_060 arrangements workflow_050 appearance_062 mixer_062 integration_062 visibility_062; do
+                mkdir "$out/$test"
+                device/build/host/sound-healing_host "tests/$test.txt" "$out/$test" 2>&1 | tee "$out/$test.log"
+              done
+              mkdir "$out/corrective_061"
+              AQUORA_TEST_INTRO=1 device/build/host/sound-healing_host tests/corrective_061.txt "$out/corrective_061" 2>&1 | tee "$out/corrective_061.log"
+              python3 tests/corrective_previews.py "$PWD/device/build/host/sound-healing_host" "$out/previews" | tee "$out/previews.log"
+              python3 tests/appearance_matrix_063.py "$PWD/device/build/host/sound-healing_host" "$out/appearance-matrix" | tee "$out/appearance-matrix.log"
+              python3 tests/panel_062_regressions.py "$PWD/device/build/host/sound-healing_host" "$out/panel-063" | tee "$out/panel-063.log"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark"
+              "$RUNNER_TEMP/benchmark" | tee "$out/host-timing.log"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/binaural_benchmark_062.c -lm -o "$RUNNER_TEMP/binaural-bench"
+              "$RUNNER_TEMP/binaural-bench" | tee "$out/binaural-host-timing.log"
+              old="$RUNNER_TEMP/baseline061"
+              mkdir -p "$old/device/dsp" "$old/tests"
+              git -C "$GITHUB_WORKSPACE" fetch --no-tags --depth=1 origin 23c8db04538fec13171a6e380501bb153f949311
+              for file in engine.c serenity.h; do
+                git -C "$GITHUB_WORKSPACE" show "23c8db04538fec13171a6e380501bb153f949311:device/dsp/$file" > "$old/device/dsp/$file"
+              done
+              cp tests/drum_probe_062.c "$old/tests/"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Ivendor/fm1-base/include "$old/tests/drum_probe_062.c" -lm -o "$RUNNER_TEMP/drums061"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Ivendor/fm1-base/include tests/drum_probe_062.c -lm -o "$RUNNER_TEMP/drums063"
+              python3 tests/drum_analysis_062.py "$RUNNER_TEMP/drums061" "$RUNNER_TEMP/drums063" "$out/all-kits" | tee "$out/all-kits.log"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -I"$old/device/dsp" -Ivendor/fm1-base/include "$old/device/dsp/engine.c" tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark061"
+              "$RUNNER_TEMP/benchmark061" | tee "$out/host-timing-v0.6.1.log"
+              mkdir "$RUNNER_TEMP/baseline"
+              tar -xzf "$GITHUB_WORKSPACE/evidence/0.6.0/editor/AQUORA-0.6.0-editor-source.tar.gz" -C "$RUNNER_TEMP/baseline"
+              base="$RUNNER_TEMP/baseline"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -I"$base/device/dsp" -I"$base/vendor/fm1-base/include" "$base/device/dsp/engine.c" tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark-base"
+              "$RUNNER_TEMP/benchmark-base" | tee "$out/host-timing-v0.6.0.log"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -I"$base/device/dsp" -I"$base/vendor/fm1-base/include" "$base/device/dsp/engine.c" tests/listen_061.c -lm -o "$RUNNER_TEMP/listen-base"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/listen_061.c -lm -o "$RUNNER_TEMP/listen-new"
+              python3 tests/corrective_listening.py "$RUNNER_TEMP/listen-base" "$RUNNER_TEMP/listen-new" "$out/listening" | tee "$out/listening.log"
+              ;;
+            browser-wasm)
+              source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+              "${build[@]}" --web 2>&1 | tee "$out/build.log"
+              node -e 'const fs = require("node:fs"); new WebAssembly.Module(fs.readFileSync(process.argv[1]));' device/build/emu/app.wasm
+              cp -r device/build/emu device/web/words "$out/"
+              ;;
+            native|native-repro|single-core)
+              if [[ "$TARGET" == single-core ]]; then export FM1B_CPU2=0; fi
+              "${build[@]}" --sdk vendor/ac79-package-files 2>&1 | tee "$out/build.log"
+              grep -Fq 'identity FM-1_73000603' "$out/build.log"
+              firmware=device/build/sound-healing-0.6.3.fwsc
+              node vendor/fm1-base/tests/installer_ports_test.mjs "$firmware" | tee "$out/installer.log"
+              cp "$firmware" "$out/"
+              stat --printf='firmware %s bytes\n' "$firmware" | tee "$out/footprint.log"
+              find device/build -type f -name '*.map' -exec cp {} "$out/" \;
+              rg -n 'image |bss |flash |SRAM|RAM ' "$out/build.log" >> "$out/footprint.log" || true
+              ;;
+          esac
+          (
+            cd "$out"
+            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+      - name: Preserve logs and build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aquora-063-${{ matrix.target }}
+          path: ${{ runner.temp }}/results/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  stage-release:
+    name: Assemble matching firmware and browser installer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [host-regressions, platform-acceptance]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: aquora-063-native
+          path: ${{ runner.temp }}/native
+      - uses: actions/download-artifact@v4
+        with:
+          name: aquora-063-native-repro
+          path: ${{ runner.temp }}/native-repro
+      - uses: actions/download-artifact@v4
+        with:
+          name: aquora-063-browser-wasm
+          path: ${{ runner.temp }}/wasm
+      - name: Stage and verify matching installer assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/release"
+          source="$RUNNER_TEMP/source"
+          native="$RUNNER_TEMP/native"
+          wasm="$RUNNER_TEMP/wasm"
+          for input in "$native" "$RUNNER_TEMP/native-repro" "$wasm"; do
+            (cd "$input" && sha256sum --check --strict SHA256SUMS.txt)
+          done
+          cmp "$native/sound-healing-0.6.3.fwsc" "$RUNNER_TEMP/native-repro/sound-healing-0.6.3.fwsc"
+          mkdir -p "$out" "$source"
+          cd evidence/0.6.0/editor
+          sha256sum --check --strict SHA256SUMS.txt
+          tar --no-same-owner -xzf AQUORA-0.6.0-editor-source.tar.gz -C "$source"
+          cd "$GITHUB_WORKSPACE"
+          git archive "$GITHUB_SHA" device tests vendor | tar -xf - -C "$source"
+          git archive "$GITHUB_SHA" -- .github '*.md' research release validation | tar -xf - -C "$source"
+          cd "$source"
+          patch --batch --forward -p1 < vendor/patches/aquora-passive-air.patch
+          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$out/AQUORA-0.6.3-source.tar.gz" .
+          mkdir -p device/build device/web
+          cp -r "$wasm/emu" device/build/
+          cp -r "$wasm/words" device/web/
+          firmware="$native/sound-healing-0.6.3.fwsc"
+          python3 vendor/fm1-base/tools/make_site.py device "$firmware" 0.6.3 "$RUNNER_TEMP/stage"
+          stage="$RUNNER_TEMP/stage"
+          grep -Fq '"product": "FM-1_73000603"' "$stage/install/index.html"
+          cmp "$firmware" "$stage/firmware/sound-healing-0.6.3.fwsc"
+          cmp "$wasm/emu/app.wasm" "$stage/emu/app.wasm"
+          test -s "$stage/manual/index.html"
+          python3 tests/direct_update_063.py "$firmware" | tee "$out/direct-update.log"
+          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$out/AQUORA-0.6.3-package.tar.gz" -C "$stage" .
+          cd "$out"
+          sha256sum AQUORA-0.6.3-*.tar.gz > SHA256SUMS.txt
+          printf '%s\n' "$GITHUB_SHA" > validation-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aquora-063-release-ready
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 30
+
+  github-release:
+    name: Back up accepted source and firmware as GitHub release
+    if: github.ref == 'refs/heads/aquora-0.6.3-release-integration'
+    needs: [stage-release]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/accepted
+      - name: Preserve checksummed independent download and publish accepted tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/final"
+          mkdir "$out"
+          accepted="$RUNNER_TEMP/accepted"
+          cp "$accepted/aquora-063-release-ready/"* "$out/"
+          cp "$accepted/aquora-063-native/sound-healing-0.6.3.fwsc" "$out/"
+          cp "$accepted/aquora-063-single-core/sound-healing-0.6.3.fwsc" "$out/sound-healing-0.6.3-single-core.fwsc"
+          cp release/0.6.3/RELEASE.md "$out/"
+          (cd "$accepted" && zip -qr "$out/AQUORA-0.6.3-acceptance.zip" .)
+          (cd "$out" && zip -q AQUORA-0.6.3-download.zip AQUORA-0.6.3-source.tar.gz AQUORA-0.6.3-package.tar.gz sound-healing-0.6.3.fwsc sound-healing-0.6.3-single-core.fwsc validation-commit.txt RELEASE.md)
+          (cd "$out" && sha256sum *.gz *.zip *.fwsc > SHA256SUMS.txt && sha256sum --check --strict SHA256SUMS.txt)
+          if gh release view v0.6.3 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Existing v0.6.3 release preserved; inspect before any replacement.'
+            exit 1
+          fi
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/aquora-0.6.3-release-integration" --jq .object.sha)
+          test "$current" = "$GITHUB_SHA" || { echo 'Newer integration checkpoint exists; stale publisher stopped.'; exit 1; }
+          gh release create v0.6.3 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title 'AQUORA 0.6.3 — Generative Sound Sanctuary' \
+            --notes-file release/0.6.3/RELEASE.md "$out/"*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-063-published-backup
+          path: ${{ runner.temp }}/final/
+          if-no-files-found: ignore
+          retention-days: 30

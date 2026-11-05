@@ -193,7 +193,7 @@ const uint8_t *plat_data(uint32_t off)
 int plat_data_erase(uint32_t off)
 {
     uint32_t took;
-    if (!flash_ok || (off & 0xFFFu) || !PLAT_DATA_OK(off, 0x1000u))
+    if (aq_flash_busy_base || !flash_ok || (off & 0xFFFu) || !PLAT_DATA_OK(off, 0x1000u))
         return -1;
     fm1_wdt_feed();                               /* (a run of erases: tens of ms each) */
     audio_silence();
@@ -201,7 +201,7 @@ int plat_data_erase(uint32_t off)
 }
 int plat_data_write(uint32_t off, const void *src, uint32_t n)
 {
-    return flash_ok && PLAT_DATA_OK(off, n) ? fl_write(off, src, n) : -1;
+    return !aq_flash_busy_base && flash_ok && PLAT_DATA_OK(off, n) ? fl_write(off, src, n) : -1;
 }
 /* a pull from the host in the update's framing (ota.c ota_read), and how long it may take */
 int plat_host_read(uint32_t addr, uint8_t *dst, uint32_t n) { return n > 512u ? -1 : ota_read(addr, dst, n); }
@@ -347,6 +347,7 @@ int plat_store_load(uint32_t obj, void *dst, uint32_t max) { return flash_ok ? s
 int plat_store_head(uint32_t obj, void *dst, uint32_t n) { return flash_ok ? st_load_head(obj, dst, n) : -1; }
 int plat_store_size(uint32_t obj) { return flash_ok ? st_size(obj) : -1; }
 int plat_store_save(uint32_t obj, const void *src, uint32_t len) { return flash_ok ? st_save(obj, src, len) : -9; }
+#include "aquora_async_store.h"
 #ifdef APP_STORE_POOL
 int plat_store_room(void) { return flash_ok ? st_pool_room() : 0; }
 #else

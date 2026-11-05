@@ -86,14 +86,15 @@ static void resonance_job(void)
         for(unsigned j=0;j<=32;j++){
             float angle=j*4.f;
             float twist=ring*crystal_shape[4]+motif;
-            float x=visual_sin(angle+32.f+time+twist);
-            float z=visual_sin(angle+time+twist);
-            float swell=visual_sin(angle*crystal_shape[0]-time*2.f+ring*9.f+frequency);
-            float branch=visual_sin(angle*crystal_shape[1]+ring*frequency+time);
-            float ripple=visual_sin(angle*2.f+time*3.f-ring*13.f);
-            float r=radius+(bass+level+2.f)*swell+branch*(piano+hit*4.f);
+            float x=visual_sin(angle+32.f+twist);
+            float z=visual_sin(angle+twist);
+            float swell=visual_sin(angle*crystal_shape[0]+ring*9.f+frequency);
+            float branch=visual_sin(angle*crystal_shape[1]+ring*frequency);
+            float ripple=visual_sin(angle*2.f-ring*13.f);
+            float amplitude=.6f+.4f*visual_sin(time*2.f+ring*3.f);
+            float r=radius+amplitude*((bass+level+2.f)*swell+branch*(piano+hit*4.f));
             float projection=1.f/(1.f+z*r*crystal_shape[3]);
-            float wave=(drums+hit*8.f)*ripple+(choir+vis_input.atmosphere*6.f)*swell;
+            float wave=amplitude*((drums+hit*8.f)*ripple+(choir+vis_input.atmosphere*6.f)*swell);
             wave+=branch*choir*crystal_shape[5];
             vis_output.xy[ring][j][0]=120+(int)(x*r*projection);
             vis_output.xy[ring][j][1]=(vis_input.full?126:104)+

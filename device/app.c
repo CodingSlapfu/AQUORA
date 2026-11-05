@@ -109,7 +109,7 @@ typedef struct {
     sr_motion motion[2];
     uint8_t perfect_key, lighting, fps_auto;
     uint8_t visual, theme, font_size, background;
-    uint8_t air_fx, air_depth;
+    uint8_t air_fx, air_depth, active_bank;
 } aq_settings;
 
 /* Never write flash in the callback. All preference edits are coalesced and
@@ -119,12 +119,13 @@ static int save_preferences(void)
 {
     aq_settings settings={0};
     unsigned flags=plat_lock();
-    settings.version=0x41513034u;
+    settings.version=0x41513035u;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
     settings.lighting=lighting;settings.fps_auto=fps_auto;
     settings.visual=visual_mode;settings.theme=ui_theme;
     settings.font_size=ui_font_size;settings.background=ui_background;
+    settings.active_bank=bank_slot;
     settings.air_fx=engine.air_fx;settings.air_depth=engine.air_depth;
     plat_unlock(flags);
     int result=plat_store_save(OBJ_SETTINGS,&settings,sizeof(settings));
@@ -397,7 +398,7 @@ void app_init(void)
        plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==prefs_size&&
        (settings.version==0x41513032u||
         (settings.version==0x41513033u&&prefs_size==24)||
-        (settings.version==0x41513034u&&prefs_size==(int)sizeof(settings)))){
+        ((settings.version==0x41513034u||settings.version==0x41513035u)&&prefs_size==(int)sizeof(settings)))){
       for(unsigned i=0;i<2;i++){
         sr_motion m=settings.motion[i];
         if(m.glide_mode<=2&&m.glide_ms>=10&&m.glide_ms<=800&&
@@ -410,7 +411,7 @@ void app_init(void)
         ui_theme=settings.theme<=4?settings.theme:0;
         ui_font_size=settings.font_size<=2?settings.font_size:1;
         ui_background=settings.background<=1?settings.background:0;
-        if(settings.version==0x41513034u){
+        if(settings.version>=0x41513034u){
           engine.air_fx=settings.air_fx<=2?settings.air_fx:0;
           engine.air_depth=settings.air_depth<=100?settings.air_depth:100;
         }
@@ -420,8 +421,9 @@ void app_init(void)
     /* arrangement_init resets its bank cursor and visual slot. Restore the
      * saved global visualizer before first intro frame, independent of banks. */
     if((settings.version==0x41513033u&&prefs_size==24)||
-       (settings.version==0x41513034u&&prefs_size==(int)sizeof(settings)))
+       ((settings.version==0x41513034u||settings.version==0x41513035u)&&prefs_size==(int)sizeof(settings)))
       visual_mode=settings.visual<=1?settings.visual:0;
+    if(settings.version==0x41513035u&&settings.active_bank<4)bank_slot=settings.active_bank;
     visual_init();
     plat_cpu2_set(1);
     output_gain=0;
@@ -515,7 +517,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    last_control_ms=plat_ms();
    if(fullscreen){
      fullscreen=0;dirty=1;
-     press=0;
+     press&=1u<<B_SAVE;
      for(unsigned i=0;i<7;i++)enc[i]=0;
    }
  }
@@ -540,7 +542,8 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    plat_unlock(flags);
  }
  if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=0;send(44,0);}
- if((press&(1u<<B_SEL))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
+ if((press&(1u<<B_SEL))&&page==PAGE_SETUP&&setup_tab==0){display_subtab=!display_subtab;dirty=1;}
+ else if((press&(1u<<B_SEL))&&(page==PAGE_PLAY||page==PAGE_SOUND||(page==PAGE_MIX&&mix_tab!=2))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
  if(press&(1u<<B_REC))plat_cpu2_set(0);
@@ -572,17 +575,13 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
  if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%3:0;page=PAGE_DRUMS;debug=0;}
  if((press&(1u<<B_LFO))&&!(page==PAGE_MIX&&!debug&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(debug?27:28,0);
- if((press&(1u<<B_SAVE))&&page==3&&mix_tab==2&&!debug){
-    if(mix_reset)send(53,0);
-    mix_reset=0;
- }else if((press&(1u<<B_SAVE))&&page==PAGE_EVOLVE&&song_tab==1&&!debug){
-    if(song_arm&&!requested_play&&!engine.running&&!engine.stop_frames)send(song_arm,1);
-    song_arm=0;
- }else if((press&(1u<<B_SAVE))&&page==PAGE_SETUP&&setup_tab==1&&!debug){
-    arrangement_execute();
-    blocked_keys|=k;
- }else if((press&(1u<<B_SAVE))&&!requested_play&&!engine.running&&!engine.stop_frames){
-    saved_status=save_preferences()==0?1:2;
+ /* SAVE has exactly one meaning on every page, including fullscreen. */
+ if(press&(1u<<B_SAVE))arrangement_quick_save();
+ /* Explicit actions use SEL on their labelled action page, never SAVE. */
+ if((press&(1u<<B_SEL))&&!debug){
+   if(page==PAGE_SETUP&&setup_tab==1&&!quick_started&&!quick_pending){bank_action=0;arrangement_execute();}
+   if(page==PAGE_EVOLVE&&song_tab==1&&song_arm&&!requested_play&&!engine.running){send(song_arm,1);song_arm=0;}
+   if(page==PAGE_MIX&&mix_tab==2&&mix_reset){send(53,0);mix_reset=0;}
  }
  blocked_keys&=k;
  physical_keys=k&~blocked_keys;
@@ -650,7 +649,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
       if(d>0&&air_on)aq_air_calibrate(&air_sensor,plat_ms());
     }else if(control==69)air_hold=d>0;
     else if(control==38){visual_mode=d>0;preferences_changed_now();}
-    else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);bank_confirm=0;bank_message=BANK_IDLE;}
+    else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);preferences_changed_now();bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
     else if(control==52)mix_reset=d>0;
@@ -679,20 +678,23 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  const unsigned all_keys=(1u<<NKEYS)-1u;
  if(pending&&pending<=NKEYS)lights|=1u<<(pending-1);
  if(lighting==0){
-   dim_keys=all_keys;
-   dim_buttons=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
- }else if(lighting==1)buttons=0;
+   lights|=all_keys;
+   buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
+ }else if(lighting==1){lights|=all_keys;buttons=0;}
  else if(lighting==2)buttons=lights=0;
- else if(engine.running){
+ else {
+   buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
+   if(engine.running){
    static unsigned seen[SR_TRACKS], pulse_until[SR_TRACKS];
    unsigned now=plat_ms();
    for(unsigned t=0;t<SR_TRACKS;t++){
      unsigned event=engine.tracks[t].events;
-     if(event!=seen[t]){seen[t]=event;pulse_until[t]=now+140u;}
+     if(event!=seen[t]){seen[t]=event;pulse_until[t]=now+100u;}
      if(!engine.tracks[t].mute&&(engine.solo>=SR_TRACKS||engine.solo==t)&&
         (int32_t)(pulse_until[t]-now)>0)
        lights|=1u<<((event+t*3u)%NKEYS);
    }
+ }
  }
  if(led_test&&page==PAGE_SETUP&&!setup_tab){
    buttons=led_step>=NKEYS?1u<<(led_step-NKEYS):0;
@@ -731,9 +733,11 @@ void app_ui_init(void){
 void app_frame(void)
 {
     app_input_only();
+    arrangement_service();
     unsigned now=plat_ms();
-    if(preferences_dirty&&!engine.running&&!requested_play&&!engine.stop_frames&&
+    if(!quick_started&&!quick_pending&&preferences_dirty&&!engine.running&&!requested_play&&!engine.stop_frames&&
        now-preferences_changed>=1200u)save_preferences();
+    if(quick_finished_ms&&now-quick_finished_ms>=3000u){quick_finished_ms=0;dirty=1;}
     unsigned scope_track=page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;
     if(scope_track!=engine.scope_track){
       unsigned flags=plat_lock();
@@ -848,7 +852,7 @@ void app_frame(void)
     if(animate){
       lastdraw=now;
       unsigned begin=plat_ticks24();
-      if(page==PAGE_PLAY)prepare_geometry();
+      if(page==PAGE_PLAY&&!intro_active)prepare_geometry();
       graphics_us=(plat_ticks24()-begin)/24;
     }
     if(animate||dirty||battery_dirty){
@@ -979,7 +983,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"frequency_lock"))*got=engine.frequency_lock;
  else if(!strcmp(what,"reverb_percent"))*got=(int)(engine.reverb_amount*100.f+.5f);
  else if(!strcmp(what,"delay_percent"))*got=(int)(engine.delay_amount*100.f+.5f);
- else if(!strcmp(what,"page"))*got=page;else if(!strcmp(what,"running"))*got=engine.running;else if(!strcmp(what,"binaural"))*got=engine.binaural_enabled;else if(!strcmp(what,"track"))*got=selected;else if(!strcmp(what,"perfect"))*got=engine.perfect_key;else if(!strcmp(what,"tracks"))*got=SR_TRACKS;else if(!strcmp(what,"lead_glide"))*got=engine.motion[SR_LEAD].glide_ms;else if(!strcmp(what,"bass_glide"))*got=engine.motion[SR_BASS].glide_ms;else if(!strcmp(what,"lead_vibrato"))*got=engine.motion[SR_LEAD].vibrato_depth;else if(!strcmp(what,"bass_vibrato"))*got=engine.motion[SR_BASS].vibrato_depth;else if(!strcmp(what,"drums"))*got=engine.drums_enabled;else if(!strcmp(what,"density"))*got=engine.drum_density;else if(!strcmp(what,"hit"))*got=engine.drum_hit;else if(!strcmp(what,"scene"))*got=engine.scene;else if(!strcmp(what,"visual"))*got=visual_mode;else if(!strcmp(what,"bank"))*got=bank_slot;else if(!strcmp(what,"bank_message"))*got=bank_message;else if(!strcmp(what,"knobs_valid")){
+ else if(!strcmp(what,"page"))*got=page;else if(!strcmp(what,"running"))*got=engine.running;else if(!strcmp(what,"binaural"))*got=engine.binaural_enabled;else if(!strcmp(what,"track"))*got=selected;else if(!strcmp(what,"perfect"))*got=engine.perfect_key;else if(!strcmp(what,"tracks"))*got=SR_TRACKS;else if(!strcmp(what,"lead_glide"))*got=engine.motion[SR_LEAD].glide_ms;else if(!strcmp(what,"bass_glide"))*got=engine.motion[SR_BASS].glide_ms;else if(!strcmp(what,"lead_vibrato"))*got=engine.motion[SR_LEAD].vibrato_depth;else if(!strcmp(what,"bass_vibrato"))*got=engine.motion[SR_BASS].vibrato_depth;else if(!strcmp(what,"drums"))*got=engine.drums_enabled;else if(!strcmp(what,"density"))*got=engine.drum_density;else if(!strcmp(what,"hit"))*got=engine.drum_hit;else if(!strcmp(what,"scene"))*got=engine.scene;else if(!strcmp(what,"visual"))*got=visual_mode;else if(!strcmp(what,"bank"))*got=bank_slot;else if(!strcmp(what,"bank_message"))*got=bank_message;else if(!strcmp(what,"saving"))*got=quick_started||quick_pending;else if(!strcmp(what,"knobs_valid")){
  *got=1;
  for(unsigned i=0;i<4;i++){
    unsigned id=control_for(i);
