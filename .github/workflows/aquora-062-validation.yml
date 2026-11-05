@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: aquora-0.6.2-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   host-regressions:
@@ -300,6 +300,8 @@ jobs:
             echo 'Existing v0.6.2 release preserved; inspect before any replacement.'
             exit 1
           fi
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/aquora-0.6.2-release-integration" --jq .object.sha)
+          test "$current" = "$GITHUB_SHA" || { echo 'Newer integration checkpoint exists; stale publisher stopped.'; exit 1; }
           gh release create v0.6.2 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title 'AQUORA 0.6.2 — Generative Sound Sanctuary' \
             --notes-file release/0.6.2/RELEASE.md "$out/"*

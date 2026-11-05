@@ -21,4 +21,4 @@
   ok scope_samples == 0
   ok ui_blits == 0
   ok drops == 0
-host: 20660 ms simulated, 169 blits, render 1.8% of real time (host CPU)
+host: 20660 ms simulated, 169 blits, render 1.7% of real time (host CPU)

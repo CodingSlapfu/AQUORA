@@ -257,24 +257,24 @@ static void voice_diagnostics(int band)
    cv_text(126,15,&FONT_B,voice.active?role_names[voice.track]:"Idle",skin_text());
    const char *origin=voice.key?"Physical key":"Generator";
    if(voice.active&&engine.tracks[voice.track].mute)origin=voice.key?"Key / muted":"Gen / muted";
-   cv_text(126,31,&FONT_XS,voice.active?origin:"-",skin_text());
+   if(ui_font_size!=2)cv_text(126,31,&FONT_XS,voice.active?origin:"-",skin_text());
  }else if(band==2){
    label(8,0,"MIDI / AGE ms",voice.active?voice.midi:0);
    label(126,0,"REMAIN ms",voice.active?voice.remain/(SR_RATE/1000):0);
    char value[16];
-   num(value,voice.active?age/(SR_RATE/1000):0);cv_text(50,15,&FONT_B,value,skin_text());
-   cv_text(126,31,&FONT_XS,voice.active?(voice.gate?"Gate on":"Release"):"Idle",skin_text());
+   num(value,voice.active?age/(SR_RATE/1000):0);if(ui_font_size!=2)cv_text(50,15,&FONT_B,value,skin_text());
+   if(ui_font_size!=2)cv_text(126,31,&FONT_XS,voice.active?(voice.gate?"Gate on":"Release"):"Idle",skin_text());
  }else if(band==3){
    label(8,0,"NOTE ON / OFF",notes_on);
-   char value[16];num(value,notes_off);cv_text(62,15,&FONT_B,value,skin_text());
+   char value[16];num(value,notes_off);if(ui_font_size!=2)cv_text(62,15,&FONT_B,value,skin_text());
    label(126,0,"GUARDS",watchdogs);
-   num(value,voice.active?voice.env*100:0);cv_text(8,31,&FONT_XS,"ENVELOPE %",skin_text());
-   cv_text(86,31,&FONT_XS,value,skin_text());
+   num(value,voice.active?voice.env*100:0);if(ui_font_size!=2){cv_text(8,31,&FONT_XS,"ENVELOPE %",skin_text());
+   cv_text(86,31,&FONT_XS,value,skin_text());}
  }else{
    label(8,0,"SACRED ACTIVE Hz",engine.sacred_gain>.0001f?engine.sacred_hz_now:0);
    label(126,0,"FIXED ACTIVE Hz",engine.running&&engine.solo==SR_TRACKS&&engine.tone_level>0?sr_frequencies[engine.frequency].hz:0);
-   cv_text(8,32,&FONT_XS,engine.binaural_enabled?"BINAURAL ON":"BINAURAL OFF",skin_text());
-   cv_text(126,32,&FONT_XS,engine.solo<SR_TRACKS?role_names[engine.solo]:"SOLO OFF",skin_text());
+   if(ui_font_size!=2)cv_text(8,32,&FONT_XS,engine.binaural_enabled?"BINAURAL ON":"BINAURAL OFF",skin_text());
+   if(ui_font_size!=2)cv_text(126,32,&FONT_XS,engine.solo<SR_TRACKS?role_names[engine.solo]:"SOLO OFF",skin_text());
  }
 }
 static void performance(int band)
@@ -300,23 +300,26 @@ static void performance(int band)
  }else if(band==1){
    label(8,0,"PLAY BLITS FPS x10",shown_fps10);
    label(127,0,"MISSED / 2s",shown_missed);
-   cv_text(8,31,&FONT_XS,"DRAW us",skin_text());
-   char draw[12];num(draw,frame_us);cv_text(65,31,&FONT_XS,draw,skin_text());
+   if(ui_font_size!=2)cv_text(8,31,&FONT_XS,"DRAW us",skin_text());
+   char draw[12];num(draw,frame_us);if(ui_font_size!=2)cv_text(65,31,&FONT_XS,draw,skin_text());
 
  }else if(band==2){
    label(8,0,"AUDIO MEAN us",audio_stats.mean);
    label(127,0,"FX MEAN us",fx_stats.mean);
-   cv_text(8,32,&FONT_XS,"GLO: CALLBACK AND VOICE STATS",skin_text());
+   if(ui_font_size!=2)cv_text(8,32,&FONT_XS,"GLO: CALLBACK AND VOICE STATS",skin_text());
  }else if(band==3){
    label(8,0,"DMA XRUN DELTA",xrun_delta);
    label(127,0,"AUDIO+FX % BUDGET",(audio_stats.mean+fx_stats.mean)*100/5805);
-   char v[12];num(v,plat_xruns());cv_text(66,15,&FONT_B,v,skin_text());
+   char v[12];num(v,plat_xruns());if(ui_font_size!=2)cv_text(66,15,&FONT_B,v,skin_text());
  }else if(band==4){
+   if(ui_font_size==2){label(8,0,"WORK us",vis_output.busy_us);label(127,0,"FALLBACK",worker_fallbacks);}
+   else{
    cv_text(8,0,&FONT_XS,plat_cpu2_on()?"CORE 1 GEOMETRY / CORE 0 AUDIO":"CORE 0 / SINGLE-CORE FALLBACK",skin_text());
    label(8,12,"WORK / WAIT us",vis_output.busy_us);
    char v[12];num(v,worker_wait_us);cv_text(66,27,&FONT_B,v,skin_text());
    label(127,12,"FALLBACK / BAD",worker_fallbacks);
    num(v,plat_cpu2_bad());cv_text(185,27,&FONT_B,v,skin_text());
+   }
  }
 }
 static void mixer_overview(int band)
@@ -463,7 +466,7 @@ static void mixer_band(int band)
    label(8,2,"MASTER PEAK %",(int)(engine.master_peak*100.f));
    label(93,2,"LIMITER %",(int)(engine.limiter*100.f));
    label(174,2,"GAIN %",(int)(engine.gain_trim[selected]*100.f));
-   cv_text(8,30,&FONT_XS,"EDIT: TAB   LFO: SOLO   SEL: MUTE",skin_text());
+   if(ui_font_size!=2)cv_text(8,30,&FONT_XS,"EDIT: TAB   LFO: SOLO   SEL: MUTE",skin_text());
    return;
  }
  unsigned ids[SR_TRACKS], count=0;
@@ -529,7 +532,7 @@ static void draw(int animate)
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug);
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    const int artwork=intro_active||fullscreen;
-   const uint16_t bg=artwork?RGB(5,17,22):skins[ui_theme][ui_background].canvas;
+   const uint16_t bg=artwork?RGB(5,17,22):ui_background?skins[ui_theme][1].canvas:RGB(0,0,0);
    cv_begin(240,48,bg);
    if(!artwork&&!debug&&ui_theme){
      const uint16_t panel=skins[ui_theme][ui_background].panel;

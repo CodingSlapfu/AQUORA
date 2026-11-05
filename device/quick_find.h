@@ -22,7 +22,7 @@ static void open_parameter(unsigned index)
         break;
     case PAGE_AIR:air_tab=tab;break;
     case PAGE_EVOLVE:song_tab=tab;break;
-    case PAGE_MIX:mix_tab=tab;break;
+    case PAGE_MIX:mix_tab=tab;if(tab==5)mix_focus=selected;break;
     case PAGE_DRUMS:drum_tab=tab;break;
     case PAGE_SETUP:
         if(tab==6){setup_tab=0;display_subtab=1;}
