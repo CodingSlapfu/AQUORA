@@ -554,12 +554,33 @@ static void draw(int animate)
      }
    }
    if(intro_active){
-     /* Branded static presentation; no visualizer or ribbon at startup. */
+     /* Independent AQUORA intro: flowing sound-pulse typography, never the
+      * selected musical visualizer. Uses a precomputed sine LUT and up to 42
+      * short LCD strokes per frame; no worker job or audio ISR computation. */
+     unsigned elapsed=plat_ms()-intro_start;
+     unsigned phase=(elapsed/35u)&127u;
+     if(band==1||band==3){
+       const int center=band==1?27:20;
+       const uint16_t ink=skin_accent();
+       for(unsigned j=0;j<21u;j++){
+         float pulse=vis_sine[(phase+j*7u)&127u];
+         if(pulse<0.f)pulse=-pulse;
+         int h=3+(int)(pulse*(band==1?13.f:11.f));
+         int x=24+(int)(j*190u/20u);
+         cv_line(x,center-h,x,center+h,ink);
+       }
+     }
      if(band==2){
        cv_text(68,1,&FONT_B,"A Q U O R A",skin_text());
        cv_text(96,28,&FONT_XS,APP_VERSION,skin_text());
      }
-     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",skin_text());
+     if(band==4){
+       /* Progress fills gently across the intro; never touches audio logic. */
+       unsigned progress=elapsed>=8000u?176u:(elapsed*176u)/8000u;
+       cv_line(32,6,208,6,skin_dim());
+       if(progress)cv_line(32,6,32+(int)progress,6,skin_accent());
+       cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",skin_text());
+     }
    }else if(debug)performance(band);
    else if(fullscreen)geometry(band*48);
    else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){
