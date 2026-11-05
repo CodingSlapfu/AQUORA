@@ -27,7 +27,7 @@ jobs:
           out="$GITHUB_WORKSPACE/dist"
           rel="$RUNNER_TEMP/aquora-063"
           screens="$RUNNER_TEMP/aquora-panels"
-          mkdir -p "$out/emu" "$out/studio" "$out/assets" "$rel" "$screens"
+          mkdir -p "$out/emu" "$out/studio" "$out/install" "$out/assets" "$rel" "$screens"
           gh release download v0.6.3 -R "$GITHUB_REPOSITORY" -p AQUORA-0.6.3-package.tar.gz -D "$RUNNER_TEMP"
           tar -xzf "$RUNNER_TEMP/AQUORA-0.6.3-package.tar.gz" -C "$rel"
           test -s "$rel/emu/app.wasm"
@@ -36,6 +36,7 @@ jobs:
           python3 site/tools/patch_emu.py "$out/emu/index.html"
           cp site/index.html site/style.css site/screen-carousel.js "$out/"
           cp site/studio/index.html "$out/studio/"
+          cp site/install/index.html "$out/install/"
           cp site/assets/favicon.svg "$out/assets/"
           cp site/fonts/OFL.txt "$out/assets/OFL.txt"
           python3 -m venv "$RUNNER_TEMP/aquora-site-font-venv"
@@ -86,12 +87,25 @@ jobs:
           d=Path("dist")
           assert "AQUORA Studio companion bridge" in (d/"emu/index.html").read_text()
           assert "AQUORA_STUDIO" in (d/"studio/index.html").read_text()
+          installer=(d/"install/index.html").read_text()
+          home=(d/"index.html").read_text()
+          studio=(d/"studio/index.html").read_text()
+          target="https://parallax8-studio.jminie66.chatgpt.site/install/"
+          release="https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.3"
+          assert 'href="install/"' in home and 'href="../install/"' in studio
+          assert 'src="'+target+'"' in installer
+          assert 'href="'+target+'"' in installer
+          assert 'href="'+release+'"' in installer
+          assert 'allow="midi; midi-sysex; usb"' in installer
+          assert 'v0.6.3' in installer
+          assert 'Some browsers block MIDI access' in installer
+          print("Verified showcase installer route and original MIDI service fallback")
           for name in ("play","sound","evolve","mixer","mix-strip","drums","air","appearance"):
               raw=(d/"assets"/(name+"-063.png")).read_bytes()
               assert raw[:8]==b"\x89PNG\r\n\x1a\n"
               assert struct.unpack(">II",raw[16:24])==(240,240)
           class P(HTMLParser): pass
-          for f in (d/"index.html",d/"studio/index.html",d/"emu/index.html"):
+          for f in (d/"index.html",d/"studio/index.html",d/"install/index.html",d/"emu/index.html"):
               P().feed(f.read_text())
           import re
           forbidden=re.compile(r"(?i)M-VAVE|HYP-1|ChoralRoot|Sony|Sega|0\.6\.1")
