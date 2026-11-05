@@ -145,7 +145,7 @@ jobs:
               mkdir "$out/corrective_061"
               AQUORA_TEST_INTRO=1 device/build/host/sound-healing_host tests/corrective_061.txt "$out/corrective_061" 2>&1 | tee "$out/corrective_061.log"
               python3 tests/corrective_previews.py "$PWD/device/build/host/sound-healing_host" "$out/previews" | tee "$out/previews.log"
-              python3 tests/appearance_matrix_063.py "$PWD/device/build/host/sound-healing_host" "$out/appearance-matrix" | tee "$out/appearance-matrix.log"
+              python3 tests/appearance_matrix_062.py "$PWD/device/build/host/sound-healing_host" "$out/appearance-matrix" | tee "$out/appearance-matrix.log"
               python3 tests/panel_062_regressions.py "$PWD/device/build/host/sound-healing_host" "$out/panel-063" | tee "$out/panel-063.log"
               gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark"
               "$RUNNER_TEMP/benchmark" | tee "$out/host-timing.log"

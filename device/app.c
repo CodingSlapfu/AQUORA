@@ -99,6 +99,7 @@ static const uint8_t page_controls[4][4]={
  {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,29,49}
 };
 #include "arrangement.c"
+#include "quicksave.c"
 typedef struct {
     uint32_t version;
     sr_motion motion[2];
@@ -418,6 +419,7 @@ void app_init(void)
       }
     }
     arrangement_init();
+    quick_pending=quick_started=quick_has_save=quick_finished_ms=0;
     /* arrangement_init resets its bank cursor and visual slot. Restore the
      * saved global visualizer before first intro frame, independent of banks. */
     if((settings.version==0x41513033u&&prefs_size==24)||

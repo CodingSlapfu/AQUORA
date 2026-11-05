@@ -832,7 +832,8 @@ static void draw(int animate)
      cv_text(x,21,&FONT_XS,bank,skin_text());
    }
    if(band==0&&!intro_active&&!fullscreen&&page==PAGE_PLAY){
-     char tag[]="B1";tag[1]=(char)('1'+bank_slot);
+     char tag[]="B1*";tag[1]=(char)('1'+bank_slot);
+     if(quick_has_save&&quick_saved_revision==state_revision&&bank_slot==quick_slot)tag[2]=0;
      cv_text(205,25,&FONT_XS,tag,skin_dim());
    }
    if(band==0&&!intro_active)battery_glyph();

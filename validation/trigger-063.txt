@@ -1,1 +1,1 @@
-0.6.3 independent full acceptance requested after verified checkpoint cc00ffa
+0.6.3 BSP helper and explicit-action regression integration
