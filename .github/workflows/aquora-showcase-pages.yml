@@ -37,6 +37,27 @@ jobs:
           cp site/index.html site/style.css site/screen-carousel.js "$out/"
           cp site/studio/index.html "$out/studio/"
           cp site/assets/favicon.svg "$out/assets/"
+          cp site/fonts/OFL.txt "$out/assets/OFL.txt"
+          python3 -m venv "$RUNNER_TEMP/aquora-site-font-venv"
+          "$RUNNER_TEMP/aquora-site-font-venv/bin/pip" install --disable-pip-version-check --quiet "fonttools[woff]>=4.55,<5" "brotli>=1.1,<2"
+          "$RUNNER_TEMP/aquora-site-font-venv/bin/python" site/tools/build_web_font.py site/fonts/InterTight-source.ttf "$out/assets"
+          "$RUNNER_TEMP/aquora-site-font-venv/bin/python" - "$out" <<'PYFONT'
+          from pathlib import Path
+          from fontTools.ttLib import TTFont
+          from sys import argv
+          output = Path(argv[1])
+          for filename, weight in (("aquora-sans-regular.woff2", 560), ("aquora-sans-bold.woff2", 720)):
+              path=output/"assets"/filename
+              assert path.read_bytes()[:4] == b"wOF2" and path.stat().st_size > 10000
+              font=TTFont(path)
+              assert font["name"].getDebugName(1) == "AQUORA Sans"
+              assert font["OS/2"].usWeightClass == weight
+          css=(output/"style.css").read_text()
+          assert "font-family:'AQUORA Sans'" in css
+          assert "fonts.googleapis.com" not in css
+          assert (output/"assets"/"OFL.txt").exists()
+          print("Verified two genuine AQUORA Sans WOFF2 fonts and licensing")
+          PYFONT
           gh run download 41998659763 -R "$GITHUB_REPOSITORY" -n aquora-062-host-panel -D "$screens"
           cp "$screens/panel-062/polar-fullscreen.png" "$out/assets/polar-062.png"
           cp "$screens/panel-062/original-normal.png" "$out/assets/play-062.png"
@@ -54,6 +75,7 @@ jobs:
           Firmware commit b6d452202bb12c955c29f1726fea5a02bcc91e61
           CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/41998659763
           Ten actual v0.6.2 software-rendered captures (nine gallery, one PLAY hero).
+          AQUORA Sans web vector faces derived from the matching OFL firmware font.
           Published WASM byte-for-byte unchanged; Studio adapter affects HTML only.
           EOF
           echo "d9bd8745bed889ee34106febdda5b07ce16db1977c88b0bf0212369837dbb2c2  $out/emu/app.wasm" | sha256sum --check --strict
@@ -87,6 +109,9 @@ jobs:
           assert 'screen-carousel.js' in (d/"index.html").read_text()
           assert all(name in carousel for name in expected), "slideshow is missing an accepted screen"
           assert 'VISIBLE MUSIC' not in (d/"index.html").read_text()
+          assert 'A universe' in (d/"index.html").read_text()
+          assert 'made of sound.' in (d/"index.html").read_text()
+          assert 'to feel like water' not in (d/"index.html").read_text()
           assert 'hero-screen-toolbar' not in (d/"index.html").read_text()
           assert 'hero-screen-previous' not in (d/"index.html").read_text()
           assert 'hero-screen-next' not in (d/"index.html").read_text()
