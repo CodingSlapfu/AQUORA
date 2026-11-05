@@ -116,7 +116,7 @@ jobs:
           case "$TARGET" in
             host-panel)
               "${build[@]}" --host 2>&1 | tee "$out/build.log"
-              for test in controls_060 fullscreen_060 mixer_unified_060 patch_shape_060 play_panel_060 reachability_060 arrangements workflow_050 appearance_062; do
+              for test in controls_060 fullscreen_060 mixer_unified_060 patch_shape_060 play_panel_060 reachability_060 arrangements workflow_050 appearance_062 mixer_062; do
                 mkdir "$out/$test"
                 device/build/host/sound-healing_host "tests/$test.txt" "$out/$test" 2>&1 | tee "$out/$test.log"
               done
