@@ -138,15 +138,9 @@ jobs:
       - name: Restore checksummed JieLi 20260730.1
         if: matrix.target == 'native' || matrix.target == 'single-core'
         shell: bash
-        env:
-          TOOLCHAIN_URL: ${{ secrets.AQUORA_JIELI_ARCHIVE_URL }}
         run: |
           set -euo pipefail
-          if [[ -z "$TOOLCHAIN_URL" ]]; then
-            echo "::error::Configure the repository secret AQUORA_JIELI_ARCHIVE_URL with a GitHub-runner-accessible URL to the pinned JieLi 20260730.1 archive."
-            exit 1
-          fi
-          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 180 -o "$RUNNER_TEMP/jieli.tar.xz" "$TOOLCHAIN_URL"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 180 --retry 2 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
           printf '%s  %s\n' a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd "$RUNNER_TEMP/jieli.tar.xz" | sha256sum --check --strict
           mkdir "$RUNNER_TEMP/jieli"
           tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
