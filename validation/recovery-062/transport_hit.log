@@ -1,0 +1,29 @@
+PASS duplicate held key, missed-release watchdog, Sacred Bass release, 32 saturated STOP/restart cycles, no stale FX or keyed voices
+PASS isolated fixed-reference crossings: 528 initial, 528 after scene change, 528 after restart
+PASS all thirteen Auto frequencies in PCM, Sacred Bass isolation, independent binaural stereo and STOP silence
+PASS next-loop tonic and length changes at all three loop lengths
+PASS strict Frequency Lock PCM in thirteen scenes, suppression of textures, and clean mode exit
+Nature 1 peak at 18/50/100%: 654/1816/3633
+Nature 2 peak at 18/50/100%: 513/1427/2854
+Nature 3 peak at 18/50/100%: 397/1105/2210
+Nature 4 peak at 18/50/100%: 439/1221/2442
+Nature 5 peak at 18/50/100%: 735/2043/4086
+Nature 6 peak at 18/50/100%: 286/795/1591
+Nature 7 peak at 18/50/100%: 304/846/1693
+PASS 16/32/64 percussion, distinct answer bars at HIT 100 and repeatable loop timing
+PASS Lead and Bass vibrato each change rendered PCM independently of glide
+PASS 100% equals corrupted 255% input: 7000 optional strikes in 7000 eligible subdivisions
+Scene 0 drum peak 0.204, 8 strikes
+Scene 1 drum peak 0.204, 18 strikes
+Scene 2 drum peak 0.187, 22 strikes
+Scene 3 drum peak 0.272, 11 strikes
+Scene 4 drum peak 0.235, 12 strikes
+Scene 5 drum peak 0.224, 18 strikes
+Scene 6 drum peak 0.279, 12 strikes
+Scene 7 drum peak 0.236, 19 strikes
+Scene 8 drum peak 0.201, 21 strikes
+Scene 9 drum peak 0.222, 17 strikes
+Scene 10 drum peak 0.281, 22 strikes
+Scene 11 drum peak 0.272, 11 strikes
+Scene 12 drum peak 0.267, 19 strikes
+PASS HIT zero retains pulse and all thirteen scenes produce audible-range drum PCM

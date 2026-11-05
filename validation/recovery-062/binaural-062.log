@@ -1,0 +1,11 @@
+carrier 80.0 beat 0.5: measured L 79.7344 R 80.3496 Hz
+carrier 80.0 beat 6.0: measured L 76.9043 R 82.9336 Hz
+carrier 80.0 beat 40.0: measured L 60.0469 R 100.0371 Hz
+carrier 432.0 beat 0.5: measured L 431.7715 R 432.2636 Hz
+carrier 432.0 beat 6.0: measured L 429.0644 R 434.9707 Hz
+carrier 432.0 beat 40.0: measured L 412.0840 R 451.9511 Hz
+carrier 1000.0 beat 0.5: measured L 999.7558 R 1000.2480 Hz
+carrier 1000.0 beat 6.0: measured L 997.0488 R 1002.9550 Hz
+carrier 1000.0 beat 40.0: measured L 980.0683 R 1019.9355 Hz
+PASS actual 3h binaural kernel: L 999.750370 R 1000.250278 difference 0.499907 Hz
+PASS carrier/beat extremes, exact settling, FX isolation, off silence, solo fade and rapid sweeps
