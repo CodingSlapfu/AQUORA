@@ -20,16 +20,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Construct public site from published, accepted v0.6.2 assets
+      - name: Construct public site from published, accepted v0.6.3 assets
         shell: bash
         run: |
           set -euo pipefail
           out="$GITHUB_WORKSPACE/dist"
-          rel="$RUNNER_TEMP/aquora-062"
+          rel="$RUNNER_TEMP/aquora-063"
           screens="$RUNNER_TEMP/aquora-panels"
           mkdir -p "$out/emu" "$out/studio" "$out/assets" "$rel" "$screens"
-          gh release download v0.6.2 -R "$GITHUB_REPOSITORY" -p AQUORA-0.6.2-package.tar.gz -D "$RUNNER_TEMP"
-          tar -xzf "$RUNNER_TEMP/AQUORA-0.6.2-package.tar.gz" -C "$rel"
+          gh release download v0.6.3 -R "$GITHUB_REPOSITORY" -p AQUORA-0.6.3-package.tar.gz -D "$RUNNER_TEMP"
+          tar -xzf "$RUNNER_TEMP/AQUORA-0.6.3-package.tar.gz" -C "$rel"
           test -s "$rel/emu/app.wasm"
           test -s "$rel/emu/worklet.js"
           cp -a "$rel/emu/." "$out/emu/"
@@ -58,27 +58,27 @@ jobs:
           assert (output/"assets"/"OFL.txt").exists()
           print("Verified two genuine AQUORA Sans WOFF2 fonts and licensing")
           PYFONT
-          gh run download 41998659763 -R "$GITHUB_REPOSITORY" -n aquora-062-host-panel -D "$screens"
-          cp "$screens/panel-062/polar-fullscreen.png" "$out/assets/polar-062.png"
-          cp "$screens/panel-062/original-normal.png" "$out/assets/play-062.png"
-          cp "$screens/previews/original/00.png" "$out/assets/original-062.png"
-          cp "$screens/appearance-matrix/t1-f2-b0/sound.png" "$out/assets/sound-062.png"
-          cp "$screens/appearance-matrix/t1-f2-b0/evolve.png" "$out/assets/evolve-062.png"
-          cp "$screens/appearance-matrix/t1-f2-b0/mix.png" "$out/assets/mixer-062.png"
-          cp "$screens/appearance-matrix/t1-f2-b0/mix-strip.png" "$out/assets/mix-strip-062.png"
-          cp "$screens/appearance-matrix/t1-f2-b0/drums.png" "$out/assets/drums-062.png"
-          cp "$screens/appearance-matrix/t1-f2-b0/air-fx.png" "$out/assets/air-062.png"
-          cp "$screens/appearance-matrix/t2-f2-b1/setup.png" "$out/assets/appearance-062.png"
+          gh run download 42022969585 -R "$GITHUB_REPOSITORY" -n aquora-063-host-panel -D "$screens"
+          cp "$screens/panel-063/polar-fullscreen.png" "$out/assets/polar-063.png"
+          cp "$screens/panel-063/original-normal.png" "$out/assets/play-063.png"
+          cp "$screens/previews/original/00.png" "$out/assets/original-063.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/sound.png" "$out/assets/sound-063.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/evolve.png" "$out/assets/evolve-063.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/mix.png" "$out/assets/mixer-063.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/mix-strip.png" "$out/assets/mix-strip-063.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/drums.png" "$out/assets/drums-063.png"
+          cp "$screens/appearance-matrix/t1-f2-b0/air-fx.png" "$out/assets/air-063.png"
+          cp "$screens/appearance-matrix/t2-f2-b1/setup.png" "$out/assets/appearance-063.png"
           touch "$out/.nojekyll"
           cat > "$out/PROVENANCE.txt" <<'EOF'
-          AQUORA v0.6.2 website sourced from accepted release.
-          Firmware commit b6d452202bb12c955c29f1726fea5a02bcc91e61
-          CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/41998659763
-          Ten actual v0.6.2 software-rendered captures (nine gallery, one PLAY hero).
+          AQUORA v0.6.3 website sourced from accepted release.
+          Firmware commit 0f2716ba0499def94884860248f9b0e887b0fd0d
+          CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/42022969585
+          Ten actual v0.6.3 software-rendered captures (nine gallery, one PLAY hero).
           AQUORA Sans web vector faces derived from the matching OFL firmware font.
           Published WASM byte-for-byte unchanged; Studio adapter affects HTML only.
           EOF
-          echo "d9bd8745bed889ee34106febdda5b07ce16db1977c88b0bf0212369837dbb2c2  $out/emu/app.wasm" | sha256sum --check --strict
+          echo "258db1560e3235ce0c79fe45c3961803f3621b58493b18534e8f1dc250ecc732  $out/emu/app.wasm" | sha256sum --check --strict
           node -e 'const f=require("fs");new WebAssembly.Module(f.readFileSync("dist/emu/app.wasm"));console.log("WASM valid")'
           node --check "$out/screen-carousel.js"
           python3 - <<'PY'
@@ -89,7 +89,7 @@ jobs:
           assert "AQUORA Studio companion bridge" in (d/"emu/index.html").read_text()
           assert "AQUORA_STUDIO" in (d/"studio/index.html").read_text()
           for name in ("play","polar","original","sound","evolve","mixer","mix-strip","drums","air","appearance"):
-              raw=(d/"assets"/(name+"-062.png")).read_bytes()
+              raw=(d/"assets"/(name+"-063.png")).read_bytes()
               assert raw[:8]==b"\x89PNG\r\n\x1a\n"
               assert struct.unpack(">II",raw[16:24])==(240,240)
           class P(HTMLParser): pass
@@ -100,7 +100,7 @@ jobs:
           for file in d.rglob("*"):
               if file.is_file() and file.suffix in (".html",".css",".js",".svg",".txt"):
                   assert forbidden.search(file.read_text(encoding="utf-8")) is None, file
-          expected={name+"-062.png" for name in ("play","polar","original","sound","evolve","mixer","mix-strip","drums","air","appearance")}
+          expected={name+"-063.png" for name in ("play","polar","original","sound","evolve","mixer","mix-strip","drums","air","appearance")}
           assert {file.name for file in (d/"assets").glob("*.png")} == expected
           assert all(name in (d/"index.html").read_text() for name in expected)
           carousel=(d/"screen-carousel.js").read_text()
@@ -119,13 +119,13 @@ jobs:
           assert 'window.setInterval(advance, 4000)' in carousel
           assert 'document.hidden' in carousel
           print("Verified automatic ten-screen slideshow without controls or obsolete hero label")
-          print("Verified 10 current 0.6.2 captures including PLAY hero and public text")
+          print("Verified 10 current 0.6.3 captures including PLAY hero and public text")
           PY
           (cd "$out"; find . -type f ! -name SITE-SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SITE-SHA256SUMS.txt)
       - name: Archive matching public-site build
         uses: actions/upload-artifact@v4
         with:
-          name: aquora-site-stable-062
+          name: aquora-site-stable-063
           path: dist/
           include-hidden-files: true
           retention-days: 90
@@ -149,7 +149,7 @@ jobs:
           cp -a "$GITHUB_WORKSPACE/dist/." .
           git add -A
           if ! git diff --cached --quiet; then
-            git commit -m "site: AQUORA v0.6.2 playable showcase and studio"
+            git commit -m "site: AQUORA v0.6.3 playable showcase and studio"
             git push origin HEAD:gh-pages
           fi
       - name: Report branch publication and external Pages deployment
