@@ -123,6 +123,11 @@ jobs:
               AQUORA_TEST_INTRO=1 device/build/host/sound-healing_host tests/corrective_061.txt "$out/corrective_061" 2>&1 | tee "$out/corrective_061.log"
               gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark"
               "$RUNNER_TEMP/benchmark" | tee "$out/host-timing.log"
+              mkdir "$RUNNER_TEMP/baseline"
+              tar -xzf "$GITHUB_WORKSPACE/evidence/0.6.0/editor/AQUORA-0.6.0-editor-source.tar.gz" -C "$RUNNER_TEMP/baseline"
+              base="$RUNNER_TEMP/baseline"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -I"$base/device/dsp" -I"$base/vendor/fm1-base/include" "$base/device/dsp/engine.c" tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark-base"
+              "$RUNNER_TEMP/benchmark-base" | tee "$out/host-timing-v0.6.0.log"
               ;;
             browser-wasm)
               source "$RUNNER_TEMP/emsdk/emsdk_env.sh"

@@ -56,7 +56,7 @@ typedef struct {
   uint8_t play_track[27], play_strength, play_feel;
   uint32_t play_due[27];
   uint32_t nature_audition, bird_wait, nature_rng;
-  uint8_t nature_active, nature_from, nature_style, bird_phrase, bird_note;
+  uint8_t nature_active, nature_from, nature_style, nature_level_manual, bird_phrase, bird_note;
   float nature_blend, bird_pitch, bird_pan;
   uint16_t bird_left;
   float nature_peak;

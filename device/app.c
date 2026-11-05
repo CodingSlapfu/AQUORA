@@ -179,27 +179,24 @@ static void consume(void){
 
  case 1:{
    unsigned next=bounded(engine.scene+d,0,SR_SCENES-1);
-   if(next!=engine.scene){
-     sr_set_scene(&engine,next);
-     sr_generate_song(&engine,plat_ticks24()^++song_nonce,0);
-   }
+   if(next!=engine.scene)sr_set_scene(&engine,next);
    break;
  }
- case 2:if(c.track==SR_DRUMS)sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));else sr_set_track_patch(&engine,c.track,bounded(t->patch+d,0,SR_PATCHES-1));break;
+ case 2:engine.sound_locks|=1u<<c.track;if(c.track==SR_DRUMS)sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));else sr_set_track_patch(&engine,c.track,bounded(t->patch+d,0,SR_PATCHES-1));break;
  case 3:if(!interrupted&&play&&((physical_keys&(1u<<d))||(engine.play_grid&&engine.play_strength&&!engine.keyboard_mode)))sr_key_down(&engine,c.track,(unsigned)d);break;
  case 4:sr_set_frequency(&engine,bounded(engine.frequency+d,0,SR_FREQUENCIES-1));break;
- case 5:engine.bed_level=adjust(engine.bed_level,d,.02f,1);break;
+ case 5:engine.nature_level_manual=1;engine.bed_level=adjust(engine.bed_level,d,.02f,1);break;
  case 6:sr_set_binaural(&engine,switched(engine.binaural_enabled,d));break;
  case 7:sr_set_binaural_rate(&engine,fm_clampf(engine.binaural_rate+d*.5f,.5f,40));break;
  case 8:sr_set_binaural_carrier(&engine,fm_clampf(engine.binaural_carrier+d*5.f,80,1000));break;
  case 9:drums_enable(switched(engine.drums_enabled,d));break;
  case 10:sr_set_drum_density(&engine,bounded(engine.drum_density+d,0,SR_DENSITY_MAX));break;
- case 11:engine.reverb_amount=adjust(engine.reverb_amount,d,.02f,.8f);break;
- case 12:engine.delay_amount=adjust(engine.delay_amount,d,.02f,.7f);break;
+ case 11:engine.sound_locks|=SR_SOUND_FX;engine.reverb_amount=adjust(engine.reverb_amount,d,.02f,.8f);break;
+ case 12:engine.sound_locks|=SR_SOUND_FX;engine.delay_amount=adjust(engine.delay_amount,d,.02f,.7f);break;
  case 13:t->volume=adjust(t->volume,d,.03f,1);break;
  case 14:sr_set_tuning_432(&engine,switched(engine.tuning_432,d));break;
  case 15:t->mute=!t->mute;break;
- case 16:sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));break;
+ case 16:engine.sound_locks|=1u<<SR_DRUMS;sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));break;
  case 17:sr_set_drum_level(&engine,engine.drum_level+d*.02f);break;
  case 18:engine.energy=adjust(engine.energy,d,.05f,1);break;
  case 82:{

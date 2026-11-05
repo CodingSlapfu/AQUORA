@@ -134,7 +134,7 @@ static void arrangement_snapshot(arrangement *record)
     memset(record,0,sizeof(*record));
     unsigned irq=plat_lock();
     record->version=AQ_BANK_VERSION;
-    record->v2_crc=(engine.play_strength+1u)|((uint32_t)engine.play_feel<<7)|((uint32_t)engine.nature_style<<8)|((uint32_t)engine.evolve_pace<<10);
+    record->v2_crc=(engine.play_strength+1u)|((uint32_t)engine.play_feel<<7)|((uint32_t)engine.nature_style<<8)|((uint32_t)engine.evolve_pace<<10)|((uint32_t)engine.nature_level_manual<<12);
     record->legacy_crc=engine.sound_locks|((uint32_t)(engine.drum_presence+1u)<<10)|((uint32_t)(engine.play_grid&3u)<<17)|((uint32_t)(engine.play_grid>>2)<<28)|((uint32_t)engine.groove_mode<<19)|((uint32_t)(engine.groove_strength+1u)<<21);
 #define COPY_FIELD(field) record->field=engine.field;
     AQ_BANK_FIELDS(COPY_FIELD)
@@ -183,6 +183,7 @@ static void arrangement_apply(const arrangement *record)
     engine.play_feel=(key_timing>>7)&1u;
     engine.nature_style=(key_timing>>8)&3u;
     engine.evolve_pace=(key_timing>>10)&3u;
+    engine.nature_level_manual=(key_timing>>12)&1u;
     engine.evolve_next=0;
     if(!engine.bed_type)engine.sound_locks|=SR_SOUND_NATURE;
     unsigned groove=record->version==AQ_BANK_LEGACY?0:(record->legacy_crc>>19)&3u;

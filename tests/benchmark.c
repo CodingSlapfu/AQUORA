@@ -53,8 +53,8 @@ int main(void)
             }
         }
         qsort(times,BLOCKS,sizeof(*times),compare);
-        printf("%s: mean %.1f us p95 %.1f us peak %.1f us, PCM peak %u RMS %.0f\n",
+        printf("%s: mean %.1f us p95 %.1f us p99 %.1f us peak %.1f us, PCM peak %u RMS %.0f\n",
             names[profile],elapsed/(1000.0*BLOCKS),times[BLOCKS*95/100-1]/1000.0,
-            times[BLOCKS-1]/1000.0,peak,sqrt(power/(512.0*BLOCKS)));
+            times[BLOCKS*99/100-1]/1000.0,times[BLOCKS-1]/1000.0,peak,sqrt(power/(512.0*BLOCKS)));
     }
 }
