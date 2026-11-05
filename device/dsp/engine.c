@@ -570,14 +570,28 @@ void sr_preview_sound(sr_engine *e,unsigned role)
 }
 
 static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
-  const sr_drum_kit *kit=&sr_drum_kits[e->drum_kit];float sound=0.f;
+  /* Silence is a common path in the default generator. Skip all oscillators,
+   * noise and kit inspection when no percussion envelope is active. */
+  if(e->kick_env<=.0003f&&e->hand_env<=.0003f&&e->shaker_env<=.0003f){
+    e->kick_env=e->hand_env=e->shaker_env=0.f;
+    return 0.f;
+  }
+  const sr_drum_kit *kit=&sr_drum_kits[e->drum_kit];
+  float sound=0.f;
   unsigned fm=e->drum_kit>=15;
   if(e->kick_env>.0003f){
     float hz=kit->root+45.f*e->kick_env;
     e->kick_phase+=hz/(float)SR_RATE;if(e->kick_phase>=1.f)e->kick_phase-=1.f;
     float tone=fm?sine(1.f+e->kick_phase+.15f*e->kick_env*sine(e->kick_phase*2.f)):
                   sine(e->kick_phase)*.82f+sine(e->kick_phase*2.f)*.18f;
-    sound+=tone*e->kick_env*kit->kick*.45f;
+    /* Short, brightness-aware noise attack: makes soft 50-70Hz kicks
+     * perceptible on the FM-1 speaker without boosting the whole mix. */
+    float transient=0.f;
+    if(e->kick_env>.91f){
+      float edge=(e->kick_env-.91f)*(1.f/.09f);
+      transient=(rnd(e)*2.f-1.f)*edge*(.12f+kit->skin*.00014f);
+    }
+    sound+=(tone*.45f+transient*.42f)*e->kick_env*kit->kick;
     e->kick_env*=kit->decay;
   }else e->kick_env=0.f;
   if(e->hand_env>.0003f){
@@ -586,13 +600,19 @@ static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
     e->hand_phase+=kit->skin*(1.f/SR_RATE);if(e->hand_phase>=1.f)e->hand_phase-=1.f;
     float tap=fm?sine(1.f+e->hand_phase+.21f*e->hand_env*sine(e->hand_phase*3.f)):
                  sine(e->hand_phase);
-    sound+=(tap*.64f+e->hand_noise_lp*.36f)*e->hand_env*kit->hand*.43f;
+    float brightness=.25f+kit->skin*.0006f;
+    if(brightness>.58f)brightness=.58f;
+    float attack=e->hand_env>.84f?(e->hand_env-.84f)*6.25f:0.f;
+    float bright=(noise-e->hand_noise_lp)*brightness+noise*attack*.2f;
+    float body=tap*(.78f-brightness*.5f)+e->hand_noise_lp*.19f;
+    sound+=(body+bright)*e->hand_env*kit->hand*.43f;
     e->hand_env*=.99925f;
   }else e->hand_env=0.f;
   if(e->shaker_env>.0003f){
     float noise=rnd(e)*2.f-1.f;
-    e->shaker_lp+=(noise-e->shaker_lp)*.35f;
-    sound+=(noise-e->shaker_lp)*e->shaker_env*kit->shaker*.28f;
+    e->shaker_lp+=(noise-e->shaker_lp)*(.20f+kit->brush*.3f);
+    float brightness=1.f+kit->skin*.0006f;
+    sound+=(noise-e->shaker_lp)*e->shaker_env*kit->shaker*.28f*brightness;
     e->shaker_env*=.9967f;
   }else e->shaker_env=0.f;
   sound*=1.14f;
