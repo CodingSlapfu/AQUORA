@@ -1,4 +1,4 @@
-# AQUORA v0.6.4 showcase
+# AQUORA v0.6.5 showcase
 
 Source branch aquora-showcase-site; static publication gh-pages. Website code
 preserves the existing headline, AQUORA Sans companion fonts, actual emulator,

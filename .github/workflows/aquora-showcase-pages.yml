@@ -20,19 +20,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Construct public site from published, accepted v0.6.4 assets
+      - name: Construct public site from published, accepted v0.6.5 assets
         shell: bash
         run: |
           set -euo pipefail
           out="$GITHUB_WORKSPACE/dist"
-          rel="$RUNNER_TEMP/aquora-064"
+          rel="$RUNNER_TEMP/aquora-065"
           screens="$RUNNER_TEMP/aquora-panels"
           mkdir -p "$out/emu" "$out/studio" "$out/install" "$out/assets" "$rel" "$screens"
-          gh release download v0.6.4 -R "$GITHUB_REPOSITORY" -p AQUORA-0.6.4-package.tar.gz -D "$RUNNER_TEMP"
-          gh release download v0.6.4 -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt -D "$RUNNER_TEMP"
-          (cd "$RUNNER_TEMP" && grep ' AQUORA-0.6.4-package.tar.gz$' SHA256SUMS.txt | sha256sum --check --strict)
-          test "$(gh api repos/$GITHUB_REPOSITORY/git/ref/tags/v0.6.4 --jq .object.sha)" = 50b8a1e02e215aff1e0a7b738d40f63769d4f502
-          tar -xzf "$RUNNER_TEMP/AQUORA-0.6.4-package.tar.gz" -C "$rel"
+          gh release download v0.6.5 -R "$GITHUB_REPOSITORY" -p AQUORA-0.6.5-package.tar.gz -D "$RUNNER_TEMP"
+          gh release download v0.6.5 -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt -D "$RUNNER_TEMP"
+          (cd "$RUNNER_TEMP" && grep ' AQUORA-0.6.5-package.tar.gz$' SHA256SUMS.txt | sha256sum --check --strict)
+          test "$(gh api repos/$GITHUB_REPOSITORY/git/ref/tags/v0.6.5 --jq .object.sha)" = 45c02ebb17e93684092227b16378277bbe3841d3
+          tar -xzf "$RUNNER_TEMP/AQUORA-0.6.5-package.tar.gz" -C "$rel"
           test -s "$rel/emu/app.wasm"
           test -s "$rel/emu/worklet.js"
           cp -a "$rel/emu/." "$out/emu/"
@@ -64,16 +64,17 @@ jobs:
           PYFONT
           echo "$RUNNER_TEMP/aquora-site-font-venv/bin" >> "$GITHUB_PATH"
           export PATH="$RUNNER_TEMP/aquora-site-font-venv/bin:$PATH"
-          gh run download 42085609310 -R "$GITHUB_REPOSITORY" -n aquora-064-host-panel -D "$screens"
-          cp "$screens/captures064/"*-064.png "$out/assets/"
-          cp "$screens/captures064/"*-064.apng "$out/assets/"
-          cp "$screens/captures064/provenance.json" "$out/assets/animation-provenance.json"
+          gh run download 42128145960 -R "$GITHUB_REPOSITORY" -n aquora-065-platform-bundle -D "$screens"
+          screens="$screens/aquora-065-host-panel"
+          cp "$screens/captures065/"*-065.png "$out/assets/"
+          cp "$screens/captures065/"*-065.apng "$out/assets/"
+          cp "$screens/captures065/provenance.json" "$out/assets/animation-provenance.json"
           touch "$out/.nojekyll"
           cat > "$out/PROVENANCE.txt" <<'EOF'
-          AQUORA v0.6.4 website sourced from accepted release.
-          Firmware commit 50b8a1e02e215aff1e0a7b738d40f63769d4f502
-          CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/42087112438
-          Eight v0.6.4 interface captures, four real audio-active APNGs; no standalone visualizer screenshots.
+          AQUORA v0.6.5 website sourced from accepted release.
+          Firmware commit 45c02ebb17e93684092227b16378277bbe3841d3
+          CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/42128145960
+          Eight v0.6.5 interface captures, four real audio-active APNGs; no standalone visualizer screenshots.
           AQUORA Sans web vector faces derived from the matching OFL firmware font.
           Published WASM byte-for-byte unchanged; Studio adapter affects HTML only.
           EOF
@@ -85,7 +86,7 @@ jobs:
           from pathlib import Path
           import struct
           d=Path("dist")
-          assert "AQUORA 0.6.4" in (d/"emu/index.html").read_text()
+          assert "AQUORA 0.6.5" in (d/"emu/index.html").read_text()
           assert "0.6.3" not in (d/"emu/index.html").read_text()
           assert "AQUORA Studio companion bridge" in (d/"emu/index.html").read_text()
           assert "AQUORA_STUDIO" in (d/"studio/index.html").read_text()
@@ -93,17 +94,17 @@ jobs:
           home=(d/"index.html").read_text()
           studio=(d/"studio/index.html").read_text()
           target="https://parallax8-studio.jminie66.chatgpt.site/install/"
-          release="https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.4"
+          release="https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.5"
           assert 'href="install/"' in home and 'href="../install/"' in studio
           assert 'src="'+target+'"' in installer
           assert 'href="'+target+'"' in installer
           assert 'href="'+release+'"' in installer
           assert 'allow="midi; midi-sysex; usb"' in installer
-          assert 'v0.6.4' in installer
+          assert 'v0.6.5' in installer
           assert 'Some browsers block MIDI access' in installer
           print("Verified showcase installer route and original MIDI service fallback")
           for name in ("play","sound","evolve","mixer","mix-strip","drums","air","appearance"):
-              raw=(d/"assets"/(name+"-064.png")).read_bytes()
+              raw=(d/"assets"/(name+"-065.png")).read_bytes()
               assert raw[:8]==b"\x89PNG\r\n\x1a\n"
               assert struct.unpack(">II",raw[16:24])==(240,240)
           class P(HTMLParser): pass
@@ -114,7 +115,7 @@ jobs:
           for file in d.rglob("*"):
               if file.is_file() and file.suffix in (".html",".css",".js",".svg",".txt"):
                   assert forbidden.search(file.read_text(encoding="utf-8")) is None, file
-          expected={name+"-064.png" for name in ("play","sound","evolve","mixer","mix-strip","drums","air","appearance")}
+          expected={name+"-065.png" for name in ("play","sound","evolve","mixer","mix-strip","drums","air","appearance")}
           assert {file.name for file in (d/"assets").glob("*.png")} == expected
           assert all(name in (d/"index.html").read_text() for name in expected)
           carousel=(d/"screen-carousel.js").read_text()
@@ -122,7 +123,7 @@ jobs:
           assert 'id="hero-screen-image"' in (d/"index.html").read_text()
           assert 'screen-carousel.js' in (d/"index.html").read_text()
           assert all(name in carousel for name in expected), "slideshow is missing an accepted screen"
-          withheld=("polar-064.png","original-064.png","polar-062.png","original-062.png")
+          withheld=("polar-065.png","original-065.png","polar-062.png","original-062.png")
           assert all(name not in (d/"index.html").read_text() for name in withheld)
           assert all(name not in carousel for name in withheld)
           assert all(not (d/"assets"/name).exists() for name in withheld)
@@ -143,19 +144,19 @@ jobs:
           assert "transform:rotateY" not in css
           print("Verified screenshot displayed at native 240px without upscaling or inset border")
           print("Verified automatic eight-screen slideshow without controls or obsolete hero label")
-          print("Verified 8 current 0.6.4 interface captures including PLAY hero and public text")
+          print("Verified 8 current 0.6.5 interface captures including PLAY hero and public text")
           import json,hashlib
           from PIL import Image
           provenance=json.loads((d/"assets/animation-provenance.json").read_text())
           assert len(provenance)==4
           for item in provenance:
-              path=d/"assets"/(item["page"]+"-064.apng")
+              path=d/"assets"/(item["page"]+"-065.apng")
               with Image.open(path) as im:
                   assert im.size==(240,240) and im.n_frames>=6
                   assert sum(im.seek(n) or im.info.get("duration",0) for n in range(im.n_frames))==4000
               assert hashlib.sha256(path.read_bytes()).hexdigest()==item["sha256"]
               assert item["unique_frames"]>5 and item["transport"]=="PLAY"
-          assert {x.name for x in (d/"assets").glob("*.apng")}=={x["page"]+"-064.apng" for x in provenance}
+          assert {x.name for x in (d/"assets").glob("*.apng")}=={x["page"]+"-065.apng" for x in provenance}
           assert 'prefers-reduced-motion' in carousel and 'data-animated' in home
           print("Verified genuine live APNGs, provenance, static fallback and reduced motion")
           PY
@@ -163,7 +164,7 @@ jobs:
       - name: Archive matching public-site build
         uses: actions/upload-artifact@v4
         with:
-          name: aquora-site-stable-064
+          name: aquora-site-stable-065
           path: dist/
           include-hidden-files: true
           retention-days: 90
@@ -187,7 +188,7 @@ jobs:
           cp -a "$GITHUB_WORKSPACE/dist/." .
           git add -A
           if ! git diff --cached --quiet; then
-            git commit -m "site: AQUORA v0.6.4 playable showcase and studio"
+            git commit -m "site: AQUORA v0.6.5 playable showcase and studio"
             git push origin HEAD:gh-pages
           fi
       - name: Report branch publication and external Pages deployment
