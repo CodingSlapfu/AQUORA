@@ -14,6 +14,7 @@ static void silence(void)
 static void stopped_voices(void)
 {
     sr_init(&a,731);
+    a.tracks[SR_BASS].patch=1; /* Sustained Sacred-release fixture; new transient basses tested separately. */
     a.play_grid=0; /* Exercise immediate input and the missed-release watchdog. */
     a.bed_level=0;
     a.reverb_amount=a.delay_amount=0;

@@ -8,12 +8,12 @@ host, destination = sys.argv[1], Path(sys.argv[2])
 destination.mkdir(parents=True, exist_ok=True)
 commands = [
     "master 2048", "tap PLAY", "wait 250", "shot original-normal.png",
-    "turn ALGO 5", "spin K1 1", "tap HOME",
+    "turn ALGO 5", "turn SELECT 1", "spin K4 1", "tap HOME",
     "expect visual 1", "expect page 0", "expect fullscreen 0",
-    "wait 2400", "shot polar-normal.png",
-    "wait 10200", "expect fullscreen 1", "shot polar-fullscreen.png",
+    "wait 2400", "shot resonance-normal.png",
+    "wait 10200", "expect fullscreen 1", "shot resonance-fullscreen.png",
     "turn ALGO 1", "expect fullscreen 0", "expect page 0",
-    "shot polar-return.png", "expect drops 0"
+    "shot resonance-return.png", "expect drops 0"
 ]
 script_path = destination / "regression.txt"
 script_path.write_text("\n".join(commands) + "\n")
@@ -29,9 +29,9 @@ def image(name):
     return im
 
 original = image("original-normal.png")
-polar = image("polar-normal.png")
-fullscreen = image("polar-fullscreen.png")
-restored = image("polar-return.png")
+resonance = image("resonance-normal.png")
+fullscreen = image("resonance-fullscreen.png")
+restored = image("resonance-return.png")
 
 def changed_fraction(a, b, top=144):
     return sum(a.getpixel((x, y)) != b.getpixel((x, y))
@@ -39,12 +39,12 @@ def changed_fraction(a, b, top=144):
 
 # Both normal-mode visualizers must show the same functional K1-K4 lower panel.
 # The decorative visuals are deliberately only in bands 1 and 2.
-normal_diff = changed_fraction(original, polar)
+normal_diff = changed_fraction(original, resonance)
 assert normal_diff < .20, f"PLAY lower control bands differ {normal_diff:.1%}"
 
 # Fullscreen must replace the panel with artwork, then restore every control band.
-full_diff = changed_fraction(polar, fullscreen)
-assert full_diff > .05, f"Polar fullscreen did not replace controls: {full_diff:.1%}"
-restore_diff = changed_fraction(polar, restored)
+full_diff = changed_fraction(resonance, fullscreen)
+assert full_diff > .05, f"Resonance fullscreen did not replace controls: {full_diff:.1%}"
+restore_diff = changed_fraction(resonance, restored)
 assert restore_diff < .20, f"Returning from fullscreen failed to restore PLAY: {restore_diff:.1%}"
-print(f"PASS Polar normal/fullscreen/return, diff {normal_diff:.1%}, {full_diff:.1%}, {restore_diff:.1%}")
+print(f"PASS Resonance normal/fullscreen/return, diff {normal_diff:.1%}, {full_diff:.1%}, {restore_diff:.1%}")
