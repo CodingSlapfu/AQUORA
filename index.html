@@ -7,6 +7,7 @@
 <meta property="og:title" content="AQUORA — Generative Sound Sanctuary"><meta property="og:description" content="Sound • Water • Resonance. Meet the open FM-1 generative instrument and play the latest completed release in your browser.">
 <title>AQUORA — Generative Sound Sanctuary</title>
 <link rel="stylesheet" href="style.css"><link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<script src="screen-carousel.js" defer></script>
 </head>
 <body>
 <header class="site-header"><nav class="container nav" aria-label="Main navigation">
@@ -28,8 +29,16 @@
 </div>
 <div class="little-note">Free creative firmware · Browser demo uses the actual completed v0.6.2 WebAssembly build</div>
 </div>
-<div class="hero-art hero-play" aria-label="AQUORA v0.6.2 PLAY page">
-<img class="hero-play-screen" src="assets/play-062.png" alt="Actual AQUORA v0.6.2 PLAY page with musical controls and instrument status." width="240" height="240">
+<div class="hero-art hero-play" id="hero-screen-carousel" role="region" aria-roledescription="carousel" aria-label="AQUORA firmware screen tour">
+<div class="hero-screen-stage">
+<img class="hero-play-screen" id="hero-screen-image" src="assets/play-062.png" alt="AQUORA v0.6.2 PLAY screen with performance controls." width="240" height="240">
+</div>
+<div class="hero-screen-toolbar" id="hero-screen-toolbar" hidden>
+<button type="button" class="hero-screen-button" id="hero-screen-previous" aria-label="Previous firmware screen">‹</button>
+<div class="hero-screen-caption"><strong id="hero-screen-name">PLAY</strong><span id="hero-screen-count">01 / 10</span></div>
+<button type="button" class="hero-screen-button" id="hero-screen-next" aria-label="Next firmware screen">›</button>
+<button type="button" class="hero-screen-button hero-screen-pause" id="hero-screen-pause" aria-label="Pause automatic screen rotation">Pause</button>
+</div>
 </div></div>
 <div class="container"><div class="stats" aria-label="AQUORA release features">
 <div class="stat"><strong>8</strong><span>Musical roles</span></div><div class="stat"><strong>19</strong><span>Drum kits</span></div><div class="stat"><strong>13</strong><span>Intentions</span></div><div class="stat"><strong>2</strong><span>Visual worlds</span></div><div class="stat"><strong>30</strong><span>Sound patches</span></div>
