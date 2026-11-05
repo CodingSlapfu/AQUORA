@@ -16,4 +16,4 @@
   ok air_fx == 2
   ok air_depth == 75
   ok air_percent == 0
-host: 2645 ms simulated, 80 blits, render 0.2% of real time (host CPU)
+host: 2645 ms simulated, 80 blits, render 0.0% of real time (host CPU)

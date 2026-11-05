@@ -1,1 +1,1 @@
-Integrated exact-settling binaural + both suites, AQUORA Sans, AIR FX, direct SOUND, profiles, registry, hidden-work counters. Full 0.6.2 release gates.
+Final optical-size/layout correction, 270 actual renderer views, corrected archived-bank harness, 0.6.0/0.6.1/same-identity updater.

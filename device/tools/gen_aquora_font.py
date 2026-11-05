@@ -19,7 +19,7 @@ module.FONTSET = "AQUORA Sans / Inter Tight derivative"
 module.SIZES = [(n, f"InterTight-source.ttf@wght={weight}", px, 1, False, 32, 126)
                 for n, px, weight in [("T", 9, 650), ("XS", 11, 620),
                                       ("S", 13, 560), ("B", 13, 720),
-                                      ("M", 19, 660), ("L", 27, 720)]]
+                                      ("M", 16, 660), ("L", 27, 720)]]
 original_render = module.render
 
 

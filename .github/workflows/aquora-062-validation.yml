@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/aquora-0.6.2-host-tests
-          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 bank_migration_040; do
+          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062; do
             gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
               -Idevice/dsp -Ivendor/fm1-base/include \
               -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
@@ -45,6 +45,24 @@ jobs:
               }
             echo "PASS ${test}"
           done
+      - name: Verify archived serializer migration and four bank roundtrips
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$RUNNER_TEMP/migration-base"
+          mkdir -p "$base"
+          tar -xzf evidence/0.6.0/editor/AQUORA-0.6.0-editor-source.tar.gz -C "$base"
+          gcc -Wall -Wextra -Werror -Wno-unused-function -O1 -DSR_DEVICE -DPLAT_HOST -DLEGACY_FIXTURE \
+            -DAQ_ARRANGEMENT="\"$base/device/arrangement.c\"" \
+            -I"$base/device/dsp" -I"$base/vendor/fm1-base/include" \
+            "$base/device/dsp/engine.c" tests/bank_migration_040.c -lm -o "$RUNNER_TEMP/bank-writer"
+          "$RUNNER_TEMP/bank-writer" "$RUNNER_TEMP/bank.bin"
+          gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
+            '-DAQ_ARRANGEMENT="../device/arrangement.c"' -Idevice/dsp -Ivendor/fm1-base/include \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
+            device/dsp/engine.c tests/bank_migration_040.c -lm -o "$RUNNER_TEMP/bank-reader"
+          ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 \
+            "$RUNNER_TEMP/bank-reader" "$RUNNER_TEMP/bank.bin" | tee /tmp/aquora-0.6.2-host-tests/bank-migration.log
       - name: Upload compact test logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -124,11 +142,24 @@ jobs:
               mkdir "$out/corrective_061"
               AQUORA_TEST_INTRO=1 device/build/host/sound-healing_host tests/corrective_061.txt "$out/corrective_061" 2>&1 | tee "$out/corrective_061.log"
               python3 tests/corrective_previews.py "$PWD/device/build/host/sound-healing_host" "$out/previews" | tee "$out/previews.log"
+              python3 tests/appearance_matrix_062.py "$PWD/device/build/host/sound-healing_host" "$out/appearance-matrix" | tee "$out/appearance-matrix.log"
               python3 tests/panel_062_regressions.py "$PWD/device/build/host/sound-healing_host" "$out/panel-062" | tee "$out/panel-062.log"
               gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark"
               "$RUNNER_TEMP/benchmark" | tee "$out/host-timing.log"
               gcc -O2 -DSR_DEVICE -DPLAT_HOST -Idevice/dsp -Ivendor/fm1-base/include device/dsp/engine.c tests/binaural_benchmark_062.c -lm -o "$RUNNER_TEMP/binaural-bench"
               "$RUNNER_TEMP/binaural-bench" | tee "$out/binaural-host-timing.log"
+              old="$RUNNER_TEMP/baseline061"
+              mkdir -p "$old/device/dsp" "$old/tests"
+              git -C "$GITHUB_WORKSPACE" fetch --no-tags --depth=1 origin 23c8db04538fec13171a6e380501bb153f949311
+              for file in engine.c serenity.h; do
+                git -C "$GITHUB_WORKSPACE" show "23c8db04538fec13171a6e380501bb153f949311:device/dsp/$file" > "$old/device/dsp/$file"
+              done
+              cp tests/drum_probe_062.c "$old/tests/"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Ivendor/fm1-base/include "$old/tests/drum_probe_062.c" -lm -o "$RUNNER_TEMP/drums061"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -Ivendor/fm1-base/include tests/drum_probe_062.c -lm -o "$RUNNER_TEMP/drums062"
+              python3 tests/drum_analysis_062.py "$RUNNER_TEMP/drums061" "$RUNNER_TEMP/drums062" "$out/all-kits" | tee "$out/all-kits.log"
+              gcc -O2 -DSR_DEVICE -DPLAT_HOST -I"$old/device/dsp" -Ivendor/fm1-base/include "$old/device/dsp/engine.c" tests/benchmark.c -lm -o "$RUNNER_TEMP/benchmark061"
+              "$RUNNER_TEMP/benchmark061" | tee "$out/host-timing-v0.6.1.log"
               mkdir "$RUNNER_TEMP/baseline"
               tar -xzf "$GITHUB_WORKSPACE/evidence/0.6.0/editor/AQUORA-0.6.0-editor-source.tar.gz" -C "$RUNNER_TEMP/baseline"
               base="$RUNNER_TEMP/baseline"
@@ -208,7 +239,7 @@ jobs:
           tar --no-same-owner -xzf AQUORA-0.6.0-editor-source.tar.gz -C "$source"
           cd "$GITHUB_WORKSPACE"
           git archive "$GITHUB_SHA" device tests vendor | tar -xf - -C "$source"
-          git archive "$GITHUB_SHA" -- .github '*.md' research | tar -xf - -C "$source"
+          git archive "$GITHUB_SHA" -- .github '*.md' research release validation | tar -xf - -C "$source"
           cd "$source"
           patch --batch --forward -p1 < vendor/patches/aquora-passive-air.patch
           tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$out/AQUORA-0.6.2-source.tar.gz" .
@@ -222,9 +253,7 @@ jobs:
           cmp "$firmware" "$stage/firmware/sound-healing-0.6.2.fwsc"
           cmp "$wasm/emu/app.wasm" "$stage/emu/app.wasm"
           test -s "$stage/manual/index.html"
-          sed -e 's/FM-1_7010300/FM-1_73000600/g' -e 's/FM-1_7010400/FM-1_73000602/g' \
-            vendor/fm1-base/tests/installer_ports_test.mjs > vendor/fm1-base/tests/aquora_direct_update.mjs
-          node vendor/fm1-base/tests/aquora_direct_update.mjs "$firmware" | tee "$out/direct-update.log"
+          python3 tests/direct_update_062.py "$firmware" | tee "$out/direct-update.log"
           tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$out/AQUORA-0.6.2-package.tar.gz" -C "$stage" .
           cd "$out"
           sha256sum AQUORA-0.6.2-*.tar.gz > SHA256SUMS.txt
@@ -234,4 +263,50 @@ jobs:
           name: aquora-062-release-ready
           path: ${{ runner.temp }}/release/
           if-no-files-found: error
+          retention-days: 30
+
+  github-release:
+    name: Back up accepted source and firmware as GitHub release
+    if: github.ref == 'refs/heads/aquora-0.6.2-release-integration'
+    needs: [stage-release]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/accepted
+      - name: Preserve checksummed independent download and publish accepted tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/final"
+          mkdir "$out"
+          accepted="$RUNNER_TEMP/accepted"
+          cp "$accepted/aquora-062-release-ready/"* "$out/"
+          cp "$accepted/aquora-062-native/sound-healing-0.6.2.fwsc" "$out/"
+          cp "$accepted/aquora-062-single-core/sound-healing-0.6.2.fwsc" "$out/sound-healing-0.6.2-single-core.fwsc"
+          cp release/0.6.2/RELEASE.md "$out/"
+          (cd "$accepted" && zip -qr "$out/AQUORA-0.6.2-acceptance.zip" .)
+          (cd "$out" && zip -q AQUORA-0.6.2-download.zip AQUORA-0.6.2-source.tar.gz AQUORA-0.6.2-package.tar.gz sound-healing-0.6.2.fwsc sound-healing-0.6.2-single-core.fwsc validation-commit.txt RELEASE.md)
+          (cd "$out" && sha256sum *.gz *.zip *.fwsc > SHA256SUMS.txt && sha256sum --check --strict SHA256SUMS.txt)
+          if gh release view v0.6.2 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Existing v0.6.2 release preserved; inspect before any replacement.'
+            exit 1
+          fi
+          gh release create v0.6.2 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title 'AQUORA 0.6.2 — Generative Sound Sanctuary' \
+            --notes-file release/0.6.2/RELEASE.md "$out/"*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-062-published-backup
+          path: ${{ runner.temp }}/final/
+          if-no-files-found: ignore
           retention-days: 30

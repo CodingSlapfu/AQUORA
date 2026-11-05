@@ -24,7 +24,13 @@ static uint16_t skin_text(void){return skins[ui_theme][ui_background].text;}
 static uint16_t skin_dim(void){return skins[ui_theme][ui_background].dim;}
 static uint16_t skin_accent(void){return skins[ui_theme][ui_background].accent;}
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
-static void label(int x,int y,const char *name,int value){char v[12];num(v,value);cv_text(x,y,&FONT_XS,name,skin_dim());cv_text(x,y+15,&FONT_B,v,skin_text());}
+static void limited_text(int x,int y,int width,const felucca_font_t *font,const char *s,uint16_t color);
+static void label(int x,int y,const char *name,int value){
+ char v[12];num(v,value);if(ui_font_size==2&&y>6)y=6;
+ int width=x==86?70:x==87?88:x>=125?232-x:110;
+ limited_text(x,y,width,&FONT_XS,name,skin_dim());
+ limited_text(x,y+(ui_font_size==2?18:15),width,&FONT_B,v,skin_text());
+}
 static const char *role_names[SR_TRACKS]={
  "Lead","Bass","Pads","Harmony","Piano","Plucks","Choir","Drums"
 };
@@ -387,7 +393,7 @@ static void mixer_console(int band)
    limited_text(7,1,99,&FONT_B,role_names[t],skin_accent());
    cv_text(114,1,&FONT_XS,tr->mute?"MUTED":engine.solo==t?"SOLO":"ACTIVE",skin_text());
    num(v,(int)(tr->meter*100.f));cv_text(193,1,&FONT_XS,v,skin_text());
-   cv_text(8,26,&FONT_XS,"FX: CHANNEL  SEL: NEXT  LFO: SOLO",skin_dim());
+   limited_text(8,26,224,&FONT_XS,"FX: STRIP / SELECT: CH / LFO: SOLO",skin_dim());
  }
 }
 static void mixer_focus_strip(int band)
@@ -424,10 +430,13 @@ static void mixer_focus_strip(int band)
  }else if(band==4){
    char a[14],b[14],c[14];num(a,(int)(tr->volume*100.f));
    num(b,(int)(tr->pan*100.f));num(c,(int)(tr->send*100.f));
-   cv_text(8,2,&FONT_XS,"K1 LEVEL",skin_dim());cv_text(120,2,&FONT_XS,"K2 PAN",skin_dim());
-   cv_text(8,25,&FONT_XS,"K3 FX SEND",skin_dim());cv_text(120,25,&FONT_XS,"K4 MUTE",skin_dim());
-   cv_text(67,2,&FONT_B,a,skin_text());cv_text(178,2,&FONT_B,b,skin_text());
-   cv_text(85,25,&FONT_B,c,skin_text());cv_text(183,25,&FONT_B,tr->mute?"ON":"OFF",skin_text());
+   static const char *names[]={"K1 LVL","K2 PAN","K3 SEND","K4 MUTE"};
+   const char *values[]={a,b,c,tr->mute?"ON":"OFF"};
+   for(unsigned k=0;k<4;k++){
+     int x=7+k*58;
+     limited_text(x,1,55,&FONT_XS,names[k],skin_dim());
+     limited_text(x,20,55,&FONT_B,values[k],skin_text());
+   }
  }
 }
 static void mixer_band(int band)
@@ -573,11 +582,21 @@ static void draw(int animate)
      }else if(band==2){
        unsigned value=(unsigned)(engine.air_wet*100.f+.5f);
        if(value>100)value=100;
-       label(8,0,"PROXIMITY / FX %",value);
-       label(150,0,"PACKETS / SEC",air_packet_rate);
-       cv_line(7,42,230,42,skin_dim());
-       if(live)cv_rect(8,36,(int)(value*222u/100u),6,skin_accent());
-       cv_text(8,29,&FONT_XS,live?"LIVE MEASURED BLE / 1D RSSI":"NO LIVE HAND-SENSOR DATA",skin_text());
+       char line[72],numtext[12];
+       unsigned pos=0;
+       const char *tag="RAW ";while(*tag)line[pos++]=*tag++;
+       num(numtext,air_sensor.raw);for(const char*q=numtext;*q;q++)line[pos++]=*q;
+       tag="  SMOOTH ";while(*tag)line[pos++]=*tag++;
+       num(numtext,(int)(air_sensor.filtered+.5f));for(const char*q=numtext;*q;q++)line[pos++]=*q;
+       tag="  PKT/s ";while(*tag)line[pos++]=*tag++;
+       num(numtext,air_packet_rate);for(const char*q=numtext;*q;q++)line[pos++]=*q;
+       line[pos]=0;limited_text(8,0,224,&FONT_XS,line,skin_dim());
+       cv_text(8,20,&FONT_XS,"OUT %",skin_dim());num(numtext,value);
+       cv_text(52,20,&FONT_XS,numtext,skin_accent());
+       static const char *effects[]={"REVERB","ECHO","BLOOM + ECHO"};
+       limited_text(86,20,146,&FONT_XS,effects[engine.air_fx],skin_text());
+       cv_line(7,43,230,43,skin_dim());
+       if(value)cv_rect(8,39,(int)(value*222u/100u),4,skin_accent());
      }else{
        label(8,0,"RAW RSSI",air_sensor.raw);
        label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
@@ -593,7 +612,7 @@ static void draw(int animate)
        label(8,0,"DENSITY",engine.drum_density);
        label(91,0,"HIT %",engine.drum_hit);
        label(163,0,"LEVEL %",engine.drum_level*100);
-       cv_text(8,33,&FONT_XS,"EDIT: TAB   PRESET: KIT",skin_text());
+       if(ui_font_size!=2)cv_text(8,33,&FONT_XS,"EDIT: TAB   PRESET: KIT",skin_text());
      }
    }else if(visual&&page==PAGE_SOUND&&sound_picker){
      if(band==1){
@@ -726,8 +745,10 @@ static void draw(int animate)
      cv_text(30,25,&FONT_XS,track,skin_text());
      limited_text(44,25,55,&FONT_XS,role_names[selected],skin_text());
      }
-     cv_text(101,25,&FONT_XS,"PRE",skin_dim());
-     limited_text(127,25,105,&FONT_XS,page==0?sr_scenes[engine.scene].name:patch_name(),skin_text());
+     if(page!=0&&page!=PAGE_AIR){
+       cv_text(101,25,&FONT_XS,"PRE",skin_dim());
+       limited_text(127,25,105,&FONT_XS,patch_name(),skin_text());
+     }
      if(page==0){
        cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",skin_accent());
        const char *mode=engine.frequency_lock?"LOCK":engine.tone_level>0?"REF ON":"REF OFF";

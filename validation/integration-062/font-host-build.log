@@ -10,7 +10,7 @@ font T: InterTight-source.ttf@wght=650 9px h 12, digit adv 5, 5220 B
 font XS: InterTight-source.ttf@wght=620 11px h 14, digit adv 7, 6832 B
 font S: InterTight-source.ttf@wght=560 13px h 17, digit adv 8, 8993 B
 font B: InterTight-source.ttf@wght=720 13px h 17, digit adv 8, 8993 B
-font M: InterTight-source.ttf@wght=660 19px h 24, digit adv 11, 16248 B
+font M: InterTight-source.ttf@wght=660 16px h 20, digit adv 10, 12140 B
 font L: InterTight-source.ttf@wght=720 27px h 34, digit adv 16, 29580 B
-font set AQUORA Sans / Inter Tight derivative: 77447 B (approx)
+font set AQUORA Sans / Inter Tight derivative: 73254 B (approx)
 host     /workspace/scratch/eccf36adefd2/build/device/build/host/sound-healing_host
