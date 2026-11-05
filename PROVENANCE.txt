@@ -1,6 +1,6 @@
-AQUORA v0.6.4 website sourced from accepted release.
-Firmware commit 50b8a1e02e215aff1e0a7b738d40f63769d4f502
-CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/42087112438
-Eight v0.6.4 interface captures, four real audio-active APNGs; no standalone visualizer screenshots.
+AQUORA v0.6.5 website sourced from accepted release.
+Firmware commit 45c02ebb17e93684092227b16378277bbe3841d3
+CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/42128145960
+Eight v0.6.5 interface captures, four real audio-active APNGs; no standalone visualizer screenshots.
 AQUORA Sans web vector faces derived from the matching OFL firmware font.
 Published WASM byte-for-byte unchanged; Studio adapter affects HTML only.

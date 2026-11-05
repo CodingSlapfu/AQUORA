@@ -6,7 +6,7 @@
     "fps": 10,
     "seconds": 4,
     "unique_frames": 40,
-    "sha256": "afb2a0708bff90485c07d76eea6f401f1dc914fb083eaa02a6992f398b0d1938",
+    "sha256": "8192c7bdabcf7c50eed3065e81cefe596af27369c108fcd5abfb3b489d495a5f",
     "source": "actual host RGB565 LCD renderer + live sr_render"
   },
   {
@@ -16,7 +16,7 @@
     "fps": 10,
     "seconds": 4,
     "unique_frames": 12,
-    "sha256": "8dfb6dc1c96609bcc188d3abac7ce3cd1c234368ab7c4cc45e738d936eb89374",
+    "sha256": "88aa0a7588b1a4bc58bf77a5d8fedc7ee743e636caa233deb3e8def7818448cb",
     "source": "actual host RGB565 LCD renderer + live sr_render"
   },
   {
@@ -26,7 +26,7 @@
     "fps": 10,
     "seconds": 4,
     "unique_frames": 40,
-    "sha256": "2df2201c8883a20a4a593e4e26b2205f019b470c3ac3e76add0bd626ad9f6ec6",
+    "sha256": "78c6cb910e823a22097c743d31ffd9cdcae0a2ede87f7bd65980c54fcfbd07cb",
     "source": "actual host RGB565 LCD renderer + live sr_render"
   },
   {
@@ -36,7 +36,7 @@
     "fps": 10,
     "seconds": 4,
     "unique_frames": 9,
-    "sha256": "30e6290ca233e43e819c5f5e4e3b1ddac585b8b15b45e78ca8a8a11a12e6b07d",
+    "sha256": "7d9ef68e6d8823d261759b49d6c194a9444bbab1db9a8581c141163818c8d312",
     "source": "actual host RGB565 LCD renderer + live sr_render"
   }
 ]
