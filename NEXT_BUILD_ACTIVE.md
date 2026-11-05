@@ -1,11 +1,9 @@
-# AQUORA 0.6.5 outstanding work
+# AQUORA 0.6.5 — published and verified
 
-- Independent run42128145960: finish unreached sanitized DSP, migration, legacy PCM
-  parity, paired timings and matching source/installer assembly. Preserve already
-  successful exact native/repro/single-core/WASM/host artifacts; do not rebuild.
-- After all software gates pass, publish accepted firmware and checksummed independent
-  downloads; verify remote tag/source/assets. Deploy matching installer/showcase and
-  verify both live. Publication remains pending until evidenced.
-- Physical FM-1 flashing, FPS, audio/DMA/flash timing and listening: owner-unverified.
+No outstanding v0.6.5 software implementation or publication work.
+Completed requirements and evidence: validation/integration-065/COMPLETED.md.
+Final publication proof: validation/integration-065/LIVE_PUBLICATION.json.
 
-Implementation complete; evidence map validation/integration-065/REQUIREMENTS.md.
+Owner-only physical tests remain unverified: flashing, real LCD FPS, audio callback
+percentiles/DMA/XRUN stability, SAVE latency and listening on FM-1. New feedback
+should become a concise new queue; preserve the accepted release and tests.

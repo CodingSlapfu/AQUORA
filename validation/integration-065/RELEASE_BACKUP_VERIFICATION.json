@@ -1,0 +1,12 @@
+{
+  "download_zip_verified": true,
+  "all_four_embedded_source_package_firmware_hashes_match_published_manifest": true,
+  "published_sha256": {
+    "AQUORA-0.6.5-package.tar.gz": "9787d9c00d36404650ccc11f4e05d8f2d7f655d37cdca8bbdbb7ab827ec5b4be",
+    "AQUORA-0.6.5-source.tar.gz": "4459eb64c3fc82fb8f16a2bb4bf01e67b9febd8049fde256436abffecf9bbdf3",
+    "AQUORA-0.6.5-acceptance.zip": "8f4c947f07fa889875b2c7bba929d855b08a7053ec3c9dc22cf01a04d9006492",
+    "AQUORA-0.6.5-download.zip": "0acb2a01346e095d75eca1304e4555e532aa61a3d40d86c690ad9acb0c1df9b4",
+    "sound-healing-0.6.5-single-core.fwsc": "c71f24c36905a3bd91ed8b62bc486a06996a163d8674552ee13f31768bde0deb",
+    "sound-healing-0.6.5.fwsc": "d8cbc8c89fc43ad21ffbb1e963c9dc6669d2f9d78bb4add6caaee75d7cbca207"
+  }
+}

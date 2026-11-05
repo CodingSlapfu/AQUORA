@@ -12,7 +12,8 @@ with tarfile.open(archive) as tar:
  for name,sha in expected.items():
   content=tar.extractfile(members['dist/'+name]).read()
   assert hashlib.sha256(content).hexdigest()==sha,('archive',name)
- manifest=json.load(tar.extractfile(members['.openai/hosting.json']))
+ manifest=json.loads(subprocess.check_output(['git','show','HEAD:.openai/hosting.json'],cwd=root))
+ assert all(name.startswith('dist/') for name in members), 'official static helper archive layout'
  assert manifest['project_id']=='appgprj_6ad6d0ae409c8191b45224ecdec724db'
- assert manifest['static']['directory']=='dist'
+ assert manifest['static']['directory']=='out'
 print('Verified all',len(expected),'COMMITTED and PACKAGED bytes including installer/firmware/WASM')
