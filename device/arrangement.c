@@ -5,7 +5,8 @@
  */
 #define AQ_BANKS 4u
 #define AQ_BANK_LEGACY 0x41514201u
-#define AQ_BANK_VERSION 0x41514202u
+#define AQ_BANK_V2 0x41514202u
+#define AQ_BANK_VERSION 0x41514203u
 _Static_assert(AQ_BANK_BASE >= 0x97000u && AQ_BANK_BASE + AQ_BANKS * AQ_BANK_STRIDE <= 0xA0000u,
                "Bank sector pairs must stay in the documented data region");
 
@@ -36,6 +37,8 @@ typedef struct {
     float tone_level, energy, variation, sacred_level, sacred_harmonics;
     uint32_t legacy_crc; /* v2 packs sound locks and encoded Drum Presence here. */
     uint8_t loop_length, keyboard_mode, tonic_override, pending_length, pending_key, frequency_lock, auto_gain, auto_level;
+    uint32_t v2_crc;
+    int8_t motif_home[16];
     uint32_t crc;
 } arrangement;
 _Static_assert(sizeof(arrangement)<512,"Arrangement record budget");
@@ -49,7 +52,8 @@ static uint32_t arrangement_crc(const arrangement *record)
 {
     const uint8_t *bytes=(const uint8_t *)record;
     uint32_t crc=0xffffffffu;
-    size_t end=record->version==AQ_BANK_LEGACY?offsetof(arrangement,legacy_crc):offsetof(arrangement,crc);
+    size_t end=record->version==AQ_BANK_LEGACY?offsetof(arrangement,legacy_crc):
+        record->version==AQ_BANK_V2?offsetof(arrangement,v2_crc):offsetof(arrangement,crc);
     for(size_t i=0;i<end;i++){
         crc^=bytes[i];
         for(unsigned j=0;j<8;j++)crc=(crc>>1)^((0u-(crc&1u))&0xedb88320u);
@@ -65,8 +69,8 @@ static int range(float value,float lo,float hi)
 static int arrangement_valid(const arrangement *r)
 {
     int legacy=r->version==AQ_BANK_LEGACY;
-    if((!legacy&&r->version!=AQ_BANK_VERSION)||
-       (legacy?r->legacy_crc:r->crc)!=arrangement_crc(r)||
+    if((!legacy&&r->version!=AQ_BANK_V2&&r->version!=AQ_BANK_VERSION)||
+       (legacy?r->legacy_crc:r->version==AQ_BANK_V2?r->v2_crc:r->crc)!=arrangement_crc(r)||
        (!legacy&&((r->loop_length!=16&&r->loop_length!=32&&r->loop_length!=64)||
         (r->pending_length&&r->pending_length!=16&&r->pending_length!=32&&r->pending_length!=64)||
         r->keyboard_mode>1||r->pending_key>12||r->frequency_lock>1||r->auto_gain>1||r->auto_level>1||
@@ -82,7 +86,10 @@ static int arrangement_valid(const arrangement *r)
        !range(r->binaural_level,0,.10f)||!range(r->tone_level,0,.10f)||
        !range(r->energy,0,1)||!range(r->variation,0,1)||
        !range(r->sacred_level,0,.20f)||!range(r->sacred_harmonics,0,1))return 0;
-    for(unsigned i=0;i<16;i++)if(r->melody[i]<-1||r->melody[i]>6)return 0;
+    for(unsigned i=0;i<16;i++){
+        if(r->melody[i]<-1||r->melody[i]>6)return 0;
+        if(r->version==AQ_BANK_VERSION&&(r->motif_home[i]<-1||r->motif_home[i]>6))return 0;
+    }
     for(unsigned i=0;i<SR_TRACKS;i++){
         if(r->track[i].patch>=SR_PATCHES||r->track[i].mute>1||
            !range(r->track[i].volume,0,1)||!range(r->track[i].pan,-1,1)||
@@ -100,9 +107,12 @@ static int arrangement_read(unsigned slot,arrangement *record)
 {
     memset(record,0,sizeof(*record));
     int size=plat_store_size(OBJ_BANK1+slot);
-    if(size!=(int)sizeof(*record)&&size!=(int)offsetof(arrangement,loop_length))return 0;
+    if(size!=(int)sizeof(*record)&&size!=(int)offsetof(arrangement,motif_home)
+        &&size!=(int)offsetof(arrangement,loop_length))return 0;
     if(plat_store_load(OBJ_BANK1+slot,record,sizeof(*record))!=size)return 0;
-    if(size==(int)sizeof(*record)?record->version!=AQ_BANK_VERSION:record->version!=AQ_BANK_LEGACY)return 0;
+    unsigned version=size==(int)sizeof(*record)?AQ_BANK_VERSION:
+        size==(int)offsetof(arrangement,motif_home)?AQ_BANK_V2:AQ_BANK_LEGACY;
+    if(record->version!=version)return 0;
     return arrangement_valid(record);
 }
 
@@ -127,6 +137,7 @@ static void arrangement_snapshot(arrangement *record)
 #undef COPY_FIELD
     record->visual=visual_mode;
     memcpy(record->melody,engine.melody,sizeof(record->melody));
+    memcpy(record->motif_home,engine.motif_home,sizeof(record->motif_home));
     memcpy(record->motion,engine.motion,sizeof(record->motion));
     for(unsigned i=0;i<SR_TRACKS;i++){
         record->track[i].volume=engine.tracks[i].volume;
@@ -177,6 +188,9 @@ static void arrangement_apply(const arrangement *record)
     engine.drum_hit=engine.drum_hit>SR_HIT_MAX?SR_HIT_MAX:engine.drum_hit;
     visual_mode=record->visual;
     memcpy(engine.melody,record->melody,sizeof(engine.melody));
+    memcpy(engine.motif_home,record->version==AQ_BANK_VERSION?record->motif_home:record->melody,
+           sizeof(engine.motif_home));
+    memset(engine.ornaments,0,sizeof engine.ornaments);
     memcpy(engine.motion,record->motion,sizeof(engine.motion));
     for(unsigned i=0;i<SR_TRACKS;i++){
         engine.tracks[i].volume=record->track[i].volume;

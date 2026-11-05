@@ -75,3 +75,11 @@ Resumed from 3eab02a and verified both recovery archives. GitHub branch creation
 Added phrase-level role choices based on intention, phrase and bar, separate from sample RNG. Bass answers, pad voicings, lead accents, harmony intervals, piano/pluck figures, choir and drum downbeat accents evolve. Before first evolution or at zero variation the earlier decisions remain. Sanitizer tests cover 64 loops for every intention and loop length, reference stability and Freeze, plus motif and Play Along grid regressions. Native, WASM and staged installer artifacts are in evidence/0.6.0/roles/. Physical audio performance and long-session musical quality remain unverified.
 
 Next implement returning motif memory and intention-aware generator quantization, then dynamic mixer, intuitive UI, flagship visualizer, AIR and full release acceptance. Fetch this exact commit if branch writes still fail. Production stays on 0.5.0 until acceptance.
+
+### 0.6.0 motif memory and groove checkpoint
+
+Resumed exactly from 9456729; verified both previous archives. The repository is active and the connector reports push and admin permissions. Even creating a development branch from main returns HTTP 422, so the failure is broader than the detached candidate. No production writes or forced push attempted.
+
+The original motif returns every fourth evolution. V3 banks store the original motif, with v1/v2 migration seeding it from the saved melody. Piano and pluck offbeats use bounded scene-specific sample-clock offsets after evolution. Bass, drums and downbeats stay on the step clock. Tests checked Flow State's exact offset, motif return, Freeze and 0.5.0 bank migration. Native, browser and staged installer evidence are in evidence/0.6.0/memory/. Production still serves 0.5.0.
+
+Next extend generator quantization to the full adjustable timing/strength profiles, then complete the dynamic mixer, navigation, flagship visualizer, AIR, performance and full acceptance. Recover the exact commit and verify the source and package hashes.

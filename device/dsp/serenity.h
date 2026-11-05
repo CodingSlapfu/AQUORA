@@ -64,7 +64,8 @@ typedef struct {
   uint16_t rev_pos[4], delay_pos, rev_history, delay_history;
   float reverb_wet, delay_wet;
   uint8_t loop_length, loop_pos, pending_length, keyboard_mode, tonic_override, pending_key, pending_physical_key;
-  int8_t melody[16];
+  int8_t melody[16], motif_home[16];
+  struct { uint16_t phase; uint8_t midi, velocity; } ornaments[2];
 } sr_engine;
 
 extern const sr_patch sr_patches[SR_PATCHES];

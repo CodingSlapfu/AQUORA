@@ -52,7 +52,7 @@ int main(int argc,char **argv)
 #else
     file=fopen(argv[1],"rb");assert(file);
     sizes[0]=fread(flash[0],1,sizeof(flash[0]),file);
-    assert(sizes[0]==offsetof(arrangement,loop_length)||sizes[0]==sizeof(arrangement));
+    assert(sizes[0]==offsetof(arrangement,loop_length)||sizes[0]==sizeof(arrangement)||sizes[0]==offsetof(arrangement,motif_home));
     arrangement_init();
     assert(bank_status[0]==1);
     arrangement_execute();

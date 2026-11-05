@@ -8,6 +8,7 @@
 #define floorf fm_floorf
 #define isfinite(x) (fm_fabsf(x) <= 3.402823466e38f)
 extern void *memset(void *, int, size_t);
+extern void *memcpy(void *, const void *, size_t);
 #else
 #include <math.h>
 #include <string.h>
@@ -189,6 +190,7 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
     e->drum_rng=song_draw(seed,13);
     e->phrase=0;
     make_motif(e);
+    memcpy(e->motif_home,e->melody,sizeof e->melody);
     e->energy=.12f+.17f*sr_scenes[scene].energy+.025f*(song_draw(seed,14)%7u);
     e->variation=.18f+.04f*(song_draw(seed,15)%7u);
   }
@@ -242,6 +244,8 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
     if(!(e->sound_locks&SR_SOUND_FX))e->delay_amount=.11f+(12-scene)*.035f;
   }
   make_motif(e);
+  memcpy(e->motif_home,e->melody,sizeof e->melody);
+  memset(e->ornaments,0,sizeof e->ornaments);
   retune_keys(e);
 }
 void sr_set_frequency_lock(sr_engine *e,uint8_t enabled){
@@ -291,6 +295,7 @@ void sr_init(sr_engine *e,uint32_t seed){
 static void clear_transport(sr_engine *e)
 {
     e->play_queued=0;
+    memset(e->ornaments,0,sizeof e->ornaments);
     for(unsigned i=0;i<SR_VOICES;i++)e->note_offs+=e->voices[i].gate!=0;
     memset(e->voices,0,sizeof(e->voices));
     memset(e->rev_pos,0,sizeof(e->rev_pos));
@@ -484,6 +489,19 @@ static inline __attribute__((always_inline)) void render_binaural(sr_engine *e,f
   *left+=advance(&e->binaural_phase_l,hz_left)*e->binaural_level*e->binaural_env;
   *right+=advance(&e->binaural_phase_r,hz_right)*e->binaural_level*e->binaural_env;
 }
+/* Piano and pluck offbeats may lean behind the shared step clock.
+ * Bass, drums and the downbeat stay on the clock. Units are 1/64 step. */
+static void ornament(sr_engine *e,unsigned slot,uint8_t midi,uint8_t velocity,float beats,
+                     unsigned step,unsigned evolving)
+{
+  static const uint8_t feel[SR_SCENES]={0,5,3,2,7,4,2,4,6,7,4,3,5};
+  unsigned offset=evolving&&(step&15u)?e->tick_length*feel[e->scene]/64u:0;
+  if(offset&&offset<e->tick_length){
+    e->ornaments[slot].phase=(uint16_t)offset;
+    e->ornaments[slot].midi=midi;
+    e->ornaments[slot].velocity=velocity;
+  }else sr_note_on(e,slot?SR_GUITAR:SR_PIANO,midi,velocity,beats);
+}
 static void trigger(sr_engine *e){
   if(!e->loop_pos){
     if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;}
@@ -509,8 +527,9 @@ static void trigger(sr_engine *e){
   /* The absolute counter survives phrase wrap; idx is only the loop position. */
   if(absolute&&idx==0&&(e->loop_length!=16||(absolute&31u)==0)
       &&!e->freeze&&rnd(e)<e->variation){
-    make_motif(e);
     e->phrase++;
+    if(e->phrase%4u==0)memcpy(e->melody,e->motif_home,sizeof e->melody);
+    else make_motif(e);
   }
   int k=motif_degree(e,idx);
   /* At zero variation or before the first evolution, retain the original
@@ -545,7 +564,7 @@ static void trigger(sr_engine *e){
     if(draw%4u<energy){
       unsigned degree=(evolving?draw>>8:rng(e))%5u;
       int note=tonic+24+scale_notes[sc->scale][degree];
-      sr_note_on(e,SR_PIANO,(uint8_t)note,e->scene==7?91:e->scene==6?61:80,1.45f);
+      ornament(e,0,(uint8_t)note,e->scene==7?91:e->scene==6?61:80,1.45f,s,evolving);
     }
   }
   if(k>=0 && (s%2u)==0){
@@ -566,7 +585,7 @@ static void trigger(sr_engine *e){
     if(draw%4u<energy){
       unsigned degree=evolving?(draw>>8)%5u:(s/4u)%5u;
       int note=tonic+12+scale_notes[sc->scale][degree];
-      sr_note_on(e,SR_GUITAR,(uint8_t)note,71,1.7f);
+      ornament(e,1,(uint8_t)note,71,1.7f,s,evolving);
     }
   }
   if((s&15u)==0){
@@ -871,8 +890,20 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     memset(out,0,frames*2*sizeof(*out));
     return;
   }
-  if(e->running&&e->tick_phase>=e->tick_length){e->tick_phase=0;trigger(e);}
+  if(e->running&&e->tick_phase>=e->tick_length){e->tick_phase=0;memset(e->ornaments,0,sizeof e->ornaments);trigger(e);}
   size_t n=frames>64?64:frames;
+  if(e->running&&(e->ornaments[0].phase||e->ornaments[1].phase)){
+    for(unsigned slot=0;slot<2;slot++){
+      unsigned phase=e->ornaments[slot].phase;
+      if(!phase)continue;
+      if(phase==e->tick_phase){
+        e->ornaments[slot].phase=0;
+        sr_note_on(e,slot?SR_GUITAR:SR_PIANO,e->ornaments[slot].midi,
+                   e->ornaments[slot].velocity,slot?1.7f:1.45f);
+      }else if(phase>e->tick_phase&&n>phase-e->tick_phase)n=phase-e->tick_phase;
+    }
+  }
+
   if(e->running&&e->play_queued){
     uint32_t phase=e->tick_phase, half=e->tick_length/2u;
     if(!phase||(e->play_grid==2&&phase==half)){
