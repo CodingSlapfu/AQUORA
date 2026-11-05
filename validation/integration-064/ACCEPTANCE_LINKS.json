@@ -1,0 +1,9 @@
+{
+  "firmware_inputs": "2eaea586cf06b3681b4b2d52378665d11c35b94e",
+  "accepted_source": "50b8a1e02e215aff1e0a7b738d40f63769d4f502",
+  "platform_run": 42085609310,
+  "continued_dsp_run": 42086488836,
+  "final_acceptance_run": 42087112438,
+  "site_source_prepared": "6babd7222cda84ce1db443ee3deb06617fb59a43",
+  "physical_tests": "owner-unverified"
+}
