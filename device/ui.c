@@ -337,6 +337,92 @@ static void mixer_overview(int band)
    x+=width;
  }
 }
+/* 0.6.2 professional instrument console: all eight role levels and meter
+ * states are drawn only on the actually visible MIX page. No extra DSP or
+ * FFT: data comes from the engine's existing post-mix track meters. */
+static void mixer_console(int band)
+{
+ static const char *abbr[]={"LD","BS","PD","HM","PN","PL","CH","DR"};
+ const int offset=band*48;
+ for(unsigned t=0;t<SR_TRACKS;t++){
+   const sr_track *tr=&engine.tracks[t];
+   int x=5+(int)t*29;
+   int chosen=mix_focus==t;
+   uint16_t c=tr->mute?skin_dim():colors[t];
+   if(ui_background&&tr->mute)c=RGB(97,100,116);
+   if(band==1){
+     limited_text(x,1,26,&FONT_XS,abbr[t],chosen?skin_accent():skin_text());
+     if(chosen)cv_line(x,18,x+22,18,skin_accent());
+     if(tr->mute)cv_text(x,29,&FONT_XS,"M",skin_dim());
+     if(engine.solo==t)cv_text(x+13,29,&FONT_XS,"S",skin_accent());
+   }
+   const int top=99, bottom=182;
+   int y0=top-offset, y1=bottom-offset;
+   if(y0<0)y0=0;
+   if(y1>47)y1=47;
+   if(y1>=y0){
+     cv_rect(x+3,y0,18,y1-y0+1,skins[ui_theme][ui_background].border);
+     cv_rect(x+4,y0+1,16,y1-y0-1,skins[ui_theme][ui_background].canvas);
+     float mag=fm_clampf(tr->meter,0,1);
+     int meter=(int)(fm_sqrtf(fm_sqrtf(mag))*78.f);
+     int hi=bottom-meter;
+     if(hi<offset)hi=offset;
+     int lo=bottom;if(lo>offset+47)lo=offset+47;
+     if(meter&&lo>=hi)cv_rect(x+5,hi-offset,7,lo-hi+1,c);
+     int fy=bottom-(int)(tr->volume*77.f);
+     if(fy>=offset&&fy<offset+48)cv_line(x+12,fy-offset,x+21,fy-offset,chosen?skin_accent():skin_text());
+   }
+ }
+ if(band==4){
+   unsigned t=mix_focus<SR_TRACKS?mix_focus:selected;
+   const sr_track *tr=&engine.tracks[t];
+   char v[12];
+   limited_text(7,1,99,&FONT_B,role_names[t],skin_accent());
+   cv_text(114,1,&FONT_XS,tr->mute?"MUTED":engine.solo==t?"SOLO":"ACTIVE",skin_text());
+   num(v,(int)(tr->meter*100.f));cv_text(193,1,&FONT_XS,v,skin_text());
+   cv_text(8,26,&FONT_XS,"FX: CHANNEL  SEL: NEXT  LFO: SOLO",skin_dim());
+ }
+}
+static void mixer_focus_strip(int band)
+{
+ unsigned t=selected;
+ const sr_track *tr=&engine.tracks[t];
+ static const char *big[]={"LEAD","BASS","PADS","HARMONY","PIANO","PLUCKS","CHOIR","DRUMS"};
+ if(band==1){
+   limited_text(9,1,200,ui_font_size==2?&FONT_M:&FONT_B,big[t],skin_accent());
+   cv_text(8,31,&FONT_XS,tr->mute?"MUTE":engine.solo==t?"SOLO":"CHANNEL STRIP",skin_text());
+   cv_text(143,31,&FONT_XS,"FX: OVERVIEW",skin_dim());
+ }else if(band==2){
+   float mag=fm_clampf(tr->meter,0,1);
+   int fader=(int)(tr->volume*185.f);
+   int peak=(int)(fm_sqrtf(fm_sqrtf(mag))*185.f);
+   cv_rect(10,11,198,12,skins[ui_theme][ui_background].border);
+   if(fader)cv_rect(11,12,fader,10,skin_accent());
+   cv_line(11+peak,10,11+peak,26,skin_text());
+   char level_text[12],peak_text[12];
+   num(level_text,(int)(tr->volume*100.f));num(peak_text,(int)(mag*100.f));
+   cv_text(9,29,&FONT_XS,"LEVEL %",skin_dim());
+   cv_text(75,27,&FONT_B,level_text,skin_text());
+   cv_text(136,29,&FONT_XS,"PEAK %",skin_dim());
+   cv_text(197,27,&FONT_B,peak_text,skin_text());
+ }else if(band==3){
+   cv_text(8,0,&FONT_XS,"PAN LEFT           CENTER           RIGHT",skin_dim());
+   cv_line(11,22,230,22,skins[ui_theme][ui_background].border);
+   cv_line(120,18,120,27,skin_dim());
+   int x=120+(int)(tr->pan*108.f);
+   cv_rect(x-2,16,5,13,skin_accent());
+   cv_text(8,34,&FONT_XS,"FX SEND",skin_dim());
+   cv_line(93,39,228,39,skins[ui_theme][ui_background].border);
+   cv_line(93,39,93+(int)(tr->send*135.f),39,skin_accent());
+ }else if(band==4){
+   char a[14],b[14],c[14];num(a,(int)(tr->volume*100.f));
+   num(b,(int)(tr->pan*100.f));num(c,(int)(tr->send*100.f));
+   cv_text(8,2,&FONT_XS,"K1 LEVEL",skin_dim());cv_text(120,2,&FONT_XS,"K2 PAN",skin_dim());
+   cv_text(8,25,&FONT_XS,"K3 FX SEND",skin_dim());cv_text(120,25,&FONT_XS,"K4 MUTE",skin_dim());
+   cv_text(67,2,&FONT_B,a,skin_text());cv_text(178,2,&FONT_B,b,skin_text());
+   cv_text(85,25,&FONT_B,c,skin_text());cv_text(183,25,&FONT_B,tr->mute?"ON":"OFF",skin_text());
+ }
+}
 static void mixer_band(int band)
 {
  if(mix_tab==0||mix_tab==3){mixer_overview(band);return;}
@@ -424,7 +510,7 @@ static void draw(int animate)
  for(int band=0;band<5;band++){
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
-   int visual=intro_active||fullscreen||band==1||band==2;
+   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug);
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    const int artwork=intro_active||fullscreen;
    const uint16_t bg=artwork?RGB(5,17,22):skins[ui_theme][ui_background].canvas;
@@ -440,6 +526,24 @@ static void draw(int animate)
    }
    if(intro_active){
      geometry(band*48);
+     /* New AQUORA water/crystal ribbon: an independent original startup
+      * choreography transitioning over the stored visualizer. Fixed 32-line
+      * budget, theme-aware, with no hidden work once introduction exits. */
+     unsigned phase=((plat_ms()-intro_start)/42u)&127u;
+     unsigned frames=(plat_ms()-intro_start)/90u;
+     int old_x=120,old_y=120;
+     for(unsigned j=0;j<=32;j++){
+       unsigned angle=(j*5u+phase)&127u;
+       int radius=(int)(3u+j*3u)+(int)(frames<25u?frames/4u:6u);
+       int x=120+(int)(radius*vis_sine[(angle+32u)&127u]);
+       int y=120+(int)(radius*vis_sine[angle]);
+       if(j){
+         int y0=old_y-band*48,y1=y-band*48;
+         if(!((y0<0&&y1<0)||(y0>=48&&y1>=48)))
+           cv_line(old_x,y0,x,y1,skins[ui_theme][0].accent);
+       }
+       old_x=x;old_y=y;
+     }
      if(band==2){
        cv_text(68,1,&FONT_B,"A Q U O R A",ui_background?RGB(235,248,251):skin_text());
        cv_text(96,28,&FONT_XS,APP_VERSION,ui_background?RGB(235,248,251):skin_text());
@@ -447,7 +551,11 @@ static void draw(int animate)
      if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",ui_background?RGB(235,248,251):skin_text());
    }else if(debug)performance(band);
    else if(fullscreen)geometry(band*48);
-   else if(visual&&page==PAGE_AIR){
+   else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){
+     mixer_console(band);
+   }else if(visual&&page==PAGE_MIX&&mix_tab==5){
+     mixer_focus_strip(band);
+   }else if(visual&&page==PAGE_AIR){
      unsigned now=plat_ms();
      unsigned live=air_on&&aq_air_live(&air_sensor,now);
      if(band==1){
@@ -601,7 +709,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"SOURCE BUSES"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
