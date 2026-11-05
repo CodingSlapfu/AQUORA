@@ -1,18 +1,18 @@
 # AQUORA — active outstanding work
 
-0.6.3 accepted source: 0f2716ba0499def94884860248f9b0e887b0fd0d.
-Seven software build/test/package gates passed in Actions run 42022969585.
+**0.6.3 software release and publication: Completed.**
+Accepted firmware/tag: 0f2716ba0499def94884860248f9b0e887b0fd0d / v0.6.3.
+Seven acceptance gates passed in Actions run 42022969585; independent release
+backups verified. Live installer Site version 180 selects FM-1_73000603 and shows
+0.6.3 ready to install. Website, accepted emulator, Studio and current captures
+are published. Evidence: validation/integration-063/LIVE_PUBLICATION.json.
+Completed requirements moved to archive/2026-11-05-063-completed.md.
 
-| Requirement | State / evidence |
+| Outstanding | State |
 |---|---|
-| Global one-press SAVE, consistent snapshot, overwrite/CRC/prior-good retention, explicit SEL recall, manual | Software completed: quicksave.c, native suspended-flash backend, async power-cut tests, all-page PLAY/STOP scripts and bank migration. Physical audio/suspend behavior unverified. |
-| Pure black/white fullscreen, panels/header, Appearance SEL safety | Software completed: renderer and accepted appearance/panel/release063 checks; 270 appearance frames. |
-| Latest intro/Polar/lighting directives | Software completed: no intro geometry worker; stationary nodal contours/audio envelopes; On/Keys continuous fitted key masks, Dance steady buttons/event pulses. Physical viewing/LED output unverified. |
-| Versioned release + independent downloadable backups | In progress: publish accepted artifacts without rebuilding. |
-| Matching live installer and AQUORA showcase/emulator/Studio | Pending deployment and exact asset verification. |
-| Owner FM-1 acceptance | Unverified: live SAVE under music/rapid input/power interruption, first-install/cold boot, XRUN/headroom, LCD FPS, LED mapping, RF hand response, battery/listening/direct upgrade/soak. |
-| Advanced AIR gestures | Deferred proposals awaiting reliable physical RF response; existing FX mappings retained. |
+| Owner FM-1 acceptance | Unverified: live SAVE latency/audio stability, rapid saves and interrupted power, first-post-install versus cold boot, XRUN/headroom, delivered LCD FPS, LEDs/pending key, RF hand response, battery, listening quality, physical direct update and long soak. |
+| Future advanced AIR gestures | Deferred proposals pending reliable physical RF/hand response; existing FX/manual mappings shipped. Not claimed as implemented. |
 
-Issues #1–#21 and comments are snapshotted in validation/integration-063/issues-snapshot.json.
-Existing software work from #1–#18 remains covered by validation/integration-062/ISSUE_ACCEPTANCE.md;
-new owner directives are covered above. Do not repeat successful tests without a relevant change.
+No remaining software publication task from this run. Preserve prior versions,
+all source branches and rollback packages. Do not repeat successful acceptance
+without a relevant source change or new defect.
