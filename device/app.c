@@ -542,7 +542,8 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    if(page==PAGE_SOUND)sound_picker=!sound_picker;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%3;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%4;
-   if(page==3){mix_tab=(mix_tab+1)%6;mix_reset=0;}
+   if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
+     mix_tab=mix_tab>=4?0:mix_tab+1;mix_reset=0;}
    bank_confirm=song_arm=0;bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
