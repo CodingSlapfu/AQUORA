@@ -303,6 +303,7 @@ static void hit_cap(void)
     sr_init(&b,3131);
     sr_start(&a);sr_start(&b);
     a.drum_density=b.drum_density=2;
+    a.energy=b.energy=.5f; /* Explicit four-subdivision fixture; intention defaults may change. */
     a.drum_hit=SR_HIT_MAX;b.drum_hit=255;
     a.freeze=b.freeze=1; /* Count the fixed pattern independently of phrase variation. */
     a.tick_length=b.tick_length=32;

@@ -8,3 +8,9 @@ New field is Resonance Plate; no startup geometry. Four genuine APNGs + three PC
 are reproducible with tests/capture_ui_064.py. CI workflow aquora-064-validation.yml
 runs independent compilation/acceptance. Inspect latest run before repeating tests.
 Complete remaining queue through verified publication; no further owner permission needed.
+
+Independent run42085609310: host-panel, WASM, native, native-repro and single-core
+passed on2eaea586. DSP stopped at obsolete fixed-kit assertion in next_acceptance.
+Corrected assertion checks valid kit; mode suite enforces freshness. Subsequent
+workflow reuses those exact five build artifacts only after source diff/hash checks.
+Do not recompile them unless firmware inputs change.
