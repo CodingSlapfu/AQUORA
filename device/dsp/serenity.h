@@ -46,7 +46,9 @@ typedef struct {
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
   uint16_t sound_locks;
-  uint8_t drum_presence;
+  uint8_t drum_presence, play_grid;
+  uint32_t play_queued;
+  uint8_t play_track[27];
   uint32_t nature_audition, bird_wait;
   float nature_peak;
   uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;

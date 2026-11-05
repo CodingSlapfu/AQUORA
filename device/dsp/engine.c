@@ -290,6 +290,7 @@ void sr_init(sr_engine *e,uint32_t seed){
  * generating a fresh downbeat, even when STOP and PLAY share a block. */
 static void clear_transport(sr_engine *e)
 {
+    e->play_queued=0;
     for(unsigned i=0;i<SR_VOICES;i++)e->note_offs+=e->voices[i].gate!=0;
     memset(e->voices,0,sizeof(e->voices));
     memset(e->rev_pos,0,sizeof(e->rev_pos));
@@ -364,10 +365,8 @@ uint8_t sr_key_note(const sr_engine *e,unsigned key)
     }
     return 127;
 }
-void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
+static void play_key(sr_engine *e,uint8_t track,unsigned key)
 {
-    if(!e->running||key>=27||track>=SR_TRACKS)return;
-    if(e->keyboard_mode){e->pending_key=(uint8_t)((53u+key)%12u+1u);e->pending_physical_key=(uint8_t)(key+1u);return;}
     if(!e->perfect_key)sr_set_perfect_key(e,1);
     if(track==SR_DRUMS){
       if(!e->drums_enabled)return;
@@ -381,8 +380,23 @@ void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
     sr_voice *voice=note_on(e,track,sr_key_note(e,key),96,1.f);
     if(voice){voice->key=(uint8_t)(key+1);voice->remain=SR_RATE*8u;}
 }
+void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
+{
+    if(!e->running||key>=27||track>=SR_TRACKS)return;
+    if(e->keyboard_mode){
+      e->pending_key=(uint8_t)((53u+key)%12u+1u);
+      e->pending_physical_key=(uint8_t)(key+1u);
+      return;
+    }
+    if(e->play_grid){
+      e->play_track[key]=track;
+      e->play_queued|=1u<<key;
+    }else play_key(e,track,key);
+}
 void sr_key_up(sr_engine *e,unsigned key)
 {
+    if(key>=27)return;
+    e->play_queued&=~(1u<<key);
     for(int j=0;j<SR_VOICES;j++)if(e->voices[j].key==key+1){
       e->note_offs+=e->voices[j].gate!=0;
       e->voices[j].gate=0;
@@ -831,6 +845,16 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   }
   if(e->running&&e->tick_phase>=e->tick_length){e->tick_phase=0;trigger(e);}
   size_t n=frames>64?64:frames;
+  if(e->running&&e->play_queued){
+    uint32_t phase=e->tick_phase, half=e->tick_length/2u;
+    if(!phase||(e->play_grid==2&&phase==half)){
+      uint32_t queued=e->play_queued;
+      e->play_queued=0;
+      for(unsigned key=0;key<27;key++)
+        if(queued&(1u<<key))play_key(e,e->play_track[key],key);
+    }else if(e->play_grid==2&&phase<half&&n>half-phase)n=half-phase;
+  }
+
   if(e->running&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;
   if(e->stop_frames&&n>e->stop_frames)n=e->stop_frames;
   unsigned fading=e->stop_frames;

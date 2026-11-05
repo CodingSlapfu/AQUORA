@@ -121,7 +121,7 @@ static void arrangement_snapshot(arrangement *record)
     memset(record,0,sizeof(*record));
     unsigned irq=plat_lock();
     record->version=AQ_BANK_VERSION;
-    record->legacy_crc=engine.sound_locks|((uint32_t)(engine.drum_presence+1u)<<10);
+    record->legacy_crc=engine.sound_locks|((uint32_t)(engine.drum_presence+1u)<<10)|((uint32_t)engine.play_grid<<17);
 #define COPY_FIELD(field) record->field=engine.field;
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
@@ -158,6 +158,9 @@ static void arrangement_apply(const arrangement *record)
     engine.sound_locks=record->version==AQ_BANK_LEGACY?0:record->legacy_crc&SR_SOUND_LOCK_MASK;
     unsigned presence=record->version==AQ_BANK_LEGACY?0:(record->legacy_crc>>10)&127u;
     engine.drum_presence=presence&&presence<=101?presence-1:50;
+    unsigned grid=record->version==AQ_BANK_LEGACY?0:(record->legacy_crc>>17)&3u;
+    engine.play_grid=grid<=2?grid:0;
+    engine.play_queued=0;
     engine.frequency_auto=record->frequency_auto;
     engine.lock_textures=record->lock_textures;
     engine.loop_length=record->version==AQ_BANK_LEGACY?16:record->loop_length;

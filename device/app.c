@@ -21,7 +21,7 @@ static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset, song_tab, song_nonce;
 static unsigned drum_tab, setup_tab, sound_picker, fullscreen, last_control_ms;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP };
-static const uint8_t sound_groups[]={0,6,1,2,3,5,7,11,13};
+static const uint8_t sound_groups[]={0,6,1,2,3,5,7,12,11,13};
 
 static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
@@ -30,7 +30,7 @@ enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,12},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,22},{32,33,34,35},{13,24,29,28},
- {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,46,0,0},{55,14,48,45}
+ {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,46,63,0},{55,14,48,45}
 };
 static const uint8_t page_controls[4][4]={
  {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,29,49}
@@ -156,6 +156,7 @@ static void consume(void){
    break;
  }
  case 47:
+   engine.play_queued=0;
    engine.keyboard_mode=switched(engine.keyboard_mode,d);
    if(!engine.keyboard_mode)engine.pending_key=engine.pending_physical_key=0;
    sr_set_perfect_key(&engine,1);
@@ -169,6 +170,7 @@ static void consume(void){
    if(d>0)sr_generate_song(&engine,plat_ticks24()^++song_nonce,c.kind==59);
    break;
  case 60:if(d>0)engine.sound_locks|=1u<<c.track;else engine.sound_locks&=~(1u<<c.track);break;
+ case 63:engine.play_grid=bounded(engine.play_grid+d,0,2);engine.play_queued=0;break;
  case 62:engine.drum_presence=bounded(engine.drum_presence+d,0,100);break;
  case 61:if(d>0)engine.sound_locks|=SR_SOUND_NATURE|SR_SOUND_FX;else engine.sound_locks&=~(SR_SOUND_NATURE|SR_SOUND_FX);break;
  case 54:engine.nature_audition=engine.running&&!engine.pending_lock&&d>0?SR_RATE*4u:0;break;
@@ -189,6 +191,7 @@ static void consume(void){
  case 35:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
  }
  }
+ engine.play_queued&=physical_keys;
  for(unsigned i=0;i<SR_VOICES;i++){
    sr_voice *v=&engine.voices[i];
    if(v->gate&&v->key&&!(physical_keys&(1u<<(v->key-1)))){engine.note_offs+=v->gate!=0;v->gate=0;}
