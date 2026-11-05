@@ -1,0 +1,97 @@
+name: Publish accepted AQUORA 0.6.0
+
+on:
+  push:
+    branches: [aquora-0.6.0-release]
+    paths: [.github/workflows/aquora-060-publish.yml]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: aquora-production-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'CodingSlapfu/AQUORA' && github.ref == 'refs/heads/aquora-0.6.0-release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ACCEPTANCE_RUN: '41960642450'
+      ACCEPTANCE_SHA: cc7d663b8d74de306fea91ae1daaf2d34f51bd3a
+      TAG: v0.6.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cc7d663b8d74de306fea91ae1daaf2d34f51bd3a
+          persist-credentials: false
+      - name: Require successful acceptance for the exact commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..36}; do
+            run="$(gh run view "$ACCEPTANCE_RUN" --json headSha,headBranch,status,conclusion)"
+            jq -e --arg sha "$ACCEPTANCE_SHA" '.headSha == $sha and .headBranch == "aquora-0.6.0-ci-validation"' <<< "$run"
+            if jq -e '.status == "completed"' <<< "$run"; then
+              jq -e '.conclusion == "success"' <<< "$run"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Timed out waiting for AQUORA acceptance run $ACCEPTANCE_RUN."
+          exit 1
+      - name: Prepare the already deployed package and verify it against CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          input="$PWD/evidence/0.6.0/editor"
+          out="$RUNNER_TEMP/release"
+          proof="$RUNNER_TEMP/proof"
+          mkdir -p "$out" "$proof/archived" "$proof/rebuilt"
+          (cd "$input" && sha256sum --check --strict SHA256SUMS.txt)
+          gh run download "$ACCEPTANCE_RUN" --name aquora-060-release-ready --dir "$proof"
+          (cd "$proof" && sha256sum --check --strict SHA256SUMS.txt)
+          test "$(cat "$proof/validation-commit.txt")" = "$ACCEPTANCE_SHA"
+          cmp "$proof/AQUORA-0.6.0-source.tar.gz" "$input/AQUORA-0.6.0-editor-source.tar.gz"
+          tar -xzf "$input/AQUORA-0.6.0-editor-package.tar.gz" -C "$proof/archived"
+          tar -xzf "$proof/AQUORA-0.6.0-package.tar.gz" -C "$proof/rebuilt"
+          for asset in firmware/sound-healing-0.6.0.fwsc emu/app.wasm; do
+            cmp "$proof/archived/$asset" "$proof/rebuilt/$asset"
+          done
+          cp "$input/AQUORA-0.6.0-editor-source.tar.gz" "$out/AQUORA-0.6.0-source.tar.gz"
+          cp "$input/AQUORA-0.6.0-editor-package.tar.gz" "$out/AQUORA-0.6.0-package.tar.gz"
+          cp "$proof/archived/firmware/sound-healing-0.6.0.fwsc" "$proof/direct-update.log" "$out/"
+          cd "$out"
+          sha256sum AQUORA-0.6.0-*.tar.gz sound-healing-0.6.0.fwsc direct-update.log > SHA256SUMS.txt
+      - name: Publish once and verify the tag and asset digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/release"
+          if ! gh release view "$TAG" --json id >/dev/null 2>&1; then
+            cat > notes.md <<'NOTES'
+          AQUORA 0.6.0 for the M-VAVE FM-1. Updater identity `FM-1_73000600`.
+
+          - [Live browser installer](https://parallax8-studio.jminie66.chatgpt.site/install/)
+          - [AQUORA 0.5.0 rollback installer](https://parallax8-studio.jminie66.chatgpt.site/rollback/0.5.0/install/)
+          - [Independent software acceptance](https://github.com/CodingSlapfu/AQUORA/actions/runs/41960642450)
+
+          GitHub Actions verified native and forced single-core firmware, WASM, sanitized DSP regressions, host panel workflows and simulated direct 0.5.0 to 0.6.0 updater behavior. The CI firmware and WASM match the deployed package. Pinned SDK boot and EQ reference warnings remain.
+
+          Physical flashing and rollback, AIR response, LCD FPS, DMA stability, key feel and power-cycle persistence await FM-1 verification.
+          NOTES
+            gh release create "$TAG" --target "$ACCEPTANCE_SHA" --title 'AQUORA 0.6.0' --notes-file notes.md \
+              AQUORA-0.6.0-source.tar.gz AQUORA-0.6.0-package.tar.gz sound-healing-0.6.0.fwsc direct-update.log SHA256SUMS.txt
+          fi
+          test "$(gh api "repos/$GH_REPO/commits/$TAG" --jq .sha)" = "$ACCEPTANCE_SHA"
+          mkdir verify
+          gh release download "$TAG" --dir verify
+          cmp SHA256SUMS.txt verify/SHA256SUMS.txt
+          (cd verify && sha256sum --check --strict SHA256SUMS.txt)
+          gh release view "$TAG" --json url,isDraft,isPrerelease | tee release.json
+          jq -e '(.isDraft or .isPrerelease) | not' release.json
