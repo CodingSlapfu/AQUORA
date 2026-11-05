@@ -11,9 +11,7 @@
     ["mix-strip-063.png", "Mixer channel controls"],
     ["drums-063.png", "Drum-kit controls"],
     ["air-063.png", "AIR effects settings"],
-    ["appearance-063.png", "Display appearance settings"],
-    ["original-063.png", "Original visualizer screen"],
-    ["polar-063.png", "Polar Bloom visualizer screen"]
+    ["appearance-063.png", "Display appearance settings"]
   ];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let index = 0;
