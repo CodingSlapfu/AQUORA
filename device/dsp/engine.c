@@ -624,18 +624,20 @@ static inline __attribute__((always_inline)) float advance(float *phase,float hz
   if(*phase>=1.f)*phase-=1.f;
   return sine(*phase);
 }
-static inline __attribute__((always_inline)) void render_binaural(sr_engine *e,float *left,float *right){
-  // Each ear gets a separate sinusoid, mixed AFTER shared FX to preserve
-  // the ear-specific frequency difference. Never collapse to mono.
-  float target=(e->running && e->binaural_enabled && e->solo==SR_TRACKS)?1.f:0.f;
-  e->binaural_env+=(target-e->binaural_env)*.0009f;
-  if(e->binaural_env<.00003f && !target)return;
-  e->carrier_now+=(e->binaural_carrier-e->carrier_now)*.0005f;
-  e->beat_now+=(e->binaural_rate-e->beat_now)*.0005f;
-  float hz_left=e->carrier_now-e->beat_now*.5f;
-  float hz_right=e->carrier_now+e->beat_now*.5f;
-  *left+=advance(&e->binaural_phase_l,hz_left)*e->binaural_level*e->binaural_env;
-  *right+=advance(&e->binaural_phase_r,hz_right)*e->binaural_level*e->binaural_env;
+/* Stereo binaural oscillators retain independent continuous phases and are
+ * always mixed AFTER shared FX. The interpolation groups below eliminate
+ * per-sample carrier/beat smoothing and divisions while closely tracking the
+ * original 0.0005 one-pole coefficient. Group size is at most 8 samples
+ * (~0.18 ms), and the midpoint phase increment integrates a smooth sweep.
+ * No extra voices, allocation, or work are added while binaural is off. */
+static inline __attribute__((always_inline)) float binaural_group_alpha(unsigned count){
+  float n=(float)count;
+  return n*.0005f - n*(n-1.f)*.000000125f;
+}
+static inline __attribute__((always_inline)) float sine_step(float *phase,float step){
+  *phase+=step;
+  if(*phase>=1.f)*phase-=1.f;
+  return sine(*phase);
 }
 static const uint8_t ornament_track[]={SR_PIANO,SR_GUITAR,SR_LEAD,SR_HARMONY};
 static const float ornament_gate[]={1.45f,1.7f,2.3f,1.8f};
@@ -1142,13 +1144,40 @@ static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t fra
   int binaural=!e->frequency_lock&&!e->nature_audition&&!e->preview_frames&&
      (e->binaural_env>=.00003f||(e->running&&e->binaural_enabled&&e->solo==SR_TRACKS));
   if(!binaural&&e->binaural_env<.00003f)e->binaural_env=0;
+  const unsigned binaural_audible=binaural&&
+    (e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL);
+  const float binaural_target=e->running&&e->binaural_enabled&&e->solo==SR_TRACKS?1.f:0.f;
+  unsigned group_remaining=0;
+  float left_step=0.f,right_step=0.f;
   for(size_t i=0;i<frames;i++){
     float l=dry[3*i],r=dry[3*i+1];
-    float binaural_l=0,binaural_r=0;
-    if(binaural)render_binaural(e,&binaural_l,&binaural_r);
-    if(binaural&&(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL)){
-      if(!(i&7u))bus_meter(e,SR_BUS_BINAURAL,fmaxf(fabsf(binaural_l),fabsf(binaural_r)));
-      l+=binaural_l;r+=binaural_r;
+    if(binaural){
+      if(!group_remaining){
+        unsigned count=(unsigned)(frames-i);
+        if(count>8u)count=8u;
+        group_remaining=count;
+        float alpha=binaural_group_alpha(count);
+        float carrier_delta=(e->binaural_carrier-e->carrier_now)*alpha;
+        float beat_delta=(e->binaural_rate-e->beat_now)*alpha;
+        float carrier_mid=e->carrier_now+carrier_delta*.5f;
+        float beat_mid=e->beat_now+beat_delta*.5f;
+        left_step=(carrier_mid-beat_mid*.5f)*(1.f/SR_RATE);
+        right_step=(carrier_mid+beat_mid*.5f)*(1.f/SR_RATE);
+        e->carrier_now+=carrier_delta;
+        e->beat_now+=beat_delta;
+      }
+      group_remaining--;
+      /* Retain the original per-sample fade for click-free enable/disable. */
+      e->binaural_env+=(binaural_target-e->binaural_env)*.0009f;
+      if(e->binaural_env>=.00003f||binaural_target){
+        float mono_gain=e->binaural_level*e->binaural_env;
+        float binaural_l=sine_step(&e->binaural_phase_l,left_step)*mono_gain;
+        float binaural_r=sine_step(&e->binaural_phase_r,right_step)*mono_gain;
+        if(binaural_audible){
+          if(!(i&7u))bus_meter(e,SR_BUS_BINAURAL,fmaxf(fabsf(binaural_l),fabsf(binaural_r)));
+          l+=binaural_l;r+=binaural_r;
+        }
+      }
     }
     // Soft-knee master saturation controls peaks without a dynamic allocation.
     float level=fmaxf(fabsf(l),fabsf(r));
