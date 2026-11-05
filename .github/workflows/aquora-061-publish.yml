@@ -1,0 +1,71 @@
+name: Publish accepted AQUORA 0.6.1
+
+on:
+  push:
+    branches: [aquora-0.6.1-release]
+    paths: [.github/workflows/aquora-061-publish.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: aquora-production-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'CodingSlapfu/AQUORA' && github.ref == 'refs/heads/aquora-0.6.1-release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ACCEPTANCE_RUN: '41969916116'
+      ACCEPTANCE_SHA: '23c8db04538fec13171a6e380501bb153f949311'
+      TAG: v0.6.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '23c8db04538fec13171a6e380501bb153f949311'
+          persist-credentials: false
+      - name: Verify exact staged acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          run="$(gh run view "$ACCEPTANCE_RUN" --json headSha,headBranch,status,conclusion)"
+          jq -e --arg sha "$ACCEPTANCE_SHA" '.headSha == $sha and .headBranch == "aquora-0.6.1-corrective" and .status == "completed" and .conclusion == "success"' <<< "$run"
+          output="$RUNNER_TEMP/release"
+          mkdir -p "$output" "$RUNNER_TEMP/stage" "$RUNNER_TEMP/acceptance"
+          gh run download "$ACCEPTANCE_RUN" --name aquora-061-release-ready --dir "$output"
+          gh run download "$ACCEPTANCE_RUN" --name aquora-061-host-panel --dir "$RUNNER_TEMP/acceptance"
+          (
+            cd "$RUNNER_TEMP/acceptance"
+            sha256sum --check --strict SHA256SUMS.txt
+          )
+          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$output/AQUORA-0.6.1-panel-evidence.tar.gz" -C "$RUNNER_TEMP/acceptance" .
+          cd "$output"
+          test "$(cat validation-commit.txt)" = "$ACCEPTANCE_SHA"
+          sha256sum --check --strict SHA256SUMS.txt
+          tar -xzf AQUORA-0.6.1-package.tar.gz -C "$RUNNER_TEMP/stage"
+          cp "$RUNNER_TEMP/stage/firmware/sound-healing-0.6.1.fwsc" .
+          sha256sum AQUORA-0.6.1-*.tar.gz sound-healing-0.6.1.fwsc validation-commit.txt direct-update.log > SHA256SUMS.txt
+      - name: Publish the immutable version and verify asset digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/release"
+          notes="$RUNNER_TEMP/notes.md"
+          cat release/0.6.1/README.md > "$notes"
+          printf '\n[Independent acceptance and build artifacts](https://github.com/%s/actions/runs/%s).\n' "$GH_REPO" "$ACCEPTANCE_RUN" >> "$notes"
+          cd "$output"
+          if ! gh release view "$TAG" --json id >/dev/null 2>&1; then
+            gh release create "$TAG" --target "$ACCEPTANCE_SHA" --title "AQUORA 0.6.1" --notes-file "$notes" \
+              AQUORA-0.6.1-*.tar.gz sound-healing-0.6.1.fwsc direct-update.log validation-commit.txt SHA256SUMS.txt
+          fi
+          test "$(gh api "repos/$GH_REPO/commits/$TAG" --jq .sha)" = "$ACCEPTANCE_SHA"
+          mkdir verify
+          gh release download "$TAG" --dir verify
+          cmp SHA256SUMS.txt verify/SHA256SUMS.txt
+          (cd verify && sha256sum --check --strict SHA256SUMS.txt)
+          gh release view "$TAG" --json url,isDraft,isPrerelease | jq -e 'select((.isDraft or .isPrerelease) | not)'
