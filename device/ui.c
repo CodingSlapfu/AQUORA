@@ -392,8 +392,9 @@ static void draw(int animate)
 {
  unsigned revision=state_revision;
  for(int band=0;band<5;band++){
-   int immersion=page==0&&visual_mode&&!debug;
-   int visual=intro_active||fullscreen||band==1||band==2||(immersion&&band>=3);
+   /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
+    * the lower physical K1-K4 control panels visible in normal mode. */
+   int visual=intro_active||fullscreen||band==1||band==2;
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    cv_begin(240,48,RGB(5,17,22));
    if(intro_active){
@@ -405,19 +406,7 @@ static void draw(int animate)
      if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",C_WHITE);
    }else if(debug)performance(band);
    else if(fullscreen)geometry(band*48);
-   else if(immersion&&band==4&&knob_until){
-     for(unsigned k=0;k<4;k++){
-       char value[16],key[]="K1";
-       const char *name;
-       const char *result=knob_value(control_for(k),&name,value);
-       key[1]=(char)('1'+k);
-       int x=4+(int)k*59;
-       uint16_t color=k==knob_focus?RGB(116,255,223):C_WHITE;
-       cv_text(x,0,&FONT_XS,key,color);
-       limited_text(x,15,55,&FONT_XS,name,color);
-       limited_text(x,29,55,&FONT_XS,result,C_WHITE);
-     }
-   }else if(visual&&page==PAGE_AIR){
+   else if(visual&&page==PAGE_AIR){
      if(band==1){
        cv_text(8,0,&FONT_B,"EXPERIMENTAL AIR",C_WHITE);
        cv_text(8,23,&FONT_XS,"PASSIVE BLE / CALIBRATE HAND AWAY",C_WHITE);
