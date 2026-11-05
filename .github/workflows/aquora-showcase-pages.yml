@@ -59,9 +59,7 @@ jobs:
           print("Verified two genuine AQUORA Sans WOFF2 fonts and licensing")
           PYFONT
           gh run download 42022969585 -R "$GITHUB_REPOSITORY" -n aquora-063-host-panel -D "$screens"
-          cp "$screens/panel-063/polar-fullscreen.png" "$out/assets/polar-063.png"
           cp "$screens/panel-063/original-normal.png" "$out/assets/play-063.png"
-          cp "$screens/previews/original/00.png" "$out/assets/original-063.png"
           cp "$screens/appearance-matrix/t1-f2-b0/sound.png" "$out/assets/sound-063.png"
           cp "$screens/appearance-matrix/t1-f2-b0/evolve.png" "$out/assets/evolve-063.png"
           cp "$screens/appearance-matrix/t1-f2-b0/mix.png" "$out/assets/mixer-063.png"
@@ -74,7 +72,7 @@ jobs:
           AQUORA v0.6.3 website sourced from accepted release.
           Firmware commit 0f2716ba0499def94884860248f9b0e887b0fd0d
           CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/42022969585
-          Ten actual v0.6.3 software-rendered captures (nine gallery, one PLAY hero).
+          Eight v0.6.3 interface captures (seven gallery, one PLAY hero); no standalone visualizer screenshots.
           AQUORA Sans web vector faces derived from the matching OFL firmware font.
           Published WASM byte-for-byte unchanged; Studio adapter affects HTML only.
           EOF
@@ -88,7 +86,7 @@ jobs:
           d=Path("dist")
           assert "AQUORA Studio companion bridge" in (d/"emu/index.html").read_text()
           assert "AQUORA_STUDIO" in (d/"studio/index.html").read_text()
-          for name in ("play","polar","original","sound","evolve","mixer","mix-strip","drums","air","appearance"):
+          for name in ("play","sound","evolve","mixer","mix-strip","drums","air","appearance"):
               raw=(d/"assets"/(name+"-063.png")).read_bytes()
               assert raw[:8]==b"\x89PNG\r\n\x1a\n"
               assert struct.unpack(">II",raw[16:24])==(240,240)
@@ -100,7 +98,7 @@ jobs:
           for file in d.rglob("*"):
               if file.is_file() and file.suffix in (".html",".css",".js",".svg",".txt"):
                   assert forbidden.search(file.read_text(encoding="utf-8")) is None, file
-          expected={name+"-063.png" for name in ("play","polar","original","sound","evolve","mixer","mix-strip","drums","air","appearance")}
+          expected={name+"-063.png" for name in ("play","sound","evolve","mixer","mix-strip","drums","air","appearance")}
           assert {file.name for file in (d/"assets").glob("*.png")} == expected
           assert all(name in (d/"index.html").read_text() for name in expected)
           carousel=(d/"screen-carousel.js").read_text()
@@ -108,6 +106,11 @@ jobs:
           assert 'id="hero-screen-image"' in (d/"index.html").read_text()
           assert 'screen-carousel.js' in (d/"index.html").read_text()
           assert all(name in carousel for name in expected), "slideshow is missing an accepted screen"
+          withheld=("polar-063.png","original-063.png","polar-062.png","original-062.png")
+          assert all(name not in (d/"index.html").read_text() for name in withheld)
+          assert all(name not in carousel for name in withheld)
+          assert all(not (d/"assets"/name).exists() for name in withheld)
+          print("Verified both visualizer screenshots omitted from all website assets and showcases")
           assert 'VISIBLE MUSIC' not in (d/"index.html").read_text()
           assert 'Evolving soundscapes.' in (d/"index.html").read_text()
           assert 'Tuned to your intention.' in (d/"index.html").read_text()
@@ -118,8 +121,8 @@ jobs:
           assert 'hero-screen-pause' not in (d/"index.html").read_text()
           assert 'window.setInterval(advance, 4000)' in carousel
           assert 'document.hidden' in carousel
-          print("Verified automatic ten-screen slideshow without controls or obsolete hero label")
-          print("Verified 10 current 0.6.3 captures including PLAY hero and public text")
+          print("Verified automatic eight-screen slideshow without controls or obsolete hero label")
+          print("Verified 8 current 0.6.3 interface captures including PLAY hero and public text")
           PY
           (cd "$out"; find . -type f ! -name SITE-SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SITE-SHA256SUMS.txt)
       - name: Archive matching public-site build

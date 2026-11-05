@@ -4,7 +4,7 @@ Standalone website branch: `aquora-showcase-site`. Built publication branch: `gh
 
 **Verified content:** Published [v0.6.3 release](https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.3), [successful software and host-panel validation](https://github.com/CodingSlapfu/AQUORA/actions/runs/42022969585), source commit `0f2716ba0499def94884860248f9b0e887b0fd0d`. Exact WebAssembly SHA256: `258db1560e3235ce0c79fe45c3961803f3621b58493b18534e8f1dc250ecc732`.
 
-Current firmware sources define 30 named patches, 19 drum kits, 13 intentions, eight roles and 83 Quick Find parameters. Nine genuinely new 240×240 gallery images plus a PLAY hero capture come only from the successful v0.6.3 host-panel artifact, including the redesigned mixer, visualizers, sound editor, drum controls and appearance screen. The independent site build deletes all prior generated output and copies only new assets.
+Current firmware sources define 30 named patches, 19 drum kits, 13 intentions, eight roles and 83 Quick Find parameters. Seven 240×240 gallery images plus a PLAY-page hero capture come only from the successful v0.6.3 host-panel artifact, including the redesigned mixer, sound editor, drum controls and appearance screen. Dedicated Original and Polar Bloom visualizer screenshots are intentionally excluded from the website. The independent site build deletes all prior generated output and copies only new assets.
 
 The publication workflow checks package version, checksum, PNG dimensions, displayed copy, excluded public names and JavaScript/WebAssembly compatibility, then publishes the independent `gh-pages` branch and backup artifact. Original framework licenses and legal notices remain in project source. GitHub's native Pages deployment run [42002935806](https://github.com/CodingSlapfu/AQUORA/actions/runs/42002935806) successfully published the new `gh-pages` commit `77f6293551b195fb56401fb744e0f13b547a0dc1`. The duplicate direct Pages deployment job was removed because this repository uses branch-based publication.
 
@@ -14,9 +14,9 @@ Studio sends same-origin physical-control events to the verified emulator, not t
 
 ## Homepage slideshow of accepted FM-1 screens
 
-The homepage hero cycles automatically through **all ten accepted v0.6.3 screen captures** (PLAY, SOUND, EVOLVE, full MIXER, mixer channel, DRUMS, AIR FX, Appearance, Original visualizer and Polar Bloom). The first frame is the actual normal PLAY page, `assets/play-063.png`, captured in `panel-063/original-normal.png` by acceptance run 42022969585. Screens are authentic software-rendered captures, not website mockups or moving on-device video.
+The homepage hero cycles automatically through **eight v0.6.3 interface screen captures** (PLAY, SOUND, EVOLVE, full MIXER, mixer channel, DRUMS, AIR FX and Appearance). The first frame is the actual normal PLAY page, `assets/play-063.png`, captured in `panel-063/original-normal.png` by acceptance run 42022969585. Screens are authentic software-rendered captures, not website mockups or moving on-device video.
 
-The hero has no extra controls or captions. All ten v0.6.3 screens advance automatically every four seconds, looping continuously even when hovered. Rotation stops in background browser tabs; reduced-motion preferences remove transitional movement but not automatic cycling. The separate gallery remains unchanged; the old floating visualizer label stays removed. Client behavior is in `site/screen-carousel.js`; all ten image paths and syntax are checked by the publication workflow.
+The hero has no extra controls or captions. All eight v0.6.3 interface screens advance automatically every four seconds, looping continuously even when hovered. Rotation stops in background browser tabs; reduced-motion preferences remove transitional movement but not automatic cycling. The separate gallery remains unchanged; the old floating visualizer label stays removed. Client behavior is in `site/screen-carousel.js`; all eight selected interface image paths and the exclusion of both visualizer screenshots are checked by the publication workflow.
 
 ## Matching AQUORA Sans website typography
 
