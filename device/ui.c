@@ -115,6 +115,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 58:*name="NEW SONG";return engine.running?"Stop first":"Turn right";
  case 59:*name="REROLL SOUNDS";return engine.running?"Stop first":"Turn right";
  case 60:*name="TRACK LOCK";return onoff(engine.sound_locks&(1u<<selected));
+ case 62:*name="PRESENCE %";number=engine.drum_presence;break;
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
  case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
@@ -276,10 +277,11 @@ static void draw(int animate)
  unsigned revision=state_revision;
  for(int band=0;band<5;band++){
    int immersion=page==0&&visual_mode&&!debug;
-   int visual=band==1||band==2||(immersion&&band>=3);
+   int visual=fullscreen||band==1||band==2||(immersion&&band>=3);
    if(debug ? !dirty : visual ? !animate&&!dirty : !dirty)continue;
    cv_begin(240,48,RGB(5,17,22));
    if(debug)performance(band);
+   else if(fullscreen)geometry(band*48);
    else if(immersion&&band==4&&knob_until){
      for(unsigned k=0;k<4;k++){
        char value[16],key[]="K1";
@@ -308,9 +310,25 @@ static void draw(int animate)
        cv_text(8,0,&FONT_B,"SOUND CATEGORIES",C_WHITE);
        cv_text(8,28,&FONT_XS,"SELECT: CHOOSE   EDIT: OPEN",C_WHITE);
      }else limited_text(8,8,225,&FONT_B,groups[group],colors[SR_LEAD]);
+   }else if(visual&&page==PAGE_SOUND&&group==0&&selected<SR_DRUMS){
+     static unsigned last_patch=SR_PATCHES;
+     static int8_t shape[129];
+     unsigned patch=engine.tracks[selected].patch;
+     if(patch!=last_patch){
+       for(unsigned j=0;j<=128;j++)shape[j]=(int8_t)(sr_patch_preview(patch,j*(1.f/128.f))*35.f);
+       last_patch=patch;
+     }
+     int offset=(band-1)*48;
+     for(unsigned j=1;j<=128;j++)
+       cv_line(7+(j-1)*225/128,48+shape[j-1]-offset,7+j*225/128,48+shape[j]-offset,colors[selected]);
    }else if(visual&&page==PAGE_SETUP){
-     if(band==1)cv_text(8,3,&FONT_B,setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY",C_WHITE);
-     if(band==2)cv_text(8,10,&FONT_XS,"EDIT: TAB   GLO: PERFORMANCE",C_WHITE);
+     if(band==1)cv_text(8,3,&FONT_B,setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY",C_WHITE);
+     if(band==2){
+       if(setup_tab==2){
+         cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,C_WHITE);
+         cv_text(8,26,&FONT_XS,"M-VAVE FM-1 / FM-1_73",C_WHITE);
+       }else cv_text(8,10,&FONT_XS,"EDIT: TAB   GLO: PERFORMANCE",C_WHITE);
+     }
    }else if(visual&&page==3)mixer_band(band);
    else if(visual)geometry(band*48);
    else if(band==0){
@@ -322,7 +340,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,RGB(147,221,207));
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(187,2,&FONT_XS,meter,C_WHITE);cv_text(212,2,&FONT_XS,"%",C_WHITE);
-     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"CHANNELS":mix_tab==1?"MASTER FX":"RESET MIX"):visual_name(),C_WHITE);
+     }else if(page!=0)limited_text(104,2,128,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"CHANNELS":mix_tab==1?"MASTER FX":"RESET MIX"):visual_name(),C_WHITE);
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));
@@ -370,7 +388,7 @@ static void draw(int animate)
          x=cv_text(x,33,&FONT_XS,notes[sr_tonic(&engine)%12],RGB(97,241,244));
          unsigned next=engine.pending_key;
          if(next){x=cv_text(x+3,33,&FONT_XS," > ",C_WHITE);cv_text(x,33,&FONT_XS,notes[(next-1)%12],RGB(250,171,64));}
-       }else if(page==PAGE_SETUP&&setup_tab){
+       }else if(page==PAGE_SETUP&&setup_tab==1){
          static const char *messages[]={"SAVE RUNS ACTION","STOP FIRST","EMPTY BANK",
            "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED"};
          cv_text(8,33,&FONT_XS,bank_status[bank_slot]==1?"SAVED":bank_status[bank_slot]==2?"INVALID":"EMPTY",RGB(147,221,207));

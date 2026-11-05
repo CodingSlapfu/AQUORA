@@ -55,3 +55,9 @@ Host dry/wet A/B showed overlapping timing ranges and does not explain the FM-1 
 ### 0.5.0 software release
 
 Native, forced single-core, matching WASM, installer protocol, bank migration, control workflows, rendered PCM and worker fallback passed. Recover matching firmware/browser/source archives from release/0.5.0 and validate checksums. Both visualizers still require physical LCD and DMA timing. The FX control caching preserved tested pitched PCM signatures; host timing did not establish a speedup.
+
+### 0.6.0 development candidate
+
+The active queue includes the complete requested 0.6.0 addendum. The released 0.5.0 remains the installer baseline. The partial candidate fixes motif evolution at loop wrap, adds 10-second PLAY fullscreen with key-independent wake and transport priority, SETUP/About, Drum Presence and an oscillator-derived patch preview. Native, browser, staged installer protocol, motif boundary/Freeze, host fullscreen/workflow and archived 0.5.0 bank migration tests passed. Physical LCD, DMA and AIR are unverified. AIR is still unimplemented: the pinned BSP exposes BLE scan RSSI, but this candidate has Bluetooth disabled.
+
+Recover the candidate under evidence/0.6.0 by concatenating each numbered set and checking SHA256SUMS.txt. Start the next run by reading NEXT_BUILD_ACTIVE.md under the existing project lock. Next implement the sequencer's independent long-form layers and sample-clock Play Along quantization, then continue mixer/UI, Vizz, waveform editing, intention motion, AIR and performance acceptance. No 0.6.0 deployment was made. If main is unchanged, fetch this exact checkpoint SHA and use it as the development base. Branch writes were rejected by GitHub while exact commit reads worked.

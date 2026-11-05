@@ -62,6 +62,7 @@ int main(int argc,char **argv)
     assert(engine.motion[0].glide_ms==240&&engine.motion[0].vibrato_depth==35);
     assert(visual_mode==1&&engine.loop_length==16&&!engine.keyboard_mode&&!engine.frequency_lock);
     assert(!engine.auto_gain&&!engine.auto_level&&!engine.sound_locks);
+    assert(engine.drum_presence==50);
 
     uint32_t crc[4];
     static const unsigned lengths[]={16,32,64,32};
@@ -71,6 +72,7 @@ int main(int argc,char **argv)
         if(!engine.frequency_auto)sr_set_frequency(&engine,6+slot);
         engine.keyboard_mode=slot&1;
         engine.sound_locks=(1u<<slot)|SR_SOUND_NATURE;
+        engine.drum_presence=slot*30u;
         engine.tonic_override=37+slot;
         engine.pending_key=1+slot;
         sr_set_loop_length(&engine,lengths[slot]);

@@ -46,6 +46,7 @@ typedef struct {
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
   uint16_t sound_locks;
+  uint8_t drum_presence;
   uint32_t nature_audition, bird_wait;
   float nature_peak;
   uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;
@@ -78,6 +79,7 @@ void sr_set_frequency(sr_engine *e, uint8_t frequency);
 void sr_set_perfect_key(sr_engine *e, uint8_t enabled);
 void sr_set_tuning_432(sr_engine *e, uint8_t enabled);
 void sr_set_drums(sr_engine *e, uint8_t enabled);
+float sr_patch_preview(unsigned patch,float phase);
 void sr_set_drum_level(sr_engine *e, float level);
 void sr_set_drum_density(sr_engine *e, uint8_t density);
 void sr_set_drum_kit(sr_engine *e, uint8_t kit);

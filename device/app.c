@@ -19,7 +19,7 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset, song_tab, song_nonce;
-static unsigned drum_tab, setup_tab, sound_picker;
+static unsigned drum_tab, setup_tab, sound_picker, fullscreen, last_control_ms;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP };
 static const uint8_t sound_groups[]={0,6,1,2,3,5,7,11,13};
 
@@ -68,10 +68,10 @@ static unsigned control_for(unsigned knob)
 {
  if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
  if(page==PAGE_DRUMS){
-   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,0,0}};
+   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0}};
    return controls[drum_tab][knob];
  }
- if(page==PAGE_SETUP)return sound_controls[setup_tab?GROUP_BANKS:GROUP_VISUAL][knob];
+ if(page==PAGE_SETUP)return setup_tab==2?0:sound_controls[setup_tab?GROUP_BANKS:GROUP_VISUAL][knob];
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==2&&song_tab){static const uint8_t ids[]={58,59,60,61};return ids[knob];}
  if(page==3&&mix_tab){
@@ -169,6 +169,7 @@ static void consume(void){
    if(d>0)sr_generate_song(&engine,plat_ticks24()^++song_nonce,c.kind==59);
    break;
  case 60:if(d>0)engine.sound_locks|=1u<<c.track;else engine.sound_locks&=~(1u<<c.track);break;
+ case 62:engine.drum_presence=bounded(engine.drum_presence+d,0,100);break;
  case 61:if(d>0)engine.sound_locks|=SR_SOUND_NATURE|SR_SOUND_FX;else engine.sound_locks&=~(SR_SOUND_NATURE|SR_SOUND_FX);break;
  case 54:engine.nature_audition=engine.running&&!engine.pending_lock&&d>0?SR_RATE*4u:0;break;
  case 53:
@@ -255,6 +256,18 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
 }
 void app_say(const char*a,const char*b){(void)a;(void)b;dirty=1;}
 void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbuttons;oldbuttons=b;
+ int enc[7]={plat_enc(EN_ALGO),plat_enc(EN_SELECT),plat_enc(EN_PRESET),
+             plat_enc(EN_K1),plat_enc(EN_K1+1),plat_enc(EN_K1+2),plat_enc(EN_K1+3)};
+ int control=press!=0;
+ for(unsigned i=0;i<7;i++)control|=enc[i]!=0;
+ if(control){
+   last_control_ms=plat_ms();
+   if(fullscreen){
+     fullscreen=0;dirty=1;
+     press&=(1u<<B_PLAY)|(1u<<B_GLO)|(1u<<B_REC);
+     for(unsigned i=0;i<7;i++)enc[i]=0;
+   }
+ }
  if(debug==3 && (press&(1u<<B_SEQ))){
    unsigned flags=plat_lock();
    requested_play=0;
@@ -283,7 +296,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    if(!debug&&page==2)song_tab=!song_tab;
    if(page==PAGE_SOUND)sound_picker=!sound_picker;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%3;
-   if(page==PAGE_SETUP)setup_tab=!setup_tab;
+   if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%3;
    if(page==3){mix_tab=(mix_tab+1)%3;mix_reset=0;}
    bank_confirm=0;bank_message=BANK_IDLE;
  }
@@ -294,7 +307,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if((press&(1u<<B_SAVE))&&page==3&&mix_tab==2&&!debug){
     if(mix_reset)send(53,0);
     mix_reset=0;
- }else if((press&(1u<<B_SAVE))&&page==PAGE_SETUP&&setup_tab&&!debug){
+ }else if((press&(1u<<B_SAVE))&&page==PAGE_SETUP&&setup_tab==1&&!debug){
     arrangement_execute();
     blocked_keys|=k;
  }else if((press&(1u<<B_SAVE))&&!requested_play&&!engine.running&&!engine.stop_frames){
@@ -313,9 +326,9 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    if(!(press&(1u<<B_PLAY))&&requested_play&&((physical_keys&~oldkeys)&(1u<<i)))send(3,i);
  }
  oldkeys=k;
- int d=plat_enc(EN_ALGO);
+ int d=enc[0];
  if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_SETUP);sound_picker=0;mix_reset=0;bank_confirm=0;knob_until=0;dirty=1;}
- d=plat_enc(EN_SELECT);
+ d=enc[1];
  if(d&&!debug){
    if(page==PAGE_SOUND&&sound_picker){
      int index=0;
@@ -324,10 +337,10 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    }else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
    knob_until=0;dirty=1;
  }
- d=plat_enc(EN_PRESET);
+ d=enc[2];
  if(d&&!debug&&page!=PAGE_SETUP&&!(page==PAGE_SOUND&&sound_picker)){send(page==0?1:page==PAGE_DRUMS?16:2,d>0?1:-1);dirty=1;}
  for(unsigned i=0;i<4;i++){
-    d=plat_enc(EN_K1+i);
+    d=enc[3+i];
     unsigned control=control_for(i);
     if(!d||!control)continue;
     if(control==38)visual_mode=d>0;
@@ -356,7 +369,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
 }
 #include "ui.c"
 enum { FRAME_MIN_MS = 50 };
-void app_ui_init(void){draw(1);redraw_ui_ms=lastdraw=plat_ms();}
+void app_ui_init(void){draw(1);redraw_ui_ms=lastdraw=last_control_ms=plat_ms();}
 void app_frame(void)
 {
     app_input_only();
@@ -387,6 +400,9 @@ void app_frame(void)
       dirty=1;
     }
     if(knob_until&&(int32_t)(now-knob_until)>=0){knob_until=0;dirty=1;}
+    if(!fullscreen&&!debug&&page==PAGE_PLAY&&now-last_control_ms>=10000u){
+      fullscreen=1;dirty=1;
+    }
     if(now-redraw_ui_ms<FRAME_MIN_MS)return;
     unsigned elapsed=now-lastdraw;
     int animate=!debug&&(page==PAGE_PLAY||page==PAGE_MIX)&&elapsed>=FRAME_MIN_MS;
@@ -418,6 +434,8 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"mute"))*got=track->mute;
  else if(!strcmp(what,"solo"))*got=engine.solo;
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
+ else if(!strcmp(what,"fullscreen"))*got=fullscreen;
+ else if(!strcmp(what,"setup_tab"))*got=setup_tab;
  else if(!strcmp(what,"drum_tab"))*got=drum_tab;
  else if(!strcmp(what,"sound_group"))*got=group;
  else if(!strcmp(what,"mix_tab"))*got=mix_tab;

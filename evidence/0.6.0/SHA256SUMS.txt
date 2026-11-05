@@ -1,0 +1,2 @@
+020727ba411c6f27e05fa756b374143ddb22cb08747bb69c92e74386509ede84  AQUORA-0.6.0-candidate-source.tar.gz
+71b90bb238ebda4e9d08382532884e8c01e9388fb50a102f32bc716267557c24  AQUORA-0.6.0-candidate-package.tar.gz

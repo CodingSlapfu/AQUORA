@@ -113,6 +113,12 @@ static inline __attribute__((always_inline)) float sacred_hz(const sr_engine *e)
   return hz;
 }
 float sr_sacred_bass_frequency(const sr_engine *e){return sacred_hz(e);}
+float sr_patch_preview(unsigned patch,float phase)
+{
+  if(patch>=SR_PATCHES)return 0.f;
+  const sr_patch *p=&sr_patches[patch];
+  return wave(p->wave,phase,p->brightness);
+}
 static void make_motif(sr_engine *e){
   for(int i=0;i<16;i++){
     if((i%4)==0) e->melody[i]=(int8_t)(rng(e)%5);
@@ -266,7 +272,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   memset(e,0,sizeof(*e)); e->rng=seed?seed:0x73ac05u;
   if(!lut_ready){for(int i=0;i<=LUT;i++)sin_table[i]=sinf((float)i*2.f*PI/(float)LUT);lut_ready=1;}
   e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
-  e->drums_enabled=1;e->drum_level=.66f;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
+  e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
@@ -477,16 +483,22 @@ static void trigger(sr_engine *e){
       }
     }
   }
-  uint32_t s=e->sequence_step++;
+  uint32_t absolute=e->sequence_step++;
+  uint32_t s=absolute;
   unsigned idx=e->loop_pos++;
   if(e->loop_pos>=e->loop_length)e->loop_pos=0;
   if(e->loop_length!=16)s=idx;
   const sr_scene *sc=&sr_scenes[e->scene];
   int tonic=sr_tonic(e);
-  int k=motif_degree(e,idx);
   uint8_t energy=(uint8_t)(1.f+e->energy*2.99f);
   drum_trigger(e,s,energy);
-  if((s&31u)==0 && s>0 && !e->freeze && rnd(e)<e->variation){make_motif(e);e->phrase++;}
+  /* The absolute counter survives phrase wrap; idx is only the loop position. */
+  if(absolute&&idx==0&&(e->loop_length!=16||(absolute&31u)==0)
+      &&!e->freeze&&rnd(e)<e->variation){
+    make_motif(e);
+    e->phrase++;
+  }
+  int k=motif_degree(e,idx);
   if((s&7u)==0){
     int bass_note=tonic;
     if(e->scene>=6){
@@ -622,6 +634,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       }
     }
     e->input_peak[t]*=1.f-(float)frames*.0005f;
+    if(t==SR_DRUMS)level*=1.f+((int)e->drum_presence-50)*.006f;
     send[t]=level*track->send;
     if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
     left[t]=level*(.5f-.31f*track->pan);
