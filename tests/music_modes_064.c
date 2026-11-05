@@ -32,7 +32,8 @@ int main(void){
    assert(e.frequency==sr_scenes[scene].frequency&&e.music_mode==mode);
    for(unsigned t=0;t<8;t++){
     unsigned patch=t==7?e.drum_kit:e.tracks[t].patch;
-    if(visit)assert(patch!=oldpatch[t]);oldpatch[t]=patch;
+    if(visit)assert(patch!=oldpatch[t]);
+    oldpatch[t]=patch;
    }
    unsigned changed=0;for(unsigned i=0;i<16;i++){changed|=oldmotif[i]!=e.melody[i];oldmotif[i]=e.melody[i];}
    if(visit)assert(changed);

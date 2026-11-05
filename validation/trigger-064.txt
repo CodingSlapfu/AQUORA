@@ -1,3 +1,4 @@
 Initial v0.6.4 independent acceptance: music modes, fresh intentions, Resonance Plate, live APNGs.
 
 Continue failed/unreached DSP gates, verify v063 migration, reuse five accepted platforms.
+Fix strict compiler indentation warning in new test; continue unreached suites only.

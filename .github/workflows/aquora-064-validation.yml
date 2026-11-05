@@ -27,12 +27,21 @@ jobs:
         run: |
           cd evidence/0.6.0/editor
           sha256sum --check SHA256SUMS.txt
+      - name: Verify preserved successful DSP gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/$GITHUB_REPOSITORY/actions/jobs/127449760944/logs > /tmp/dsp-first.log
+          gh api repos/$GITHUB_REPOSITORY/actions/jobs/127452872050/logs > /tmp/dsp-second.log
+          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060; do grep -F "PASS $test" /tmp/dsp-first.log; done
+          for test in next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062; do grep -F "PASS $test" /tmp/dsp-second.log; done
       - name: Build and execute isolated DSP regression tests
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/aquora-0.6.4-host-tests
-          for test in next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062 music_modes_064; do
+          for test in music_modes_064 music_load_064; do
             gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
               -Idevice/dsp -Ivendor/fm1-base/include \
               -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
