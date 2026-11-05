@@ -2,9 +2,13 @@
 
 **M-VAVE FM-1 · Generative Sound Sanctuary**
 
-AQUORA is the new, independent FM-1 sound-healing-inspired generative music firmware project. Features include generative instruments, Solfeggio frequency tones, gentle drums, stereo binaural beats, living soundscapes, and a four-page UI.
+AQUORA is the new, independent FM-1 sound-healing-inspired generative music firmware project. Features include generative instruments, Solfeggio frequency tones, gentle drums, stereo binaural beats, living soundscapes, and a seven-page UI.
 
-**Current build: AQUORA 0.3.0.** See [release notes and hardware checklist](release/0.3.0/README.md), [changelog](CHANGELOG.md), and [active hardware follow-up](NEXT_BUILD_ACTIVE.md). The owner verified 0.2.0 playback and reported about 74% processing. Keep both 0.2.0 and 0.1.0 for rollback.
+**Stable release: AQUORA 0.6.3. v0.6.4 hotfix acceptance is in progress.**
+See [active queue](NEXT_BUILD_ACTIVE.md), [resume checkpoint](FAST_RESUME.md),
+and [v0.6.4 notes](release/0.6.4/RELEASE.md). The hotfix adds three musical modes,
+fresh intention realizations, automatic expressive motion, and Resonance Plate.
+Publication is complete only after the matching installer and website are verified.
 
 ## Project entry point
 

@@ -32,8 +32,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/$GITHUB_REPOSITORY/actions/jobs/127449760944/logs > /tmp/dsp-first.log
-          gh api repos/$GITHUB_REPOSITORY/actions/jobs/127452872050/logs > /tmp/dsp-second.log
+          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/127449760944/logs > /tmp/dsp-first.log
+          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/127452872050/logs > /tmp/dsp-second.log
           for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060; do grep -F "PASS $test" /tmp/dsp-first.log; done
           for test in next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062; do grep -F "PASS $test" /tmp/dsp-second.log; done
       - name: Build and execute isolated DSP regression tests
@@ -128,7 +128,7 @@ jobs:
           set -euo pipefail
           git diff --exit-code 2eaea586cf06b3681b4b2d52378665d11c35b94e HEAD -- device vendor tests/capture_ui_064.py
           for id in 127449760450 127449760889 127449761132 127449761148 127449761152; do
-            test "$(gh api repos/$GITHUB_REPOSITORY/actions/jobs/$id --jq .conclusion)" = success
+            test "$(gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/$id --jq .conclusion)" = success
           done
           test "$(gh api repos/$GITHUB_REPOSITORY/actions/runs/42085609310 --jq .head_sha)" = 2eaea586cf06b3681b4b2d52378665d11c35b94e
       - uses: actions/download-artifact@v4
