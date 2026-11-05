@@ -103,3 +103,5 @@ Production remains 0.5.0. Resume from this commit under the same lock. Next clos
 Play Along now defaults to Auto for new settings and legacy v1 banks. Auto uses 1/32 at slower tempos and 1/16 otherwise. Live, 1/8, 1/16 and 1/32 can be selected. The ASan/UBSan host test passed exact onset samples, released-key cancellation and STOP clearing with leak detection disabled for this sandbox. This is a source-only update. The verified native firmware, browser emulator and installer archives under evidence/0.6.0/buses/ correspond to 924fbeb, not to the new grid source.
 
 Next verify the new grid value through all four banks, then implement Play Along strength, feel and short-tap scheduling. Continue unified mixer and full software acceptance before building the release. Keep production 0.5.0.
+
+Archived 0.5.0 bank migration and all four new grid settings passed an ASan/UBSan save/reboot/load round trip. Next implement Play Along strength, feel and short-tap scheduling.

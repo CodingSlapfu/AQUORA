@@ -71,6 +71,7 @@ int main(int argc,char **argv)
         sr_set_frequency_auto(&engine,slot&1);
         if(!engine.frequency_auto)sr_set_frequency(&engine,6+slot);
         engine.keyboard_mode=slot&1;
+        engine.play_grid=slot+1;
         engine.sound_locks=(1u<<slot)|SR_SOUND_NATURE;
         engine.drum_presence=slot*30u;
         engine.tonic_override=37+slot;
@@ -105,6 +106,7 @@ int main(int argc,char **argv)
         arrangement actual;
         arrangement_snapshot(&actual);
         assert(actual.crc==crc[slot]);
+        assert(engine.play_grid==slot+1);
     }
     puts("PASS archived record migration and four distinct 0.5.0 lock payloads across reboot");
 #endif
