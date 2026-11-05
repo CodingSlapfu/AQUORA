@@ -1,0 +1,15 @@
+  ok page == 4
+  ok drum_tab == 0
+  ok density == 8
+  ok drum_tab == 1
+  ok drum_tab == 2
+  ok solo == 7
+  ok page == 1
+  ok sound_group == 2
+  ok frequency_lock == 1
+  ok page == 5
+  ok bank_message == 4
+  ok bank_exact == 1
+  ok knobs_valid == 1
+  ok drops == 0
+host: 1590 ms simulated, 99 blits, render 0.0% of real time (host CPU)

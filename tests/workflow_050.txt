@@ -20,9 +20,9 @@ tap HOME
 turn ALGO 1
 expect page 1
 tap EDIT
-turn SELECT 3
-expect sound_group 2
 tap EDIT
+tap EDIT
+expect sound_group 2
 spin K3 1
 wait 100
 expect frequency_lock 1

@@ -16,3 +16,4 @@ usb_audio_out = false
 tagline = "Generative Sound Sanctuary"
 repo = "https://github.com/CodingSlapfu/AQUORA"
 licence = "MPL-2.0"
+gen = ["tools/gen_aquora_font.py {gen}"]

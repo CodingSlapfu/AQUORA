@@ -27,7 +27,8 @@ static const struct { uint8_t id, page, tab, knob; } parameter_routes[]={
  {39,PAGE_SETUP,1,0},{40,PAGE_SETUP,1,1},{41,PAGE_SETUP,1,2},
  {66,PAGE_AIR,0,0},{67,PAGE_AIR,0,1},{68,PAGE_AIR,0,2},{69,PAGE_AIR,0,3},
  {57,PAGE_SETUP,4,0},
- {42,PAGE_SETUP,5,0}
+ {42,PAGE_SETUP,5,0},
+ {93,PAGE_AIR,1,0},{94,PAGE_AIR,1,1},{95,PAGE_AIR,1,2}
 };
 #define QUICK_CATEGORIES (sizeof quick_names/sizeof quick_names[0])
 #define QUICK_COUNT (QUICK_CATEGORIES+sizeof parameter_routes/sizeof parameter_routes[0])
@@ -43,6 +44,7 @@ static void open_parameter(unsigned index)
         sound_picker=0;
         if((!tab&&selected==SR_DRUMS)||(tab==6&&selected>SR_BASS))selected=SR_LEAD;
         break;
+    case PAGE_AIR:air_tab=tab;break;
     case PAGE_EVOLVE:song_tab=tab;break;
     case PAGE_MIX:mix_tab=tab;break;
     case PAGE_DRUMS:drum_tab=tab;break;

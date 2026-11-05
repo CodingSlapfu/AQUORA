@@ -1,0 +1,19 @@
+  ok sound_picker == 0
+  ok sound_group == 6
+  ok sound_picker == 0
+  ok knobs_valid == 1
+  ok sound_group == 1
+  ok sound_picker == 0
+  ok page == 6
+  ok air_tab == 1
+  ok air_fx == 2
+  ok air_depth == 75
+  ok air_percent == 40
+  ok knobs_valid == 1
+  ok air_tab == 0
+  ok knobs_valid == 1
+  ok drops == 0
+  ok air_fx == 2
+  ok air_depth == 75
+  ok air_percent == 0
+host: 2645 ms simulated, 80 blits, render 0.0% of real time (host CPU)

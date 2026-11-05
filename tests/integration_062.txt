@@ -1,0 +1,36 @@
+master 2048
+turn ALGO 1
+expect sound_picker 0
+tap EDIT
+expect sound_group 6
+expect sound_picker 0
+spin K1 1
+wait 100
+expect knobs_valid 1
+tap EDIT
+expect sound_group 1
+spin K1 1
+wait 100
+expect sound_picker 0
+turn ALGO 5
+expect page 6
+tap EDIT
+expect air_tab 1
+spin K1 2
+spin K2 -5
+spin K3 8
+wait 100
+expect air_fx 2
+expect air_depth 75
+expect air_percent 40
+expect knobs_valid 1
+shot air-fx.png
+tap EDIT
+expect air_tab 0
+expect knobs_valid 1
+expect drops 0
+wait 1500
+reboot
+expect air_fx 2
+expect air_depth 75
+expect air_percent 0

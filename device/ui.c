@@ -1,4 +1,8 @@
 /* SPDX-License-Identifier: MPL-2.0 */
+static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?&FONT_S:&FONT_XS;}
+static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_M:&FONT_B;}
+#define FONT_XS (*ui_caption_font())
+#define FONT_B (*ui_value_font())
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character"};
@@ -171,6 +175,9 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
  case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 90:{static const char *themes[]={"AQUORA Legacy","Aurora","Neon Lagoon","Solar Bloom","Midnight Prism"};*name="PANEL SKIN";return themes[ui_theme];}
+ case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo"};*name="AIR FX";return effects[engine.air_fx];}
+ case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
+ case 95:*name="MANUAL AIR %";number=engine.air_target*100;break;
  case 91:{static const char *fonts[]={"Small","Medium","Large"};*name="FONT SIZE";return fonts[ui_font_size];}
  case 92:*name="BACKGROUND";return ui_background?"White":"Black (Stock)";
  case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
@@ -559,7 +566,7 @@ static void draw(int animate)
      unsigned now=plat_ms();
      unsigned live=air_on&&aq_air_live(&air_sensor,now);
      if(band==1){
-       cv_text(8,0,&FONT_B,"AIR / LIVE PROXIMITY",skin_text());
+       limited_text(8,0,226,&FONT_B,air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
        const char *state=!air_on?"RADIO OFF":live?(air_sensor.calibrated?"SIGNAL LIVE / CALIBRATED":"RECEIVING / CALIBRATE FAR"):
                     air_sensor.calibrated?"CALIBRATED / SIGNAL LOST":"NO BROADCASTER";
        limited_text(8,24,226,&FONT_XS,state,live?skin_accent():skin_dim());
@@ -575,7 +582,7 @@ static void draw(int animate)
        label(8,0,"RAW RSSI",air_sensor.raw);
        label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
        label(183,0,"LAST PKTS",air_packets);
-       cv_text(8,33,&FONT_XS,live?"CALIBRATE FAR / WATCH HAND SHADOW":"MANUAL FX: MIX / MASTER FX",skin_text());
+       limited_text(8,33,226,&FONT_XS,air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"EDIT: FX + DEPTH / K3: FAR",skin_text());
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
@@ -590,8 +597,8 @@ static void draw(int animate)
      }
    }else if(visual&&page==PAGE_SOUND&&sound_picker){
      if(band==1){
-       cv_text(8,0,&FONT_B,"SOUND CATEGORIES",skin_text());
-       cv_text(8,28,&FONT_XS,"SELECT: CHOOSE   EDIT: OPEN",skin_text());
+       cv_text(8,0,&FONT_B,"SOUND / EDIT SECTION",skin_text());
+       cv_text(8,28,&FONT_XS,"SELECT: ROLE   EDIT: SECTION",skin_text());
      }else limited_text(8,8,225,&FONT_B,groups[group],colors[SR_LEAD]);
    }else if(visual&&page==PAGE_SOUND&&group==0&&selected<SR_DRUMS){
      static unsigned last_patch=SR_PATCHES;
@@ -667,7 +674,7 @@ static void draw(int animate)
           engine.bus_meter[bus]:engine.tracks[selected].meter;
        int end=8+(int)fm_clampf(level*1200.f,0,222);
        for(int y=8;y<19;y++)cv_line(8,y,end,y,colors[selected]);
-       label(8,24,"POST MIX PEAK %",(int)(level*100.f));
+       label(8,ui_font_size==2?0:24,"POST MIX PEAK %",(int)(level*100.f));
      }
    }else if(visual&&page==PAGE_SETUP){
      if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
@@ -676,6 +683,9 @@ static void draw(int animate)
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,skin_text());
          static const char *power[]={"BATTERY LOW","BATTERY 1 / 3","BATTERY 2 / 3","BATTERY FULL","USB POWER"};
          cv_text(8,26,&FONT_XS,battery_level>=0&&battery_level<=4?power[battery_level]:"BATTERY UNREAD",skin_text());
+       }else if(setup_tab==1&&ui_font_size==2){
+         static const char *messages[]={"SAVE: RUN ACTION","STOP FIRST","EMPTY BANK","K3: ARM OVERWRITE","SAVED","LOADED","BANK ERROR"};
+         limited_text(8,10,224,&FONT_XS,messages[bank_message],skin_accent());
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":"EDIT: TAB   GLO: PERFORMANCE",skin_text());
      }
    }else if(visual&&page==PAGE_EVOLVE){
@@ -703,7 +713,7 @@ static void draw(int animate)
    else if(band==0){
      cv_text(8,0,&FONT_XS,"ALGO",skin_dim());
      cv_text(46,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
-     if(page==PAGE_DRUMS){
+     if(page==PAGE_DRUMS&&ui_font_size!=2){
        char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
        int x=cv_text(104,2,&FONT_XS,"PULSE ",skin_text());
        cv_text(x,2,&FONT_XS,count,skin_accent());
@@ -728,7 +738,7 @@ static void draw(int animate)
      unsigned start=band==3?0:2;
      knob_cell(start,8);
      knob_cell(start+1,126);
-     if(band==4){
+     if(band==4&&ui_font_size!=2){
        if(page==PAGE_DRUMS){
          int x=cv_text(8,33,&FONT_XS,drum_status(),skin_accent());
          char hit[12];num(hit,engine.drum_hit);

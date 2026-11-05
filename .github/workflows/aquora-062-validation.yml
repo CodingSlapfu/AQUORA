@@ -2,17 +2,17 @@ name: AQUORA 0.6.2 isolated host validation
 
 on:
   push:
-    branches: [aquora-0.6.2-development]
+    branches: [aquora-0.6.2-development, aquora-0.6.2-release-integration]
     paths: ['validation/trigger-062.txt']
   workflow_dispatch:
   pull_request:
-    branches: [aquora-0.6.2-development]
+    branches: [aquora-0.6.2-development, aquora-0.6.2-release-integration]
 
 permissions:
   contents: read
 
 concurrency:
-  group: aquora-0.6.2-development
+  group: aquora-0.6.2-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -31,11 +31,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/aquora-0.6.2-host-tests
-          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062; do
+          for test in patch_shape_060 groove_air_060 motif_memory_060 play_grid_060 arrangement_roles_060 next_acceptance dsp_acceptance stereo transport_hit corrective_061 air_status_062 binaural_062 binaural_stereo_062 air_mapping_062; do
             gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
               -Idevice/dsp -Ivendor/fm1-base/include \
               -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie \
-              device/dsp/engine.c "tests/${test}.c" -lm \
+              $(if [[ "$test" != binaural_062 ]]; then echo device/dsp/engine.c; fi) "tests/${test}.c" -lm \
               -o "/tmp/aquora-0.6.2-host-tests/${test}"
             ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 \
               "/tmp/aquora-0.6.2-host-tests/${test}" \
@@ -116,7 +116,7 @@ jobs:
           case "$TARGET" in
             host-panel)
               "${build[@]}" --host 2>&1 | tee "$out/build.log"
-              for test in controls_060 fullscreen_060 mixer_unified_060 patch_shape_060 play_panel_060 reachability_060 arrangements workflow_050 appearance_062 mixer_062; do
+              for test in controls_060 fullscreen_060 mixer_unified_060 patch_shape_060 play_panel_060 reachability_060 arrangements workflow_050 appearance_062 mixer_062 integration_062; do
                 mkdir "$out/$test"
                 device/build/host/sound-healing_host "tests/$test.txt" "$out/$test" 2>&1 | tee "$out/$test.log"
               done

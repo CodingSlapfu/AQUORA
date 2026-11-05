@@ -1,104 +1,74 @@
-/* AQUORA v0.6.2: headphone stereo offset, fade, isolation, and tuning. */
-#define _POSIX_C_SOURCE 200809L
-#include "serenity.h"
+/* Targeted oscillator regression; includes implementation to test the exact
+ * bounded binaural kernel for three hours without rendering unrelated DSP. */
+#include "../device/dsp/engine.c"
 #include <assert.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 static sr_engine e;
 static int16_t pcm[512];
-static const double pi2=6.28318530717958647692;
-static void isolated(float carrier, float difference)
-{
-    sr_init(&e,731);
-    for(unsigned role=0;role<SR_TRACKS;role++)e.tracks[role].mute=1;
-    e.isolate=SR_ISOLATE_BINAURAL;
-    e.bed_type=0;e.bed_level=0;e.tone_level=0;
-    e.reverb_amount=e.delay_amount=0;e.drums_enabled=0;
-    e.binaural_level=.65f;
-    sr_start(&e);
-    sr_set_binaural_carrier(&e,carrier);
-    sr_set_binaural_rate(&e,difference);
-    sr_set_binaural(&e,1);
+static void setup(float carrier,float beat){
+  sr_init(&e,456);sr_start(&e);
+  e.isolate=SR_ISOLATE_BINAURAL;e.bed_level=0;
+  e.reverb_amount=.8f;e.delay_amount=.7f;
+  sr_set_binaural_carrier(&e,carrier);sr_set_binaural_rate(&e,beat);
+  sr_set_binaural(&e,1);
+  for(unsigned b=0;b<400;b++)sr_render(&e,pcm,256);
+  assert(e.carrier_now==carrier&&e.beat_now==beat&&e.binaural_env==1.f);
 }
-static void render_seconds(unsigned seconds)
-{
-    unsigned frames=SR_RATE*seconds;
-    while(frames){unsigned n=frames>256?256:frames;sr_render(&e,pcm,n);frames-=n;}
-}
-static void stereo_spectrum(float carrier,float beat)
-{
-    isolated(carrier,beat);
-    render_seconds(2);
-    double real[2][2]={{0}},imag[2][2]={{0}};
-    unsigned frames=0;
-    for(unsigned b=0;b<173;b++){
-        unsigned n=256;
-        if(frames+n>SR_RATE)n=SR_RATE-frames;
-        sr_render(&e,pcm,n);
-        for(unsigned i=0;i<n;i++){
-            for(int tone=0;tone<2;tone++){
-                double hz=carrier+(tone?+.5:-.5)*beat;
-                double theta=pi2*hz*(frames+i)/SR_RATE;
-                double co=cos(theta),si=sin(theta);
-                for(int channel=0;channel<2;channel++){
-                    real[channel][tone]+=pcm[2*i+channel]*co;
-                    imag[channel][tone]+=pcm[2*i+channel]*si;
-                }
-            }
-        }
-        frames+=n;
-        if(frames==SR_RATE)break;
+static void frequencies(float carrier,float beat){
+  setup(carrier,beat);
+  unsigned crossings[2]={0};int armed[2]={0};
+  for(unsigned b=0;b<1400;b++){
+    sr_render(&e,pcm,256);
+    for(unsigned i=0;i<256;i++)for(unsigned c=0;c<2;c++){
+      int v=pcm[2*i+c];if(v < -8)armed[c]=1;
+      if(armed[c]&&v>8){crossings[c]++;armed[c]=0;}
     }
-    /* Append remaining samples when 173*256=44288 (last is a short chunk). */
-    assert(frames==SR_RATE);
-    for(int ch=0;ch<2;ch++){
-      double own=hypot(real[ch][ch],imag[ch][ch]);
-      double cross=hypot(real[ch][1-ch],imag[ch][1-ch]);
-      assert(own>1e6 && cross<own*.014);
-      printf("%g/%g Hz channel %d rejection %.1f dB\n",carrier,beat,ch,
-             20*log10(own/fmax(cross,1.0)));
-    }
+  }
+  float duration=1400.f*256.f/SR_RATE;
+  float l=crossings[0]/duration,r=crossings[1]/duration;
+
+  assert(fabsf(l-(carrier-beat*.5f))<.14f);
+  assert(fabsf(r-(carrier+beat*.5f))<.14f);
+  assert(fabsf((r-l)-beat)<.25f);
+  printf("carrier %.1f beat %.1f: measured L %.4f R %.4f Hz\n",carrier,beat,l,r);
+  sr_set_binaural(&e,0);
+  for(unsigned b=0;b<200;b++)sr_render(&e,pcm,256);
+  assert(e.binaural_env==0);
+  for(unsigned i=0;i<512;i++)assert(pcm[i]==0);
 }
-static void toggle_and_safety(void)
-{
-    isolated(220.f,6.f);
-    for(unsigned block=0;block<100;block++)sr_render(&e,pcm,256);
-    sr_set_binaural(&e,0);
-    render_seconds(1);
-    for(unsigned i=0;i<512;i++)assert(abs(pcm[i])<10);
-    assert(e.binaural_env<.001f);
-    sr_set_binaural(&e,1);
-    sr_set_binaural_carrier(&e,1000.f);
-    sr_set_binaural_rate(&e,40.f);
-    unsigned max_jump=0;
-    int previous=0;
-    for(unsigned block=0;block<360;block++){
-        sr_render(&e,pcm,256);
-        for(unsigned i=0;i<256;i++){
-            unsigned jump=abs(pcm[2*i]-previous);
-            if(jump>max_jump)max_jump=jump;
-            previous=pcm[2*i];
-        }
+int main(int argc,char **argv){
+  for(unsigned c=0;c<3;c++)for(unsigned b=0;b<3;b++){
+    const float carrier[]={80.f,432.f,1000.f},beat[]={.5f,6.f,40.f};
+    frequencies(carrier[c],beat[b]);
+  }
+  setup(220.f,6.f);
+  for(unsigned n=0;n<100;n++){
+    sr_set_binaural(&e,n&1);sr_set_binaural_carrier(&e,n&1?1000.f:80.f);
+    sr_set_binaural_rate(&e,n&1?.5f:40.f);sr_render(&e,pcm,256);
+    for(unsigned j=2;j<512;j++)assert(abs(pcm[j]-pcm[j-2])<1200);
+  }
+  e.solo=SR_LEAD;
+  for(unsigned b=0;b<200;b++)sr_render(&e,pcm,256);
+  assert(e.binaural_env==0);
+  if(argc>1&&argv[1][0]=='l'){
+    setup(1000.f,.5f);
+    const uint32_t frames=3u*3600u*SR_RATE;
+    unsigned wraps_l=0,wraps_r=0;
+    float start_l=e.binaural_phase_l,start_r=e.binaural_phase_r;
+    binaural_block plan=prepare_binaural(&e);assert(plan.steady);
+    for(uint32_t i=0;i<frames;i++){
+      float old_l=e.binaural_phase_l,old_r=e.binaural_phase_r,l=0,r=0;
+      render_binaural(&e,&plan,&l,&r);
+      wraps_l+=e.binaural_phase_l<old_l;wraps_r+=e.binaural_phase_r<old_r;
+      assert(isfinite(l)&&isfinite(r));
     }
-    /* A 1020-Hz sine at this level easily stays below this threshold;
-       a discontinuous phase reset or dry/wet blast would violate it. */
-    assert(max_jump<5000);
-    sr_set_binaural(&e,0);
-    render_seconds(1);
-    for(unsigned i=0;i<512;i++)assert(abs(pcm[i])<10);
-    e.frequency_lock=1;
-    e.binaural_enabled=1;
-    render_seconds(1);
-    for(unsigned i=0;i<512;i++)assert(abs(pcm[i])<10);
-    printf("PASS OFF/ON/OFF fades, 1000/40 sweep, frequency lock, peak step %u\n",max_jump);
-}
-int main(void)
-{
-    stereo_spectrum(220.f,6.f);
-    stereo_spectrum(432.f,8.f);
-    stereo_spectrum(980.f,40.f);
-    toggle_and_safety();
-    puts("PASS binaural stereo and routing");
+    double l=(wraps_l+e.binaural_phase_l-start_l)/10800.;
+    double r=(wraps_r+e.binaural_phase_r-start_r)/10800.;
+    assert(fabsf((float)(l-999.75))<.01&&fabsf((float)(r-1000.25))<.01);
+    assert(fabsf((float)((r-l)-.5))<.003);
+    printf("PASS actual 3h binaural kernel: L %.6f R %.6f difference %.6f Hz\n",l,r,r-l);
+  }
+  puts("PASS carrier/beat extremes, exact settling, FX isolation, off silence, solo fade and rapid sweeps");
 }

@@ -23,7 +23,7 @@ static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm
 static unsigned drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, last_control_ms;
 static unsigned ui_theme, ui_font_size=1, ui_background, preferences_dirty, preferences_changed;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
-static unsigned air_on, air_hold, air_poll;
+static unsigned air_on, air_hold, air_poll, air_tab;
 static aq_air_sensor air_sensor;
 static unsigned air_packets, air_packet_window, air_packet_rate, air_last_packet_ms, air_packet_total;
 static unsigned air_window_start;
@@ -103,6 +103,7 @@ typedef struct {
     sr_motion motion[2];
     uint8_t perfect_key, lighting, fps_auto;
     uint8_t visual, theme, font_size, background;
+    uint8_t air_fx, air_depth;
 } aq_settings;
 
 /* Never write flash in the callback. All preference edits are coalesced and
@@ -112,12 +113,13 @@ static int save_preferences(void)
 {
     aq_settings settings={0};
     unsigned flags=plat_lock();
-    settings.version=0x41513033u;
+    settings.version=0x41513034u;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
     settings.lighting=lighting;settings.fps_auto=fps_auto;
     settings.visual=visual_mode;settings.theme=ui_theme;
     settings.font_size=ui_font_size;settings.background=ui_background;
+    settings.air_fx=engine.air_fx;settings.air_depth=engine.air_depth;
     plat_unlock(flags);
     int result=plat_store_save(OBJ_SETTINGS,&settings,sizeof(settings));
     if(!result)preferences_dirty=0;
@@ -185,7 +187,7 @@ static void mix_select(int delta)
 static unsigned control_for(unsigned knob)
 {
  if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
- if(page==PAGE_AIR){static const uint8_t controls[]={66,67,68,69};return controls[knob];}
+ if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,67}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0}};
    return controls[drum_tab][knob];
@@ -324,6 +326,9 @@ static void consume(void){
  case 65:engine.groove_strength=bounded(engine.groove_strength+d*5,0,100);break;
  case 67:engine.air_track=bounded(engine.air_track+d,0,SR_TRACKS);break;
  case 70:engine.air_target=bounded(d,0,100)*.01f;break;
+ case 93:engine.air_fx=bounded(engine.air_fx+d,0,2);break;
+ case 94:engine.air_depth=bounded(engine.air_depth+d*5,0,100);break;
+ case 95:engine.air_target=adjust(engine.air_target,d,.05f,1);break;
  case 75:case 76:case 77:
    if(c.track<SR_DRUMS){
      int8_t *edit=c.kind==75?&t->tone:c.kind==76?&t->attack:&t->release;
@@ -382,10 +387,11 @@ void app_init(void)
     engine.clock_ticks=plat_ticks24;
     aq_settings settings={0};
     int prefs_size=plat_store_size(OBJ_SETTINGS);
-    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==(int)sizeof(settings))&&
+    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==24||prefs_size==(int)sizeof(settings))&&
        plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==prefs_size&&
        (settings.version==0x41513032u||
-        (settings.version==0x41513033u&&prefs_size==(int)sizeof(settings)))){
+        (settings.version==0x41513033u&&prefs_size==24)||
+        (settings.version==0x41513034u&&prefs_size==(int)sizeof(settings)))){
       for(unsigned i=0;i<2;i++){
         sr_motion m=settings.motion[i];
         if(m.glide_mode<=2&&m.glide_ms>=10&&m.glide_ms<=800&&
@@ -394,16 +400,21 @@ void app_init(void)
       engine.perfect_key=!!settings.perfect_key;
       lighting=settings.lighting<=3?settings.lighting:0;
       fps_auto=!!settings.fps_auto;
-      if(settings.version==0x41513033u){
+      if(settings.version>=0x41513033u){
         ui_theme=settings.theme<=4?settings.theme:0;
         ui_font_size=settings.font_size<=2?settings.font_size:1;
         ui_background=settings.background<=1?settings.background:0;
+        if(settings.version==0x41513034u){
+          engine.air_fx=settings.air_fx<=2?settings.air_fx:0;
+          engine.air_depth=settings.air_depth<=100?settings.air_depth:100;
+        }
       }
     }
     arrangement_init();
     /* arrangement_init resets its bank cursor and visual slot. Restore the
      * saved global visualizer before first intro frame, independent of banks. */
-    if(settings.version==0x41513033u&&prefs_size==(int)sizeof(settings))
+    if((settings.version==0x41513033u&&prefs_size==24)||
+       (settings.version==0x41513034u&&prefs_size==(int)sizeof(settings)))
       visual_mode=settings.visual<=1?settings.visual:0;
     visual_init();
     plat_cpu2_set(1);
@@ -539,7 +550,12 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
    if(!debug&&page==2)song_tab=(song_tab+1)%4;
-   if(page==PAGE_SOUND)sound_picker=!sound_picker;
+   if(page==PAGE_SOUND){
+     unsigned index=0;
+     for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
+     group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
+   }
+   if(page==PAGE_AIR)air_tab=!air_tab;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%3;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%4;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
@@ -646,7 +662,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
     else if(control==92){ui_background=bounded((int)ui_background+d,0,1);preferences_changed_now();}
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
-    else send(control,bounded(d,-8,8));
+    else {send(control,bounded(d,-8,8));if(control==93||control==94)preferences_changed_now();}
     if(control!=72){knob_focus=i;knob_until=plat_ms()+900;}
     dirty=1;
  }
@@ -915,6 +931,11 @@ int app_expect(const char *what,int *got){
  }
  else if(!strcmp(what,"groove_mode"))*got=engine.groove_mode;
  else if(!strcmp(what,"groove_strength"))*got=engine.groove_strength;
+ else if(!strcmp(what,"air_fx"))*got=engine.air_fx;
+ else if(!strcmp(what,"air_depth"))*got=engine.air_depth;
+ else if(!strcmp(what,"air_percent"))*got=engine.air_target*100.f+.5f;
+ else if(!strcmp(what,"air_tab"))*got=air_tab;
+ else if(!strcmp(what,"sound_picker"))*got=sound_picker;
  else if(!strcmp(what,"air_track"))*got=engine.air_track;
  else if(!strcmp(what,"air_on"))*got=air_on;
  else if(!strcmp(what,"mix_focus"))*got=mix_focus;

@@ -342,7 +342,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   memset(e,0,sizeof(*e)); e->rng=seed?seed:0x73ac05u;
   if(!lut_ready){for(int i=0;i<=LUT;i++)sin_table[i]=sinf((float)i*2.f*PI/(float)LUT);lut_ready=1;}
   e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
-  e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->groove_strength=100;e->air_track=SR_TRACKS;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
+  e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
@@ -624,20 +624,42 @@ static inline __attribute__((always_inline)) float advance(float *phase,float hz
   if(*phase>=1.f)*phase-=1.f;
   return sine(*phase);
 }
-/* Stereo binaural oscillators retain independent continuous phases and are
- * always mixed AFTER shared FX. The interpolation groups below eliminate
- * per-sample carrier/beat smoothing and divisions while closely tracking the
- * original 0.0005 one-pole coefficient. Group size is at most 8 samples
- * (~0.18 ms), and the midpoint phase increment integrates a smooth sweep.
- * No extra voices, allocation, or work are added while binaural is off. */
-static inline __attribute__((always_inline)) float binaural_group_alpha(unsigned count){
-  float n=(float)count;
-  return n*.0005f - n*(n-1.f)*.000000125f;
+typedef struct { float target,step_l,step_r,gain; int steady; } binaural_block;
+static inline __attribute__((always_inline)) binaural_block prepare_binaural(const sr_engine *e){
+  binaural_block b;
+  b.target=(e->running && e->binaural_enabled && e->solo==SR_TRACKS)?1.f:0.f;
+  b.steady=e->binaural_env==b.target && e->carrier_now==e->binaural_carrier &&
+           e->beat_now==e->binaural_rate;
+  b.step_l=(e->carrier_now-e->beat_now*.5f)*(1.f/(float)SR_RATE);
+  b.step_r=(e->carrier_now+e->beat_now*.5f)*(1.f/(float)SR_RATE);
+  b.gain=e->binaural_level*e->binaural_env;
+  return b;
 }
-static inline __attribute__((always_inline)) float sine_step(float *phase,float step){
-  *phase+=step;
-  if(*phase>=1.f)*phase-=1.f;
-  return sine(*phase);
+/* Float smoothing eventually stalls short of its target. Snap only at that
+   representational limit; this also makes the exact steady path reachable. */
+static inline __attribute__((always_inline)) float binaural_smooth(float now,float target,float rate){
+  float next=now+(target-now)*rate;
+  return next==now?target:next;
+}
+static inline __attribute__((always_inline)) void render_binaural(sr_engine *e,const binaural_block *b,float *left,float *right){
+  // Each ear gets a separate sinusoid, mixed AFTER shared FX to preserve
+  // the ear-specific frequency difference. Never collapse to mono.
+  if(b->steady){
+    e->binaural_phase_l+=b->step_l;e->binaural_phase_r+=b->step_r;
+    if(e->binaural_phase_l>=1.f)e->binaural_phase_l-=1.f;
+    if(e->binaural_phase_r>=1.f)e->binaural_phase_r-=1.f;
+    *left+=sine(e->binaural_phase_l)*b->gain;
+    *right+=sine(e->binaural_phase_r)*b->gain;
+    return;
+  }
+  e->binaural_env=binaural_smooth(e->binaural_env,b->target,.0009f);
+  if(e->binaural_env<.00003f && !b->target){e->binaural_env=0;return;}
+  e->carrier_now=binaural_smooth(e->carrier_now,e->binaural_carrier,.0005f);
+  e->beat_now=binaural_smooth(e->beat_now,e->binaural_rate,.0005f);
+  float hz_left=e->carrier_now-e->beat_now*.5f;
+  float hz_right=e->carrier_now+e->beat_now*.5f;
+  *left+=advance(&e->binaural_phase_l,hz_left)*e->binaural_level*e->binaural_env;
+  *right+=advance(&e->binaural_phase_r,hz_right)*e->binaural_level*e->binaural_env;
 }
 static const uint8_t ornament_track[]={SR_PIANO,SR_GUITAR,SR_LEAD,SR_HARMONY};
 static const float ornament_gate[]={1.45f,1.7f,2.3f,1.8f};
@@ -932,7 +954,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     if(t==SR_DRUMS)level*=1.f+((int)e->drum_presence-50)*.006f;
     float send_level=track->send;
     if(e->air_track==SR_TRACKS||e->air_track==t)
-      send_level+=(1.f-send_level)*e->air_wet;
+      send_level+=(1.f-send_level)*e->air_wet*(e->air_depth*.01f);
     send[t]=level*send_level;
     if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
     left[t]=level*(.5f-.31f*track->pan);
@@ -1119,8 +1141,10 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
   unsigned mask=e->fx_mask;
   int audible=e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_FX;
   float reverb=e->reverb_amount;
-  if(e->air_track==SR_TRACKS)reverb+=(.8f-reverb)*e->air_wet*.35f;
+  float air=e->air_wet*(e->air_depth*.01f);
+  if(e->air_fx==0||e->air_fx==2)reverb+=(.8f-reverb)*air;
   float delay=e->delay_amount;
+  if(e->air_fx==1||e->air_fx==2)delay+=(.7f-delay)*air;
   for(size_t i=0;i<frames;i++){
     e->reverb_wet+=(reverb-e->reverb_wet)*.002f;
     e->delay_wet+=(delay-e->delay_wet)*.002f;
@@ -1144,40 +1168,15 @@ static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t fra
   int binaural=!e->frequency_lock&&!e->nature_audition&&!e->preview_frames&&
      (e->binaural_env>=.00003f||(e->running&&e->binaural_enabled&&e->solo==SR_TRACKS));
   if(!binaural&&e->binaural_env<.00003f)e->binaural_env=0;
-  const unsigned binaural_audible=binaural&&
-    (e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL);
-  const float binaural_target=e->running&&e->binaural_enabled&&e->solo==SR_TRACKS?1.f:0.f;
-  unsigned group_remaining=0;
-  float left_step=0.f,right_step=0.f;
+  binaural_block binaural_plan={0};
+  if(binaural)binaural_plan=prepare_binaural(e);
   for(size_t i=0;i<frames;i++){
     float l=dry[3*i],r=dry[3*i+1];
-    if(binaural){
-      if(!group_remaining){
-        unsigned count=(unsigned)(frames-i);
-        if(count>8u)count=8u;
-        group_remaining=count;
-        float alpha=binaural_group_alpha(count);
-        float carrier_delta=(e->binaural_carrier-e->carrier_now)*alpha;
-        float beat_delta=(e->binaural_rate-e->beat_now)*alpha;
-        float carrier_mid=e->carrier_now+carrier_delta*.5f;
-        float beat_mid=e->beat_now+beat_delta*.5f;
-        left_step=(carrier_mid-beat_mid*.5f)*(1.f/SR_RATE);
-        right_step=(carrier_mid+beat_mid*.5f)*(1.f/SR_RATE);
-        e->carrier_now+=carrier_delta;
-        e->beat_now+=beat_delta;
-      }
-      group_remaining--;
-      /* Retain the original per-sample fade for click-free enable/disable. */
-      e->binaural_env+=(binaural_target-e->binaural_env)*.0009f;
-      if(e->binaural_env>=.00003f||binaural_target){
-        float mono_gain=e->binaural_level*e->binaural_env;
-        float binaural_l=sine_step(&e->binaural_phase_l,left_step)*mono_gain;
-        float binaural_r=sine_step(&e->binaural_phase_r,right_step)*mono_gain;
-        if(binaural_audible){
-          if(!(i&7u))bus_meter(e,SR_BUS_BINAURAL,fmaxf(fabsf(binaural_l),fabsf(binaural_r)));
-          l+=binaural_l;r+=binaural_r;
-        }
-      }
+    float binaural_l=0,binaural_r=0;
+    if(binaural)render_binaural(e,&binaural_plan,&binaural_l,&binaural_r);
+    if(binaural&&(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL)){
+      if(!(i&7u))bus_meter(e,SR_BUS_BINAURAL,fmaxf(fabsf(binaural_l),fabsf(binaural_r)));
+      l+=binaural_l;r+=binaural_r;
     }
     // Soft-knee master saturation controls peaks without a dynamic allocation.
     float level=fmaxf(fabsf(l),fabsf(r));
@@ -1242,8 +1241,9 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   unsigned fading=e->stop_frames;
   unsigned audition=e->nature_audition;
   render_block(e,dry,n);
-  unsigned reverb=e->reverb_amount>0||e->reverb_wet>.00001f||(e->air_track==SR_TRACKS&&e->air_wet>.00001f);
-  unsigned delay=e->delay_amount>0||e->delay_wet>.00001f;
+  unsigned air_active=e->air_depth&&e->air_wet>.00001f;
+  unsigned reverb=e->reverb_amount>0||e->reverb_wet>.00001f||(air_active&&e->air_fx!=1);
+  unsigned delay=e->delay_amount>0||e->delay_wet>.00001f||(air_active&&e->air_fx!=0);
   unsigned fx_mask=(reverb?1u:0u)|((reverb||delay)?2u:0u);
   if(e->fx_mask&~fx_mask){
     if(!(fx_mask&1)){e->rev_history=0;memset(e->rev_pos,0,sizeof(e->rev_pos));e->reverb_wet=0;}
