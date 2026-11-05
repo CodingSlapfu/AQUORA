@@ -46,5 +46,21 @@ int main(void)
         sr_render(&engine,pcm,128);
         assert(!engine.play_queued&&!keyed(2));
     }
+    sr_init(&engine,43);
+    sr_set_scene(&engine,1);
+    sr_start(&engine);
+    engine.tick_length=640;
+    engine.tick_phase=640;
+    engine.play_grid=1;
+    engine.play_feel=1;
+    engine.play_strength=50;
+    sr_render(&engine,pcm,10);
+    sr_key_down(&engine,SR_LEAD,6);
+    assert(engine.play_due[6]-engine.frame_count==340);
+    sr_key_down(&engine,SR_BASS,9);
+    assert(engine.play_due[9]-engine.frame_count==315);
+    engine.play_strength=0;
+    sr_key_down(&engine,SR_LEAD,11);
+    assert(keyed(11));
     puts("PASS Play Along snaps to the exact configured or automatic sample, plays short taps and clears on STOP");
 }

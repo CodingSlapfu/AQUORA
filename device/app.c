@@ -18,13 +18,13 @@ static unsigned window_ms;
 static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
-static unsigned mix_tab,mix_reset,mix_bus,song_tab,song_nonce;
+static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce;
 static unsigned drum_tab, setup_tab, sound_picker, fullscreen, last_control_ms;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
 static unsigned air_on, air_hold, air_calibrated, air_poll;
 static char air_source[21];
 static unsigned quick_item;
-static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance"};
+static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature"};
 static int air_reference, air_rssi;
 static const uint8_t sound_groups[]={0,6,1,2,3,5,7,12,11,13};
 
@@ -35,7 +35,7 @@ enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,12},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,22},{32,33,34,35},{13,24,29,28},
- {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,46,63,0},{55,14,48,45}
+ {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,63,73,74},{55,14,48,45}
 };
 static const uint8_t page_controls[4][4]={
  {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,29,49}
@@ -69,6 +69,36 @@ static timing_summary summarize(const timing *t)
     return result;
 }
 #include "visual_worker.c"
+static int mix_visible(unsigned channel)
+{
+ if(mix_tab!=3)return 1;
+ if(channel<SR_TRACKS){
+   const sr_track *track=&engine.tracks[channel];
+   return !track->mute&&track->volume>0&&(channel!=SR_DRUMS||engine.drums_enabled);
+ }
+ switch(channel-SR_TRACKS){
+ case SR_BUS_NATURE:return engine.bed_level>0;
+ case SR_BUS_SACRED:return engine.sacred_mode&&engine.sacred_level>0;
+ case SR_BUS_REFERENCE:return engine.tone_level>0;
+ case SR_BUS_BINAURAL:return engine.binaural_enabled&&engine.binaural_level>0;
+ default:return engine.reverb_amount>0||engine.delay_amount>0||engine.air_wet>0;
+ }
+}
+static void mix_select(int delta)
+{
+ int next=(int)mix_focus;
+ int direction=delta>0?1:-1;
+ unsigned moves=delta>0?(unsigned)delta:(unsigned)-delta;
+ while(moves){
+   next+=direction;
+   if(next<0||next>=SR_TRACKS+SR_BUS_COUNT)break;
+   if(!mix_visible((unsigned)next))continue;
+   mix_focus=(unsigned)next;
+   moves--;
+ }
+ if(mix_focus<SR_TRACKS)selected=mix_focus;
+ else mix_bus=mix_focus-SR_TRACKS;
+}
 static unsigned control_for(unsigned knob)
 {
  if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
@@ -86,7 +116,7 @@ static unsigned control_for(unsigned knob)
    static const uint8_t ids[][4]={{58,59,60,61},{64,65,46,20}};
    return ids[song_tab-1][knob];
  }
- if(page==PAGE_MIX&&mix_tab==4){
+ if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
    static const uint8_t controls[SR_BUS_COUNT][4]={{5,21,54,0},{30,31,36,0},
       {22,4,48,45},{23,6,7,8},{11,12,50,51}};
    return controls[mix_bus][knob];
@@ -134,7 +164,7 @@ static void consume(void){
    break;
  }
  case 2:if(c.track==SR_DRUMS)sr_set_drum_kit(&engine,bounded(engine.drum_kit+d,0,SR_DRUM_KITS-1));else sr_set_track_patch(&engine,c.track,bounded(t->patch+d,0,SR_PATCHES-1));break;
- case 3:if(!interrupted&&play&&((physical_keys&(1u<<d))||(engine.play_grid&&!engine.keyboard_mode)))sr_key_down(&engine,c.track,(unsigned)d);break;
+ case 3:if(!interrupted&&play&&((physical_keys&(1u<<d))||(engine.play_grid&&engine.play_strength&&!engine.keyboard_mode)))sr_key_down(&engine,c.track,(unsigned)d);break;
  case 4:sr_set_frequency(&engine,bounded(engine.frequency+d,0,SR_FREQUENCIES-1));break;
  case 5:engine.bed_level=adjust(engine.bed_level,d,.02f,1);break;
  case 6:sr_set_binaural(&engine,switched(engine.binaural_enabled,d));break;
@@ -156,7 +186,7 @@ static void consume(void){
  case 22:engine.tone_level=adjust(engine.tone_level,d,.005f,.10f);break;
  case 23:engine.binaural_level=adjust(engine.binaural_level,d,.005f,.10f);break;
  case 24:t->pan=fm_clampf(t->pan+d*.05f,-1,1);break;
- case 25:engine.tick_length=bounded((int)engine.tick_length-d*80,5512,22050);break;
+ case 25:engine.play_queued=0;engine.tick_length=bounded((int)engine.tick_length-d*80,5512,22050);break;
  case 27:sr_set_perfect_key(&engine,!engine.perfect_key);break;
  case 28:if(d<0)engine.solo=SR_TRACKS;else engine.solo=d>0?c.track:engine.solo==c.track?SR_TRACKS:c.track;break;
  case 29:t->send=adjust(t->send,d,.05f,1);break;
@@ -191,6 +221,8 @@ static void consume(void){
  case 65:engine.groove_strength=bounded(engine.groove_strength+d*5,0,100);break;
  case 67:engine.air_track=bounded(engine.air_track+d,0,SR_TRACKS);break;
  case 70:engine.air_target=bounded(d,0,100)*.01f;break;
+ case 73:engine.play_strength=bounded(engine.play_strength+d*5,0,100);engine.play_queued=0;break;
+ case 74:engine.play_feel=switched(engine.play_feel,d);engine.play_queued=0;break;
  case 63:engine.play_grid=bounded(engine.play_grid+d,0,4);engine.play_queued=0;break;
  case 62:engine.drum_presence=bounded(engine.drum_presence+d,0,100);break;
  case 61:if(d>0)engine.sound_locks|=SR_SOUND_NATURE|SR_SOUND_FX;else engine.sound_locks&=~(SR_SOUND_NATURE|SR_SOUND_FX);break;
@@ -308,7 +340,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    plat_unlock(flags);
  }
  if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=0;send(44,0);}
- if(press&(1u<<B_SEL))send(15,0);
+ if((press&(1u<<B_SEL))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
  if(press&(1u<<B_REC))plat_cpu2_set(0);
@@ -327,7 +359,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
  if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%3:0;page=PAGE_DRUMS;debug=0;}
- if(press&(1u<<B_LFO))send(debug?27:28,0);
+ if((press&(1u<<B_LFO))&&!(page==PAGE_MIX&&!debug&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(debug?27:28,0);
  if((press&(1u<<B_SAVE))&&page==3&&mix_tab==2&&!debug){
     if(mix_reset)send(53,0);
     mix_reset=0;
@@ -359,6 +391,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=(int)i;
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
    }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
+   else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3))mix_select(d);
    else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
    knob_until=0;dirty=1;
  }
@@ -368,7 +401,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     d=enc[3+i];
     unsigned control=control_for(i);
     if(!d||!control)continue;
-    if(control==71)quick_item=bounded((int)quick_item+d,0,6);
+    if(control==71)quick_item=bounded((int)quick_item+d,0,8);
     else if(control==72&&d>0){
       switch(quick_item){
       case 0:page=PAGE_DRUMS;drum_tab=0;break;
@@ -378,6 +411,8 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
       case 4:page=PAGE_AIR;break;
       case 5:page=PAGE_SETUP;setup_tab=1;break;
       case 6:debug=1;break;
+      case 7:page=PAGE_SOUND;group=GROUP_KEYS;sound_picker=0;break;
+      case 8:page=PAGE_SOUND;group=1;sound_picker=0;break;
       }
     }else if(control==66){
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
@@ -508,10 +543,17 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"setup_tab"))*got=setup_tab;
  else if(!strcmp(what,"drum_tab"))*got=drum_tab;
  else if(!strcmp(what,"sound_group"))*got=group;
+ else if(!strcmp(what,"key_pending"))*got=engine.pending_physical_key;
+ else if(!strcmp(what,"key_onset"))*got=engine.play_queued!=0;
+ else if(!strcmp(what,"key_held")){
+   *got=0;
+   for(unsigned i=0;i<SR_VOICES;i++)*got|=engine.voices[i].key&&engine.voices[i].gate;
+ }
  else if(!strcmp(what,"groove_mode"))*got=engine.groove_mode;
  else if(!strcmp(what,"groove_strength"))*got=engine.groove_strength;
  else if(!strcmp(what,"air_track"))*got=engine.air_track;
  else if(!strcmp(what,"air_on"))*got=air_on;
+ else if(!strcmp(what,"mix_focus"))*got=mix_focus;
  else if(!strcmp(what,"mix_bus"))*got=mix_bus;
  else if(!strcmp(what,"mix_tab"))*got=mix_tab;
  else if(!strcmp(what,"isolation"))*got=engine.isolate;

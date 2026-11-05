@@ -1,5 +1,5 @@
 # AQUORA fast resume
-**Latest 0.6.0:** Use the source buses and branch recovery section of CHECKPOINT.md. Recover the archives in evidence/0.6.0/buses/ and verify SHA256SUMS.txt. Production remains 0.5.0.
+**Latest 0.6.0:** Read the Play Along and unified mixer section of CHECKPOINT.md. Verify the source and staged installer archives under evidence/0.6.0/unified/. Production remains 0.5.0.
 **Current 0.6.0:** Read the controls, visualizer and experimental AIR section of CHECKPOINT.md. Verify evidence/0.6.0/integration archives under the existing lock.
 **Current 0.6.0:** Resume from the motif memory and groove section of CHECKPOINT.md. Verify evidence/0.6.0/memory archives under the existing lock.
 **Current 0.6.0:** Read the role evolution section of CHECKPOINT.md. Recover evidence/0.6.0/roles archives and verify SHA256SUMS.txt. Acquire the existing lock before resuming.

@@ -1,12 +1,12 @@
-# AQUORA 0.3.0 — FM-1
+# AQUORA 0.6.0 — FM-1
 
-An original generative musical instrument for reflective listening. No medical benefit is claimed. Acoustic names describe synthesized instruments, not recordings. The owner confirmed installation and excellent general sound on 0.2.0 and reported roughly 74% processing. The changes in 0.3.0 await FM-1 verification.
+An original generative musical instrument for reflective listening. Patch names describe synthesized instruments.
 
 ## Start
 Turn the physical master down, install, then press PLAY and raise the master gradually. Playback starts only when requested. PLAY stops new events immediately and fades the entire mix over 256 samples (5.8 ms at 44.1 kHz). Digital silence follows until PLAY restarts. Keys play only while transport is running. Release and press a held key again after restarting.
 
 ## Navigation
-ALGORITHM selects PLAY, SOUND, EVOLVE, MIX. SELECT chooses Lead, Bass, Pads, Harmony, Piano, Plucks, Choir, or Drums. PRESET chooses a scene on PLAY, and the selected track's patch or drum kit on other pages. These controls never change their navigation meaning. HOME returns to PLAY. SEL mutes the selected role; its name dims. EDIT cycles SOUND’s eleven groups. The display shows all current knob values and highlights the latest adjustment. The selected track number and patch remain visible.
+Turn ALGORITHM to choose a page. HOME returns to PLAY. ARP jumps to DRUMS, OCT− opens arrangement banks, and GLO opens Performance. Use SELECT to focus a track or category. On SOUND, EDIT opens the category picker. Turn SELECT to choose, then press EDIT to open it. Knob assignments and values appear at the bottom of the screen.
 
 | Page or SOUND group | K1 | K2 | K3 | K4 |
 |---|---|---|---|---|
@@ -20,7 +20,7 @@ ALGORITHM selects PLAY, SOUND, EVOLVE, MIX. SELECT chooses Lead, Bass, Pads, Har
 | SOUND / Lead / Bass Motion | Off / legato / always glide | Glide milliseconds | Vibrato rate in 0.1 Hz steps | Vibrato depth in cents, 0 disables |
 | SOUND / Track Routing | Track level | Pan | FX send | Solo / clear |
 | SOUND / Percussion HIT | HIT % (0–100) | Drum level | Density 0–8 | Drums ON/OFF |
-| SOUND / Visualizer | Original / Water Cymatics | — | — | — |
+| SOUND / Visualizer | Original / Resonance | — | — | — |
 | SOUND / Arrangement Banks | Bank 1–4 | LOAD / SAVE | Overwrite arm | Visualizer |
 | EVOLVE | Motif variation | Freeze toggle | Tempo | Loop steps 16/32/64 |
 | MIX / Channels | Track level | Pan | FX send | Mute |
@@ -68,8 +68,7 @@ follow the intention again. Reference tone is off until its level is raised.
 EVOLVE K4 selects 16, 32 or 64 steps. During playback the new length applies
 at the start of the next full loop. Longer loops keep the same pulse and
 derive distinct response phrases from the stored motif.
-SOUND > Keyboard K1 switches between Play Along and Change Key. SELECT picks
-the Play Along instrument. In Change Key, the keys map chromatically from F
+Press EDIT on PLAY to switch between Play Along and Change Key. For timing controls, open SOUND > Keyboard or choose Play Along in SETUP > Quick Find. K1 changes mode, K2 selects Live, 1/8, 1/16, 1/32 or Auto, K3 sets timing strength, and K4 selects Straight or Intention feel. Auto uses 1/32 at slower tempos and 1/16 otherwise. At 100%, a note waits for the next grid position. Lower strength shortens the wait. Live and 0% play immediately. Intention feel shifts offbeats for pitched instruments other than Bass. SELECT chooses the Play Along instrument. In Change Key, the keys map chromatically from F
 and select the new tonic without sounding a note. The last choice applies
 on the next loop downbeat. If transport stops first, the choice applies on
 the next PLAY. The active key and pending choice are shown on the screen.
@@ -80,15 +79,9 @@ Nature, binaural, Sacred Bass, fixed reference and FX are suppressed while
 locked. Reference Layer restores the ordinary arrangement. ENV still toggles
 A4 tuning for Reference Layer.
 
-MIX shows eight channel strips. SELECT chooses a strip, SEL toggles mute and
-LFO toggles solo. EDIT cycles Channels, Master FX and Reset. On Reset, turn
-K1 to arm and press SAVE to restore default mix settings. This leaves saved
-banks intact. Auto Gain gently trims measured track levels. Auto Level uses
-role-specific balance and a lower peak ceiling; the two can run together.
+On MIX, use EDIT to cycle the views. On Reset, turn K1 to arm and press SAVE to restore default mix settings. Auto Gain gently trims measured track levels. Auto Level applies role-specific balance and a lower peak ceiling. You can run both together.
 
-Water Cymatics fills the PLAY viewport with intersecting traveling and
-reflected waves. Turn a PLAY knob to reveal its control overlay. Original
-remains selectable under SOUND > Visualizer or Arrangement Banks.
+Resonance displays reactive ribbons on PLAY. Select Original or Resonance under SETUP. After 10 seconds without navigation input, PLAY enters fullscreen. Musical keys continue to play in fullscreen. Turn a navigation control to return to PLAY.
 
 The Lock Textures group can explicitly add drums and Nature to Frequency Lock.
 This introduces other frequencies. Leave Extra Textures off for strict output.
@@ -124,12 +117,7 @@ Straight or Swing. K2 scales the timing offset from 0 to 100 percent. K3 is
 loop length and K4 is Freeze. The timing profile applies to evolving piano
 and pluck offbeats. Bass, drums and downbeats stay on the transport clock.
 
-MIX opens with all eight musical tracks visible. EDIT cycles All Channels,
-Master FX, Reset Mix and Active Channels. Active Channels hides muted and
-zero-level channels and hides Drums when disabled. SELECT still chooses the
-physical track for adjustment, with All Channels available to recover hidden
-tracks. These channels correspond to existing independently controlled
-tracks.
+MIX opens with musical channels and source buses together. Turn SELECT through the tracks and buses to change the focused controls. EDIT cycles All Channels, Master FX, Reset Mix, Active Channels and the taller Source Buses view. Use All Channels to recover muted or disabled sources. SEL and LFO mute and solo musical tracks. Bus controls retain their own routing. For example, Binaural keeps its stereo separation.
 
 AIR is an opt-in experiment. K1 enables scanning, K2 selects a track or All,
 K3 captures the first named compatible BLE MIDI advertiser as a reference,

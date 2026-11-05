@@ -52,7 +52,8 @@ typedef struct {
   float air_target, air_wet;
   float bus_meter[SR_BUS_COUNT];
   uint32_t play_queued, play_released;
-  uint8_t play_track[27];
+  uint8_t play_track[27], play_strength, play_feel;
+  uint32_t play_due[27];
   uint32_t nature_audition, bird_wait;
   float nature_peak;
   uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;

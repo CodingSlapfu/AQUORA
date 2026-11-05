@@ -67,6 +67,7 @@ static void keys_and_motion(void)
     static const unsigned masks[]={0x295,0x4ad,0x295,0x4a9,0x2a5,0xab5,0x4a9,0xab5,0x4ad,0xab5,0x295,0x2a5,0xab5};
     sr_init(&engine,31);
     assert(engine.perfect_key);
+    engine.play_grid=0; /* Inspect glide allocation before rendering any frames. */
     for(unsigned scene=0;scene<SR_SCENES;scene++){
         sr_set_scene(&engine,scene);
         int previous=0;

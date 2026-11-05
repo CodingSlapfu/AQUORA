@@ -1,0 +1,28 @@
+master 2048
+turn ALGO 3
+expect mix_tab 0
+spin SELECT 8
+expect mix_focus 8
+expect mix_bus 0
+expect knobs_valid 1
+spin SELECT 3
+expect mix_focus 11
+expect mix_bus 3
+spin K2 1
+wait 100
+expect binaural 1
+tap SEL
+spin SELECT -11
+expect mix_focus 0
+expect mute 0
+tap SEL
+wait 20
+expect mute 1
+tap EDIT
+tap EDIT
+tap EDIT
+expect mix_tab 3
+spin SELECT 1
+expect mix_focus 1
+expect knobs_valid 1
+shot unified.png

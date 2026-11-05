@@ -1,0 +1,1 @@
+5ea2ca0cb73eff9dc8642398f16543eacf5cc08f5733bac6ac367c745a5f7243  mix-stage/firmware/sound-healing-0.6.0.fwsc

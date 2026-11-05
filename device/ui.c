@@ -123,6 +123,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 71:*name="QUICK FIND";return quick_names[quick_item];
  case 72:*name="OPEN";return "Turn right";
  case 69:*name="AIR HOLD";return onoff(air_hold);
+ case 73:*name="KEY SNAP %";number=engine.play_strength;break;
+ case 74:*name="KEY FEEL";return engine.play_feel?"Intention":"Straight";
  case 63:{static const char *grid[]={"Live","1/16","1/32","Auto","1/8"};*name="PLAY GRID";return grid[engine.play_grid];}
  case 62:*name="PRESENCE %";number=engine.drum_presence;break;
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
@@ -249,8 +251,40 @@ static void performance(int band)
    num(v,plat_cpu2_bad());cv_text(185,27,&FONT_B,v,C_WHITE);
  }
 }
+static void mixer_overview(int band)
+{
+ static const char *names[]={"LD","BS","PD","HM","PN","PL","CH","DR","Nature","Sacred","Ref","Binaural","FX"};
+ unsigned first=band==1?0:SR_TRACKS, end=band==1?SR_TRACKS:SR_TRACKS+SR_BUS_COUNT;
+ unsigned count=0;
+ for(unsigned channel=first;channel<end;channel++)count+=mix_visible(channel);
+ if(!count){
+   cv_text(8,12,&FONT_XS,band==1?"NO ACTIVE TRACKS":"NO ACTIVE BUSES",C_WHITE);
+   return;
+ }
+ int width=232/(int)count, x=4;
+ for(unsigned channel=first;channel<end;channel++){
+   if(!mix_visible(channel))continue;
+   unsigned bus=channel>=SR_TRACKS;
+   unsigned id=bus?channel-SR_TRACKS:channel;
+   const sr_track *track=&engine.tracks[id];
+   uint16_t color=!bus&&track->mute?RGB(75,90,112):colors[id];
+   if(channel==mix_focus)cv_line(x,0,x+width-3,0,C_WHITE);
+   limited_text(x+2,2,width-3,&FONT_XS,names[channel],color);
+   float magnitude=bus?engine.bus_meter[id]:track->meter;
+   int meter=(int)(fm_sqrtf(fm_sqrtf(fm_clampf(magnitude,0,1)))*26.f);
+   for(int w=0;w<5;w++)cv_line(x+3+w,45-meter,x+3+w,45,color);
+   if(!bus){
+     int fader=45-(int)(track->volume*26.f);
+     cv_line(x+11,19,x+11,45,RGB(75,90,112));
+     cv_line(x+10,fader,x+width-4,fader,color);
+     if(engine.solo==id)cv_text(x+width-10,19,&FONT_XS,"S",C_WHITE);
+   }
+   x+=width;
+ }
+}
 static void mixer_band(int band)
 {
+ if(mix_tab==0||mix_tab==3){mixer_overview(band);return;}
  if(mix_tab==4){
    static const char *names[]={"Nature","Sacred","Ref","Binaural","FX"};
    int offset=(band-1)*48;

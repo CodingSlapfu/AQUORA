@@ -300,6 +300,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   e->motion[0]=(sr_motion){120,0,0,45}; e->motion[1]=(sr_motion){90,0,0,32};
   e->loop_length=16;
   e->play_grid=3;
+  e->play_strength=100;
   e->frequency_auto=1;
   sr_set_scene(e,0);
 }
@@ -402,6 +403,28 @@ static void play_key(sr_engine *e,uint8_t track,unsigned key,unsigned tap)
       voice->remain=tap?(e->tick_length/4u+1u):SR_RATE*8u;
     }
 }
+static const uint8_t intention_feel[SR_SCENES]={0,5,3,2,7,4,2,4,6,7,4,3,5};
+
+static uint32_t play_delay(const sr_engine *e,unsigned track)
+{
+    uint32_t length=e->tick_length, phase=e->tick_phase;
+    unsigned grid=e->play_grid;
+    if(grid==3)grid=length>7400u?2u:1u;
+    unsigned step=e->sequence_step-1u;
+    for(unsigned ahead=0;ahead<=2;ahead++){
+      if(grid==4&&((step+ahead)&1u))continue;
+      unsigned swing=e->play_feel&&track!=SR_DRUMS&&track!=SR_BASS?
+        length*intention_feel[e->scene]/64u:0;
+      uint32_t target=ahead*length+(((step+ahead)&1u)?swing:0);
+      if(target>=phase)return ((target-phase)*e->play_strength+50u)/100u;
+      if(grid==2){
+        target=ahead*length+length/2u+swing;
+        if(target>=phase)return ((target-phase)*e->play_strength+50u)/100u;
+      }
+    }
+    return 0;
+}
+
 void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
 {
     if(!e->running||key>=27||track>=SR_TRACKS)return;
@@ -410,7 +433,8 @@ void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
       e->pending_physical_key=(uint8_t)(key+1u);
       return;
     }
-    if(e->play_grid){
+    if(e->play_grid&&e->play_strength){
+      e->play_due[key]=e->frame_count+play_delay(e,track);
       e->play_track[key]=track;
       e->play_released&=~(1u<<key);
       e->play_queued|=1u<<key;
@@ -512,8 +536,7 @@ static inline __attribute__((always_inline)) void render_binaural(sr_engine *e,f
 static void ornament(sr_engine *e,unsigned slot,uint8_t midi,uint8_t velocity,float beats,
                      unsigned step,unsigned evolving)
 {
-  static const uint8_t feel[SR_SCENES]={0,5,3,2,7,4,2,4,6,7,4,3,5};
-  unsigned feel_units=e->groove_mode==1?0:e->groove_mode==2?6:feel[e->scene];
+  unsigned feel_units=e->groove_mode==1?0:e->groove_mode==2?6:intention_feel[e->scene];
   unsigned offset=evolving&&(step&15u)?
     (e->tick_length*feel_units*e->groove_strength+3200u)/6400u:0;
   if(offset&&offset<e->tick_length){
@@ -524,7 +547,7 @@ static void ornament(sr_engine *e,unsigned slot,uint8_t midi,uint8_t velocity,fl
 }
 static void trigger(sr_engine *e){
   if(!e->loop_pos){
-    if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;}
+    if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;e->play_queued=0;}
     if(e->pending_key){
       e->tonic_override=36+e->pending_key-1;
       e->pending_key=e->pending_physical_key=0;
@@ -940,17 +963,16 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   }
 
   if(e->running&&e->play_queued){
-    uint32_t phase=e->tick_phase, half=e->tick_length/2u;
-    unsigned grid=e->play_grid;
-    if(grid==3)grid=e->tick_length>7400u?2u:1u;
-    unsigned downbeat=!phase&&(grid!=4||((e->sequence_step-1u)&1u)==0u);
-    if(downbeat||(grid==2&&phase==half)){
-      uint32_t queued=e->play_queued;
-      e->play_queued=0;
-      for(unsigned key=0;key<27;key++)
-        if(queued&(1u<<key))play_key(e,e->play_track[key],key,e->play_released&(1u<<key));
-      e->play_released=0;
-    }else if(grid==2&&phase<half&&n>half-phase)n=half-phase;
+    for(unsigned key=0;key<27;key++){
+      uint32_t bit=1u<<key;
+      if(!(e->play_queued&bit))continue;
+      int32_t remaining=(int32_t)(e->play_due[key]-e->frame_count);
+      if(remaining<=0){
+        play_key(e,e->play_track[key],key,e->play_released&bit);
+        e->play_queued&=~bit;
+        e->play_released&=~bit;
+      }else if(n>(uint32_t)remaining)n=(uint32_t)remaining;
+    }
   }
 
   if(e->running&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;

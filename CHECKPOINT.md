@@ -109,3 +109,9 @@ Archived 0.5.0 bank migration and all four new grid settings passed an ASan/UBSa
 ### 0.6.0 short-tap and transport gate source checkpoint
 
 Quantized key taps released before onset now play once at the chosen grid with a bounded quarter-step gate. Held keys use the existing release reconciliation. Scene changes discard queued onsets and STOP clears them. Generated note lengths now use the live transport period. ASan/UBSan grid coverage checks exact onset, one bounded tap, held key release and STOP. Next add strength and groove feel, test the actual panel path and audition the duration change against 0.5.0. The verified staged firmware and installer remain the 924fbeb package.
+
+### 0.6.0 Play Along and unified mixer candidate
+
+Resumed cf75fa5 under the project lock. Play Along supports timing strength and Straight/Intention feel on the shared sample clock. The archived bank fixture and four round trips passed. Panel simulation exercised key-down/release, short taps and Change Key through STOP and the next loop boundary. MIX All and Active now show musical channels and source buses together, with SELECT spanning both rows. Quick Find includes Play Along and FX / Nature. Native, forced core-0, browser and staged updater tests passed. The package preserves FM-1_73000600. The compiler still reports the pinned SDK boot/EQ reference differences.
+
+Recover source and stage archives under evidence/0.6.0/unified and verify SHA256SUMS.txt. Production remains 0.5.0. Next complete the 240×240 feature reachability audit and editable patch-shape acceptance, extend generator profile and long-session checks, and complete release acceptance before publishing. FM-1 measurements remain open.
