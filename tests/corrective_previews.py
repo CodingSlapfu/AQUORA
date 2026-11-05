@@ -29,7 +29,7 @@ def clip(name, setup, **fixtures):
     files = sorted(folder.glob("*.png"))
     frames = [Image.open(path).convert("RGB") for path in files]
     assert len(frames) == 30 and all(frame.size == (240, 240) for frame in frames)
-    assert len({frame.tobytes() for frame in frames}) > 5
+    assert len({frame.tobytes() for frame in frames}) == 1 if name == "startup" else len({frame.tobytes() for frame in frames}) > 5
     frames[0].save(folder / "preview.gif", save_all=True, append_images=frames[1:],
                    duration=67, loop=0)
     for path in files[1:]:
@@ -95,5 +95,5 @@ clip("startup", ["wait 100"], AQUORA_TEST_INTRO="1")
 clip("sound", ["tap PLAY", "turn ALGO 1", "wait 300"])
 clip("evolve", ["tap PLAY", "turn ALGO 2", "wait 1000"])
 clip("original", ["tap PLAY", "wait 12300"])
-clip("polar-bloom", ["turn ALGO 5", "spin K1 1", "tap HOME", "tap PLAY", "wait 12300"])
+clip("resonance-plate", ["turn ALGO 5", "spin K1 1", "tap HOME", "tap PLAY", "wait 12300"])
 print("PASS six battery states, fade pixels, 49 individual startup inputs, and five panel animations")

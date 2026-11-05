@@ -21,6 +21,7 @@ extern "C" {
 #endif
 
 enum {SR_BUS_NATURE, SR_BUS_SACRED, SR_BUS_REFERENCE, SR_BUS_BINAURAL, SR_BUS_FX, SR_BUS_COUNT};
+enum {SR_STANDARD, SR_CINEMATIC, SR_NEOCLASSICAL, SR_MUSIC_MODES};
 typedef enum {SR_LEAD, SR_BASS, SR_DRONE, SR_HARMONY, SR_PIANO, SR_GUITAR, SR_CHOIR, SR_DRUMS} sr_role;
 enum {SR_ISOLATE_MIX, SR_ISOLATE_TRACK1, SR_ISOLATE_FIXED=SR_TRACKS+1,
       SR_ISOLATE_SACRED, SR_ISOLATE_BINAURAL, SR_ISOLATE_NATURE, SR_ISOLATE_FX};
@@ -47,6 +48,8 @@ typedef struct {
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
+  uint32_t song_seed, visit_nonce;
+  uint8_t music_mode, motion_manual, recent_patches[SR_MUSIC_MODES][SR_SCENES][SR_TRACKS];
   uint16_t sound_locks;
   uint8_t drum_presence, play_grid, groove_mode, groove_strength;
   uint8_t air_track, air_fx, air_depth, evolve_pace, evolve_next;
@@ -93,6 +96,9 @@ void sr_init(sr_engine *e, uint32_t seed);
 void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only);
 void sr_select_nature(sr_engine *e, uint32_t seed);
 void sr_set_scene(sr_engine *e, uint8_t scene);
+void sr_set_music_mode(sr_engine *e,uint8_t mode);
+unsigned sr_legacy_motion_manual(const sr_motion *motion,unsigned scene);
+void sr_motion_auto(sr_engine *e,unsigned role,int automatic);
 void sr_set_frequency_lock(sr_engine *e, uint8_t enabled);
 void sr_set_frequency_auto(sr_engine *e, uint8_t enabled);
 void sr_set_frequency(sr_engine *e, uint8_t frequency);

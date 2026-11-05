@@ -1,4 +1,4 @@
-# AQUORA 0.6.3 — FM-1 guide
+# AQUORA 0.6.4 — FM-1 guide
 
 Generative Sound Sanctuary · Sound • Water • Resonance
 
@@ -88,7 +88,7 @@ are not included because real gesture reliability is not established.
 **SETUP:** EDIT cycles Display/Lights, Banks, About, Quick Find. In the first
 tab rotate the SELECT encoder (or press SEL) to switch Lights and Appearance. Appearance K1 selects the panel
 skin (Stock/Aurora/Neon Lagoon/Solar Bloom/Midnight Prism), K2 Small/Medium/
-Large AQUORA Sans, K3 Black/White background, K4 Original/Polar Bloom.
+Large AQUORA Sans, K3 Black/White background, K4 Original/Resonance Plate.
 Global preferences save automatically after 1.2 seconds while stopped. Display choices are independent of arrangement
 banks. Large values use full cells; bank confirmations occupy an upper row.
 
@@ -119,7 +119,7 @@ changes to those global preferences. Old bank/patch/kit IDs remain compatible.
 **Visuals:** idle PLAY enters fullscreen after ten seconds. Deliberate panel
 interaction exits without applying that first edit; keys continue to play.
 Battery fades after about two seconds; normal PLAY restores full controls
-for both visualizers. Polar Bloom has thirteen smoothly changing artistic
+for both visualizers. Resonance Plate has thirteen smoothly changing artistic
 intention geometries, frequency/tuning form changes, actual role meters and
 onset envelopes. These are cymatics-inspired art, not scientific water models.
 Only visible graphs capture samples or generate geometry. Hidden graphs do
@@ -237,3 +237,22 @@ nineteen drum kits on speaker/headphones, Nature realism, font legibility,
 fullscreen return, bank recall, direct updater and one-hour maximum-feature
 soak. Delivered 20 FPS, RF behavior, first-install state and audio quality
 remain owner verification.
+
+
+## MUSIC MODE and automatic motion (0.6.4)
+EVOLVE → EDIT four times → MUSIC MODE: K1 Standard / Cinematic / Neoclassical.
+Standard retains balanced ambient grammar. Cinematic adds long sustained harmony,
+spacious bass and sparse pulses; Neoclassical uses piano arpeggios, plucks and
+countermelody. Each intention/mode change makes a fresh unlocked realization.
+Patch/FX locks, manual Nature/OFF, mixer mutes and Freeze still take precedence.
+K2 LEAD MOTION and K3 BASS MOTION select AUTO (turn left) or MANUAL (right).
+Editing a role's SOUND → MOTION glide/vibrato switches that role to MANUAL.
+AUTO reapplies intention × mode defaults. Full banks recall exact saved sounds,
+mode and overrides. Old banks load Standard and preserve saved custom motion.
+All controls are also available in Quick Find.
+
+Resonance Plate replaces the secondary visualizer with a 25×25 standing-wave
+field and interpolated nodal contours over a circular medium. Intention and
+reference frequency shape the field; actual role energy and onsets excite it,
+and silence lets it decay. It is artistic cymatics, not a scientific simulator.
+It does not appear in the static branded startup. Original remains available.

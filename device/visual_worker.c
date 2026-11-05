@@ -35,7 +35,7 @@ static struct {
     float onset[SR_TRACKS];
     float meter[SR_TRACKS];
 } vis_input __attribute__((aligned(64)));
-static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;} vis_output __attribute__((aligned(64)));
+static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[512][4];uint16_t node_count;} vis_output __attribute__((aligned(64)));
 static float vis_sine[128];
 static unsigned worker_wait_us,worker_fallbacks;
 
@@ -45,21 +45,12 @@ static void visual_init(void)
     for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
 }
 
-/* Project nested wavefronts onto a tilted plane. Fixed segments and a
- * lookup table keep camera motion independent of the audio deadline. */
-/* Bounded artistic profiles, not a physical model of water or health effects.
- * Symmetry, branching, tilt, curvature, twist, halo differ for all intentions.
- * All trigonometry is a shared 128-entry table, never an audio FFT. */
-static const float crystal_profile[SR_SCENES][6]={
- {6,3,.90f,.0018f, .18f,1.0f}, {4,7,.72f,.0022f,-.25f,.7f},
- {5,2,.85f,.0015f, .30f,1.2f}, {8,3,.93f,.0020f, .12f,.9f},
- {3,5,.78f,.0026f,-.35f,.6f}, {7,4,.88f,.0014f, .24f,1.1f},
- {6,5,.96f,.0017f,-.18f,1.3f}, {4,3,.80f,.0024f, .40f,.8f},
- {5,7,.91f,.0018f,-.28f,1.4f}, {8,5,.83f,.0021f, .35f,1.0f},
- {7,2,.98f,.0013f,-.12f,1.5f}, {3,7,.87f,.0023f, .28f,1.2f},
- {6,7,.94f,.0016f,-.40f,1.6f}
-};
-static float crystal_shape[6];
+/* Resonance Plate: Chladni-like standing-wave interference sampled on a fixed
+ * 25x25 circular plate. Marching zero-crossings yields nodal contours, not
+ * eight role rings. A radial term evokes water resonance; this is artwork,
+ * not a scientific simulation. Fixed memory/512-segment cap, display only. */
+static float nodal_level;
+static float nodal_field[25][25];
 static float visual_sin(float phase)
 {
     int a=(int)phase;float f=phase-a;
@@ -67,40 +58,51 @@ static float visual_sin(float phase)
     float x=vis_sine[(unsigned)a&127u];
     return x+(vis_sine[(unsigned)(a+1)&127u]-x)*f;
 }
+static void nodal_segment(float ax,float ay,float bx,float by)
+{
+    if(vis_output.node_count>=512)return;
+    int16_t *p=vis_output.nodes[vis_output.node_count++];
+    float sy=vis_input.full?110.f:44.f;
+    float cy=vis_input.full?120.f:96.f;
+    p[0]=120+(int)(ax*110.f);p[1]=(int)(cy+ay*sy);
+    p[2]=120+(int)(bx*110.f);p[3]=(int)(cy+by*sy);
+}
 static void resonance_job(void)
 {
-    unsigned time=vis_input.phase;
-    const float *target=crystal_profile[vis_input.scene%SR_SCENES];
-    if(!crystal_shape[0])for(unsigned k=0;k<6;k++)crystal_shape[k]=target[k];
-    else for(unsigned k=0;k<6;k++)crystal_shape[k]+=(target[k]-crystal_shape[k])*.15f;
-    float bass=fm_clampf(vis_input.meter[SR_BASS]*42.f,0,8);
-    float drums=fm_clampf(vis_input.meter[SR_DRUMS]*38.f,0,7);
-    float choir=fm_clampf(vis_input.meter[SR_CHOIR]*25.f,0,4);
-    float piano=fm_clampf((vis_input.meter[SR_PIANO]+vis_input.meter[SR_GUITAR])*26.f,0,7);
-    float frequency=vis_input.frequency*.021f+(vis_input.tuning?0.f:.8f);
-    float motif=vis_input.tonic*.18f;
-    for(unsigned ring=0;ring<SR_TRACKS;ring++){
-        float radius=vis_input.full?20.f+ring*14.f:14.f+ring*11.f;
-        float level=fm_clampf(vis_input.meter[ring]*32.f,0,8);
-        float hit=vis_input.onset[ring];
-        for(unsigned j=0;j<=32;j++){
-            float angle=j*4.f;
-            float twist=ring*crystal_shape[4]+motif;
-            float x=visual_sin(angle+32.f+twist);
-            float z=visual_sin(angle+twist);
-            float swell=visual_sin(angle*crystal_shape[0]+ring*9.f+frequency);
-            float branch=visual_sin(angle*crystal_shape[1]+ring*frequency);
-            float ripple=visual_sin(angle*2.f-ring*13.f);
-            float amplitude=.6f+.4f*visual_sin(time*2.f+ring*3.f);
-            float r=radius+amplitude*((bass+level+2.f)*swell+branch*(piano+hit*4.f));
-            float projection=1.f/(1.f+z*r*crystal_shape[3]);
-            float wave=amplitude*((drums+hit*8.f)*ripple+(choir+vis_input.atmosphere*6.f)*swell);
-            wave+=branch*choir*crystal_shape[5];
-            vis_output.xy[ring][j][0]=120+(int)(x*r*projection);
-            vis_output.xy[ring][j][1]=(vis_input.full?126:104)+
-                (int)((z*r*(vis_input.full?crystal_shape[2]:.58f)+wave)*projection);
+    vis_output.node_count=0;
+    float activity=0,hit=0;
+    for(unsigned t=0;t<SR_TRACKS;t++){activity+=vis_input.meter[t]*8.f;hit+=vis_input.onset[t]*.06f;}
+    float target=fm_clampf(activity+hit,0,1);
+    nodal_level+=(target-nodal_level)*(target>nodal_level?.4f:.12f);
+    if(nodal_level<.004f)return;
+    static const uint8_t modes[13][2]={{2,3},{3,4},{4,5},{2,4},{3,5},{4,6},{5,3},{5,6},{6,4},{3,7},{7,5},{4,7},{6,7}};
+    unsigned m=modes[vis_input.scene%13][0],n=modes[vis_input.scene%13][1];
+    float hz=(vis_input.frequency%241u)*(1.f/241.f);
+    float radial=.12f+fm_clampf(vis_input.meter[SR_BASS]*9.f,0,.35f);
+    float mix=.78f+.12f*visual_sin(vis_input.phase*.12f)+hit*.4f;
+    for(unsigned y=0;y<25;y++)for(unsigned x=0;x<25;x++){
+      float px=(x-12.f)/12.f,py=(y-12.f)/12.f;
+      float a=visual_sin((px+1.f)*32.f*m)*visual_sin((py+1.f)*32.f*n);
+      float b=visual_sin((px+1.f)*32.f*n)*visual_sin((py+1.f)*32.f*m);
+      /* Squared radius avoids sqrt/trig calls in frame work. */
+      float r2=px*px+py*py;
+      nodal_field[y][x]=a-mix*b+radial*visual_sin(r2*(85.f+hz*40.f)+32.f);
+    }
+    for(unsigned y=0;y<24;y++)for(unsigned x=0;x<24;x++){
+      float px=(x-12.f)/12.f,py=(y-12.f)/12.f;
+      if((px+.0417f)*(px+.0417f)+(py+.0417f)*(py+.0417f)>.91f)continue;
+      float v[4]={nodal_field[y][x],nodal_field[y][x+1],nodal_field[y+1][x+1],nodal_field[y+1][x]};
+      const float dx[4]={0,1,1,0},dy[4]={0,0,1,1};
+      float ex[4],ey[4];unsigned count=0;
+      for(unsigned k=0;k<4;k++){
+        unsigned next=(k+1)&3;
+        if((v[k]<0)!=(v[next]<0)){
+          float f=v[k]/(v[k]-v[next]);
+          ex[count]=px+(dx[k]+f*(dx[next]-dx[k]))/12.f;
+          ey[count]=py+(dy[k]+f*(dy[next]-dy[k]))/12.f;count++;
         }
-        vis_output.count[ring]=33;
+      }
+      for(unsigned k=1;k<count;k+=2)nodal_segment(ex[k-1],ey[k-1],ex[k],ey[k]);
     }
 }
 

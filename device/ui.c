@@ -39,32 +39,31 @@ static const uint16_t colors[SR_TRACKS]={
  };
 static void geometry(int offset)
 {
+ if(vis_input.water){
+   unsigned shade=nodal_level>.65f?3:nodal_level>.3f?2:1;
+   static const uint16_t ink[2][4]={{RGB(9,24,31),RGB(27,84,108),RGB(48,156,184),RGB(127,245,224)},
+      {RGB(240,248,250),RGB(142,180,185),RGB(34,103,125),RGB(8,59,84)}};
+   for(unsigned i=0;i<vis_output.node_count;i++){
+     const int16_t *p=vis_output.nodes[i];int y0=p[1]-offset,y1=p[3]-offset;
+     if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
+     cv_line(p[0],y0,p[2],y1,ink[ui_background][shade]);
+   }
+   return;
+ }
  for(int t=0;t<SR_TRACKS;t++){
    int quiet=engine.tracks[t].mute||(engine.solo<SR_TRACKS&&engine.solo!=t);
    uint16_t c=quiet?RGB(25,45,49):colors[t];
-   if(vis_input.water){
-     static const uint16_t crystal_colors[8]={
-       RGB(119,255,243),RGB(63,199,255),RGB(110,175,255),RGB(179,111,255),
-       RGB(66,245,184),RGB(224,142,255),RGB(62,132,234),RGB(42,116,187)
-     };
-     c=crystal_colors[(t+(t<6?vis_input.scene%2:0))&7];
-     if(quiet&&t<6)c=RGB(42,84,108);
-   }
    for(unsigned j=1;j<vis_output.count[t];j++){
      int y0=vis_output.xy[t][j-1][1]-offset,y1=vis_output.xy[t][j][1]-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
      cv_line(vis_output.xy[t][j-1][0],y0,vis_output.xy[t][j][0],y1,c);
    }
-   if(vis_input.water&&t>0)
-     for(unsigned j=t&1u;j<32;j+=4){
-       int y0=vis_output.xy[t-1][j][1]-offset,y1=vis_output.xy[t][j][1]-offset;
-       if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
-       cv_line(vis_output.xy[t-1][j][0],y0,vis_output.xy[t][j][0],y1,RGB(29,74,94));
-     }
  }
 }
+
 static const char *onoff(int enabled){return enabled?"ON":"OFF";}
-static const char *visual_name(void){return visual_mode?"Polar Bloom":"Original";}
+static const char *music_modes[]={"Standard","Cinematic","Neoclassical"};
+static const char *visual_name(void){return visual_mode?"Resonance Plate":"Original";}
 static const char *patch_name(void)
 {
  return selected==SR_DRUMS?sr_drum_kits[engine.drum_kit].name:
@@ -182,6 +181,9 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 90:{static const char *themes[]={"AQUORA Legacy","Aurora","Neon Lagoon","Solar Bloom","Midnight Prism"};*name="PANEL SKIN";return themes[ui_theme];}
  case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo"};*name="AIR FX";return effects[engine.air_fx];}
  case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
+ case 96:*name="MUSIC MODE";return music_modes[engine.music_mode];
+ case 97:*name="LEAD MOTION";return engine.motion_manual&1u?"MANUAL":"AUTO";
+ case 98:*name="BASS MOTION";return engine.motion_manual&2u?"MANUAL":"AUTO";
  case 95:*name="MANUAL AIR %";number=engine.air_target*100;break;
  case 91:{static const char *fonts[]={"Small","Medium","Large"};*name="FONT SIZE";return fonts[ui_font_size];}
  case 92:*name="BACKGROUND";return ui_background?"White":"Black (Stock)";
@@ -552,24 +554,7 @@ static void draw(int animate)
      }
    }
    if(intro_active){
-     /* New AQUORA water/crystal ribbon: an independent original startup
-      * choreography transitioning over the stored visualizer. Fixed 32-line
-      * budget, theme-aware, with no hidden work once introduction exits. */
-     unsigned phase=((plat_ms()-intro_start)/42u)&127u;
-     unsigned frames=(plat_ms()-intro_start)/90u;
-     int old_x=120,old_y=120;
-     for(unsigned j=0;j<=32;j++){
-       unsigned angle=(j*5u+phase)&127u;
-       int radius=(int)(3u+j*3u)+(int)(frames<25u?frames/4u:6u);
-       int x=120+(int)(radius*vis_sine[(angle+32u)&127u]);
-       int y=120+(int)(radius*vis_sine[angle]);
-       if(j){
-         int y0=old_y-band*48,y1=y-band*48;
-         if(!((y0<0&&y1<0)||(y0>=48&&y1>=48)))
-           cv_line(old_x,y0,x,y1,skin_accent());
-       }
-       old_x=x;old_y=y;
-     }
+     /* Branded static presentation; no visualizer or ribbon at startup. */
      if(band==2){
        cv_text(68,1,&FONT_B,"A Q U O R A",skin_text());
        cv_text(96,28,&FONT_XS,APP_VERSION,skin_text());
@@ -717,6 +702,12 @@ static void draw(int animate)
          limited_text(8,10,224,&FONT_XS,messages[bank_message],skin_accent());
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":setup_tab==0?(display_subtab?"TURN SELECT: LIGHTS":"TURN SELECT: APPEARANCE"):"SEL: LOAD / SAVE: STORE",skin_text());
      }
+   }else if(visual&&page==PAGE_EVOLVE&&song_tab==4){
+     if(band==1)limited_text(8,1,224,&FONT_B,music_modes[engine.music_mode],skin_accent());
+     if(band==2){
+       limited_text(8,0,224,&FONT_XS,"SCENE x MODE / MOTION PROFILE",skin_text());
+       limited_text(8,24,224,&FONT_XS,"MANUAL OVERRIDES AUTO DEFAULTS",skin_dim());
+     }
    }else if(visual&&page==PAGE_EVOLVE){
      if(band==1){
        label(8,0,"STEP",engine.loop_pos+1);
@@ -747,7 +738,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
@@ -760,6 +751,7 @@ static void draw(int animate)
      }
      if(page==0){
        cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",skin_accent());
+       limited_text(155,25,43,&FONT_XS,engine.music_mode==0?"STD":engine.music_mode==1?"CINE":"NEO",skin_dim());
        const char *mode=engine.frequency_lock?"LOCK":engine.tone_level>0?"REF ON":"REF OFF";
        int x=cv_text(107,2,&FONT_XS,mode,skin_accent());
        cv_text(x+4,2,&FONT_XS,sr_frequencies[engine.frequency].name,skin_text());
@@ -783,7 +775,7 @@ static void draw(int animate)
          cv_text(x+6,33,&FONT_XS,value,skin_accent());
        }else if(page==1&&group==6){
          cv_text(8,33,&FONT_XS,selected>SR_BASS?"TURN SELECT TO LEAD OR BASS":
-            "LEGATO: OVERLAP NOTES  /  ALWAYS: SLIDE",skin_text());
+            (engine.motion_manual&(1u<<selected)?"MANUAL / EVOLVE: MOTION AUTO":"AUTO: INTENTION x MUSIC MODE"),skin_text());
        }else if(page==2||(page==1&&group==GROUP_KEYS)){
          static const char *notes[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
          unsigned length=engine.loop_length,pos=engine.loop_pos;

@@ -110,7 +110,7 @@ typedef struct {
     sr_motion motion[2];
     uint8_t perfect_key, lighting, fps_auto;
     uint8_t visual, theme, font_size, background;
-    uint8_t air_fx, air_depth, active_bank;
+    uint8_t air_fx, air_depth, active_bank, music_mode, motion_manual;
 } aq_settings;
 
 /* Never write flash in the callback. All preference edits are coalesced and
@@ -120,13 +120,13 @@ static int save_preferences(void)
 {
     aq_settings settings={0};
     unsigned flags=plat_lock();
-    settings.version=0x41513035u;
+    settings.version=0x41513036u;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
     settings.lighting=lighting;settings.fps_auto=fps_auto;
     settings.visual=visual_mode;settings.theme=ui_theme;
     settings.font_size=ui_font_size;settings.background=ui_background;
-    settings.active_bank=bank_slot;
+    settings.active_bank=bank_slot;settings.music_mode=engine.music_mode;settings.motion_manual=engine.motion_manual;
     settings.air_fx=engine.air_fx;settings.air_depth=engine.air_depth;
     plat_unlock(flags);
     int result=plat_store_save(OBJ_SETTINGS,&settings,sizeof(settings));
@@ -210,7 +210,7 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
-   static const uint8_t ids[][4]={{58,59,60,61},{64,65,46,20},{82,19,83,84}};
+   static const uint8_t ids[][4]={{58,59,60,61},{64,65,46,20},{82,19,83,84},{96,97,98,0}};
    return ids[song_tab-1][knob];
  }
  if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
@@ -305,9 +305,9 @@ static void consume(void){
  case 29:t->send=adjust(t->send,d,.05f,1);break;
  case 30:engine.sacred_level=adjust(engine.sacred_level,d,.01f,.20f);break;
  case 31:engine.sacred_mode=bounded(engine.sacred_mode+d,0,2);break;
- case 32:if(c.track<=SR_BASS)engine.motion[c.track].glide_mode=bounded(engine.motion[c.track].glide_mode+d,0,2);break;
- case 33:if(c.track<=SR_BASS)engine.motion[c.track].glide_ms=bounded(engine.motion[c.track].glide_ms+10*d,10,800);break;
- case 34:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_rate=bounded(engine.motion[c.track].vibrato_rate+d,5,80);break;
+ case 32:if(c.track<=SR_BASS)engine.motion_manual|=1u<<c.track;if(c.track<=SR_BASS)engine.motion[c.track].glide_mode=bounded(engine.motion[c.track].glide_mode+d,0,2);break;
+ case 33:if(c.track<=SR_BASS)engine.motion_manual|=1u<<c.track;if(c.track<=SR_BASS)engine.motion[c.track].glide_ms=bounded(engine.motion[c.track].glide_ms+10*d,10,800);break;
+ case 34:if(c.track<=SR_BASS)engine.motion_manual|=1u<<c.track;if(c.track<=SR_BASS)engine.motion[c.track].vibrato_rate=bounded(engine.motion[c.track].vibrato_rate+d,5,80);break;
  case 36:engine.sacred_harmonics=adjust(engine.sacred_harmonics,d,.025f,1);break;
  case 37:engine.drum_hit=bounded(engine.drum_hit+d,0,SR_HIT_MAX);break;
  case 46:{
@@ -336,6 +336,9 @@ static void consume(void){
  case 70:engine.air_target=bounded(d,0,100)*.01f;break;
  case 93:engine.air_fx=bounded(engine.air_fx+d,0,2);break;
  case 94:engine.air_depth=bounded(engine.air_depth+d*5,0,100);break;
+ case 96:sr_set_music_mode(&engine,bounded(engine.music_mode+d,0,2));break;
+ case 97:sr_motion_auto(&engine,SR_LEAD,d<0);break;
+ case 98:sr_motion_auto(&engine,SR_BASS,d<0);break;
  case 95:engine.air_target=adjust(engine.air_target,d,.05f,1);break;
  case 75:case 76:case 77:
    if(c.track<SR_DRUMS){
@@ -373,7 +376,7 @@ static void consume(void){
  case 45:sr_set_frequency_auto(&engine,switched(engine.frequency_auto,d));break;
  case 44:engine.isolate=SR_ISOLATE_MIX;engine.nature_audition=0;break;
  case 43:engine.isolate=bounded(engine.isolate+d,SR_ISOLATE_MIX,SR_ISOLATE_FX);break;
- case 35:if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
+ case 35:if(c.track<=SR_BASS)engine.motion_manual|=1u<<c.track;if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
  }
  }
  engine.play_released|=engine.play_queued&~physical_keys;
@@ -399,7 +402,7 @@ void app_init(void)
        plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==prefs_size&&
        (settings.version==0x41513032u||
         (settings.version==0x41513033u&&prefs_size==24)||
-        ((settings.version==0x41513034u||settings.version==0x41513035u)&&prefs_size==(int)sizeof(settings)))){
+        ((settings.version==0x41513034u||settings.version==0x41513035u||settings.version==0x41513036u)&&prefs_size==(int)sizeof(settings)))){
       for(unsigned i=0;i<2;i++){
         sr_motion m=settings.motion[i];
         if(m.glide_mode<=2&&m.glide_ms>=10&&m.glide_ms<=800&&
@@ -423,9 +426,14 @@ void app_init(void)
     /* arrangement_init resets its bank cursor and visual slot. Restore the
      * saved global visualizer before first intro frame, independent of banks. */
     if((settings.version==0x41513033u&&prefs_size==24)||
-       ((settings.version==0x41513034u||settings.version==0x41513035u)&&prefs_size==(int)sizeof(settings)))
+       ((settings.version==0x41513034u||settings.version==0x41513035u||settings.version==0x41513036u)&&prefs_size==(int)sizeof(settings)))
       visual_mode=settings.visual<=1?settings.visual:0;
-    if(settings.version==0x41513035u&&settings.active_bank<4)bank_slot=settings.active_bank;
+    if(settings.version>=0x41513035u&&settings.active_bank<4)bank_slot=settings.active_bank;
+    if(settings.version==0x41513036u){
+      sr_set_music_mode(&engine,settings.music_mode<SR_MUSIC_MODES?settings.music_mode:0);
+      engine.motion_manual=settings.motion_manual&3u;
+      for(unsigned t=0;t<2;t++)if(engine.motion_manual&(1u<<t))engine.motion[t]=settings.motion[t];
+    }else if(settings.version){engine.motion_manual=sr_legacy_motion_manual(engine.motion,SR_SCENES);for(unsigned t=0;t<2;t++)if(!(engine.motion_manual&(1u<<t)))sr_motion_auto(&engine,t,1); }
     visual_init();
     plat_cpu2_set(1);
     output_gain=0;
@@ -560,7 +568,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
-   if(!debug&&page==2)song_tab=(song_tab+1)%4;
+   if(!debug&&page==2)song_tab=(song_tab+1)%5;
    if(page==PAGE_SOUND){
      unsigned index=0;
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
@@ -669,7 +677,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
     else if(control==92){ui_background=bounded((int)ui_background+d,0,1);preferences_changed_now();}
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
-    else {send(control,bounded(d,-8,8));if(control==93||control==94)preferences_changed_now();}
+    else {send(control,bounded(d,-8,8));if(control==93||control==94||control>=96||(control>=32&&control<=35))preferences_changed_now();}
     if(control!=72){knob_focus=i;knob_until=plat_ms()+900;}
     dirty=1;
  }
@@ -873,6 +881,9 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"mute"))*got=track->mute;
  else if(!strcmp(what,"solo"))*got=engine.solo;
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
+ else if(!strcmp(what,"music_mode"))*got=engine.music_mode;
+ else if(!strcmp(what,"motion_manual"))*got=engine.motion_manual;
+ else if(!strcmp(what,"node_count"))*got=vis_output.node_count;
  else if(!strcmp(what,"song_armed"))*got=song_arm;
  else if(!strcmp(what,"directory_ok")){
    *got=1;
@@ -925,24 +936,26 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"worker_waits"))*got=worker_waits;
  else if(!strcmp(what,"scope_samples"))*got=engine.scope_samples;
  else if(!strcmp(what,"reset_visual_counters")){geometry_jobs=history_updates=ui_blits=worker_jobs=worker_waits=engine.scope_samples=0;*got=1;}
- else if(!strcmp(what,"crystal_profiles")){
+ else if(!strcmp(what,"nodal_profiles")||!strcmp(what,"crystal_profiles")){
    *got=1;uint32_t signatures[SR_SCENES];
    memset(&vis_input,0,sizeof vis_input);vis_input.water=vis_input.full=1;vis_input.frequency=528;
+   vis_input.meter[SR_BASS]=.04f;nodal_level=1;
    for(unsigned scene=0;scene<SR_SCENES;scene++){
-     vis_input.scene=scene;memset(crystal_shape,0,sizeof crystal_shape);resonance_job();
-     uint32_t hash=2166136261u;
-     for(unsigned t=0;t<SR_TRACKS;t++)for(unsigned j=0;j<33;j++)for(unsigned axis=0;axis<2;axis++){
-       int xy=vis_output.xy[t][j][axis];if(xy < -256||xy>496)*got=0;
+     vis_input.scene=scene;resonance_job();uint32_t hash=vis_output.node_count;
+     if(!hash||hash>512)*got=0;
+     for(unsigned j=0;j<vis_output.node_count;j++)for(unsigned k=0;k<4;k++){
+       int xy=vis_output.nodes[j][k];if(xy<0||xy>239)*got=0;
        hash=(hash^(uint16_t)xy)*16777619u;
      }
      for(unsigned prior=0;prior<scene;prior++)if(signatures[prior]==hash)*got=0;
      signatures[scene]=hash;
    }
-   int16_t before[sizeof vis_output.xy/sizeof(int16_t)];memcpy(before,vis_output.xy,sizeof before);
-   vis_input.frequency=852;resonance_job();if(!memcmp(before,vis_output.xy,sizeof before))*got=0;
-   memcpy(before,vis_output.xy,sizeof before);vis_input.meter[SR_BASS]=.2f;vis_input.onset[SR_DRUMS]=1.f;
-   resonance_job();if(!memcmp(before,vis_output.xy,sizeof before))*got=0;
-   memset(crystal_shape,0,sizeof crystal_shape);dirty=1;
+   int16_t before[512][4];memcpy(before,vis_output.nodes,sizeof before);
+   vis_input.frequency=852;resonance_job();if(!memcmp(before,vis_output.nodes,sizeof before))*got=0;
+   memcpy(before,vis_output.nodes,sizeof before);vis_input.meter[SR_BASS]=.2f;vis_input.onset[SR_DRUMS]=1.f;
+   resonance_job();if(!memcmp(before,vis_output.nodes,sizeof before))*got=0;
+   memset(&vis_input,0,sizeof vis_input);nodal_level=0;resonance_job();if(vis_output.node_count)*got=0;
+   dirty=1;
  }
  else if(!strcmp(what,"battery_level"))*got=battery_level;
  else if(!strcmp(what,"battery_fade"))*got=battery_fade;
@@ -998,7 +1011,7 @@ int app_expect(const char *what,int *got){
  }else if(!strcmp(what,"bank_exact")){
  arrangement current,stored;
  arrangement_snapshot(&current);
- *got=arrangement_read(bank_slot,&stored)&&current.crc==stored.crc;
+ *got=arrangement_read(bank_slot,&stored)&&arrangement_crc(&current)==arrangement_crc(&stored);
  }else if(!strcmp(what,"bank_guard")){
  arrangement bad;
  arrangement_snapshot(&bad);
