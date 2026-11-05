@@ -109,8 +109,8 @@ jobs:
           assert 'screen-carousel.js' in (d/"index.html").read_text()
           assert all(name in carousel for name in expected), "slideshow is missing an accepted screen"
           assert 'VISIBLE MUSIC' not in (d/"index.html").read_text()
-          assert 'A universe' in (d/"index.html").read_text()
-          assert 'made of sound.' in (d/"index.html").read_text()
+          assert 'Evolving soundscapes.' in (d/"index.html").read_text()
+          assert 'Tuned to your intention.' in (d/"index.html").read_text()
           assert 'to feel like water' not in (d/"index.html").read_text()
           assert 'hero-screen-toolbar' not in (d/"index.html").read_text()
           assert 'hero-screen-previous' not in (d/"index.html").read_text()
