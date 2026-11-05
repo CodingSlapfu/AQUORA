@@ -20,6 +20,7 @@ module.SIZES = [(n, f"InterTight-source.ttf@wght={weight}", px, 1, False, 32, 12
                 for n, px, weight in [("T", 9, 650), ("XS", 11, 620),
                                       ("S", 13, 560), ("B", 13, 720),
                                       ("M", 16, 660), ("L", 27, 720)]]
+module.SIZES.append(("I", "InterTight-source.ttf@wght=560", 11, 1, False, 32, 126))
 original_render = module.render
 
 
@@ -47,8 +48,19 @@ def render(*args):
                 if char == "I":
                     pixels[y0 * width + x] = 15
         glyphs[index] = (advance, width, pixels)
+    if args[0].endswith("@wght=560") and args[1]==11:
+        for i,(advance,width,pixels) in enumerate(glyphs):
+            extra=3;slanted=[0]*((width+extra)*height)
+            for y in range(height):
+                shift=min(extra,(height-1-y)//4)
+                for x in range(width):slanted[y*(width+extra)+x+shift]=pixels[y*width+x]
+            glyphs[i]=(advance+extra,width+extra,slanted)
     return height, glyphs
 
 
 module.render = render
 module.main(Path(sys.argv[1]) / "felucca_font.h")
+
+import hashlib
+atlas=Path(sys.argv[1])/"felucca_font.h"
+with atlas.open('a') as f:f.write('\n#define AQUORA_FONT_FAMILY 0x41515335u\n#define AQUORA_FONT_ATLAS_SHA256 "'+hashlib.sha256(atlas.read_bytes()).hexdigest()+'"\n')

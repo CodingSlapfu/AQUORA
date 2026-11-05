@@ -7,7 +7,7 @@ static sr_engine engine PLAT_POOL;
 static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
 typedef struct {int kind,value; unsigned track;} command;
 static command queue[64];
-static volatile unsigned qread,qwrite,state_revision;
+static volatile unsigned qread,qwrite,state_revision,command_enqueued,command_applied;
 static unsigned displayed_revision;
 static unsigned dropped,page,selected,group,oldkeys,oldbuttons,lastdraw,dirty=1,debug;
 #ifdef PLAT_HOST
@@ -92,11 +92,11 @@ static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
 enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=15 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
- {30,31,36,22},{32,33,34,35},{13,24,29,28},
- {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,63,73,74},{55,14,48,45},{79,85,86,54}
+ {30,31,36,0},{32,33,34,35},{100,0,0,0},
+ {37,17,10,9},{0,56,0,0},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0}
 };
 static const uint8_t page_controls[4][4]={
- {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,29,49}
+ {1,18,22,5},{0,0,0,0},{0,20,25,46},{100,0,0,0}
 };
 #include "arrangement.c"
 #include "quicksave.c"
@@ -210,13 +210,11 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
-   static const uint8_t ids[][4]={{58,59,60,61},{64,65,46,20},{82,19,83,84},{96,97,98,0}};
+   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0}};
    return ids[song_tab-1][knob];
  }
  if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
-   static const uint8_t controls[SR_BUS_COUNT][4]={{5,21,54,79},{30,31,36,0},
-      {22,4,48,45},{23,6,7,8},{11,12,50,51}};
-   return controls[mix_bus][knob];
+   return knob==0?99:0;
  }
  if(page==PAGE_MIX&&(mix_tab==1||mix_tab==2)){
    static const uint8_t master_controls[]={11,12,50,51};
@@ -247,14 +245,14 @@ static void drums_enable(int enabled)
 }
 static int bounded(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
 static float adjust(float x,int d,float step,float hi){return fm_clampf(x+d*step,0,hi);}
-static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected};__asm__ volatile("":::"memory");qwrite=next;}
+static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
 static void consume(void){
  unsigned stop=stop_generation;
  unsigned play=requested_play;
  unsigned interrupted=stop!=applied_stop;
  if(interrupted){applied_stop=stop;sr_stop(&engine);}
  unsigned count=0;while(qread!=qwrite&&count++<64){command c=queue[qread];__asm__ volatile("":::"memory");qread=(qread+1)&63;sr_track *t=&engine.tracks[c.track];int d=c.value;
- state_revision++;
+ state_revision++;command_applied++;
  switch(c.kind){
 
  case 1:{
@@ -446,7 +444,8 @@ void app_init(void)
     evolve_step=0;
     memset(evolve_events,0,sizeof evolve_events);
     memset(evolve_history,0,sizeof evolve_history);
-    qread=qwrite=0;
+    qread=qwrite=command_enqueued=command_applied=0;
+    quick_started=quick_pending=quick_timeout=quick_finished_ms=0;
     requested_play=stop_generation=applied_stop=physical_keys=0;
     page=selected=group=debug=display_subtab=0;
     preferences_dirty=preferences_changed=0;
@@ -579,7 +578,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%4;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
      mix_tab=mix_tab>=4?0:mix_tab+1;mix_reset=0;}
-   bank_confirm=song_arm=0;bank_message=BANK_IDLE;
+   bank_confirm=song_arm=0;if(!quick_started&&!quick_pending)bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
@@ -662,6 +661,11 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);preferences_changed_now();bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
+    else if(control==99){
+      if(d>0){page=PAGE_SOUND;group=mix_bus==0?1:mix_bus==1?5:mix_bus==2?2:3;
+        if(mix_bus==4){page=PAGE_MIX;mix_tab=1;}sound_picker=0;}
+    }
+    else if(control==100){if(d>0){page=PAGE_MIX;mix_tab=5;mix_focus=selected;}}
     else if(control==52)mix_reset=d>0;
     else if(control==58||control==59)song_arm=d>0&&!requested_play&&!engine.running?control:0;
     else if(control==80||control==81){
@@ -717,6 +721,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    old_b=buttons;old_k=lights;old_db=dim_buttons;old_dk=dim_keys;
  }
 }
+static unsigned visual_interval_ms=50;
 #include "ui.c"
 enum { FRAME_MIN_MS = 50 };
 static int battery_read(void)
@@ -825,7 +830,7 @@ void app_frame(void)
       dirty=1;
     }
     if(knob_until&&(int32_t)(now-knob_until)>=0){knob_until=0;dirty=1;}
-    if(!intro_active&&!fullscreen&&!debug&&page==PAGE_PLAY&&now-last_control_ms>=10000u){
+    if(!intro_active&&!fullscreen&&!debug&&page==PAGE_PLAY&&!quick_started&&!quick_pending&&now-last_control_ms>=10000u){
       fullscreen=1;battery_overlay_ms=now;dirty=1;
     }
     if(now-battery_poll_ms>=500u){
@@ -859,6 +864,7 @@ void app_frame(void)
       else if(load>=4900u)visual_interval=100u;
       else if(load>=4400u)visual_interval=75u;
     }
+    visual_interval_ms=visual_interval;
     /* Only pages with actually displayed live content schedule animation.
      * Static SOUND category pickers, stopped timelines and hidden mixer
      * views do not schedule recurrent blits. */
@@ -867,13 +873,13 @@ void app_frame(void)
     int live_evolve=page==PAGE_EVOLVE&&engine.running;
     int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve)&&elapsed>=visual_interval;
     if(animate&&page==0){
-      missed+=elapsed/visual_interval-1u;
+      missed+=elapsed/FRAME_MIN_MS-1u;
 
     }
     if(animate){
       lastdraw=now;
       unsigned begin=plat_ticks24();
-      if(page==PAGE_PLAY&&!intro_active)prepare_geometry();
+      if(page==PAGE_PLAY&&!intro_active&&((!quick_started&&!quick_pending)||quick_timeout))prepare_geometry();
       graphics_us=(plat_ticks24()-begin)/24;
     }
     if(animate||dirty||battery_dirty){

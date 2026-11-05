@@ -54,7 +54,13 @@ const sr_patch sr_patches[SR_PATCHES] = {
   {"Silk Harmonics", SR_SINE, 1.8f, 4.0f, .33f, .20f},
   {"Rain Harp", SR_PLUCK, .009f, 1.7f, .48f, .23f},
   {"Deep Resonant Bass", SR_SINE, .028f, .86f, .29f, .33f},
-  {"Velvet Reed FM", SR_SINE, .19f, 1.5f, .45f, .24f}
+  {"Velvet Reed FM", SR_SINE, .19f, 1.5f, .45f, .24f},
+  {"Pure Sub FM",SR_SINE,.018f,.70f,.20f,.34f},
+  {"Rounded Ember FM",SR_SINE,.035f,1.1f,.32f,.32f},
+  {"Wood Resonance FM",SR_SINE,.012f,.85f,.47f,.29f},
+  {"Harmonic Root FM",SR_SINE,.045f,1.4f,.55f,.27f},
+  {"Plucked Earth FM",SR_PLUCK,.004f,.46f,.58f,.30f},
+  {"Cinema Depth FM",SR_SINE,.32f,2.6f,.36f,.28f}
 };
 #define SR_FIRST_FM_PATCH 24u
 static const struct {
@@ -62,7 +68,10 @@ static const struct {
 } fm_operators[] = {
   {3.01f,.17f,.80f,.000f}, {2.f,.15f,.22f,.003f},
   {1.4142f,.14f,.30f,.001f}, {2.75f,.22f,.85f,.000f},
-  {1.f,.12f,.38f,.000f}, {3.f,.18f,.46f,.002f}
+  {1.f,.12f,.38f,.000f}, {3.f,.18f,.46f,.002f},
+  {1.f,.035f,.90f,0.f},{1.001f,.12f,.50f,0.f},
+  {2.f,.26f,.85f,.002f},{3.f,.29f,.35f,0.f},
+  {2.5f,.40f,.97f,0.f},{.5f,.22f,.18f,.001f}
 };
 _Static_assert(sizeof fm_operators / sizeof *fm_operators == SR_PATCHES-SR_FIRST_FM_PATCH,
                "Every FM patch needs an operator profile");
@@ -269,9 +278,9 @@ void sr_motion_auto(sr_engine *e,unsigned role,int automatic)
 static unsigned fresh_patch(sr_engine *e,unsigned role,uint32_t seed)
 {
   static const uint8_t pools[3][7][6]={
-   {{12,13,14,16,29,12},{0,1,2,28,1,0},{3,4,5,23,26,4},{15,16,20,21,29,20},{6,7,8,24,7,6},{9,10,11,17,27,10},{19,23,4,20,25,19}},
-   {{14,15,29,12,16,14},{2,28,1,0,28,2},{3,5,23,26,4,26},{20,21,15,29,16,20},{7,24,8,6,24,7},{10,17,27,9,11,10},{19,25,23,20,4,25}},
-   {{12,13,15,16,29,13},{0,1,28,2,1,0},{20,21,23,4,26,20},{20,21,15,16,29,21},{6,7,24,8,7,6},{9,10,11,27,10,9},{20,21,19,25,23,20}}
+   {{12,13,14,16,29,12},{0,30,31,32,33,34},{3,4,5,23,26,4},{15,16,20,21,29,20},{6,7,8,24,7,6},{9,10,11,17,27,10},{19,23,4,20,25,19}},
+   {{14,15,29,12,16,14},{2,28,30,31,33,35},{3,5,23,26,4,26},{20,21,15,29,16,20},{7,24,8,6,24,7},{10,17,27,9,11,10},{19,25,23,20,4,25}},
+   {{12,13,15,16,29,13},{0,1,30,31,32,34},{20,21,23,4,26,20},{20,21,15,16,29,21},{6,7,24,8,7,6},{9,10,11,27,10,9},{20,21,19,25,23,20}}
   };
   const uint8_t *pool=pools[e->music_mode][role];
   unsigned at=(song_draw(seed,role)+e->scene*3u+e->nature_style)%6u;

@@ -35,7 +35,7 @@ def clip(name, setup, **fixtures):
         # decorative upper/lower pulses move; the branding remains readable.
         assert len({frame.crop((15, 52, 225, 95)).tobytes() for frame in frames}) > 5
         assert len({frame.crop((15, 145, 225, 190)).tobytes() for frame in frames}) > 5
-        assert len({frame.crop((60, 97, 212, 142)).tobytes() for frame in frames}) == 1
+        assert len({frame.crop((40, 0, 215, 46)).tobytes() for frame in frames}) == 1
         # Every unused corner is now a bright, saturated intro-only color,
         # never the dark/white canvas of the ordinary PLAY UI.
         corners = [frame.getpixel((2, 2)) for frame in frames]

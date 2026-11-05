@@ -10,7 +10,7 @@
 #define SR_SOUND_LOCK_MASK 1023u
 #define SR_TRACKS 8
 #define SR_VOICES 16
-#define SR_PATCHES 30
+#define SR_PATCHES 36
 #define SR_SCENES 13
 #define SR_BEDS 12
 #define SR_FREQUENCIES 13

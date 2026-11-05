@@ -1,12 +1,11 @@
-# Resume AQUORA0.6.5 urgent performance hotfix
+# Resume existing AQUORA0.6.5
 
-Exclusive lock8626 owns /workspace/.aquora-release.lock in current workspace.
-Check owner before editing. Base PR25 HEAD2794f26 preserves animated/vibrant intro;
-production064/tag50b8a1e and backups remain immutable. Issues26/24 + PR25 read.
-Current source reduces nodal grid25→17, hoists separable trigs, caps256 nodes,
-Original33→17 points, clips band lines before rasterization, replaces permanent
-frame suppression with bounded adaptive pacing. Audio table optimization is
-candidate only: require real A/B regressions before accepting; preserve music.
-Run targeted performance_065 and full independent aquora-065-validation workflow.
-Do not reuse old064 firmware artifacts after UI/DSP changes. Finish publication
-end-to-end with release/source/ZIP/hashes, exact installer and current website.
+Branch aquora-0.6.5-development. Check exclusive /workspace/.aquora-release.lock;
+current owner session42993. Latest pushed source is authoritative, not local scratch.
+Base7416185f passed run42095962464 (all platforms, DSP, actual PCM SNR83.61dB,
+48 fallback/pressure renderer cases). Preserve it and PR25 ancestry2794f26.
+Read NEXT_BUILD_ACTIVE.md. Latest comments2,16,24,26–30 and PR25 read on resume.
+Expanded source is not yet accepted. Current tests/build files document reproduction.
+Do not publish741 alone: SAVE/library/UI/spiral scope was added afterward.
+Remaining: focused expanded tests and full acceptance of modified inputs, then
+verified GitHub release/backups, installer and showcase. No further permission.

@@ -56,6 +56,7 @@ static int fl_wait_ready(uint32_t max,uint32_t *took){(void)max;*took=0;while(re
 static uint32_t irq_save(void){irq_start=tick;return 0;}
 static void irq_restore(uint32_t f){(void)f;uint32_t dt=(tick-irq_start)/24;if(dt>max_irq)max_irq=dt;}
 int plat_cpu2_busy(void){return 0;}
+int plat_cpu2_wait(void){return 0;}
 #include "../vendor/fm1-base/device/aquora_async_store.h"
 static void reset_job(void){memset(&aq_store,0,sizeof aq_store);aq_flash_busy_base=0;remain=suspended=0;}
 int main(void){

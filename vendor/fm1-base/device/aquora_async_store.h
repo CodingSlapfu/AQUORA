@@ -7,7 +7,7 @@
 static struct {
     st_hdr_t header;
     uint8_t payload[512];
-    uint32_t base, pos, phase, resumed, slices;
+    uint32_t base, pos, phase, resumed, slices, busy, wait_tick;
 } aq_store;
 
 #include "../bsp/chip/fm1_flash_aquora.h"
@@ -26,7 +26,7 @@ int plat_aquora_save_begin(uint32_t obj,const void *src,uint32_t len)
     aq_store.base=st_sector(obj,h->slot);
     aq_flash_busy_base=aq_store.base;
     aq_store.pos=aq_store.resumed=aq_store.slices=0;
-    aq_store.phase=1;
+    aq_store.phase=1;aq_store.busy=0;aq_store.wait_tick=T4_CNT;
     return 0;
 }
 /* 1 pending, 0 durable readback verified, <0 failed. Main/UI only. */
@@ -34,8 +34,13 @@ int plat_aquora_save_poll(void)
 {
     if(!aq_store.phase)return -1;
 #if FM1B_CPU2
-    if(plat_cpu2_busy())return 1;
+    if(plat_cpu2_busy()){
+      aq_store.busy++;
+      if((uint32_t)(T4_CNT-aq_store.wait_tick)>480000u)plat_cpu2_wait();
+      return 1;
+    }
 #endif
+    aq_store.slices++;
     uint32_t phase=aq_store.phase;
     if(phase==4){
         aq_flash_busy_base=0;
@@ -67,3 +72,5 @@ int plat_aquora_save_poll(void)
     else aq_store.phase++;
     return 1;
 }
+
+void plat_aquora_save_progress(uint32_t *p){p[0]=aq_store.phase;p[1]=aq_store.slices;p[2]=aq_store.busy;p[3]=aq_store.pos;}

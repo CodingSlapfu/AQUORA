@@ -6,7 +6,7 @@ extern void old_sr_init(sr_engine*,uint32_t),old_sr_render(sr_engine*,int16_t*,s
 static sr_engine a,b;static int16_t x[512],y[512];
 int main(void){double power=0,error=0;unsigned max=0;
  for(unsigned mode=0;mode<3;mode++)for(unsigned scene=0;scene<13;scene++){
-  sr_init(&a,6501);old_sr_init(&b,6501);sr_set_music_mode(&a,mode);old_sr_set_music_mode(&b,mode);sr_set_scene(&a,scene);old_sr_set_scene(&b,scene);
+  sr_init(&a,6501);old_sr_init(&b,6501);a.sound_locks=b.sound_locks=1u<<SR_BASS;sr_set_music_mode(&a,mode);old_sr_set_music_mode(&b,mode);sr_set_scene(&a,scene);old_sr_set_scene(&b,scene);
   a.auto_gain=b.auto_gain=1;sr_start(&a);old_sr_start(&b);
   for(unsigned block=0;block<800;block++){
    sr_render(&a,x,256);old_sr_render(&b,y,256);
