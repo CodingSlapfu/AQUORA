@@ -6,3 +6,5 @@ THIS IS A DEVELOPMENT BUILD: not accepted, not published, not safe to call full 
 Revalidation checkpoint: saved UI themes, global visual, AIR live signal, drum DSP retune.
 
 Checkpoint: correct display-only edit-route test, add cinematic FM intro, HYP-influenced mixer overview/focus strip. All 18 issues remain acceptance targets.
+
+Pass legacy controls_060 and new mixer_062 alongside corrective_061 after EDIT cycle fix.
