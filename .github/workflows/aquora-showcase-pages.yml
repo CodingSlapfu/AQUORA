@@ -7,8 +7,6 @@ on:
 permissions:
   contents: write
   actions: read
-  pages: write
-  id-token: write
 concurrency:
   group: aquora-public-showcase-publisher
   cancel-in-progress: false
@@ -114,21 +112,9 @@ jobs:
             git commit -m "site: AQUORA v0.6.2 playable showcase and studio"
             git push origin HEAD:gh-pages
           fi
-      - name: Configure GitHub Pages when already enabled
-        id: pages
-        uses: actions/configure-pages@v5
-        continue-on-error: true
-      - name: Upload Pages artifact
-        if: steps.pages.outcome == 'success'
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: dist/
-      - name: Deploy Pages
-        if: steps.pages.outcome == 'success'
-        uses: actions/deploy-pages@v4
-      - name: Explain first-time Pages activation
+      - name: Report branch publication and external Pages deployment
         if: always()
         run: |
           echo "Generated site branch: https://github.com/$GITHUB_REPOSITORY/tree/gh-pages"
-          echo "If Pages was not configured, select Settings > Pages > Deploy from a branch > gh-pages / (root)."
-          echo "Do not claim the website is live until the public site actually loads."
+          echo "GitHub Pages is configured for branch publishing (gh-pages / root). The native Pages deployment is handled separately."
+          echo "The Pages service tracks gh-pages independently; verify its native pages build and public browser behavior before claiming complete browser acceptance."
