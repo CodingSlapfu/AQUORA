@@ -1,23 +1,35 @@
-/* AQUORA v0.6.3: automatic, control-free homepage screen rotation. */
+/* AQUORA v0.6.4: automatic, control-free homepage screen rotation. */
 (() => {
   "use strict";
   const screen = document.getElementById("hero-screen-image");
   if (!screen) return;
   const slides = [
-    ["play-063.png", "PLAY page with performance controls"],
-    ["sound-063.png", "SOUND editor page"],
-    ["evolve-063.png", "EVOLVE arrangement page"],
-    ["mixer-063.png", "Eight-track mixer page"],
-    ["mix-strip-063.png", "Mixer channel controls"],
-    ["drums-063.png", "Drum-kit controls"],
-    ["air-063.png", "AIR effects settings"],
-    ["appearance-063.png", "Display appearance settings"]
+    ["play-064.png", "PLAY page with performance controls"],
+    ["sound-064.png", "SOUND editor page"],
+    ["evolve-064.png", "EVOLVE arrangement page"],
+    ["mixer-064.png", "Eight-track mixer page"],
+    ["mix-strip-064.png", "Mixer channel controls"],
+    ["drums-064.png", "Drum-kit controls"],
+    ["air-064.png", "AIR effects settings"],
+    ["appearance-064.png", "Display appearance settings"]
   ];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let index = 0;
   let timer = null;
   let switching = false;
-  const imagePath = n => "assets/" + slides[n][0];
+  const animated = new Set(["sound", "evolve", "mixer", "mix-strip"]);
+  const imagePath = n => "assets/" + slides[n][0].replace(/\.png$/, !reducedMotion.matches && animated.has(slides[n][0].replace("-064.png", "")) ? ".apng" : ".png");
+  function syncGallery() {
+    document.querySelectorAll("img[data-animated]").forEach(img => {
+      if (!img.dataset.still) img.dataset.still = img.getAttribute("src");
+      img.src = reducedMotion.matches ? img.dataset.still : img.dataset.animated;
+      img.onerror = () => { img.onerror = null; img.src = img.dataset.still; };
+    });
+    screen.src = imagePath(index);
+    screen.onerror = () => { screen.onerror = null; screen.src = "assets/" + slides[index][0]; };
+  }
+  reducedMotion.addEventListener("change", syncGallery);
+  syncGallery();
   function preload(n) {
     const image = new Image();
     image.src = imagePath(n);
@@ -29,7 +41,7 @@
     window.setTimeout(() => {
       index = (index + 1) % slides.length;
       screen.src = imagePath(index);
-      screen.alt = "Actual AQUORA v0.6.3 " + slides[index][1] + ".";
+      screen.alt = "Actual AQUORA v0.6.4 " + slides[index][1] + ".";
       preload((index + 1) % slides.length);
       window.requestAnimationFrame(() => {
         screen.classList.remove("is-switching");

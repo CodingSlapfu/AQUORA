@@ -1,0 +1,42 @@
+[
+  {
+    "page": "sound",
+    "transport": "PLAY",
+    "frames": 40,
+    "fps": 10,
+    "seconds": 4,
+    "unique_frames": 40,
+    "sha256": "afb2a0708bff90485c07d76eea6f401f1dc914fb083eaa02a6992f398b0d1938",
+    "source": "actual host RGB565 LCD renderer + live sr_render"
+  },
+  {
+    "page": "evolve",
+    "transport": "PLAY",
+    "frames": 40,
+    "fps": 10,
+    "seconds": 4,
+    "unique_frames": 12,
+    "sha256": "8dfb6dc1c96609bcc188d3abac7ce3cd1c234368ab7c4cc45e738d936eb89374",
+    "source": "actual host RGB565 LCD renderer + live sr_render"
+  },
+  {
+    "page": "mixer",
+    "transport": "PLAY",
+    "frames": 40,
+    "fps": 10,
+    "seconds": 4,
+    "unique_frames": 40,
+    "sha256": "2df2201c8883a20a4a593e4e26b2205f019b470c3ac3e76add0bd626ad9f6ec6",
+    "source": "actual host RGB565 LCD renderer + live sr_render"
+  },
+  {
+    "page": "mix-strip",
+    "transport": "PLAY",
+    "frames": 40,
+    "fps": 10,
+    "seconds": 4,
+    "unique_frames": 9,
+    "sha256": "30e6290ca233e43e819c5f5e4e3b1ddac585b8b15b45e78ca8a8a11a12e6b07d",
+    "source": "actual host RGB565 LCD renderer + live sr_render"
+  }
+]

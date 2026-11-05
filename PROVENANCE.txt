@@ -1,6 +1,6 @@
-AQUORA v0.6.3 website sourced from accepted release.
-Firmware commit 0f2716ba0499def94884860248f9b0e887b0fd0d
-CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/42022969585
-Eight v0.6.3 interface captures (seven gallery, one PLAY hero); no standalone visualizer screenshots.
+AQUORA v0.6.4 website sourced from accepted release.
+Firmware commit 50b8a1e02e215aff1e0a7b738d40f63769d4f502
+CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/42087112438
+Eight v0.6.4 interface captures, four real audio-active APNGs; no standalone visualizer screenshots.
 AQUORA Sans web vector faces derived from the matching OFL firmware font.
 Published WASM byte-for-byte unchanged; Studio adapter affects HTML only.
