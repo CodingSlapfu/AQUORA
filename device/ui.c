@@ -2,6 +2,23 @@
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character"};
+/* Original RGB565 panel skin palettes; all colors static and resolved only
+ * at UI draw time. Fullscreen graphics use their art-directed background. */
+static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
+ {{RGB(5,17,22),RGB(10,32,38),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
+  {RGB(246,250,251),RGB(229,239,241),RGB(108,154,161),RGB(10,106,99),RGB(20,38,47),RGB(70,91,97)}},
+ {{RGB(7,22,29),RGB(18,47,55),RGB(67,142,148),RGB(90,245,209),RGB(236,251,252),RGB(158,199,205)},
+  {RGB(246,252,250),RGB(226,247,242),RGB(66,146,136),RGB(12,121,121),RGB(14,53,56),RGB(66,99,102)}},
+ {{RGB(12,15,38),RGB(26,31,65),RGB(62,95,189),RGB(58,247,247),RGB(243,247,255),RGB(162,178,220)},
+  {RGB(250,251,255),RGB(230,238,252),RGB(98,126,203),RGB(10,91,177),RGB(24,35,73),RGB(88,98,137)}},
+ {{RGB(32,20,17),RGB(66,39,29),RGB(157,88,48),RGB(255,186,85),RGB(255,244,219),RGB(225,182,145)},
+  {RGB(255,249,240),RGB(252,231,212),RGB(201,130,91),RGB(169,70,40),RGB(69,38,29),RGB(116,73,53)}},
+ {{RGB(10,10,32),RGB(21,23,62),RGB(73,84,188),RGB(140,158,255),RGB(237,238,255),RGB(162,172,216)},
+  {RGB(247,247,255),RGB(229,230,251),RGB(110,105,194),RGB(73,60,171),RGB(32,29,74),RGB(92,87,138)}}
+};
+static uint16_t skin_text(void){return skins[ui_theme][ui_background].text;}
+static uint16_t skin_dim(void){return skins[ui_theme][ui_background].dim;}
+static uint16_t skin_accent(void){return skins[ui_theme][ui_background].accent;}
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
 static void label(int x,int y,const char *name,int value){char v[12];num(v,value);cv_text(x,y,&FONT_XS,name,RGB(126,166,164));cv_text(x,y+15,&FONT_B,v,RGB(218,240,220));}
 static const char *role_names[SR_TRACKS]={
@@ -126,9 +143,14 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 60:*name="TRACK LOCK";return onoff(engine.sound_locks&(1u<<selected));
  case 64:{static const char *m[]={"Intention","Straight","Swing"};*name="GROOVE";return m[engine.groove_mode];}
  case 65:*name="STRENGTH %";number=engine.groove_strength;break;
- case 66:*name="AIR RADIO";return FM1B_BLE_CENTRAL?(air_on?"Scanning":"Off"):"Unavailable";
+ case 66:*name="AIR RADIO";
+   if(!FM1B_BLE_CENTRAL)return "Unavailable";
+   if(!air_on)return "Off";
+   if(aq_air_live(&air_sensor,plat_ms()))return "Receiving";
+   return air_sensor.calibrated?"Signal lost":"Listening / no broadcaster";
  case 67:*name="AIR TARGET";return engine.air_track<SR_TRACKS?role_names[engine.air_track]:"All tracks";
- case 68:*name="CALIBRATE";return air_sensor.calibrated?"Ready":"Turn right";
+ case 68:*name="CALIBRATE";return !air_sensor.calibrated?"Turn right":
+   aq_air_live(&air_sensor,plat_ms())?"Calibrated / live":"Calibrated / waiting";
  case 71:
    *name="QUICK FIND";
    if(quick_item<QUICK_CATEGORIES)return quick_names[quick_item];
@@ -148,6 +170,9 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 62:*name="PRESENCE %";number=engine.drum_presence;break;
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
  case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
+ case 90:{static const char *themes[]={"AQUORA Legacy","Aurora","Neon Lagoon","Solar Bloom","Midnight Prism"};*name="PANEL SKIN";return themes[ui_theme];}
+ case 91:{static const char *fonts[]={"Small","Medium","Large"};*name="FONT SIZE";return fonts[ui_font_size];}
+ case 92:*name="BACKGROUND";return ui_background?"White":"Black (Stock)";
  case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
  case 78:*name="NATURE MODE";return !engine.bed_type?"Off":(engine.sound_locks&SR_SOUND_NATURE)?"Manual":"Auto";
  case 80:*name="LED TEST";return onoff(led_test);
@@ -206,32 +231,32 @@ static void voice_diagnostics(int band)
  unsigned notes_on=engine.note_ons, notes_off=engine.note_offs, watchdogs=engine.watchdogs;
  plat_unlock(irq);
  if(band==0){
-   cv_text(8,1,&FONT_B,"VOICE INSPECTOR",C_WHITE);
-   cv_text(8,25,&FONT_XS,"K1 SELECT   SEQ ALL NOTES OFF",C_WHITE);
+   cv_text(8,1,&FONT_B,"VOICE INSPECTOR",skin_text());
+   cv_text(8,25,&FONT_XS,"K1 SELECT   SEQ ALL NOTES OFF",skin_text());
  }else if(band==1){
    label(8,0,"VOICE SLOT",voice_slot+1);
    cv_text(126,0,&FONT_XS,"ROLE / ORIGIN",RGB(126,166,164));
-   cv_text(126,15,&FONT_B,voice.active?role_names[voice.track]:"Idle",C_WHITE);
+   cv_text(126,15,&FONT_B,voice.active?role_names[voice.track]:"Idle",skin_text());
    const char *origin=voice.key?"Physical key":"Generator";
    if(voice.active&&engine.tracks[voice.track].mute)origin=voice.key?"Key / muted":"Gen / muted";
-   cv_text(126,31,&FONT_XS,voice.active?origin:"-",C_WHITE);
+   cv_text(126,31,&FONT_XS,voice.active?origin:"-",skin_text());
  }else if(band==2){
    label(8,0,"MIDI / AGE ms",voice.active?voice.midi:0);
    label(126,0,"REMAIN ms",voice.active?voice.remain/(SR_RATE/1000):0);
    char value[16];
-   num(value,voice.active?age/(SR_RATE/1000):0);cv_text(50,15,&FONT_B,value,C_WHITE);
-   cv_text(126,31,&FONT_XS,voice.active?(voice.gate?"Gate on":"Release"):"Idle",C_WHITE);
+   num(value,voice.active?age/(SR_RATE/1000):0);cv_text(50,15,&FONT_B,value,skin_text());
+   cv_text(126,31,&FONT_XS,voice.active?(voice.gate?"Gate on":"Release"):"Idle",skin_text());
  }else if(band==3){
    label(8,0,"NOTE ON / OFF",notes_on);
-   char value[16];num(value,notes_off);cv_text(62,15,&FONT_B,value,C_WHITE);
+   char value[16];num(value,notes_off);cv_text(62,15,&FONT_B,value,skin_text());
    label(126,0,"GUARDS",watchdogs);
-   num(value,voice.active?voice.env*100:0);cv_text(8,31,&FONT_XS,"ENVELOPE %",C_WHITE);
-   cv_text(86,31,&FONT_XS,value,C_WHITE);
+   num(value,voice.active?voice.env*100:0);cv_text(8,31,&FONT_XS,"ENVELOPE %",skin_text());
+   cv_text(86,31,&FONT_XS,value,skin_text());
  }else{
    label(8,0,"SACRED ACTIVE Hz",engine.sacred_gain>.0001f?engine.sacred_hz_now:0);
    label(126,0,"FIXED ACTIVE Hz",engine.running&&engine.solo==SR_TRACKS&&engine.tone_level>0?sr_frequencies[engine.frequency].hz:0);
-   cv_text(8,32,&FONT_XS,engine.binaural_enabled?"BINAURAL ON":"BINAURAL OFF",C_WHITE);
-   cv_text(126,32,&FONT_XS,engine.solo<SR_TRACKS?role_names[engine.solo]:"SOLO OFF",C_WHITE);
+   cv_text(8,32,&FONT_XS,engine.binaural_enabled?"BINAURAL ON":"BINAURAL OFF",skin_text());
+   cv_text(126,32,&FONT_XS,engine.solo<SR_TRACKS?role_names[engine.solo]:"SOLO OFF",skin_text());
  }
 }
 static void performance(int band)
@@ -239,8 +264,8 @@ static void performance(int band)
  if(debug==3){voice_diagnostics(band);return;}
  if(debug==2){
    if(band==0){
-     cv_text(8,1,&FONT_B,"CALLBACK / CORE",C_WHITE);
-     cv_text(8,25,&FONT_XS,"256 FRAMES / 5805 us / GLO VOICES",C_WHITE);
+     cv_text(8,1,&FONT_B,"CALLBACK / CORE",skin_text());
+     cv_text(8,25,&FONT_XS,"256 FRAMES / 5805 us / GLO VOICES",skin_text());
    }
    if(band==1){label(8,0,"CALLBACK MEAN us",callback_stats.mean);label(127,0,"CALLBACK PEAK us",callback_stats.peak);}
    if(band==2){label(8,0,"CALLBACK P95 us",callback_stats.p95);label(127,0,"CALLBACK P99 us",callback_stats.p99);}
@@ -252,28 +277,28 @@ static void performance(int band)
    return;
  }
  if(band==0){
-   cv_text(8,1,&FONT_B,"PERFORMANCE " APP_VERSION,C_WHITE);
+   cv_text(8,1,&FONT_B,"PERFORMANCE " APP_VERSION,skin_text());
    cv_text(8,25,&FONT_XS,fps_auto?"K1 VISUAL FPS: AUTO (20 TARGET)":"K1 VISUAL FPS: 20 TARGET",RGB(147,221,207));
  }else if(band==1){
    label(8,0,"PLAY BLITS FPS x10",shown_fps10);
    label(127,0,"MISSED / 2s",shown_missed);
-   cv_text(8,31,&FONT_XS,"DRAW us",C_WHITE);
-   char draw[12];num(draw,frame_us);cv_text(65,31,&FONT_XS,draw,C_WHITE);
+   cv_text(8,31,&FONT_XS,"DRAW us",skin_text());
+   char draw[12];num(draw,frame_us);cv_text(65,31,&FONT_XS,draw,skin_text());
 
  }else if(band==2){
    label(8,0,"AUDIO MEAN us",audio_stats.mean);
    label(127,0,"FX MEAN us",fx_stats.mean);
-   cv_text(8,32,&FONT_XS,"GLO: CALLBACK AND VOICE STATS",C_WHITE);
+   cv_text(8,32,&FONT_XS,"GLO: CALLBACK AND VOICE STATS",skin_text());
  }else if(band==3){
    label(8,0,"DMA XRUN DELTA",xrun_delta);
    label(127,0,"AUDIO+FX % BUDGET",(audio_stats.mean+fx_stats.mean)*100/5805);
-   char v[12];num(v,plat_xruns());cv_text(66,15,&FONT_B,v,C_WHITE);
+   char v[12];num(v,plat_xruns());cv_text(66,15,&FONT_B,v,skin_text());
  }else if(band==4){
-   cv_text(8,0,&FONT_XS,plat_cpu2_on()?"CORE 1 GEOMETRY / CORE 0 AUDIO":"CORE 0 / SINGLE-CORE FALLBACK",C_WHITE);
+   cv_text(8,0,&FONT_XS,plat_cpu2_on()?"CORE 1 GEOMETRY / CORE 0 AUDIO":"CORE 0 / SINGLE-CORE FALLBACK",skin_text());
    label(8,12,"WORK / WAIT us",vis_output.busy_us);
-   char v[12];num(v,worker_wait_us);cv_text(66,27,&FONT_B,v,C_WHITE);
+   char v[12];num(v,worker_wait_us);cv_text(66,27,&FONT_B,v,skin_text());
    label(127,12,"FALLBACK / BAD",worker_fallbacks);
-   num(v,plat_cpu2_bad());cv_text(185,27,&FONT_B,v,C_WHITE);
+   num(v,plat_cpu2_bad());cv_text(185,27,&FONT_B,v,skin_text());
  }
 }
 static void mixer_overview(int band)
@@ -283,7 +308,7 @@ static void mixer_overview(int band)
  unsigned count=0;
  for(unsigned channel=first;channel<end;channel++)count+=mix_visible(channel);
  if(!count){
-   cv_text(8,12,&FONT_XS,band==1?"NO ACTIVE TRACKS":"NO ACTIVE BUSES",C_WHITE);
+   cv_text(8,12,&FONT_XS,band==1?"NO ACTIVE TRACKS":"NO ACTIVE BUSES",skin_text());
    return;
  }
  int width=232/(int)count, x=4;
@@ -293,7 +318,7 @@ static void mixer_overview(int band)
    unsigned id=bus?channel-SR_TRACKS:channel;
    const sr_track *track=&engine.tracks[id];
    uint16_t color=!bus&&track->mute?RGB(75,90,112):colors[id];
-   if(channel==mix_focus)cv_line(x,0,x+width-3,0,C_WHITE);
+   if(channel==mix_focus)cv_line(x,0,x+width-3,0,skin_text());
    limited_text(x+2,2,width-3,&FONT_XS,names[channel],color);
    float magnitude=bus?engine.bus_meter[id]:track->meter;
    int meter=(int)(fm_sqrtf(fm_sqrtf(fm_clampf(magnitude,0,1)))*26.f);
@@ -302,7 +327,7 @@ static void mixer_overview(int band)
      int fader=45-(int)(track->volume*26.f);
      cv_line(x+11,19,x+11,45,RGB(75,90,112));
      cv_line(x+10,fader,x+width-4,fader,color);
-     if(engine.solo==id)cv_text(x+width-10,19,&FONT_XS,"S",C_WHITE);
+     if(engine.solo==id)cv_text(x+width-10,19,&FONT_XS,"S",skin_text());
    }
    x+=width;
  }
@@ -317,7 +342,7 @@ static void mixer_band(int band)
      int x=4+(int)b*47;
      uint16_t color=colors[b];
      if(band==1){
-       if(b==mix_bus)cv_line(x,0,x+43,0,C_WHITE);
+       if(b==mix_bus)cv_line(x,0,x+43,0,skin_text());
        limited_text(x+1,2,43,&FONT_XS,names[b],color);
      }
      float mag=fm_clampf(engine.bus_meter[b],0,1);
@@ -331,7 +356,7 @@ static void mixer_band(int band)
    label(8,2,"MASTER PEAK %",(int)(engine.master_peak*100.f));
    label(93,2,"LIMITER %",(int)(engine.limiter*100.f));
    label(174,2,"GAIN %",(int)(engine.gain_trim[selected]*100.f));
-   cv_text(8,30,&FONT_XS,"EDIT: TAB   LFO: SOLO   SEL: MUTE",C_WHITE);
+   cv_text(8,30,&FONT_XS,"EDIT: TAB   LFO: SOLO   SEL: MUTE",skin_text());
    return;
  }
  unsigned ids[SR_TRACKS], count=0;
@@ -341,7 +366,7 @@ static void mixer_band(int band)
      ids[count++]=t;
  }
  if(!count){
-   if(band==1)cv_text(8,4,&FONT_XS,"NO ACTIVE TRACKS / EDIT FOR ALL",C_WHITE);
+   if(band==1)cv_text(8,4,&FONT_XS,"NO ACTIVE TRACKS / EDIT FOR ALL",skin_text());
    return;
  }
  static const char *short_names[]={"LD","BS","PD","HM","PN","PL","CH","DR"};
@@ -352,9 +377,9 @@ static void mixer_band(int band)
    const sr_track *track=&engine.tracks[t];
    uint16_t color=track->mute?RGB(75,90,112):colors[t];
    if(band==1){
-     if(t==selected)cv_line(x,0,x+width-3,0,C_WHITE);
+     if(t==selected)cv_line(x,0,x+width-3,0,skin_text());
      limited_text(x+2,2,width-3,&FONT_XS,count>4?short_names[t]:role_names[t],color);
-     if(engine.solo==t)cv_text(x+2,19,&FONT_XS,"S",C_WHITE);
+     if(engine.solo==t)cv_text(x+2,19,&FONT_XS,"S",skin_text());
    }
    float mag=fm_clampf(track->meter,0,1);
    int meter=(int)(fm_sqrtf(fm_sqrtf(mag))*58.f);
@@ -396,40 +421,64 @@ static void draw(int animate)
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=intro_active||fullscreen||band==1||band==2;
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
-   cv_begin(240,48,RGB(5,17,22));
+   const int artwork=intro_active||fullscreen;
+   const uint16_t bg=artwork?RGB(5,17,22):skins[ui_theme][ui_background].canvas;
+   cv_begin(240,48,bg);
+   if(!artwork&&!debug&&ui_theme){
+     const uint16_t panel=skins[ui_theme][ui_background].panel;
+     const uint16_t edge=skins[ui_theme][ui_background].border;
+     cv_rect(2,1,236,46,panel);
+     cv_line(2,1,237,1,edge);cv_line(2,46,237,46,edge);
+     cv_line(2,1,2,46,edge);cv_line(237,1,237,46,edge);
+     if(band>=3){cv_line(120,4,120,44,edge);cv_line(5,44,234,44,edge);}
+     if(band==0){cv_rect(6,3,3,38,skins[ui_theme][ui_background].accent);}
+   }
    if(intro_active){
      geometry(band*48);
      if(band==2){
-       cv_text(68,1,&FONT_B,"A Q U O R A",C_WHITE);
-       cv_text(96,28,&FONT_XS,APP_VERSION,C_WHITE);
+       cv_text(68,1,&FONT_B,"A Q U O R A",skin_text());
+       cv_text(96,28,&FONT_XS,APP_VERSION,skin_text());
      }
-     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",C_WHITE);
+     if(band==4)cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",skin_text());
    }else if(debug)performance(band);
    else if(fullscreen)geometry(band*48);
    else if(visual&&page==PAGE_AIR){
+     unsigned now=plat_ms();
+     unsigned live=air_on&&aq_air_live(&air_sensor,now);
      if(band==1){
-       cv_text(8,0,&FONT_B,"EXPERIMENTAL AIR",C_WHITE);
-       cv_text(8,23,&FONT_XS,"PASSIVE BLE / CALIBRATE HAND AWAY",C_WHITE);
+       cv_text(8,0,&FONT_B,"AIR / LIVE PROXIMITY",skin_text());
+       const char *state=!air_on?"RADIO OFF":live?(air_sensor.calibrated?"SIGNAL LIVE / CALIBRATED":"RECEIVING / CALIBRATE FAR"):
+                    air_sensor.calibrated?"CALIBRATED / SIGNAL LOST":"NO BROADCASTER";
+       limited_text(8,24,226,&FONT_XS,state,live?skin_accent():skin_dim());
+     }else if(band==2){
+       unsigned value=(unsigned)(engine.air_wet*100.f+.5f);
+       if(value>100)value=100;
+       label(8,0,"PROXIMITY / FX %",value);
+       label(150,0,"PACKETS / SEC",air_packet_rate);
+       cv_line(7,42,230,42,skin_dim());
+       if(live)cv_rect(8,36,(int)(value*222u/100u),6,skin_accent());
+       cv_text(8,29,&FONT_XS,live?"LIVE MEASURED BLE / 1D RSSI":"NO LIVE HAND-SENSOR DATA",skin_text());
      }else{
-       label(8,0,air_sensor.raw?"SIGNAL RAW":"NO SIGNAL",air_sensor.raw);
-       label(185,0,"PACKETS",air_packets);
-       label(90,0,"WET %",engine.air_wet*100.f);
+       label(8,0,"RAW RSSI",air_sensor.raw);
+       label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
+       label(183,0,"LAST PKTS",air_packets);
+       cv_text(8,33,&FONT_XS,live?"CALIBRATE FAR / WATCH HAND SHADOW":"MANUAL FX: MIX / MASTER FX",skin_text());
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
        static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO"};
        cv_text(8,0,&FONT_B,tabs[drum_tab],colors[SR_DRUMS]);
-       limited_text(8,25,225,&FONT_XS,sr_drum_kits[engine.drum_kit].name,C_WHITE);
+       limited_text(8,25,225,&FONT_XS,sr_drum_kits[engine.drum_kit].name,skin_text());
      }else{
        label(8,0,"DENSITY",engine.drum_density);
        label(91,0,"HIT %",engine.drum_hit);
        label(163,0,"LEVEL %",engine.drum_level*100);
-       cv_text(8,33,&FONT_XS,"EDIT: TAB   PRESET: KIT",C_WHITE);
+       cv_text(8,33,&FONT_XS,"EDIT: TAB   PRESET: KIT",skin_text());
      }
    }else if(visual&&page==PAGE_SOUND&&sound_picker){
      if(band==1){
-       cv_text(8,0,&FONT_B,"SOUND CATEGORIES",C_WHITE);
-       cv_text(8,28,&FONT_XS,"SELECT: CHOOSE   EDIT: OPEN",C_WHITE);
+       cv_text(8,0,&FONT_B,"SOUND CATEGORIES",skin_text());
+       cv_text(8,28,&FONT_XS,"SELECT: CHOOSE   EDIT: OPEN",skin_text());
      }else limited_text(8,8,225,&FONT_B,groups[group],colors[SR_LEAD]);
    }else if(visual&&page==PAGE_SOUND&&group==0&&selected<SR_DRUMS){
      static unsigned last_patch=SR_PATCHES;
@@ -446,8 +495,8 @@ static void draw(int animate)
        last_attack=track->attack;last_release=track->release;
      }
      int offset=(band-1)*48;
-     if(band==1)cv_text(8,0,&FONT_XS,(engine.running||engine.preview_frames)?"LIVE ROLE / MODEL":"PATCH MODEL",C_WHITE);
-     else cv_text(8,0,&FONT_XS,"ATTACK / RELEASE",C_WHITE);
+     if(band==1)cv_text(8,0,&FONT_XS,(engine.running||engine.preview_frames)?"LIVE ROLE / MODEL":"PATCH MODEL",skin_text());
+     else cv_text(8,0,&FONT_XS,"ATTACK / RELEASE",skin_text());
      int16_t captured[128];
      if(band==1&&(engine.running||engine.preview_frames)){
        unsigned flags=plat_lock();
@@ -470,11 +519,11 @@ static void draw(int animate)
    }else if(visual&&page==PAGE_SOUND){
      if(band==1){
        if(group==1||group==14){
-         limited_text(8,0,220,&FONT_B,beds[engine.bed_type],C_WHITE);
-         cv_text(8,24,&FONT_XS,!engine.bed_type?"OFF":engine.sound_locks&SR_SOUND_NATURE?"MANUAL":"AUTO / INTENTION + STYLE",C_WHITE);
+         limited_text(8,0,220,&FONT_B,beds[engine.bed_type],skin_text());
+         cv_text(8,24,&FONT_XS,!engine.bed_type?"OFF":engine.sound_locks&SR_SOUND_NATURE?"MANUAL":"AUTO / INTENTION + STYLE",skin_text());
        }else{
-         limited_text(8,0,220,&FONT_B,groups[group],C_WHITE);
-         cv_text(8,24,&FONT_XS,"LEVELS FROM AUDIO ENGINE",C_WHITE);
+         limited_text(8,0,220,&FONT_B,groups[group],skin_text());
+         cv_text(8,24,&FONT_XS,"LEVELS FROM AUDIO ENGINE",skin_text());
        }
      }else if(group==6&&selected<=SR_BASS){
        unsigned flags=plat_lock();
@@ -508,13 +557,13 @@ static void draw(int animate)
        label(8,24,"POST MIX PEAK %",(int)(level*100.f));
      }
    }else if(visual&&page==PAGE_SETUP){
-     if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY",C_WHITE);
+     if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
      if(band==2){
        if(setup_tab==2){
-         cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,C_WHITE);
+         cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,skin_text());
          static const char *power[]={"BATTERY LOW","BATTERY 1 / 3","BATTERY 2 / 3","BATTERY FULL","USB POWER"};
-         cv_text(8,26,&FONT_XS,battery_level>=0&&battery_level<=4?power[battery_level]:"BATTERY UNREAD",C_WHITE);
-       }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":"EDIT: TAB   GLO: PERFORMANCE",C_WHITE);
+         cv_text(8,26,&FONT_XS,battery_level>=0&&battery_level<=4?power[battery_level]:"BATTERY UNREAD",skin_text());
+       }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":"EDIT: TAB   GLO: PERFORMANCE",skin_text());
      }
    }else if(visual&&page==PAGE_EVOLVE){
      if(band==1){
@@ -522,7 +571,7 @@ static void draw(int animate)
        label(86,0,engine.freeze?"FROZEN":engine.evolve_next?"NEXT QUEUED":"PHRASE",engine.phrase);
        static const char *sections[]={"Opening","Build","Resolve","Rest","Return"};
        cv_text(162,0,&FONT_XS,"SECTION",RGB(126,166,164));
-       limited_text(162,15,72,&FONT_B,sections[engine.phrase/4u%5u],C_WHITE);
+       limited_text(162,15,72,&FONT_B,sections[engine.phrase/4u%5u],skin_text());
      }else{
        for(unsigned t=0;t<SR_TRACKS;t++){
          unsigned y=t*5u+3u;
@@ -543,24 +592,24 @@ static void draw(int animate)
      cv_text(46,0,&FONT_B,pages[page],RGB(174,236,208));
      if(page==PAGE_DRUMS){
        char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
-       int x=cv_text(104,2,&FONT_XS,"PULSE ",C_WHITE);
+       int x=cv_text(104,2,&FONT_XS,"PULSE ",skin_text());
        cv_text(x,2,&FONT_XS,count,RGB(147,221,207));
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
-       cv_text(181,2,&FONT_XS,meter,C_WHITE);cv_text(205,2,&FONT_XS,"%",C_WHITE);
-     }else if(page!=0)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),C_WHITE);
+       cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
+     }else if(page!=0)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":"LIGHTS / DISPLAY"):page==2?(song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":"SOURCE BUSES"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(page!=0){
      cv_text(8,25,&FONT_XS,"SEL",RGB(126,166,164));
-     cv_text(30,25,&FONT_XS,track,C_WHITE);
-     limited_text(44,25,55,&FONT_XS,role_names[selected],C_WHITE);
+     cv_text(30,25,&FONT_XS,track,skin_text());
+     limited_text(44,25,55,&FONT_XS,role_names[selected],skin_text());
      }
      cv_text(101,25,&FONT_XS,"PRE",RGB(126,166,164));
-     limited_text(127,25,105,&FONT_XS,page==0?sr_scenes[engine.scene].name:patch_name(),C_WHITE);
+     limited_text(127,25,105,&FONT_XS,page==0?sr_scenes[engine.scene].name:patch_name(),skin_text());
      if(page==0){
        cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",RGB(119,255,243));
        const char *mode=engine.frequency_lock?"LOCK":engine.tone_level>0?"REF ON":"REF OFF";
        int x=cv_text(107,2,&FONT_XS,mode,RGB(119,255,243));
-       cv_text(x+4,2,&FONT_XS,sr_frequencies[engine.frequency].name,C_WHITE);
+       cv_text(x+4,2,&FONT_XS,sr_frequencies[engine.frequency].name,skin_text());
      }
    }else{
      unsigned start=band==3?0:2;
@@ -570,36 +619,36 @@ static void draw(int animate)
        if(page==PAGE_DRUMS){
          int x=cv_text(8,33,&FONT_XS,drum_status(),RGB(147,221,207));
          char hit[12];num(hit,engine.drum_hit);
-         x=cv_text(x+8,33,&FONT_XS,"HIT %",C_WHITE);
-         cv_text(x+5,33,&FONT_XS,hit,C_WHITE);
+         x=cv_text(x+8,33,&FONT_XS,"HIT %",skin_text());
+         cv_text(x+5,33,&FONT_XS,hit,skin_text());
        }else if(page==1&&(group==1||group==14)){
          const char *hint=engine.nature_audition?"AUDITION / HOME TO EXIT":
           engine.frequency_lock?"NATURE OFF IN LOCK":
           engine.solo<SR_TRACKS?"NATURE MUTED BY SOLO":"NATURE PEAK %";
-         int x=cv_text(8,33,&FONT_XS,hint,C_WHITE);
+         int x=cv_text(8,33,&FONT_XS,hint,skin_text());
          char value[12];num(value,(int)(engine.nature_peak*100.f));
          cv_text(x+6,33,&FONT_XS,value,RGB(119,255,243));
        }else if(page==1&&group==6){
          cv_text(8,33,&FONT_XS,selected>SR_BASS?"TURN SELECT TO LEAD OR BASS":
-            "LEGATO: OVERLAP NOTES  /  ALWAYS: SLIDE",C_WHITE);
+            "LEGATO: OVERLAP NOTES  /  ALWAYS: SLIDE",skin_text());
        }else if(page==2||(page==1&&group==GROUP_KEYS)){
          static const char *notes[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
          unsigned length=engine.loop_length,pos=engine.loop_pos;
          char step[12];
          num(step,engine.running?(pos?pos:length):0);
-         int x=cv_text(8,33,&FONT_XS,"STEP ",C_WHITE);
-         x=cv_text(x,33,&FONT_XS,step,C_WHITE);
-         x=cv_text(x,33,&FONT_XS," / ",C_WHITE);
-         num(step,length);cv_text(x,33,&FONT_XS,step,C_WHITE);
-         x=cv_text(126,33,&FONT_XS,"KEY ",C_WHITE);
+         int x=cv_text(8,33,&FONT_XS,"STEP ",skin_text());
+         x=cv_text(x,33,&FONT_XS,step,skin_text());
+         x=cv_text(x,33,&FONT_XS," / ",skin_text());
+         num(step,length);cv_text(x,33,&FONT_XS,step,skin_text());
+         x=cv_text(126,33,&FONT_XS,"KEY ",skin_text());
          x=cv_text(x,33,&FONT_XS,notes[sr_tonic(&engine)%12],RGB(97,241,244));
          unsigned next=engine.pending_key;
-         if(next){x=cv_text(x+3,33,&FONT_XS," > ",C_WHITE);cv_text(x,33,&FONT_XS,notes[(next-1)%12],RGB(250,171,64));}
+         if(next){x=cv_text(x+3,33,&FONT_XS," > ",skin_text());cv_text(x,33,&FONT_XS,notes[(next-1)%12],RGB(250,171,64));}
        }else if(page==PAGE_SETUP&&setup_tab==1){
          static const char *messages[]={"SAVE RUNS ACTION","STOP FIRST","EMPTY BANK",
            "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED"};
          cv_text(8,33,&FONT_XS,bank_status[bank_slot]==1?"SAVED":bank_status[bank_slot]==2?"INVALID":"EMPTY",RGB(147,221,207));
-         limited_text(62,33,170,&FONT_XS,messages[bank_message],C_WHITE);
+         limited_text(62,33,170,&FONT_XS,messages[bank_message],skin_text());
        }else{
          const char *status=engine.running?"PLAYING":"STOPPED";
          if(page==1&&group==6)status=saved_status==1?"MOTION SAVED":saved_status==2?"SAVE FAILED":"STOP THEN SAVE MOTION";
@@ -611,8 +660,8 @@ static void draw(int animate)
            const char *value=knob_value(control_for(knob_focus),&name,buffer);
            tag[1]=(char)('1'+knob_focus);
            int x=cv_text(8,33,&FONT_XS,tag,RGB(147,221,207));
-           x=cv_text(x,33,&FONT_XS,name,C_WHITE);
-           limited_text(x+7,33,225-x,&FONT_B,value,C_WHITE);
+           x=cv_text(x,33,&FONT_XS,name,skin_text());
+           limited_text(x+7,33,225-x,&FONT_B,value,skin_text());
            status=0;
          }
          if(engine.frequency_lock&&status)status=engine.lock_textures?"UNISON / TEXTURES ON":"UNISON / TEXTURES OFF";
