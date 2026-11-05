@@ -1,4 +1,15 @@
-# AQUORA 0.6.1 resume
+# AQUORA 0.6.2 resume
+
+Current authoritative branch: `aquora-0.6.2-development`. Preserve its latest
+tip; do not check out the older 0.6.1 branch below. The recovered 5ee7a22 tip
+passed full CI/staging in run 41991259083, including the corrected host-panel
+FONT SIZE/BACKGROUND and legacy MIX controls. New binaural optimization and
+AQUORA Sans work is documented in `validation/BINAURAL_062.md`. Re-run final
+platform acceptance for the newest commit before publication. All Issues
+#1–#18 and their latest comments remain the scope; a passing CI suite alone
+does not prove every requirement was implemented. No 0.6.2 publication yet.
+
+## Historical 0.6.1 recovery details
 
 Branch `aquora-0.6.1-corrective`. Fetch and start from its tip in an isolated checkout.
 The verified base is tag `v0.6.0` at `cc7d663b8d74de306fea91ae1daaf2d34f51bd3a`.

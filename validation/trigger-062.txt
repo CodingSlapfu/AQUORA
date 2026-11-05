@@ -8,3 +8,5 @@ Revalidation checkpoint: saved UI themes, global visual, AIR live signal, drum D
 Checkpoint: correct display-only edit-route test, add cinematic FM intro, HYP-influenced mixer overview/focus strip. All 18 issues remain acceptance targets.
 
 Pass legacy controls_060 and new mixer_062 alongside corrective_061 after EDIT cycle fix.
+
+Revalidate cached binaural stereo path, actual three-hour oscillator soak and offline AQUORA Sans bitmap font.

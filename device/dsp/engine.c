@@ -624,14 +624,38 @@ static inline __attribute__((always_inline)) float advance(float *phase,float hz
   if(*phase>=1.f)*phase-=1.f;
   return sine(*phase);
 }
-static inline __attribute__((always_inline)) void render_binaural(sr_engine *e,float *left,float *right){
+typedef struct { float target,step_l,step_r,gain; int steady; } binaural_block;
+static inline __attribute__((always_inline)) binaural_block prepare_binaural(const sr_engine *e){
+  binaural_block b;
+  b.target=(e->running && e->binaural_enabled && e->solo==SR_TRACKS)?1.f:0.f;
+  b.steady=e->binaural_env==b.target && e->carrier_now==e->binaural_carrier &&
+           e->beat_now==e->binaural_rate;
+  b.step_l=(e->carrier_now-e->beat_now*.5f)*(1.f/(float)SR_RATE);
+  b.step_r=(e->carrier_now+e->beat_now*.5f)*(1.f/(float)SR_RATE);
+  b.gain=e->binaural_level*e->binaural_env;
+  return b;
+}
+/* Float smoothing eventually stalls short of its target. Snap only at that
+   representational limit; this also makes the exact steady path reachable. */
+static inline __attribute__((always_inline)) float binaural_smooth(float now,float target,float rate){
+  float next=now+(target-now)*rate;
+  return next==now?target:next;
+}
+static inline __attribute__((always_inline)) void render_binaural(sr_engine *e,const binaural_block *b,float *left,float *right){
   // Each ear gets a separate sinusoid, mixed AFTER shared FX to preserve
   // the ear-specific frequency difference. Never collapse to mono.
-  float target=(e->running && e->binaural_enabled && e->solo==SR_TRACKS)?1.f:0.f;
-  e->binaural_env+=(target-e->binaural_env)*.0009f;
-  if(e->binaural_env<.00003f && !target)return;
-  e->carrier_now+=(e->binaural_carrier-e->carrier_now)*.0005f;
-  e->beat_now+=(e->binaural_rate-e->beat_now)*.0005f;
+  if(b->steady){
+    e->binaural_phase_l+=b->step_l;e->binaural_phase_r+=b->step_r;
+    if(e->binaural_phase_l>=1.f)e->binaural_phase_l-=1.f;
+    if(e->binaural_phase_r>=1.f)e->binaural_phase_r-=1.f;
+    *left+=sine(e->binaural_phase_l)*b->gain;
+    *right+=sine(e->binaural_phase_r)*b->gain;
+    return;
+  }
+  e->binaural_env=binaural_smooth(e->binaural_env,b->target,.0009f);
+  if(e->binaural_env<.00003f && !b->target){e->binaural_env=0;return;}
+  e->carrier_now=binaural_smooth(e->carrier_now,e->binaural_carrier,.0005f);
+  e->beat_now=binaural_smooth(e->beat_now,e->binaural_rate,.0005f);
   float hz_left=e->carrier_now-e->beat_now*.5f;
   float hz_right=e->carrier_now+e->beat_now*.5f;
   *left+=advance(&e->binaural_phase_l,hz_left)*e->binaural_level*e->binaural_env;
@@ -1142,10 +1166,12 @@ static void output_samples(sr_engine *e,const float *dry,int16_t *out,size_t fra
   int binaural=!e->frequency_lock&&!e->nature_audition&&!e->preview_frames&&
      (e->binaural_env>=.00003f||(e->running&&e->binaural_enabled&&e->solo==SR_TRACKS));
   if(!binaural&&e->binaural_env<.00003f)e->binaural_env=0;
+  binaural_block binaural_plan={0};
+  if(binaural)binaural_plan=prepare_binaural(e);
   for(size_t i=0;i<frames;i++){
     float l=dry[3*i],r=dry[3*i+1];
     float binaural_l=0,binaural_r=0;
-    if(binaural)render_binaural(e,&binaural_l,&binaural_r);
+    if(binaural)render_binaural(e,&binaural_plan,&binaural_l,&binaural_r);
     if(binaural&&(e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_BINAURAL)){
       if(!(i&7u))bus_meter(e,SR_BUS_BINAURAL,fmaxf(fabsf(binaural_l),fabsf(binaural_r)));
       l+=binaural_l;r+=binaural_r;

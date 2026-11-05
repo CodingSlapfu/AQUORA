@@ -54,6 +54,19 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+      - name: Binaural stereo extremes and three-hour oscillator soak
+        run: |
+          set -e
+          gcc -Wall -Wextra -Werror -O2 -DSR_DEVICE -DPLAT_HOST \
+            -Idevice/dsp -Ivendor/fm1-base/include tests/binaural_062.c -lm \
+            -o /tmp/aquora-binaural-062
+          /tmp/aquora-binaural-062 long
+          gcc -Wall -Wextra -Werror -O1 -g -DSR_DEVICE -DPLAT_HOST \
+            -Idevice/dsp -Ivendor/fm1-base/include -fsanitize=address,undefined \
+            -fno-omit-frame-pointer -no-pie tests/binaural_062.c -lm \
+            -o /tmp/aquora-binaural-062-sanitized
+          ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 /tmp/aquora-binaural-062-sanitized
+
   platform-acceptance:
     name: ${{ matrix.target }} acceptance
     runs-on: ubuntu-24.04
