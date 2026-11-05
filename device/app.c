@@ -364,7 +364,7 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     if(intro_active){
       /* Sample startup ADC settling before taking a master-knob skip edge.
        * Ordinary 12-bit ADC noise must not abort the introduction. */
-      if(intro_master==~0u||intro_samples<SR_RATE/2u)intro_master=master;
+      if(intro_master==~0u||intro_samples<SR_RATE/20u)intro_master=master;
       else if((master>intro_master?master-intro_master:intro_master-master)>160u)
         intro_master_moved=1;
     }
