@@ -24,21 +24,22 @@ enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAG
 static unsigned air_on, air_hold, air_calibrated, air_poll;
 static unsigned air_packets;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-static unsigned air_scan_started, air_last_signal, air_sent;
+static unsigned air_last_signal, air_sent;
 #endif
 static float air_filtered;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
 extern unsigned plat_air_sample(unsigned *packets);
-extern int plat_air_scan(void);
+extern void plat_air_enable(int on);
 #endif
 static unsigned quick_item;
 static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature",
- "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate"};
+ "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate","Nature Style","Evolution","Master FX","Track Routing"};
 static int air_reference, air_rssi;
-static const uint8_t sound_groups[]={0,6,1,2,3,5,7,12,11,13};
+static const uint8_t sound_groups[]={0,6,1,14,2,3,5,7,12,11,13};
 
 static volatile unsigned intro_active;
-static unsigned intro_start, intro_samples;
+static unsigned intro_start, intro_samples, intro_master;
+static volatile unsigned intro_master_moved;
 static float intro_gain;
 static int16_t scope[128];
 static unsigned scope_write, scope_enabled;
@@ -48,11 +49,11 @@ static unsigned led_test, led_step;
 static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
-enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=14 };
+enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=15 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,22},{32,33,34,35},{13,24,29,28},
- {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,63,73,74},{55,14,48,45}
+ {37,17,10,9},{38,56,0,0},{39,40,41,38},{43,4,22,31},{47,63,73,74},{55,14,48,45},{79,5,54,78}
 };
 static const uint8_t page_controls[4][4]={
  {1,18,22,5},{0,0,0,0},{19,20,25,46},{13,24,29,49}
@@ -260,7 +261,7 @@ static void consume(void){
  case 74:engine.play_feel=switched(engine.play_feel,d);engine.play_queued=0;break;
  case 63:engine.play_grid=bounded(engine.play_grid+d,0,4);engine.play_queued=0;break;
  case 62:engine.drum_presence=bounded(engine.drum_presence+d,0,100);break;
- case 61:if(d>0)engine.sound_locks|=SR_SOUND_NATURE|SR_SOUND_FX;else engine.sound_locks&=~(SR_SOUND_NATURE|SR_SOUND_FX);break;
+ case 61:if(d>0)engine.sound_locks|=SR_SOUND_NATURE|SR_SOUND_FX;else engine.sound_locks&=~(engine.bed_type?(SR_SOUND_NATURE|SR_SOUND_FX):SR_SOUND_FX);break;
  case 78:
    if(d>0){engine.sound_locks&=~SR_SOUND_NATURE;sr_select_nature(&engine,engine.rng);}
    else{engine.bed_type=0;engine.sound_locks|=SR_SOUND_NATURE;}
@@ -316,7 +317,8 @@ void app_init(void)
     visual_init();
     plat_cpu2_set(1);
     output_gain=0;
-    intro_active=intro_samples=0;
+    intro_active=intro_samples=intro_master_moved=0;
+    intro_master=~0u;
     intro_gain=0;
     scope_write=scope_enabled=evolve_step=0;
     memset(scope,0,sizeof scope);
@@ -352,6 +354,10 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     }
     float target=(float)master*(1.f/4096.f);
     if(!master)output_gain=0;
+    if(intro_active){
+      if(intro_master!=~0u&&master!=intro_master)intro_master_moved=1;
+      intro_master=master;
+    }
     unsigned intro=intro_samples;
     unsigned playing_intro=intro_active;
     unsigned chime=intro<SR_RATE*3u&&(playing_intro||intro_gain>.0001f);
@@ -384,7 +390,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
  for(unsigned i=0;i<7;i++)control|=enc[i]!=0;
  if(intro_active){
    unsigned now=plat_ms();
-   if(control||(k&~oldkeys)||now-intro_start>=10000u){
+   if(control||(k&~oldkeys)||intro_master_moved||now-intro_start>=10000u){
      intro_active=0;
      last_control_ms=now;
      blocked_keys|=k;
@@ -498,14 +504,18 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
       case 14:setup_tab=0;break;
       case 15:setup_tab=2;break;
       case 16:page=PAGE_SOUND;group=GROUP_ISOLATE;sound_picker=0;break;
+      case 17:page=PAGE_SOUND;group=14;sound_picker=0;break;
+      case 18:page=PAGE_EVOLVE;song_tab=3;break;
+      case 19:page=PAGE_MIX;mix_tab=1;break;
+      case 20:page=PAGE_SOUND;group=7;sound_picker=0;break;
       }
     }else if(control==66){
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
       air_on=d>0;
-      air_calibrated=air_scan_started=air_packets=air_rssi=air_sent=0;
+      air_calibrated=air_packets=air_rssi=air_sent=0;
       air_filtered=0;
       if(!air_on)send(70,0);
-      plat_ble_enable(air_on);
+      plat_air_enable(air_on);
 #endif
     }else if(control==68){
       if(d>0&&air_on&&air_packets){air_reference=(int)air_filtered;air_calibrated=1;}
@@ -589,7 +599,6 @@ void app_frame(void)
     if(air_on&&now-air_poll>=80u){
       air_poll=now;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-      if(!air_scan_started)air_scan_started=plat_air_scan();
       unsigned raw=plat_air_sample(&air_packets);
       if(air_packets){
         air_rssi=(int)raw;
@@ -665,6 +674,11 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"mute"))*got=track->mute;
  else if(!strcmp(what,"solo"))*got=engine.solo;
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
+ else if(!strcmp(what,"intro"))*got=intro_active;
+ else if(!strcmp(what,"nature_bed"))*got=engine.bed_type;
+ else if(!strcmp(what,"nature_style"))*got=engine.nature_style;
+ else if(!strcmp(what,"lighting"))*got=lighting;
+ else if(!strcmp(what,"led_slot"))*got=led_step;
  else if(!strcmp(what,"fullscreen"))*got=fullscreen;
  else if(!strcmp(what,"setup_tab"))*got=setup_tab;
  else if(!strcmp(what,"drum_tab"))*got=drum_tab;

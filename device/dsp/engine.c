@@ -972,7 +972,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       float s;
       if(config->fm_ratio){
         v->phase2+=v->increment*config->fm_ratio;
-        if(v->phase2>=1.f)v->phase2-=floorf(v->phase2);
+        if(v->phase2>=1.f)v->phase2-=1.f;
         float index=config->fm_depth*(1.f-config->fm_envelope*(1.f-v->env));
         s=sine(v->phase+index*sine(v->phase2)+1.f);
       }else s=wave(config->wave,v->phase,config->brightness);

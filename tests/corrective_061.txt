@@ -1,0 +1,38 @@
+expect intro 1
+wait 300
+shot startup.png
+tap PLAY
+expect intro 0
+expect running 0
+master 2048
+tap PLAY
+expect running 1
+turn ALGO 1
+wait 250
+shot sound-live.png
+turn ALGO 1
+wait 500
+shot evolve-live.png
+tap HOME
+wait 10200
+shot original-fullscreen.png
+turn ALGO 1
+expect fullscreen 0
+expect running 1
+turn ALGO 5
+spin K1 1
+tap HOME
+wait 10200
+shot polar-bloom-fullscreen.png
+expect fullscreen 1
+turn ALGO 1
+tap PLAY
+expect running 0
+turn ALGO 5
+expect setup_tab 0
+spin K2 2
+expect lighting 2
+spin K3 1
+spin K4 5
+expect led_slot 5
+leds

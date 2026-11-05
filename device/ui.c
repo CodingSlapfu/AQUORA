@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain"};
-static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures"};
+static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","Track Routing","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character"};
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
 static void label(int x,int y,const char *name,int value){char v[12];num(v,value);cv_text(x,y,&FONT_XS,name,RGB(126,166,164));cv_text(x,y+15,&FONT_B,v,RGB(218,240,220));}
 static const char *role_names[SR_TRACKS]={
@@ -501,7 +501,7 @@ static void draw(int animate)
          char hit[12];num(hit,engine.drum_hit);
          x=cv_text(x+8,33,&FONT_XS,"HIT %",C_WHITE);
          cv_text(x+5,33,&FONT_XS,hit,C_WHITE);
-       }else if(page==1&&group==1){
+       }else if(page==1&&(group==1||group==14)){
          const char *hint=engine.nature_audition?"AUDITION / HOME TO EXIT":
           engine.frequency_lock?"NATURE OFF IN LOCK":
           engine.solo<SR_TRACKS?"NATURE MUTED BY SOLO":"NATURE PEAK %";

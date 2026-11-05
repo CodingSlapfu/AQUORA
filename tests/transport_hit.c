@@ -304,6 +304,7 @@ static void hit_cap(void)
     sr_start(&a);sr_start(&b);
     a.drum_density=b.drum_density=2;
     a.drum_hit=SR_HIT_MAX;b.drum_hit=255;
+    a.freeze=b.freeze=1; /* Count the fixed pattern independently of phrase variation. */
     a.tick_length=b.tick_length=32;
     for(unsigned i=0;i<3500;i++){
         block(&a);block(&b);
