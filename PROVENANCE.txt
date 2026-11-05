@@ -1,5 +1,5 @@
 AQUORA v0.6.2 website sourced from accepted release.
 Firmware commit b6d452202bb12c955c29f1726fea5a02bcc91e61
 CI run https://github.com/CodingSlapfu/AQUORA/actions/runs/41998659763
-Nine actual v0.6.2 software-rendered captures.
+Ten actual v0.6.2 software-rendered captures (nine gallery, one PLAY hero).
 Published WASM byte-for-byte unchanged; Studio adapter affects HTML only.
