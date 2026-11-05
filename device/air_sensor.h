@@ -16,6 +16,11 @@ static inline unsigned aq_air_calibrate(aq_air_sensor *sensor, unsigned now)
     return 1;
 }
 
+/* A stored calibration does not imply live radio packets or proximity. */
+static inline unsigned aq_air_live(const aq_air_sensor *s, unsigned now)
+{
+    return !!s->raw && !!s->filtered && now-s->last_signal<800u;
+}
 static inline unsigned aq_air_update(aq_air_sensor *sensor, unsigned raw, unsigned packets, unsigned now)
 {
     if(packets&&raw){
@@ -28,7 +33,7 @@ static inline unsigned aq_air_update(aq_air_sensor *sensor, unsigned raw, unsign
         sensor->filtered=0;
         sensor->raw=0;
     }
-    if(!sensor->calibrated||!sensor->filtered)return 0;
+    if(!sensor->calibrated||!aq_air_live(sensor,now))return 0;
     int target=((int)sensor->reference-(int)(sensor->filtered+.5f)-2)*9;
     return target>100?100u:target>0?(unsigned)target:0;
 }
