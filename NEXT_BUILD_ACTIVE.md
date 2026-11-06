@@ -1,9 +1,24 @@
-# AQUORA 0.6.5 — published and verified
+# AQUORA — Next build active outstanding queue (post-v0.6.5)
 
-No outstanding v0.6.5 software implementation or publication work.
-Completed requirements and evidence: validation/integration-065/COMPLETED.md.
-Final publication proof: validation/integration-065/LIVE_PUBLICATION.json.
+**Audit:** 2026-11-05 | **Published software baseline:** v0.6.5 (verified release/installer; physical-device acceptance remains owner-unverified) | **Next version:** choose after verifying latest GitHub checkpoints and exclusive project build ownership.
 
-Owner-only physical tests remain unverified: flashing, real LCD FPS, audio callback
-percentiles/DMA/XRUN stability, SAVE latency and listening on FM-1. New feedback
-should become a concise new queue; preserve the accepted release and tests.
+**Read first:** `WORK_MODE_START_HERE.md`, this file, latest checkpoint, then [#32](https://github.com/CodingSlapfu/AQUORA/issues/32) requirement-reconciliation gate. Read only relevant detailed issue bodies/latest comments once. **Do not restart successful v0.6.5 work.**
+
+## Confirmed outstanding implementation
+
+1. **P0 / CONFIRMED MISSING — [#17](https://github.com/CodingSlapfu/AQUORA/issues/17): Replace secondary visualizer from the ground up.** Current main still renders `Resonance Plate` as 17×17 nodal-contour geometry; 0.6.5 improved its runtime but never delivered the latest water-and-sand cymatics brief. Build an original physically motivated *visual illusion* of wave-active water and sand migrating/settling into nodal patterns, driven by real music onsets/pitch/reference frequency/intention with quiet decay. **Not** a rename, colored contours, or cosmetic mesh. Preview 240×240 before/after frame sequences (low/high pitch, wave formation, particle settling, changing notes and silence), fullscreen/PLAY and audio-first native/forced-single-core performance. Owner visual approval and real LCD FPS remain **UNVERIFIED**. Preserve spiral-only intro and no visualizer images in the public showcase.
+2. **P0 / NEW — [#31](https://github.com/CodingSlapfu/AQUORA/issues/31): Universal MIDI connectivity.** BLE MIDI + class-compliant bidirectional USB MIDI for powered iPad hub/midimittr, generic peer discovery, clock/transport/note/control, correct master policy, no stuck notes or loops, live setup and recovery. Pair with KIRA-9 but never hard-code a peer whitelist. **BLE MIDI automatically disables AIR and enabling AIR disconnects BLE MIDI**; USB MIDI may coexist with AIR. Physical BLE/iPad tests owner-UNVERIFIED.
+3. **P0 / OPEN — [#13](https://github.com/CodingSlapfu/AQUORA/issues/13): AIR truthful radio/proximity UX and effect selection.** Audit v0.6.5 partial AIR implementation before editing; complete actual measured packet/proximity states, accessible effects/calibration and safe radio handover with #31. Hardware hand-sensing **UNVERIFIED**.
+4. **P1 / OWNER-FEEDBACK UNVERIFIED ON v0.6.5 — [#18](https://github.com/CodingSlapfu/AQUORA/issues/18): 19 drum kits muffled.** User previously reported all kits lacked crisp attacks; code has changed since then. First compare latest kit DSP/transient test + sound examples against owner report, then improve only if still deficient; preserve old patches/levels. Owner listening pending.
+5. **P1 / EVIDENCE AUDIT — [#9](https://github.com/CodingSlapfu/AQUORA/issues/9): Long evolution and intention revisit freshness.** Specifically confirm A→B→A reselects eligible unlocked patches/kits/motifs and 13 intentions × three music modes produce coherent long-session variation. The published v0.6.5 1,404 realizations alone don't establish every latest owner acceptance condition. Build targeted missing tests only; implement gaps only when demonstrated.
+
+## Mandatory scope reconciliation before compiling
+
+6. **P0 / NEW PROCESS GATE — [#32](https://github.com/CodingSlapfu/AQUORA/issues/32): No lost tasks.** Inspect open Issues #1–#32 and **latest owner comments**, prior release scope, source and acceptance evidence. Create `validation/NEXT_BUILD_REQUIREMENT_MATRIX.md` (canonical ID, requirement, source, status, code/commit, tests, proof or explicit carry-forward). Targeted verification—not blanket rewrites—for #1 LEDs, #3 Nature modes, #4 SOUND/EVOLVE graphs, #5 Birds/Forest, #10 fullscreen, #19 website, #20 SAVE, #21 themes, #22 prior catch-all, #23 modes/motion and any other unresolved item. Mark **COMPLETED SOFTWARE, PARTIAL, OPEN, BLOCKED, OWNER-HARDWARE-UNVERIFIED** with evidence. Update issue statuses/notes honestly; reconcile any deferred requirements from earlier hotfixes.
+7. **P0 / RELEASE ONLY AFTER GATES — [#32](https://github.com/CodingSlapfu/AQUORA/issues/32):** native/repro/single-core/host/emulator/BLE/USB/visual/flash acceptance, source & release SHA256, direct version-to-version update tests, GitHub checkpoints and live installer verification. Owner physical hardware tests separate. Any incomplete blocker stays here with exact resume command and remote commit; **no silently dropped task**.
+
+## Already accepted / do not redo without regression
+
+v0.6.5 `validation/integration-065/REQUIREMENTS.md` and `COMPLETED.md` document accepted software scope: #2, scoped #16 typography/themes, #24, #26–#30 (audio/render constraints, SAVE, bass expansion, intro, readable MIX, workflow). The acceptance map **did not cover #17's redesigned second visualizer**. Keep those accepted source and release artifacts intact. Do not treat host/emulator tests as owner physical acceptance.
+
+**Queue law:** This is ONLY the outstanding list. Archive genuinely complete items with exact source/test/commit/release evidence; **a finished scoped hotfix must not erase deferred tasks**. Do not start overlapping firmware builds while another Work session holds the lock.
