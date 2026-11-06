@@ -17,3 +17,7 @@ The matching installer and website are live; publication evidence is in validati
 The initial source migration is a **snapshot** from the pre-existing multi-project repository, `CodingSlapfu/FM-1-Firmware-Projects`. The original repository remains intact as a backup. Future AQUORA changes should use this repository, after checking for any active Work session and synchronizing any newer commits from the old checkout.
 
 **Never mark the firmware released without native build, acceptance tests, matching artifacts, and verified hosted installer.** Physical device testing is performed by the owner.
+
+## Copyright
+
+**Copyright © 2026 Ziao** for original copyrightable contributions. See [COPYRIGHT.md](COPYRIGHT.md) for the scope of this notice and third-party license information.
