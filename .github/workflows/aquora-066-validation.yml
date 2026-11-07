@@ -27,31 +27,26 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install Pillow==11.3.0
           echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
-      - name: Restore pinned native compiler
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42353704244
+          name: aquora-066-platform
+          path: ${{ runner.temp }}/results
+      - name: Verify successful unchanged native artifacts without recompiling
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          curl -fLsS --proto '=https' --proto-redir '=https' --max-time 180 --retry 2 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
-          echo "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd  $RUNNER_TEMP/jieli.tar.xz" | sha256sum -c --strict
-          mkdir "$RUNNER_TEMP/jieli"
-          tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
-          mapfile -t compilers < <(find "$RUNNER_TEMP/jieli" -type d -name pi32v2)
-          test "${#compilers[@]}" -eq 1
-          echo "JIELI_TOOLCHAIN=$(dirname "${compilers[0]}")" >> "$GITHUB_ENV"
-      - name: Sequential native, reproducibility and single-core gates
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$RUNNER_TEMP/source"
-          out="$RUNNER_TEMP/results"
-          for target in native native-repro single-core; do
-            mkdir "$out/$target"
-            if [[ "$target" == single-core ]]; then export FM1B_CPU2=0; else unset FM1B_CPU2; fi
-            python3 vendor/fm1-base/tools/build.py device --release 0.6.6 --sdk vendor/ac79-package-files 2>&1 | tee "$out/$target/build.log"
-            cp device/build/sound-healing-0.6.6.fwsc "$out/$target/"
-            grep -F 'identity FM-1_73000606' "$out/$target/build.log"
-          done
-          cmp "$out/native/sound-healing-0.6.6.fwsc" "$out/native-repro/sound-healing-0.6.6.fwsc"
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/jobs/128347082224 --jq '.steps[] | select(.name=="Sequential native, reproducibility and single-core gates") | .conclusion')" = success
+          git fetch --no-tags --depth=1 origin c6df8d527d69ad9e0f3a8dce19d440b679bf5337
+          git diff --exit-code c6df8d527d69ad9e0f3a8dce19d440b679bf5337 HEAD -- device vendor
+          cd "$RUNNER_TEMP/results"
+          sha256sum -c --strict SHA256SUMS.txt
+          test "$(cat source-commit.txt)" = c6df8d527d69ad9e0f3a8dce19d440b679bf5337
+          cp source-commit.txt native-source-commit.txt
+          cmp native/sound-healing-0.6.6.fwsc native-repro/sound-healing-0.6.6.fwsc
       - name: Reuse unchanged successful seven-path updater acceptance
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,7 +57,7 @@ jobs:
           git fetch --no-tags --depth=1 origin aeb0eea3bb7851af57e73f54384adeef12ad0086
           git diff --exit-code aeb0eea3bb7851af57e73f54384adeef12ad0086 HEAD -- vendor tests/direct_update_066.py
           job=$(gh api repos/$GITHUB_REPOSITORY/actions/runs/42353129424/jobs --jq ".jobs[0].id")
-          gh api repos/$GITHUB_REPOSITORY/actions/jobs/$job/logs > "$RUNNER_TEMP/results/inherited-updater-job.log"
+          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/$job/logs > "$RUNNER_TEMP/results/inherited-updater-job.log"
 
       - name: Outstanding host and visual semantics
         shell: bash
