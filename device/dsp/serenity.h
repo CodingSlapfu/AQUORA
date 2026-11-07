@@ -34,6 +34,11 @@ typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume
 typedef struct { uint8_t active, track, gate, midi, key, external, channel; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {
+  uint8_t chord_mode, chord_gap, chord_inversion, chord_direction, rhythm_style, fill_character;
+  uint8_t air_mode, air_request, air_result, chord_alternate;
+  int8_t chord_previous[3];
+  uint32_t scheduled_overflows, air_actions;
+  struct { uint32_t due; float beats; uint8_t role,note,velocity,active; } scheduled[12];
   sr_track tracks[SR_TRACKS]; sr_voice voices[SR_VOICES];
   uint32_t rng, frame_count, tick_phase, tick_length, sequence_step, phrase;
   uint32_t midi_events[64],midi_event_lost;
@@ -62,7 +67,7 @@ typedef struct {
   uint32_t scope_samples;
 #endif
   int16_t scope[128];
-  float air_target, air_wet;
+  float air_target, air_wet, drum_air_lp;
   float bus_meter[SR_BUS_COUNT];
   uint32_t play_queued, play_released;
   uint8_t play_track[27], play_strength, play_feel;

@@ -56,4 +56,24 @@ static inline const char *aq_air_state(const aq_air_sensor *s,unsigned enabled,
     return !s->calibrated?"RECEIVING / CALIBRATE FAR":s->calibrated==1?
         "FAR SET / CALIBRATE NEAR":"ACTIVE / FAR + NEAR SET";
 }
+/* A one-dimensional near/far pulse, never a left/right or distance claim.
+ * Require several fresh packets, deliberate residence and a full release.
+ * Loss, jitter and sustained holds cannot repeatedly retrigger. */
+typedef struct {unsigned stage,packets,began,cooldown;} aq_air_gesture;
+static inline unsigned aq_air_gesture_update(aq_air_gesture *g,unsigned value,unsigned valid,unsigned packets,unsigned now,unsigned sensitivity)
+{
+ if(!valid){g->stage=g->packets=0;return 0;}
+ unsigned high=100u-sensitivity/2u,low=high/3u;
+ if((int32_t)(now-g->cooldown)<0)return 0;
+ if(g->stage==0){if(value<=low){g->stage=1;g->packets=0;}return 0;}
+ if(g->stage==1){if(value>=high){g->stage=2;g->began=now;g->packets=packets;}return 0;}
+ g->packets+=packets;
+ if(now-g->began>1500u){g->stage=0;return 0;}
+ if(value<=low){
+  unsigned trigger=g->packets>=3u&&now-g->began>=80u;
+  g->stage=0;if(trigger)g->cooldown=now+1600u;
+  return trigger;
+ }
+ return 0;
+}
 #endif

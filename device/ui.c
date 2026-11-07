@@ -7,7 +7,7 @@ static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS
 #define FONT_B (*ui_value_font())
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain"};
-static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character"};
+static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum"};
 /* Static panel palettes. Canvas is independently exact black or white. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
  {{RGB(5,17,22),RGB(10,32,38),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
@@ -228,7 +228,17 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
  case 56:{static const char *modes[]={"On 70/50%","Keys 100%","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 90:{static const char *themes[]={"AQUORA Legacy","Aurora","Neon Lagoon","Solar Bloom","Midnight Prism"};*name="PANEL SKIN";return themes[ui_theme];}
- case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo"};*name="AIR FX";return effects[engine.air_fx];}
+ case 120:{static const char *v[]={"Auto","Together","Strum","Off"};*name="CHORDS";return v[engine.chord_mode];}
+ case 121:*name="STRUM GAP ms";if(engine.chord_mode!=2)return "STRUM only";number=engine.chord_gap;break;
+ case 122:{static const char *v[]={"Auto","Root","First","Second"};*name="INVERSION";return v[engine.chord_inversion];}
+ case 123:{static const char *v[]={"Down / Auto","Down","Up","Alternate"};*name="DIRECTION";return v[engine.chord_direction];}
+ case 124:{static const char *v[]={"FX","Next Evolution","Drum Fill","Harmony","Energy Swell"};*name="AIR ACTION";return v[engine.air_mode];}
+ case 125:*name="SENSITIVITY %";number=air_sensitivity;break;
+ case 126:*name="INVERT AIR";return onoff(air_invert);
+ case 128:*name="MUSIC REQUEST";return engine.air_request?"Queued / phrase":engine.air_result?"Applied":"Right: trigger";
+ case 129:{static const char *v[]={"Intention / Auto","Experimental IDM","Ambient Broken"};*name="RHYTHM STYLE";return v[engine.rhythm_style];}
+ case 130:{static const char *v[]={"Auto","Gentle","Experimental","Off"};*name="TRANSITIONS";return v[engine.fill_character];}
+ case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo","Tone Sweep","Soft Pulse"};*name="AIR FX";return effects[engine.air_fx];}
  case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
  case 96:*name="MUSIC MODE";return music_modes[engine.music_mode];
  case 97:*name="LEAD MOTION";return engine.motion_manual&1u?"MANUAL":"AUTO";
@@ -679,7 +689,7 @@ static void draw(int animate)
      unsigned now=plat_ms();
      unsigned live=air_on&&aq_air_live(&air_sensor,now);
      if(band==1){
-       limited_text(8,0,226,&FONT_B,air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
+       limited_text(8,0,226,&FONT_B,air_tab==2?"AIR / MUSIC GESTURES":air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
        const char *state=aq_air_state(&air_sensor,air_on,plat_ble_state(),now);
        limited_text(8,24,226,&FONT_XS,state,live?skin_accent():skin_dim());
      }else if(band==2){
@@ -697,8 +707,8 @@ static void draw(int animate)
        cv_text(8,20,&FONT_XS,"AIR %",skin_dim());num(numtext,value);
        cv_text(52,20,&FONT_XS,numtext,skin_accent());
        char wet[32],v[12];unsigned at=0;
-       const char *wet_tag=engine.air_fx==1?"ECHO ":"REV ";while(*wet_tag)wet[at++]=*wet_tag++;
-       num(v,(int)((engine.air_fx==1?engine.delay_wet:engine.reverb_wet)*100.f));
+       const char *wet_tag=engine.air_fx>=3?"APPLIED ":engine.air_fx==1?"ECHO ":"REV ";while(*wet_tag)wet[at++]=*wet_tag++;
+       num(v,(int)(engine.air_fx>=3?engine.air_wet*engine.air_depth:(engine.air_fx==1?engine.delay_wet:engine.reverb_wet)*100.f));
        for(const char *q=v;*q;q++)wet[at++]=*q;wet[at++]='%';
        if(engine.air_fx==2){wet[at++]=' ';wet[at++]='D';wet[at++]=' ';
         num(v,(int)(engine.delay_wet*100.f));for(const char*q=v;*q;q++)wet[at++]=*q;wet[at++]='%';}
@@ -709,11 +719,11 @@ static void draw(int animate)
        label(8,0,"RAW RSSI",air_sensor.raw);
        label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
        label(183,0,"LAST PKTS",air_packets);
-       limited_text(8,33,226,&FONT_XS,air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
+       limited_text(8,33,226,&FONT_XS,air_tab==2?(engine.air_request?"WAVE QUEUED / NEXT PHRASE":engine.air_result?"MUSICAL ACTION APPLIED":"NEAR THEN FAR / RIGHT: TEST"):air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
-       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO"};
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS"};
        cv_text(8,0,&FONT_B,tabs[drum_tab],ui_background?skin_text():colors[SR_DRUMS]);
        limited_text(8,25,225,&FONT_XS,sr_drum_kits[engine.drum_kit].name,skin_text());
      }else{
@@ -876,7 +886,7 @@ static void draw(int animate)
        limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
      else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?3:page==PAGE_SETUP?5:2;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:3;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());

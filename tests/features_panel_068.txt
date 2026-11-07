@@ -1,0 +1,45 @@
+master 2048
+turn ALGO 1
+tap EDIT
+tap EDIT
+spin K1 2
+wait 50
+expect chord_mode 2
+spin K2 1
+wait 50
+expect chord_gap 110
+shot chords.png
+tap ARP
+tap EDIT
+tap EDIT
+tap EDIT
+spin K1 1
+spin K2 2
+wait 50
+expect rhythm_style 1
+expect fill_character 2
+shot drums.png
+tap SAVE
+wait 300
+expect bank_message 4
+reboot
+expect bank_new_roundtrip 1
+expect bank_migration_matrix 1
+expect directory_ok 1
+expect drops 0
+reboot
+tap HOME
+turn ALGO 6
+tap EDIT
+tap EDIT
+spin K1 1
+wait 50
+expect air_mode 1
+shot air.png
+tap PLAY
+spin K4 1
+wait 50
+expect air_request 1
+tap PLAY
+wait 100
+expect air_request 0
