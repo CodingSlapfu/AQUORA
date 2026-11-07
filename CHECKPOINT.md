@@ -1,3 +1,12 @@
+# Unfinished next-version checkpoint
+
+Branch `aquora-next-integration`; provisional 0.6.6 is NOT released.
+Read `NEXT_RESUME.md` and `validation/next-development/RESULTS.md`.
+The release gate intentionally fails pending universal MIDI, complete
+requirement reconciliation and full acceptance. Published v0.6.5 remains intact.
+
+## Prior accepted publication evidence
+
 # AQUORA 0.6.5 verified publication
 
 Accepted source/tag45c02ebb17e93684092227b16378277bbe3841d3.
@@ -16,5 +25,5 @@ All35 staged, committed and packaged Site files were independently verified.
 Live browser:065/73000605 installer enabled; both showcases065, four distinct
 240px animations loaded, native240px hero, AQUORA Sans, current emulator runs.
 Full evidence validation/integration-065/LIVE_PUBLICATION.json.
-No software queue remains. Physical FM-1 tests belong to owner and are unverified.
+The accepted hotfix scope passed; post-release outstanding work is recorded in NEXT_BUILD_ACTIVE.md. Physical FM-1 tests belong to owner and are unverified.
 Exclusive release lock is released after this final checkpoint is remotely verified.

@@ -1,0 +1,1 @@
+PASS delayed DMA ownership, repeated begin, partial blits and synchronous one-shots (1000 frames)

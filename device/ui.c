@@ -205,7 +205,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 63:{static const char *grid[]={"Live","1/16","1/32","Auto","1/8"};*name="PLAY GRID";return grid[engine.play_grid];}
  case 62:*name="PRESENCE %";number=engine.drum_presence;break;
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
- case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
+ case 56:{static const char *modes[]={"On 70/50%","Keys 100%","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 90:{static const char *themes[]={"AQUORA Legacy","Aurora","Neon Lagoon","Solar Bloom","Midnight Prism"};*name="PANEL SKIN";return themes[ui_theme];}
  case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo"};*name="AIR FX";return effects[engine.air_fx];}
  case 94:*name="AIR DEPTH %";number=engine.air_depth;break;

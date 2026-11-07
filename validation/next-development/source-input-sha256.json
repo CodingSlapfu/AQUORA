@@ -1,0 +1,14 @@
+{
+  "device/app.c": "19bbd5dc504b697eecf3b852e490262c382aab10423a8d1a78436d00f7eb7813",
+  "device/app.h": "d5485414a321d2a7feea9f5a645ac886d70959a1f85bb755e0aa073ca4a42fd1",
+  "device/ui.c": "95ab1396b5f3af71e204b34982e3681162020c5de05c5d8fa64771fc450192d4",
+  "device/visual_worker.c": "69a897157a230b25393c311ced1fdfd381919ef4a287958ecd7c144d28fdf03c",
+  "device/dsp/engine.c": "e84c16a94041ba1a8ab92e18cdc95f70f95a2e7320fff5d18f8bb04dc9325dc7",
+  "device/dsp/serenity.h": "f8a28946cf7574dc2f04bde1cf42b27f2e5469b22df09b5d9c0127f66144bf24",
+  "device/frame_policy.h": "743f483cdb507aafb85381d82e21539e8a498139433f803525c3b716fdca5064",
+  "device/lighting_policy.h": "61c34bf36bb0cb4b7d847b7a08bfce8dc77da85dd3ee2cc545ecbdc299a29d12",
+  "vendor/fm1-base/device/plat_fm1.c": "f958ed10504aa623df4305415df1fd2145b92830c8f61960d768c2f2623faeaf",
+  "vendor/patches/aquora-passive-air.patch": "17f669621cec8e872f983db56647c46d09b263eedc4e70527fa143284db37385",
+  "vendor/patches/aquora-led-duty.patch": "4dbfbb4caeeeede4ee9fe8eb53e56b4ef9aa39ea674d7fce3dc376559716efa6",
+  "vendor/patches/aquora-canvas-pipeline.patch": "d0ddd26087a8995f6f78d2cdf4125b161d6cb0d1108d89b5a0b7cffe569c4cd1"
+}

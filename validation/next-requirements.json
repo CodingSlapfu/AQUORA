@@ -10,14 +10,22 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/1",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/lighting_policy.h",
+        "vendor/patches/aquora-led-duty.patch"
+      ],
+      "tests": [
+        "tests/lighting_policy_next.c"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
       "scope_sha256": "8736a6f0e59ae4efc97dab2ea9ebb56e4536135cdb74538c3a5a07b7facde2f8",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "External clock integration and actual output-mask/persistence acceptance pending"
     },
     {
       "id": "ISSUE-02",
@@ -115,14 +123,19 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c::intro_note",
+        "device/ui.c intro branch"
+      ],
       "tests": [],
-      "artifacts": [],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
       "scope_sha256": "977890d8c40e1de9bd751440add22b8d73d13e82bd61c5aeb393da424bce8655",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
     },
     {
       "id": "ISSUE-09",
@@ -250,14 +263,21 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/17",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/visual_worker.c::resonance_job",
+        "device/ui.c::geometry"
+      ],
+      "tests": [
+        "tests/performance_065.py"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
       "scope_sha256": "9fb5a523694c1ce153a6a1d37c28f40bf9a8734ab47cffbc7c60e43408b1c7f7",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Ground-up particle/water candidate; full scenario sequences, visual review, native timing pending"
     },
     {
       "id": "ISSUE-18",
@@ -475,14 +495,20 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/32",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "tests/requirement_gate_next.py"
+      ],
+      "tests": [
+        "tests/requirement_gate_next.py --self-test"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
       "scope_sha256": "9300bfdf7b095d142280e66e536a18c84f000bd9df6064d0eeb8f28e30aabc8c",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Register covers issue inventory; complete atomic acceptance/owner-comment reconciliation still required"
     },
     {
       "id": "ISSUE-33",
@@ -490,14 +516,24 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/33",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/visual_worker.c::visual_job",
+        "device/frame_policy.h",
+        "vendor/patches/aquora-canvas-pipeline.patch"
+      ],
+      "tests": [
+        "tests/frame_policy_next.c",
+        "tests/canvas_pipeline_next.c",
+        "tests/performance_065.py"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
       "scope_sha256": "2131a1034bf8d9a863ab6230844fd441b17be3b2a814acf01c1cc8293993bfb8",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Restored 33-vertex baseline and candidate DMA overlap; full visual parity, per-page native instrumentation and acceptance pending"
     },
     {
       "id": "ISSUE-34",
@@ -505,14 +541,22 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/34",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/dsp/engine.c::plan_roles",
+        "device/dsp/engine.c::render_samples"
+      ],
+      "tests": [
+        "tests/role_evolution_next.c",
+        "tests/corrective_061.c"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
       "scope_sha256": "5b25a7b6e60d62fbc43cd47ba87c0b6d4cc3098b897af6e58936c9ddf01dc576",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "117-case candidate passes; long stems/click/level/CPU/SAVE acceptance still pending"
     },
     {
       "id": "LED-ON",
@@ -520,13 +564,21 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/1",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/lighting_policy.h",
+        "vendor/patches/aquora-led-duty.patch"
+      ],
+      "tests": [
+        "tests/lighting_policy_next.c"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Pending acceptance"
+      "audit": "External clock integration and actual output-mask/persistence acceptance pending"
     },
     {
       "id": "LED-KEYS",
@@ -534,13 +586,21 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/1",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/lighting_policy.h",
+        "vendor/patches/aquora-led-duty.patch"
+      ],
+      "tests": [
+        "tests/lighting_policy_next.c"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Pending acceptance"
+      "audit": "External clock integration and actual output-mask/persistence acceptance pending"
     },
     {
       "id": "LED-BEAT",
@@ -548,13 +608,21 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/1",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/lighting_policy.h",
+        "vendor/patches/aquora-led-duty.patch"
+      ],
+      "tests": [
+        "tests/lighting_policy_next.c"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Pending acceptance"
+      "audit": "External clock integration and actual output-mask/persistence acceptance pending"
     },
     {
       "id": "INTRO-SPIRAL",
@@ -562,13 +630,18 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c::intro_note",
+        "device/ui.c intro branch"
+      ],
       "tests": [],
-      "artifacts": [],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Pending acceptance"
+      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
     },
     {
       "id": "INTRO-TITLE",
@@ -576,13 +649,18 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c::intro_note",
+        "device/ui.c intro branch"
+      ],
       "tests": [],
-      "artifacts": [],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Pending acceptance"
+      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
     },
     {
       "id": "INTRO-AUDIO",
@@ -590,13 +668,18 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c::intro_note",
+        "device/ui.c intro branch"
+      ],
       "tests": [],
-      "artifacts": [],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Pending acceptance"
+      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
     },
     {
       "id": "INTRO-SAFETY",
@@ -604,13 +687,18 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c::intro_note",
+        "device/ui.c intro branch"
+      ],
       "tests": [],
-      "artifacts": [],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Pending acceptance"
+      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
     },
     {
       "id": "FPS-POLICY",
@@ -618,13 +706,23 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/33",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "PARTIAL",
+      "code": [
+        "device/visual_worker.c::visual_job",
+        "device/frame_policy.h",
+        "vendor/patches/aquora-canvas-pipeline.patch"
+      ],
+      "tests": [
+        "tests/frame_policy_next.c",
+        "tests/canvas_pipeline_next.c",
+        "tests/performance_065.py"
+      ],
+      "artifacts": [
+        "validation/next-development/"
+      ],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Pending acceptance"
+      "audit": "Restored 33-vertex baseline and candidate DMA overlap; full visual parity, per-page native instrumentation and acceptance pending"
     }
   ]
 }

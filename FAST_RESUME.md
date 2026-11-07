@@ -1,3 +1,10 @@
+# Newer next-version development checkpoint — NOT RELEASED
+
+Resume `aquora-next-integration`, not the stable release source. Read
+`NEXT_RESUME.md` and `validation/NEXT_BUILD_REQUIREMENT_MATRIX.md`.
+Full owner issue/comment snapshot: `validation/next-owner-scope.json`.
+Release acceptance is incomplete; **do not publish 0.6.6**.
+
 # AQUORA 0.6.5 stable checkpoint
 
 v0.6.5 is published and verified; do not restart or rebuild it.

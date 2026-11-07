@@ -52,6 +52,7 @@ static unsigned intro_start, intro_samples, intro_master;
 static volatile unsigned intro_master_moved;
 static unsigned intro_inputs_seen;
 static float intro_gain;
+static float intro_right;
 static float intro_sine_table[256], intro_fm_phase[6];
 /* Small original 3-voice FM startup signature. Fixed table / phase updates;
  * never calls libc sin/exp or the full effects bus in the audio interrupt. */
@@ -81,7 +82,8 @@ static inline float intro_note(unsigned elapsed)
     float warm=intro_sine(intro_fm_phase[0]+.08f*intro_sine(intro_fm_phase[1]));
     float bloom=intro_sine(intro_fm_phase[2]+.26f*halo*intro_sine(intro_fm_phase[3]));
     float glass=intro_sine(intro_fm_phase[4]+.20f*crystal*intro_sine(intro_fm_phase[5]));
-    return (warm*390.f*low+bloom*620.f*halo+glass*420.f*crystal);
+    intro_right=(warm*320.f*low+bloom*430.f*halo+glass*420.f*crystal)*3.f;
+    return (warm*390.f*low+bloom*620.f*halo+glass*290.f*crystal)*3.f;
 }
 static uint32_t evolve_events[SR_TRACKS], evolve_step;
 static uint8_t evolve_history[64];
@@ -492,16 +494,16 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     unsigned playing_intro=intro_active;
     unsigned chime=intro<SR_RATE*8u&&(playing_intro||intro_gain>.0001f);
     for(unsigned i=0;i<n;i++){
-      float bell=0;
+      float bell=0,bell_right=0;
       if(chime){
         intro_gain+=((float)playing_intro-intro_gain)*.003f;
         /* Master zero remains real silence. The start of the synth timeline
          * is the first ready audio callback, not an early boot wall clock. */
-        if(master)bell=intro_note(intro+i)*intro_gain;
+        if(master){bell=intro_note(intro+i)*intro_gain;bell_right=intro_right*intro_gain;}
       }
       output_gain+=(target-output_gain)*.002f;
       lr[2*i]=(int32_t)((pcm[2*i]+bell)*256.f*output_gain);
-      lr[2*i+1]=(int32_t)((pcm[2*i+1]+bell)*256.f*output_gain);
+      lr[2*i+1]=(int32_t)((pcm[2*i+1]+bell_right)*256.f*output_gain);
     }
     if(chime)intro_samples+=n;
     if(!master)intro_gain=0;
@@ -734,7 +736,9 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
 #ifndef PLAT_HOST
  plat_aquora_key_duty(black_duty,white_duty);
 #else
- (void)black_duty;(void)white_duty;
+ /* Binary host/browser LED previews show the idle groups at mid level;
+  * exact 70/50 scan duty is validated separately against the native path. */
+ plat_lights_mid(0,black_duty|white_duty);
 #endif
  static unsigned old_b=~0u,old_k=~0u,old_db=~0u,old_dk=~0u;
  if(buttons!=old_b||lights!=old_k||dim_buttons!=old_db||dim_keys!=old_dk){
@@ -1040,6 +1044,8 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"nature_bed"))*got=engine.bed_type;
  else if(!strcmp(what,"nature_style"))*got=engine.nature_style;
  else if(!strcmp(what,"lighting"))*got=lighting;
+ else if(!strcmp(what,"frame_interval"))*got=visual_interval_ms;
+ else if(!strcmp(what,"fps_auto"))*got=fps_auto;
  else if(!strcmp(what,"air_rate"))*got=air_packet_rate;
  else if(!strcmp(what,"air_packets_total"))*got=air_packet_total;
  else if(!strcmp(what,"ui_theme"))*got=ui_theme;

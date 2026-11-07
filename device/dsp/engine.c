@@ -481,6 +481,10 @@ static void clear_transport(sr_engine *e)
  * energy, music mode and current harmony. No audio RNG is consumed. */
 static void plan_roles(sr_engine *e)
 {
+    if(e->variation<=0.f){
+      for(unsigned t=0;t<SR_TRACKS;t++)e->role_target[t]=1.f;
+      return;
+    }
     unsigned energy=(unsigned)(clampf(e->energy,0,1)*30.f);
     static const uint8_t weight[SR_MUSIC_MODES][SR_TRACKS]={
       {52,87,70,30,53,46,48,57},
