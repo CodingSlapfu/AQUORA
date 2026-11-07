@@ -77,6 +77,7 @@ typedef struct {
   sr_motion motion[2];
   uint8_t auto_gain, auto_level;
   float input_peak[SR_TRACKS], gain_trim[SR_TRACKS], master_peak;
+  float role_gain[SR_TRACKS], role_target[SR_TRACKS];
   uint32_t (*clock_ticks)(void);
   uint32_t fx_ticks;
   int16_t reverb[4][1789]; int16_t delay[16384];

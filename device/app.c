@@ -4,6 +4,7 @@
 #include "fastmath.h"
 #include "air_sensor.h"
 #include "frame_policy.h"
+#include "lighting_policy.h"
 static sr_engine engine PLAT_POOL;
 static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
 typedef struct {int kind,value; unsigned track;} command;
@@ -65,19 +66,22 @@ static inline float intro_sine(float phase)
 static inline float intro_note(unsigned elapsed)
 {
     float t=elapsed*(1.f/SR_RATE);
-    static const float increment[6]={220.f/SR_RATE,440.f/SR_RATE,392.f/SR_RATE,
-                                      784.f/SR_RATE,659.f/SR_RATE,988.5f/SR_RATE};
+    /* Original suspended interval: A3, E5, B5, with inharmonic modulators.
+     * Airy bell entrances coincide with the staged wordmark, not a borrowed
+     * console melody or recording. Three two-operator voices only. */
+    static const float increment[6]={220.f/SR_RATE,443.3f/SR_RATE,659.255f/SR_RATE,
+                                      1313.9f/SR_RATE,987.767f/SR_RATE,1487.1f/SR_RATE};
     for(unsigned k=0;k<6;k++){
         intro_fm_phase[k]+=increment[k];
         if(intro_fm_phase[k]>=1.f)intro_fm_phase[k]-=1.f;
     }
-    float low=fm_clampf((t-.12f)*1.7f,0,1)*fm_clampf((8.f-t)*.38f,0,1);
-    float halo=fm_clampf((t-1.1f)*2.1f,0,1)*fm_clampf((7.7f-t)*.42f,0,1);
-    float crystal=fm_clampf((t-2.7f)*2.0f,0,1)*fm_clampf((7.8f-t)*.34f,0,1);
-    float warm=intro_sine(intro_fm_phase[0]+.10f*intro_sine(intro_fm_phase[1]));
-    float bloom=intro_sine(intro_fm_phase[2]+.29f*intro_sine(intro_fm_phase[3]));
-    float glass=intro_sine(intro_fm_phase[4]+.31f*intro_sine(intro_fm_phase[5]));
-    return (warm*440.f*low+bloom*460.f*halo+glass*245.f*crystal);
+    float low=fm_clampf((t-.12f)*1.3f,0,1)*fm_clampf((7.7f-t)*.30f,0,1);
+    float halo=fm_clampf((t-2.4f)*7.f,0,1)*fm_clampf((7.5f-t)*.24f,0,1);
+    float crystal=fm_clampf((t-3.7f)*6.f,0,1)*fm_clampf((7.7f-t)*.26f,0,1);
+    float warm=intro_sine(intro_fm_phase[0]+.08f*intro_sine(intro_fm_phase[1]));
+    float bloom=intro_sine(intro_fm_phase[2]+.26f*halo*intro_sine(intro_fm_phase[3]));
+    float glass=intro_sine(intro_fm_phase[4]+.20f*crystal*intro_sine(intro_fm_phase[5]));
+    return (warm*390.f*low+bloom*620.f*halo+glass*420.f*crystal);
 }
 static uint32_t evolve_events[SR_TRACKS], evolve_step;
 static uint8_t evolve_history[64];
@@ -86,6 +90,7 @@ static int battery_level=-1;
 static unsigned battery_poll_ms, battery_overlay_ms, battery_fade, battery_dirty;
 #ifndef PLAT_HOST
 extern void plat_aquora_led_test_log(unsigned slot);
+extern void plat_aquora_key_duty(unsigned black,unsigned white);
 #endif
 static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
@@ -690,16 +695,22 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     dirty=1;
  }
  if(press)dirty=1;
- unsigned buttons=(engine.running?LED_PLAY_GREEN:0)|(engine.freeze?(1u<<B_SEQ):0);
+ unsigned clock_flags=plat_lock();
+ unsigned play_pulse=aq_play_pulse(engine.running,engine.sequence_step,
+                                  engine.tick_phase,engine.tick_length);
+ plat_unlock(clock_flags);
+ unsigned buttons=(play_pulse?LED_PLAY_GREEN:0)|(engine.freeze?(1u<<B_SEQ):0);
  unsigned pending=engine.pending_physical_key;
- unsigned lights=k, dim_keys=0, dim_buttons=0;
- const unsigned all_keys=(1u<<NKEYS)-1u;
+ unsigned lights=k, dim_keys=0, dim_buttons=0, black_duty=0,white_duty=0;
  if(pending&&pending<=NKEYS)lights|=1u<<(pending-1);
  if(lighting==0){
-   lights|=all_keys;
+   for(unsigned key=0;key<NKEYS;key++)if(!(lights&(1u<<key))){
+     if(aq_black_key(key))black_duty|=1u<<key;
+     else white_duty|=1u<<key;
+   }
    buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
- }else if(lighting==1){lights|=all_keys;buttons=0;}
- else if(lighting==2)buttons=lights=0;
+ }else if(lighting==1){buttons=play_pulse?LED_PLAY_GREEN:0;}
+ else if(lighting==2){buttons=play_pulse?LED_PLAY_GREEN:0;lights=0;}
  else {
    buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
    if(engine.running){
@@ -718,7 +729,13 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    buttons=led_step>=NKEYS?1u<<(led_step-NKEYS):0;
    lights=led_step<NKEYS?1u<<led_step:0;
    dim_buttons=dim_keys=0;
+   black_duty=white_duty=0;
  }
+#ifndef PLAT_HOST
+ plat_aquora_key_duty(black_duty,white_duty);
+#else
+ (void)black_duty;(void)white_duty;
+#endif
  static unsigned old_b=~0u,old_k=~0u,old_db=~0u,old_dk=~0u;
  if(buttons!=old_b||lights!=old_k||dim_buttons!=old_db||dim_keys!=old_dk){
    plat_lights(buttons,lights,dim_buttons,dim_keys,1);

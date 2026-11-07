@@ -433,7 +433,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
-    e->gain_trim[t]=1.f;
+    e->gain_trim[t]=e->role_gain[t]=e->role_target[t]=1.f;
     e->tracks[t].patch=default_patches[t];e->tracks[t].volume=t==SR_BASS?.88f:t==SR_DRUMS?1.f:.68f; e->tracks[t].send=1.f;
     e->tracks[t].pan=(float)(t%4-1)*.13f;
   }
@@ -476,6 +476,28 @@ static void clear_transport(sr_engine *e)
     e->pitch_last[0]=e->pitch_last[1]=e->sacred_hz_now=0;
     for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter=0;
 }
+/* Section instrumentation is a seeded musical choice, not an eight-role
+ * quota. Bass anchors most passages; support colours depend on intention,
+ * energy, music mode and current harmony. No audio RNG is consumed. */
+static void plan_roles(sr_engine *e)
+{
+    unsigned energy=(unsigned)(clampf(e->energy,0,1)*30.f);
+    static const uint8_t weight[SR_MUSIC_MODES][SR_TRACKS]={
+      {52,87,70,30,53,46,48,57},
+      {43,90,85,42,38,26,72,40},
+      {39,84,37,49,90,64,30,24}
+    };
+    uint32_t seed=e->song_seed+e->phrase*0x9e3779b9u+
+                  e->scene*65537u+e->tonic_override*13u;
+    unsigned section=e->phrase%5u;
+    for(unsigned t=0;t<SR_TRACKS;t++){
+      unsigned probability=weight[e->music_mode%SR_MUSIC_MODES][t]+energy;
+      if(section==3u&&t!=SR_BASS)probability=probability*2u/3u;
+      if(section==4u&&(t==SR_DRONE||t==SR_CHOIR))probability+=15u;
+      if(e->scene==6u&&(t==SR_PIANO||t==SR_CHOIR))probability+=12u;
+      e->role_target[t]=(song_draw(seed,100u+t)%100u<probability)?1.f:0.f;
+    }
+}
 void sr_start(sr_engine *e)
 {
     if(e->stop_frames){e->restart=1;return;}
@@ -483,6 +505,7 @@ void sr_start(sr_engine *e)
     e->running=1;
     e->sequence_step=0;e->loop_pos=0;
     e->tick_phase=e->tick_length;
+    plan_roles(e);
 }
 void sr_stop(sr_engine *e)
 {
@@ -520,6 +543,8 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
 }
 void sr_note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats)
 {
+    if(track<SR_TRACKS&&e->running&&!e->preview_frames&&e->solo>=SR_TRACKS&&
+       e->role_target[track]==0.f&&e->role_gain[track]<.001f)return;
     (void)note_on(e,track,midi,velocity,beats);
 }
 uint8_t sr_key_note(const sr_engine *e,unsigned key)
@@ -540,6 +565,7 @@ static void play_key(sr_engine *e,uint8_t track,unsigned key,unsigned tap)
     if(!e->perfect_key)sr_set_perfect_key(e,1);
     if(track==SR_DRUMS){
       if(!e->drums_enabled)return;
+      e->role_target[SR_DRUMS]=1.f;
       if(key%3==0)e->kick_env=1;
       else if(key%3==1)e->hand_env=1;
       else e->shaker_env=1;
@@ -837,6 +863,7 @@ static void trigger(sr_engine *e){
     e->phrase++;
     if(e->phrase%4u==0)memcpy(e->melody,e->motif_home,sizeof e->melody);
     else make_motif(e);
+    plan_roles(e);
   }
   int k=motif_degree(e,idx);
   /* At zero variation or before the first evolution, retain the original
@@ -1063,6 +1090,14 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int t=0;t<SR_TRACKS;t++){
     sr_track *track=&e->tracks[t];
     float level=(track->mute||(e->solo<SR_TRACKS&&e->solo!=t))?0:track->volume;
+    /* At most 64 samples per chunk: a bounded ~1.5ms control ramp with
+     * <=0.001 gain steps and a two-beat transition, preserving FX tails. */
+    float fade_frames=(float)e->tick_length*8.f;
+    if(fade_frames<SR_RATE)fade_frames=SR_RATE;
+    float delta=(float)frames/fade_frames;
+    float remaining=e->role_target[t]-e->role_gain[t];
+    e->role_gain[t]+=clampf(remaining,-delta,delta);
+    if(t==SR_DRUMS&&!preview&&e->solo>=SR_TRACKS)level*=e->role_gain[t];
     if(!locked){
       float peak=e->input_peak[t];
       float target=e->auto_gain&&peak>.015f?clampf(.12f/peak,.72f,1.28f):1.f;
@@ -1114,9 +1149,10 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     }
     config->cutoff=.028f+brightness*.24f;
     config->gain=patch->gain;
-    config->left=left[v->track];
-    config->right=right[v->track];
-    config->send=send[v->track]*.5f;
+    float role_level=v->key||preview||e->solo<SR_TRACKS?1.f:e->role_gain[v->track];
+    config->left=left[v->track]*role_level;
+    config->right=right[v->track]*role_level;
+    config->send=send[v->track]*.5f*role_level;
     float modulation=0;
     if(v->track<=SR_BASS){
       sr_motion *m=&e->motion[v->track];

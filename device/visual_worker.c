@@ -30,12 +30,12 @@ uint32_t plat_cpu2_stack(void) { return 0; }
 #endif
 static struct {
     unsigned phase, event[SR_TRACKS], water, frequency, scene, full;
-    float atmosphere;
+    float atmosphere, pitch;
     unsigned tuning, tonic;
     float onset[SR_TRACKS];
     float meter[SR_TRACKS];
 } vis_input __attribute__((aligned(64)));
-static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[256][4];uint16_t node_count;} vis_output __attribute__((aligned(64)));
+static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[256][4];uint16_t node_count;int16_t sand[512][2];uint8_t water_light[30][30];} vis_output __attribute__((aligned(64)));
 static float vis_sine[128];
 static unsigned worker_wait_us,worker_fallbacks;
 
@@ -45,12 +45,14 @@ static void visual_init(void)
     for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
 }
 
-/* Resonance Plate: Chladni-like standing-wave interference sampled on a fixed
- * 17x17 circular plate. Marching zero-crossings yields nodal contours, not
- * eight role rings. A radial term evokes water resonance; this is artwork,
- * not a scientific simulation. Fixed memory/256-segment cap, display only. */
+/* Original bounded water/sand illusion: grains move down the gradient of
+ * standing-wave energy, settle near nodes, and lift/scatter on musical hits.
+ * Surface normals illuminate travelling ripples, not marching contours.
+ * This is a visual model, not a scientific or medical simulation. */
 static float nodal_level;
-static float nodal_field[17][17];
+static float sand_x[512],sand_y[512],sand_vx[512],sand_vy[512];
+static unsigned sand_ready,water_last_phase;
+static float water_m=2.f,water_n=3.f;
 static float visual_sin(float phase)
 {
     int a=(int)phase;float f=phase-a;
@@ -58,56 +60,68 @@ static float visual_sin(float phase)
     float x=vis_sine[(unsigned)a&127u];
     return x+(vis_sine[(unsigned)(a+1)&127u]-x)*f;
 }
-static void nodal_segment(float ax,float ay,float bx,float by)
+static float sand_field(float x,float y)
 {
-    if(vis_output.node_count>=256)return;
-    int16_t *p=vis_output.nodes[vis_output.node_count++];
-    float sy=vis_input.full?110.f:44.f;
-    float cy=vis_input.full?120.f:96.f;
-    p[0]=120+(int)(ax*110.f);p[1]=(int)(cy+ay*sy);
-    p[2]=120+(int)(bx*110.f);p[3]=(int)(cy+by*sy);
+    return visual_sin((x+1.f)*32.f*water_m)*visual_sin((y+1.f)*32.f*water_n)
+      -visual_sin((x+1.f)*32.f*water_n)*visual_sin((y+1.f)*32.f*water_m);
 }
 static void resonance_job(void)
 {
     vis_output.node_count=0;
+    if(!sand_ready){
+      unsigned seed=0x41515541u;
+      for(unsigned i=0;i<512;i++){
+        seed=seed*1664525u+1013904223u;sand_x[i]=(seed>>8)*(2.f/16777216.f)-1.f;
+        seed=seed*1664525u+1013904223u;sand_y[i]=(seed>>8)*(2.f/16777216.f)-1.f;
+      }
+      sand_ready=1;
+    }
     float activity=0,hit=0;
-    for(unsigned t=0;t<SR_TRACKS;t++){activity+=vis_input.meter[t]*8.f;hit+=vis_input.onset[t]*.06f;}
+    for(unsigned t=0;t<SR_TRACKS;t++){
+      activity+=vis_input.meter[t]*8.f;hit+=vis_input.onset[t]*.06f;
+    }
     float target=fm_clampf(activity+hit,0,1);
     nodal_level+=(target-nodal_level)*(target>nodal_level?.4f:.12f);
-    if(nodal_level<.004f)return;
-    static const uint8_t modes[13][2]={{2,3},{3,4},{4,5},{2,4},{3,5},{4,6},{5,3},{5,6},{6,4},{3,7},{7,5},{4,7},{6,7}};
-    unsigned m=modes[vis_input.scene%13][0],n=modes[vis_input.scene%13][1];
-    float hz=(vis_input.frequency%241u)*(1.f/241.f);
-    float radial=.12f+fm_clampf(vis_input.meter[SR_BASS]*9.f,0,.35f);
-    float mix=.78f+.12f*visual_sin(vis_input.phase*.12f)+hit*.4f;
-    /* Separable standing modes: 68 LUT evaluations instead of 2500.
-     * The circular radial term remains per grid point. */
-    float mx[17],nx[17];
-    for(unsigned x=0;x<17;x++){
-      float px=(x-8.f)/8.f;
-      mx[x]=visual_sin((px+1.f)*32.f*m);
-      nx[x]=visual_sin((px+1.f)*32.f*n);
+    float dt=(vis_input.phase-water_last_phase)*.035f;
+    water_last_phase=vis_input.phase;
+    dt=fm_clampf(dt,.015f,.1f);
+    float pitch=vis_input.pitch>0?vis_input.pitch:(float)vis_input.frequency;
+    float complexity=fm_clampf(pitch*(1.f/450.f),0,3.f);
+    float goal_m=2.f+(vis_input.scene%3u)+complexity*.3f;
+    float goal_n=3.f+((vis_input.scene*7u)%4u)+complexity*.6f;
+    water_m+=(goal_m-water_m)*dt*.9f;
+    water_n+=(goal_n-water_n)*dt*.9f;
+    float cy=vis_input.full?120.f:96.f,sy=vis_input.full?117.f:44.f;
+    for(unsigned i=0;i<512;i++){
+      float x=sand_x[i],y=sand_y[i],f=sand_field(x,y);
+      float gx=(sand_field(x+.008f,y)-sand_field(x-.008f,y))*62.5f;
+      float gy=(sand_field(x,y+.008f)-sand_field(x,y-.008f))*62.5f;
+      float drive=nodal_level*.08f;
+      float scatter=hit*.11f*visual_sin(vis_input.phase*3.f+i*17.f);
+      sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-12,12)*drive*dt+scatter*dt)*.77f;
+      sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-12,12)*drive*dt-scatter*dt)*.77f;
+      sand_x[i]=fm_clampf(x+sand_vx[i]*dt,-.99f,.99f);
+      sand_y[i]=fm_clampf(y+sand_vy[i]*dt,-.99f,.99f);
+      vis_output.sand[i][0]=120+(int)(sand_x[i]*117.f);
+      vis_output.sand[i][1]=(int)(cy+sand_y[i]*sy);
     }
-    for(unsigned y=0;y<17;y++)for(unsigned x=0;x<17;x++){
-      float px=(x-8.f)/8.f,py=(y-8.f)/8.f;
-      float r2=px*px+py*py;
-      nodal_field[y][x]=mx[x]*nx[y]-mix*nx[x]*mx[y]+radial*visual_sin(r2*(85.f+hz*40.f)+32.f);
-    }
-    for(unsigned y=0;y<16;y++)for(unsigned x=0;x<16;x++){
-      float px=(x-8.f)/8.f,py=(y-8.f)/8.f;
-      if((px+.0625f)*(px+.0625f)+(py+.0625f)*(py+.0625f)>.91f)continue;
-      float v[4]={nodal_field[y][x],nodal_field[y][x+1],nodal_field[y+1][x+1],nodal_field[y+1][x]};
-      const float dx[4]={0,1,1,0},dy[4]={0,0,1,1};
-      float ex[4],ey[4];unsigned count=0;
-      for(unsigned k=0;k<4;k++){
-        unsigned next=(k+1)&3;
-        if((v[k]<0)!=(v[next]<0)){
-          float f=v[k]/(v[k]-v[next]);
-          ex[count]=px+(dx[k]+f*(dx[next]-dx[k]))/8.f;
-          ey[count]=py+(dy[k]+f*(dy[next]-dy[k]))/8.f;count++;
-        }
+    for(unsigned y=0;y<30;y++)for(unsigned x=0;x<30;x++){
+      float px=(x-14.5f)/15.f,py=(y-14.5f)/15.f;
+      float radius=fm_sqrtf(px*px+py*py);
+      float ripple=visual_sin(radius*(75.f+complexity*20.f)-vis_input.phase*3.f);
+      float standing=sand_field(px,py);
+      float light=.45f+nodal_level*(ripple*.18f+standing*.12f);
+      vis_output.water_light[y][x]=(uint8_t)fm_clampf(light*15.f,0,15);
+      /* Bright short water reflections, never an outline of the nodes. */
+      if(nodal_level>.004f&&x%2u==0&&y%2u==0&&vis_output.node_count<256){
+        int16_t *p=vis_output.nodes[vis_output.node_count++];
+        unsigned glint=(x*37u+y*73u)^((x+y)*17u);
+        p[0]=x*8+1+(glint&3u);
+        p[2]=p[0]+1+(vis_output.water_light[y][x]>7?4:1);
+        p[1]=(int)(cy+py*sy+(int)((glint>>3)&7u)-3+nodal_level*ripple*3.f);
+        if(p[1]<0)p[1]=0;if(p[1]>239)p[1]=239;
+        p[3]=p[1];
       }
-      for(unsigned k=1;k<count;k+=2)nodal_segment(ex[k-1],ey[k-1],ex[k],ey[k]);
     }
 }
 
@@ -117,12 +131,12 @@ static void visual_job(uint32_t unused)
     unsigned begin=plat_ticks24();
     if(vis_input.water)resonance_job();
     else for(unsigned t=0;t<SR_TRACKS;t++){
-      vis_output.count[t]=17;
+      vis_output.count[t]=33;
       unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;
       float pulse=vis_input.meter[t]*55.f;
       float radius=(vis_input.full?52.f+t*9.f:45.f+t*6.f)+(pulse>13.f?13.f:pulse);
-      for(unsigned j=0;j<=16;j++){
-        unsigned a=j*8;
+      for(unsigned j=0;j<=32;j++){
+        unsigned a=j*4;
         float petal=radius*(.82f+.18f*vis_sine[(3*a+phase)&127]);
         vis_output.xy[t][j][0]=120+(int)(petal*vis_sine[(a+phase)&127]);
         vis_output.xy[t][j][1]= (vis_input.full?120:96)+(int)(petal*(vis_input.full?1.04f:.44f)*vis_sine[(2*a+phase)&127]);
@@ -142,6 +156,10 @@ static void prepare_geometry(void)
     vis_input.scene=engine.scene;
     vis_input.tuning=engine.tuning_432;vis_input.tonic=sr_tonic(&engine);
     vis_input.atmosphere=engine.transport_env*engine.bed_level+engine.reverb_wet*.6f;
+    vis_input.pitch=0;
+    for(unsigned v=0;v<SR_VOICES;v++)if(engine.voices[v].active&&engine.voices[v].gate){
+      vis_input.pitch=engine.voices[v].freq;break;
+    }
     for(unsigned t=0;t<SR_TRACKS;t++){
       vis_input.meter[t]=engine.tracks[t].meter;
       vis_input.onset[t]=engine.tracks[t].events!=vis_input.event[t]&&engine.tracks[t].meter>.00001f?1.f:vis_input.onset[t]*.82f;

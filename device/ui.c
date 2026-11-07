@@ -52,6 +52,18 @@ static void band_line(int x0,int y0,int x1,int y1,uint16_t color)
 static void geometry(int offset)
 {
  if(vis_input.water){
+   static const uint16_t water[16]={RGB(2,13,25),RGB(3,18,31),RGB(4,24,38),RGB(5,31,46),
+     RGB(7,39,55),RGB(9,49,66),RGB(12,61,78),RGB(16,74,91),
+     RGB(23,89,105),RGB(33,106,121),RGB(48,126,137),RGB(67,147,155),
+     RGB(91,171,175),RGB(121,194,195),RGB(158,217,213),RGB(207,242,230)};
+   int top=vis_input.full?0:52, bottom=vis_input.full?240:140;
+   for(unsigned row=0;row<30;row++){
+     int start=top+(int)row*(bottom-top)/30-offset;
+     int end=top+(int)(row+1)*(bottom-top)/30-offset;
+     if(start<0)start=0;if(end>48)end=48;
+     if(end<=start)continue;
+     for(unsigned x=0;x<30;x++)cv_rect(x*8,start,8,end-start,water[vis_output.water_light[row][x]]);
+   }
    unsigned shade=nodal_level>.65f?3:nodal_level>.3f?2:1;
    static const uint16_t ink[2][4]={{RGB(9,24,31),RGB(27,84,108),RGB(48,156,184),RGB(127,245,224)},
       {RGB(240,248,250),RGB(142,180,185),RGB(34,103,125),RGB(8,59,84)}};
@@ -59,6 +71,10 @@ static void geometry(int offset)
      const int16_t *p=vis_output.nodes[i];int y0=p[1]-offset,y1=p[3]-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
      band_line(p[0],y0,p[2],y1,ink[ui_background][shade]);
+   }
+   for(unsigned i=0;i<512;i++){
+     int x=vis_output.sand[i][0],y=vis_output.sand[i][1]-offset;
+     if(y>=0&&y<48)cv_line(x,y,x+1,y,i%3?RGB(229,196,126):RGB(255,235,187));
    }
    return;
  }
@@ -75,7 +91,7 @@ static void geometry(int offset)
 
 static const char *onoff(int enabled){return enabled?"ON":"OFF";}
 static const char *music_modes[]={"Standard","Cinematic","Neoclassical"};
-static const char *visual_name(void){return visual_mode?"Resonance Plate":"Original";}
+static const char *visual_name(void){return visual_mode?"Cymatics":"Original";}
 static const char *patch_name(void)
 {
  return selected==SR_DRUMS?sr_drum_kits[engine.drum_kit].name:
@@ -599,8 +615,13 @@ static void draw(int animate)
        }
      }
      if(band==0){
-       cv_text(54,0,&FONT_L,"AQUORA",RGB(5,24,39));
-       cv_text(96,34,&FONT_T,APP_VERSION,RGB(5,24,39));
+       /* The same generated AQUORA Sans glyphs as the firmware, revealed
+        * after the spiral forms. Preserve full-word placement as it unfolds. */
+       unsigned letters=elapsed<2400u?0u:1u+(elapsed-2400u)/260u;
+       if(letters>6u)letters=6u;
+       char title[7]="AQUORA";title[letters]=0;
+       if(letters)cv_text(54,0,&FONT_L,title,RGB(5,24,39));
+       if(elapsed>=4100u)cv_text(96,34,&FONT_T,APP_VERSION,RGB(5,24,39));
      }
      if(band==4){
        /* Progress fills gently across the intro; never touches audio logic. */

@@ -65,6 +65,26 @@ int plat_battery(void)                           /* (a level moves once the read
 /* LEDs: the picture is built off-line and copied one byte per column (Felucca: clearing
  * and relighting would let the 10 kHz scan catch the dark gap and flicker) */
 static uint8_t led_pos[FM1_NKEY];
+/* Duty masks are consumed by the existing 10kHz matrix scanner, never a UI
+ * timer or a busy wait. Full-bright held/pending keys override these masks. */
+void plat_aquora_key_duty(unsigned black,unsigned white)
+{
+    static unsigned old_black=~0u,old_white=~0u;
+    if(black==old_black&&white==old_white)return;
+    uint8_t b[FM1_NCOL]={0},w[FM1_NCOL]={0};
+    for(unsigned key=0;key<NKEYS;key++){
+        unsigned q=led_pos[14u+key];
+        if(q==0xffu)continue;
+        if(black&(1u<<key))b[q>>3]|=1u<<(q&7u);
+        if(white&(1u<<key))w[q>>3]|=1u<<(q&7u);
+    }
+    uint32_t flags=plat_lock();
+    for(unsigned c=0;c<FM1_NCOL;c++){
+        fm1_led_aquora70[c]=b[c];fm1_led_aquora50[c]=w[c];
+    }
+    plat_unlock(flags);
+    old_black=black;old_white=white;
+}
 static void led_pos_init(void)
 {
     uint32_t id, p, r;
