@@ -1,0 +1,66 @@
+{
+  "version": "0.6.6",
+  "release_target": "295c1d1d489cd9b7a0b87ea797031d39ee673fe4",
+  "publisher_run": 42357005353,
+  "independent_download": "PASS",
+  "public_asset_digests": [
+    {
+      "name": "AQUORA-0.6.6-acceptance.zip",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/AQUORA-0.6.6-acceptance.zip",
+      "sha": "bfaf90344b6aaf5c1d9d16b9fe15c1f624420769bb1d790bcb3e2593214c6683"
+    },
+    {
+      "name": "AQUORA-0.6.6-download.zip",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/AQUORA-0.6.6-download.zip",
+      "sha": "6c4bca51a3f18447e2164f146c14e1f9413afa2852628bda4777d153b2b2795b"
+    },
+    {
+      "name": "AQUORA-0.6.6-package.tar.gz",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/AQUORA-0.6.6-package.tar.gz",
+      "sha": "9826fb853523590ea0699792cae03cdb4c770041f548e11fde767ef5bf01eed3"
+    },
+    {
+      "name": "AQUORA-0.6.6-source.tar.gz",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/AQUORA-0.6.6-source.tar.gz",
+      "sha": "83da3c4cc70a3be4cc20f7492253588f8de008a99324423d7433e13dcdd5dc98"
+    },
+    {
+      "name": "PAYLOAD-SHA256SUMS.txt",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/PAYLOAD-SHA256SUMS.txt",
+      "sha": "349c4e1cd64b931abc6b7d47f744e991f5b33587076c8984cc590d30c4ce8331"
+    },
+    {
+      "name": "RELEASE.md",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/RELEASE.md",
+      "sha": "8501fca57b458440ec706d1918e96f15214926166cbc47dfddc476e1ea87582c"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/SHA256SUMS.txt",
+      "sha": "7899c5d0ee8e89cfbaf277d8d82a8cc650f924ecb796806cab349e06e8209887"
+    },
+    {
+      "name": "SOFTWARE_ACCEPTANCE.json",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/SOFTWARE_ACCEPTANCE.json",
+      "sha": "7a8ab286feb9b5033e784755f383a09aca3b0b7ac86482b364e602a09d306318"
+    },
+    {
+      "name": "sound-healing-0.6.6-single-core.fwsc",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/sound-healing-0.6.6-single-core.fwsc",
+      "sha": "0994b2bb94f88c80482ed1661b1d5faa0cf23c2753104a466d62769be9b2fdf8"
+    },
+    {
+      "name": "sound-healing-0.6.6.fwsc",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/sound-healing-0.6.6.fwsc",
+      "sha": "cee194ac9e05674dd59a0101f61972db18a719bd2778658c0d4a4baf5573fb3c"
+    },
+    {
+      "name": "validation-commit.txt",
+      "url": "https://github.com/CodingSlapfu/AQUORA/releases/download/v0.6.6/validation-commit.txt",
+      "sha": "4e59dfc3cca24ef69ba75d4f7e86ba509a3daab4db35c903a7fe5a1b7bce2d23"
+    }
+  ],
+  "payload_zip_crc_and_internal_manifest": "PASS",
+  "independent_publisher_artifact_sha256": "56fa55250151b9a65f7641dd9c7c56a55932d43a74519793b8f3c00bccd3da32",
+  "artifact_contents_equal_public_assets": true
+}

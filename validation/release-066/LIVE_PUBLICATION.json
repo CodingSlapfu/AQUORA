@@ -10,6 +10,14 @@
   "browser_install_enabled": true,
   "browser_emulator": "On; actual WASM screen rendered",
   "browser_studio": "Emulator online; SOUND page control acknowledged",
-  "github_release": "PENDING",
-  "physical_acceptance": "OWNER-UNVERIFIED"
+  "github_release": "https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.6",
+  "physical_acceptance": "OWNER-UNVERIFIED",
+  "github_release_target": "295c1d1d489cd9b7a0b87ea797031d39ee673fe4",
+  "publisher_run": 42357005353,
+  "publisher_status": "success",
+  "backup_verification": "BACKUP_VERIFICATION.json",
+  "pages_commit": "9c34b84aa9fa361c25a7318ebb65b67f181bd26f",
+  "pages_run": 42357397911,
+  "pages_status": "success",
+  "pages_url": "https://codingslapfu.github.io/AQUORA/install/"
 }

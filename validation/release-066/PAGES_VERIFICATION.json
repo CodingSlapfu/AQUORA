@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "deployment_run": 42357397911,
+  "manifest_matches": true,
+  "files": [
+    {
+      "path": "install/index.html",
+      "sha256": "1aac0f3cc130044113ad737dc1480554e27eca78dcc66dfdf1e41c4c9a8dc26e"
+    },
+    {
+      "path": "firmware/sound-healing-0.6.6.fwsc",
+      "sha256": "cee194ac9e05674dd59a0101f61972db18a719bd2778658c0d4a4baf5573fb3c"
+    },
+    {
+      "path": "emu/app.wasm",
+      "sha256": "33670dcdb0e8aee7e7b63479877bfec2d760eb2df5af5cdf15b5748f9734b039"
+    }
+  ]
+}

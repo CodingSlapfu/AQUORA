@@ -1,4 +1,4 @@
-# AQUORA 0.6.6 — publication recovery
+# AQUORA 0.6.6 — published recovery checkpoint
 
 Check `/workspace/.aquora-release.lock`, running processes and current remote `aquora-next-integration` before editing. Sole resumed owner is 22ea018dd526. Do not create competing builds or erase older local changes. Explicit owner authorization permits public GitHub source/tests/config/build scripts/validation/recovery uploads to CodingSlapfu/AQUORA; no secrets/private data/unlicensed proprietary material.
 
@@ -8,6 +8,6 @@ Both USB and BLE performance MIDI are OWNER-AUTHORIZED DEFERRED. AIR, internal-c
 
 Site v184 is DEPLOYED: project appgprj_6ad6d0ae409c8191b45224ecdec724db, source 6c7a4e1b4322415a5f5029b5d7f97aa73615ec53, deployment appgdep_6aeeddbb2b2c8191b8c85bbeded72816. HTTPS installer shows 0.6.6 with enabled Install, real WASM starts, Studio reports online and acknowledges SOUND navigation. Live firmware SHA256 cee194ac9e05674dd59a0101f61972db18a719bd2778658c0d4a4baf5573fb3c. Physical device/listening/RF/FPS acceptance remains OWNER-UNVERIFIED.
 
-Remaining only: complete GitHub release v0.6.6 and independent archive verification, mirror the verified static package to gh-pages if needed, record final publication and prune active queue. Publisher workflow is guarded and must not overwrite existing releases. Check release/tag/run state before retrying a publication. No new compilation is needed. Old v0.6.5 releases/backups remain immutable.
+Release COMPLETE: https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.6.6 targets 295c1d1d489cd9b7a0b87ea797031d39ee673fe4. Publisher 42357005353 PASSED without rebuilding. All 11 public assets match GitHub digests; outer/internal manifests and ZIP CRC pass. Independent publisher artifact SHA256 56fa55250151b9a65f7641dd9c7c56a55932d43a74519793b8f3c00bccd3da32 verified with all matching assets. Source, native/single-core firmware, acceptance and site archives are downloadable. Exact installer mirror committed at 9c34b84aa9fa361c25a7318ebb65b67f181bd26f; GitHub Pages deployment 42357397911 PASSED. Details: validation/release-066/BACKUP_VERIFICATION.json and LIVE_PUBLICATION.json. No unfinished software release work; do not rerun passed builds/tests/publication. Only the active MIDI deferrals and owner hardware findings remain; next changes require concrete new evidence. Old releases/backups remain preserved.
 
 Recovery checkout: /workspace/scratch/22ea018dd526/aquora-resumed. Older working tree left intact; its patch preserved at /workspace/scratch/22ea018dd526/pre-recovery-local-changes.patch. GitHub is authoritative if scratch is pruned. Connected GitHub plugin supports writes; shell Git lacks credentials. Use expected-head ref updates, never force past newer work.
