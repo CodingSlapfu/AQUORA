@@ -1,1 +1,1 @@
-Publish exact accepted 0.6.7, source/backups and matching installer mirror; software gates pass and HTTPS runtime verified.
+Continue accepted publication with exact GitHub-backed site archive. GitHub runner cannot access Sites directly (403); no firmware/test changes or recompilation.
