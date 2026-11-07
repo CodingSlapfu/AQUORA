@@ -1,0 +1,15 @@
+{
+  "version": "0.6.6",
+  "site_project": "appgprj_6ad6d0ae409c8191b45224ecdec724db",
+  "site_version": 184,
+  "site_source": "6c7a4e1b4322415a5f5029b5d7f97aa73615ec53",
+  "site_deployment": "appgdep_6aeeddbb2b2c8191b8c85bbeded72816",
+  "site_status": "succeeded",
+  "installer_url": "https://parallax8-studio.jminie66.chatgpt.site/install/",
+  "browser_installer_heading": "Install AQUORA v0.6.6",
+  "browser_install_enabled": true,
+  "browser_emulator": "On; actual WASM screen rendered",
+  "browser_studio": "Emulator online; SOUND page control acknowledged",
+  "github_release": "PENDING",
+  "physical_acceptance": "OWNER-UNVERIFIED"
+}

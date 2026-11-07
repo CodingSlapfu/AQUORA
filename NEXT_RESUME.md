@@ -1,74 +1,13 @@
-## Current resumption checkpoint — November 7, 2026
-Both performance MIDI transports are owner-deferred. Candidate preserved at 82ca1f1; non-MIDI release boundary implemented and host/native builds pass; see validation/scope-066. Remaining non-MIDI reconciliation, visual/music acceptance, single-core/repro/WASM/updater/installer and publication gates are unfinished. No release was published; v0.6.5 preserved.
+# AQUORA 0.6.6 — publication recovery
 
-**Backup resolved:** owner explicitly authorized public source/test/config/checkpoint uploads. Connected GitHub plugin backed up the exact a3f1b13 source tree at 9a0ce930d10f7ee51547cd7736fed895db4c00ef; tree 5851dc234e43a4c93ec87d02fa711d464f7dfb5e independently fetched and matched locally. Shell Git push lacks credentials; use the connected plugin's blob/tree/commit/ref APIs with expected-head checks. Do not force or overwrite newer remote work.
+Check `/workspace/.aquora-release.lock`, running processes and current remote `aquora-next-integration` before editing. Sole resumed owner is 22ea018dd526. Do not create competing builds or erase older local changes. Explicit owner authorization permits public GitHub source/tests/config/build scripts/validation/recovery uploads to CodingSlapfu/AQUORA; no secrets/private data/unlicensed proprietary material.
 
-SDK packaging inputs actually exist at `/workspace/scratch/759587c0312e/recovered-base/vendor/ac79-package-files`; use that absolute --sdk path while it exists. Old relative path in instructions below is absent from current checkout. No edits to KIRA-9.
+Accepted source checkpoint: 97f285c6f785e34eedc499b975677a77af96e356. Native/repro/single-core source c6df8d527d69ad9e0f3a8dce19d440b679bf5337; byte equality verified. Complete independent platform run 42353932681 PASSED, reusing exact native artifacts and seven updater paths from run 42353129424. Artifact SHA256 a035921fa6bea632d31a1101474fee2fb2a4a498a80110c516abd30320f5e744 verified, with every embedded file. Do not rebuild or repeat passed tests.
 
-# AQUORA next integration — unfinished development checkpoint
+Both USB and BLE performance MIDI are OWNER-AUTHORIZED DEFERRED. AIR, internal-clock LEDs and firmware update SysEx retained. All 45 requirements and 74 comments reconciled in the canonical register. Exact a3f1b13 tree backed up at 9a0ce930d10f7ee51547cd7736fed895db4c00ef. Exact pre-deferral 82ca1f1 tree preserved at 9c8dd5e5cee84656d18d4e687d35572ee2e8e2de on aquora-preserved-midi-82ca1f1. KIRA-9 untouched.
 
-Branch: `aquora-next-integration`. Provisional development identity: 0.6.6 /
-`FM-1_73000606`. **Not released, not accepted, do not publish.**
-Published v0.6.5 and installer are preserved. KIRA-9 was not accessed or changed.
+Site v184 is DEPLOYED: project appgprj_6ad6d0ae409c8191b45224ecdec724db, source 6c7a4e1b4322415a5f5029b5d7f97aa73615ec53, deployment appgdep_6aeeddbb2b2c8191b8c85bbeded72816. HTTPS installer shows 0.6.6 with enabled Install, real WASM starts, Studio reports online and acknowledges SOUND navigation. Live firmware SHA256 cee194ac9e05674dd59a0101f61972db18a719bd2778658c0d4a4baf5573fb3c. Physical device/listening/RF/FPS acceptance remains OWNER-UNVERIFIED.
 
-## Resume without restarting
+Remaining only: complete GitHub release v0.6.6 and independent archive verification, mirror the verified static package to gh-pages if needed, record final publication and prune active queue. Publisher workflow is guarded and must not overwrite existing releases. Check release/tag/run state before retrying a publication. No new compilation is needed. Old v0.6.5 releases/backups remain immutable.
 
-1. Fetch `aquora-next-integration` and verify its remote head. Check
-   `/workspace/.aquora-release.lock` and other active build ownership before
-   any edits/builds. The previous owner token was `759587c0312e`; do not
-   assume a surviving lock is stale without checking its process/session.
-2. Read this file, `validation/NEXT_BUILD_REQUIREMENT_MATRIX.md`,
-   `validation/next-development/RESULTS.md`. Reuse the captured full issue and
-   owner-comment texts in `validation/next-owner-scope.json`; query GitHub
-   only for updates after that snapshot or missing context.
-3. For a complete isolated source checkout, run from repository root:
-   `bash tools/prepare_next_source.sh /NEW/EMPTY/OUTPUT/PATH`.
-   It verifies the pinned archive, overlays current tracked source and applies
-   AIR, LED duty and canvas pipeline patches. No compilation starts.
-4. Use the verified JieLi **20260730.1** toolchain archive SHA256
-   `a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd`.
-   Extract with `tar --no-same-owner`. Set `JIELI_TOOLCHAIN` to its directory
-   containing `pi32v2/` and `common/`. SDK packaging inputs are recovered
-   under `vendor/ac79-package-files`.
-
-Native build in recovered tree:
-`python3 vendor/fm1-base/tools/build.py device --release 0.6.6 --sdk vendor/ac79-package-files`.
-Forced single-core: same command with `FM1B_CPU2=0`.
-Host: `python3 vendor/fm1-base/tools/build.py device --host --release 0.6.6`.
-Run builds sequentially under one project owner.
-
-## Preserve candidate work; finish missing scope
-
-- #1: physical F3–G5 black/white mapping; scanner pulse-density 70/50 duty;
-  KEYS active/pending keys full brightness; PLAY pulse from engine step/phase,
-  independent of decorative mode. External MIDI clock acceptance is owner-deferred.
-- #8: existing spiral retained, actual Sans glyph reveal and original stereo
-  three-voice FM cue; 49 input skips, PCM/master mute, eight-second and hidden
-  worker checks pass. Startup sound preference/migration and complete acceptance
-  remain open.
-- #17: independent water lighting plus 512 migrating/settling sand particles;
-  music event/pitch/intention/frequency inputs. Review full required low/high,
-  silence and transition sequences; finish performance/visual acceptance.
-- #33: restored 33-vertex Original baseline from `128662b`; fixed/AUTO policy;
-  two-strip DMA canvas pipeline. Delayed DMA ownership and sampled pixel parity
-  pass. Finish comprehensive fidelity sequences, native instrumentation and
-  independent acceptance. Host timing is not physical FPS.
-- #34: seeded musical section role targets and bounded fades; 117 intention /
-  mode / loop cases and all eight post-gain roles observed. Zero-variation
-  regression was fixed and its prior corrective test rerun successfully.
-  Finish stems/click/level/SAVE/New Song/Reroll and native load acceptance.
-- **#31 MIDI-USB and MIDI-BLE: OWNER-AUTHORIZED DEFERRED** for v0.6.6 per comment 6702097918 / #32 comment 6702099240. Revisit after KIRA-9 has a good working firmware build and owner reprioritizes. Partial work preserved at 82ca1f1; current performance adapters and MIDI controls disabled. AIR, updater SysEx and internal-clock LEDs remain required. KIRA-9 untouched.
-- Finish #13/#18/#9 and every unresolved earlier requirement through the #32
-  matrix. The register is deliberately `audit_complete=false`; no prior accepted
-  feature is to be rewritten merely because its audit row is still OPEN.
-
-## Release remains blocked
-
-Run `python3 tests/requirement_gate_next.py --self-test` for structural and
-negative checks. `--release` currently **must fail**. No missing requirement,
-unreviewed owner comment, incomplete P0 or unsupported completion can be waived.
-
-Still required: complete reconciliation and implementation, independent CI,
-reproducible native comparison, WASM/emulator, required AIR acceptance (USB/BLE performance MIDI owner-deferred),
-flash/update/installer acceptance, source/package manifests and verified live
-publication. Hardware checks remain owner-only, never software release proof.
+Recovery checkout: /workspace/scratch/22ea018dd526/aquora-resumed. Older working tree left intact; its patch preserved at /workspace/scratch/22ea018dd526/pre-recovery-local-changes.patch. GitHub is authoritative if scratch is pruned. Connected GitHub plugin supports writes; shell Git lacks credentials. Use expected-head ref updates, never force past newer work.

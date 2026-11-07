@@ -1038,10 +1038,10 @@
     }
   ],
   "release_evidence": {
-    "final_platform_source_match": false,
-    "native_repro_single_core_wasm": false,
-    "updater_paths": false,
-    "staged_installer": false,
+    "final_platform_source_match": true,
+    "native_repro_single_core_wasm": true,
+    "updater_paths": true,
+    "staged_installer": true,
     "verified_source_backup": true
   },
   "reviewed_owner_comments": [
@@ -1417,5 +1417,8 @@
       "requirement": "ISSUE-01",
       "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
     }
-  }
+  },
+  "accepted_native_source": "c6df8d527d69ad9e0f3a8dce19d440b679bf5337",
+  "accepted_platform_source": "97f285c6f785e34eedc499b975677a77af96e356",
+  "accepted_platform_run": 42353932681
 }

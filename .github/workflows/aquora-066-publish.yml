@@ -1,0 +1,80 @@
+name: Publish accepted AQUORA 0.6.6
+on:
+  push:
+    branches: [aquora-next-integration]
+    paths: ['validation/publish-066.txt']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: aquora-release-publisher
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify accepted source and release gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/runs/42353932681 --jq .conclusion)" = success
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/runs/42353932681 --jq .head_sha)" = 97f285c6f785e34eedc499b975677a77af96e356
+          git fetch --no-tags --depth=1 origin 97f285c6f785e34eedc499b975677a77af96e356
+          git diff --exit-code 97f285c6f785e34eedc499b975677a77af96e356 HEAD -- device vendor
+          python3 tests/requirement_gate_next.py --release
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42353932681
+          name: aquora-066-platform
+          path: ${{ runner.temp }}/accepted
+      - name: Assemble exact accepted release and independent backups
+        shell: bash
+        run: |
+          set -euo pipefail
+          accepted="$RUNNER_TEMP/accepted"
+          (cd "$accepted" && sha256sum -c --strict SHA256SUMS.txt)
+          cmp "$accepted/native/sound-healing-0.6.6.fwsc" "$accepted/native-repro/sound-healing-0.6.6.fwsc"
+          echo "cee194ac9e05674dd59a0101f61972db18a719bd2778658c0d4a4baf5573fb3c  $accepted/native/sound-healing-0.6.6.fwsc" | sha256sum -c --strict
+          source="$RUNNER_TEMP/source"
+          bash tools/prepare_next_source.sh "$source"
+          out="$RUNNER_TEMP/final"
+          mkdir "$out" "$RUNNER_TEMP/site"
+          cp release/0.6.6/AQUORA-0.6.6-package.tar.gz "$out/"
+          tar -xzf "$out/AQUORA-0.6.6-package.tar.gz" -C "$RUNNER_TEMP/site"
+          cmp "$RUNNER_TEMP/site/firmware/sound-healing-0.6.6.fwsc" "$accepted/native/sound-healing-0.6.6.fwsc"
+          cmp "$RUNNER_TEMP/site/emu/app.wasm" "$accepted/emu/app.wasm"
+          (cd "$RUNNER_TEMP/site" && sha256sum -c --strict SITE-SHA256SUMS.txt)
+          cp "$accepted/native/sound-healing-0.6.6.fwsc" "$out/"
+          cp "$accepted/single-core/sound-healing-0.6.6.fwsc" "$out/sound-healing-0.6.6-single-core.fwsc"
+          cp release/0.6.6/RELEASE.md "$out/"
+          cp validation/release-066/SOFTWARE_ACCEPTANCE.json "$out/"
+          printf '%s\n' "$GITHUB_SHA" > "$out/validation-commit.txt"
+          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$out/AQUORA-0.6.6-source.tar.gz" -C "$source" .
+          (cd "$accepted" && zip -qr "$out/AQUORA-0.6.6-acceptance.zip" .)
+          (cd "$out" && sha256sum *.tar.gz *.fwsc > PAYLOAD-SHA256SUMS.txt && zip -q AQUORA-0.6.6-download.zip *.tar.gz *.fwsc RELEASE.md SOFTWARE_ACCEPTANCE.json validation-commit.txt PAYLOAD-SHA256SUMS.txt && sha256sum *.gz *.zip *.fwsc > SHA256SUMS.txt && sha256sum -c --strict SHA256SUMS.txt)
+      - name: Publish verified firmware without modifying prior releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v0.6.6 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Existing v0.6.6 preserved; inspect before retrying.'
+            exit 1
+          fi
+          test "$(gh api repos/$GITHUB_REPOSITORY/git/ref/heads/aquora-next-integration --jq .object.sha)" = "$GITHUB_SHA"
+          gh release create v0.6.6 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'AQUORA 0.6.6 — Generative Sound Sanctuary' --notes-file release/0.6.6/RELEASE.md "$RUNNER_TEMP/final/"*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-066-published-backup
+          path: ${{ runner.temp }}/final/
+          if-no-files-found: ignore
+          retention-days: 30
