@@ -3,6 +3,7 @@
 #include "serenity.h"
 #include "fastmath.h"
 #include "air_sensor.h"
+#include "frame_policy.h"
 static sr_engine engine PLAT_POOL;
 static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
 typedef struct {int kind,value; unsigned track;} command;
@@ -856,17 +857,13 @@ void app_frame(void)
     unsigned elapsed=now-lastdraw;
     /* Never latch a frozen image: reduce optional cadence under sustained
      * pressure, then recover automatically. Audio ISR always owns priority. */
-    unsigned visual_interval=FRAME_MIN_MS;
-    if(!intro_active&&engine.running){
-      unsigned load=callback_stats.p95;
+    unsigned load=callback_stats.p95;
 #ifdef PLAT_HOST
-      const char *pressure=getenv("AQUORA_TEST_CALLBACK_US");
-      if(pressure)load=(unsigned)atoi(pressure); /* scheduling fixture only */
+    const char *pressure=getenv("AQUORA_TEST_CALLBACK_US");
+    if(pressure)load=(unsigned)atoi(pressure); /* scheduling fixture only */
 #endif
-      if(load>=5400u||xrun_delta)visual_interval=150u;
-      else if(load>=4900u)visual_interval=100u;
-      else if(load>=4400u)visual_interval=75u;
-    }
+    unsigned visual_interval=aq_frame_interval(fps_auto,engine.running,
+                                               intro_active,load,xrun_delta);
     visual_interval_ms=visual_interval;
     /* Only pages with actually displayed live content schedule animation.
      * Static SOUND category pickers, stopped timelines and hidden mixer
