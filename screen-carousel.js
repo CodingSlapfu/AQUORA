@@ -1,4 +1,4 @@
-/* AQUORA v0.6.6: automatic, control-free homepage screen rotation. */
+/* AQUORA v0.6.7: automatic, control-free homepage screen rotation. */
 (() => {
   "use strict";
   const screen = document.getElementById("hero-screen-image");
@@ -41,7 +41,7 @@
     window.setTimeout(() => {
       index = (index + 1) % slides.length;
       screen.src = imagePath(index);
-      screen.alt = "Actual AQUORA v0.6.6 " + slides[index][1] + ".";
+      screen.alt = "Actual AQUORA v0.6.7 " + slides[index][1] + ".";
       preload((index + 1) % slides.length);
       window.requestAnimationFrame(() => {
         screen.classList.remove("is-switching");

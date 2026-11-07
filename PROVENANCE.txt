@@ -1,1 +1,4 @@
-AQUORA v0.6.6; native/repro/single-core source c6df8d527d69ad9e0f3a8dce19d440b679bf5337; successful final platform run 42353932681, workflow source 97f285c6f785e34eedc499b975677a77af96e356. Actual current-source 240px UI frames and live sr_render captures; no musical visualizer gallery images. Owner hardware/artistic checks unverified.
+AQUORA 0.6.7
+Firmware/WASM source: 17c2e3d539cd606ec96806511f835c1e2567b39b (device/vendor unchanged at platform continuation 3566af4).
+Accepted native/repro/single-core/WASM/update run 42412774240; independently downloaded and every hash verified.
+Physical hardware/listening/aesthetics owner-unverified. Both performance MIDI transports deferred. KIRA-9 untouched.

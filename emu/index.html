@@ -5,8 +5,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AQUORA 0.6.6 — FM-1 Browser Emulator</title>
-<meta name="description" content="AQUORA 0.6.6 for the FM-1, in the browser: the same code the FM-1 runs.">
+<title>AQUORA 0.6.7 — FM-1 Browser Emulator</title>
+<meta name="description" content="AQUORA 0.6.7 for the FM-1, in the browser: the same code the FM-1 runs.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap">
@@ -89,7 +89,7 @@ kbd { font: 600 .85em ui-monospace, Menlo, monospace; background: var(--card); b
 </head>
 <body>
 <header>
-  <h1>AQUORA <span style="font-size:.55em;opacity:.7">0.6.6</span></h1>
+  <h1>AQUORA <span style="font-size:.55em;opacity:.7">0.6.7</span></h1>
 </header>
 <main>
 <h2 class="sr">The FM-1</h2>
@@ -644,9 +644,9 @@ async function switchOn() {
   try {
     const ac = new AudioContext({ sampleRate: 44100, latencyHint: "interactive" });
     if (speakMode() === "voice") voiceOn();
-    const [wasm] = await Promise.all([fetch("app.wasm").then((r) => { if (!r.ok) throw new Error(`app.wasm: ${r.status}`); return r.arrayBuffer(); }),
+    const [wasm] = await Promise.all([fetch("app.wasm?v=0.6.7").then((r) => { if (!r.ok) throw new Error(`app.wasm: ${r.status}`); return r.arrayBuffer(); }),
                                       ac.audioWorklet.addModule("app_worklet.js").catch(() => {})
-                                        .then(() => ac.audioWorklet.addModule("worklet.js"))]);
+                                        .then(() => ac.audioWorklet.addModule("worklet.js?v=0.6.7"))]);
     node = new AudioWorkletNode(ac, "fm1", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
     gain = ac.createGain();
     gain.gain.value = $("mute").getAttribute("aria-pressed") === "true" ? 0 : 1;
