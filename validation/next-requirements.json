@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "baseline": "b8743a39420e9f4c9fa2bd426d8ccf54876a0fba",
-  "target": "0.6.6",
+  "baseline": "26602ba005a562ac34cb9f1cf656e3076658fd36",
+  "target": "0.6.7",
   "audit_complete": true,
   "requirements": [
     {
@@ -701,24 +701,27 @@
       "id": "ISSUE-32",
       "requirement": "P0 next build: reconcile deferred work and enforce evidence-based requirement coverage (Visualizer 2 #17)",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/32",
-      "target": "0.6.6",
+      "target": "0.6.7",
       "priority": "P0",
-      "status": "COMPLETED SOFTWARE",
+      "status": "PARTIAL",
       "code": [
-        "validation/next-requirements.json",
-        "tests/requirement_gate_next.py"
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
       ],
       "tests": [
-        "tests/requirement_gate_next.py"
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
       ],
-      "artifacts": [
-        "validation/release-066/PROGRESS.md"
-      ],
+      "artifacts": [],
       "physical_owner": "owner",
-      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
       "scope_sha256": "9300bfdf7b095d142280e66e536a18c84f000bd9df6064d0eeb8f28e30aabc8c",
-      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
-      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
     },
     {
       "id": "ISSUE-33",
@@ -752,26 +755,27 @@
       "id": "ISSUE-34",
       "requirement": "P0 next build: eight-role arrangement evolution, fading entrances/exits and inactive mixer tracks",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/34",
-      "target": "0.6.6",
+      "target": "0.6.7",
       "priority": "P0",
-      "status": "COMPLETED SOFTWARE",
+      "status": "PARTIAL",
       "code": [
-        "device/dsp/engine.c"
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
       ],
       "tests": [
-        "tests/role_evolution_next.c",
-        "tests/role_stems_066.c",
-        "tests/actions_066.py"
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
       ],
-      "artifacts": [
-        "validation/next-development/role-evolution.log",
-        "validation/release-066/role-stems.log"
-      ],
+      "artifacts": [],
       "physical_owner": "owner",
-      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
       "scope_sha256": "5b25a7b6e60d62fbc43cd47ba87c0b6d4cc3098b897af6e58936c9ddf01dc576",
-      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
-      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
     },
     {
       "id": "LED-ON",
@@ -1035,50 +1039,272 @@
       "scope_sha256": "c7dbcb6a6326114317db26690939d3519fc92ae916b343bf691bd6dd5f3d4bb3",
       "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
       "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
+    },
+    {
+      "id": "ISSUE-35",
+      "requirement": "P0 v0.6.6 hardware regression: SOUND SELECT role navigation is unclear/unusable; restore Lead/Bass glide and vibrato access",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/35",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-36",
+      "requirement": "Next AQUORA: Add THIRD visualizer \u2014 audio-reactive Chladni nodal figures and mandala geometry; preserve Cymatics Mode 2",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/36",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-37",
+      "requirement": "Next AQUORA: Ensure Original, Cymatics and Chladni visualizers stand out clearly in white-background themes",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/37",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-38",
+      "requirement": "Next AQUORA P0: All three visualizers must respond strongly to internal music even when physical master volume is zero",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/38",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-39",
+      "requirement": "P0 next AQUORA: persist selected visualizer and global UI preferences through power-off, including while PLAY is running",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/39",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-40",
+      "requirement": "P0 next AQUORA: Intention + music-style drum/mixer/FX profiles; fresh reboot defaults, reapply on every selection",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/40",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-41",
+      "requirement": "Next AQUORA: Full-width audio activity fill in every MIXER channel meter lane",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/41",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-42",
+      "requirement": "P0 next AQUORA: Physical LED modes incorrect (ON 70/50 full brightness, KEYS dark), stronger DANCE, hide LED TEST, persist mode",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/42",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-43",
+      "requirement": "P0 next AQUORA: Make 16/32/64-step loops musically distinct\u2014true multi-bar phrases, harmonies, bass/drum development",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/43",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+    },
+    {
+      "id": "ISSUE-44",
+      "requirement": "P0 NEXT AQUORA: Add eight distinct meditative intentions (21 total) with complete sound profiles and save-bank compatibility",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/44",
+      "target": "0.6.7",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c",
+        "device/ui.c",
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/release_067.c",
+        "tests/panel_067.py",
+        "tests/preferences_flash_067.c",
+        "tests/audio_067.c"
+      ],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
+      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
     }
   ],
-  "release_evidence": {
-    "final_platform_source_match": true,
-    "native_repro_single_core_wasm": true,
-    "updater_paths": true,
-    "staged_installer": true,
-    "verified_source_backup": true
-  },
+  "release_evidence": {},
   "reviewed_owner_comments": [
-    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6679727088",
-    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6700881928",
-    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6700892557",
-    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6702099240",
-    "https://github.com/CodingSlapfu/AQUORA/issues/30#issuecomment-6668708536",
-    "https://github.com/CodingSlapfu/AQUORA/issues/29#issuecomment-6668427317",
-    "https://github.com/CodingSlapfu/AQUORA/issues/27#issuecomment-6668038797",
-    "https://github.com/CodingSlapfu/AQUORA/issues/27#issuecomment-6668710827",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6667122986",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6667411708",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668006552",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668037955",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668066059",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668179891",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668256013",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668391711",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668431595",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668667640",
-    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668709652",
-    "https://github.com/CodingSlapfu/AQUORA/pull/25#issuecomment-6667121634",
-    "https://github.com/CodingSlapfu/AQUORA/pull/25#issuecomment-6668179149",
-    "https://github.com/CodingSlapfu/AQUORA/issues/24#issuecomment-6667063213",
-    "https://github.com/CodingSlapfu/AQUORA/issues/24#issuecomment-6668178439",
-    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665534986",
-    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665588194",
-    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665677098",
-    "https://github.com/CodingSlapfu/AQUORA/issues/20#issuecomment-6668007310",
-    "https://github.com/CodingSlapfu/AQUORA/issues/19#issuecomment-6654503930",
-    "https://github.com/CodingSlapfu/AQUORA/issues/19#issuecomment-6665495738",
-    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6656484320",
-    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6665392769",
-    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6665495074",
-    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6667064659",
-    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6667383022",
+    "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700880739",
+    "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700892234",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650457385",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650487069",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650649236",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650741760",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6652538744",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6667063958",
+    "https://github.com/CodingSlapfu/AQUORA/issues/13#issuecomment-6650648570",
+    "https://github.com/CodingSlapfu/AQUORA/issues/13#issuecomment-6650941318",
+    "https://github.com/CodingSlapfu/AQUORA/issues/14#issuecomment-6650593618",
+    "https://github.com/CodingSlapfu/AQUORA/issues/14#issuecomment-6656604987",
     "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6650592067",
     "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651122008",
     "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651315114",
@@ -1088,24 +1314,13 @@
     "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6665496543",
     "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6668255045",
     "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6668429323",
-    "https://github.com/CodingSlapfu/AQUORA/issues/14#issuecomment-6650593618",
-    "https://github.com/CodingSlapfu/AQUORA/issues/14#issuecomment-6656604987",
-    "https://github.com/CodingSlapfu/AQUORA/issues/13#issuecomment-6650648570",
-    "https://github.com/CodingSlapfu/AQUORA/issues/13#issuecomment-6650941318",
-    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650457385",
-    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650487069",
-    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650649236",
-    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650741760",
-    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6652538744",
-    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6667063958",
-    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665534126",
-    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665585585",
-    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665677912",
-    "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6651077563",
-    "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6679722783",
-    "https://github.com/CodingSlapfu/AQUORA/issues/7#issuecomment-6652539384",
-    "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6665586582",
-    "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6668008063",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6656484320",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6665392769",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6665495074",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6667064659",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6667383022",
+    "https://github.com/CodingSlapfu/AQUORA/issues/19#issuecomment-6654503930",
+    "https://github.com/CodingSlapfu/AQUORA/issues/19#issuecomment-6665495738",
     "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6650448336",
     "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6650876922",
     "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6651226750",
@@ -1117,8 +1332,54 @@
     "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668257018",
     "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668392473",
     "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668665590",
-    "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700880739",
-    "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700892234"
+    "https://github.com/CodingSlapfu/AQUORA/issues/20#issuecomment-6668007310",
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665534986",
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665588194",
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665677098",
+    "https://github.com/CodingSlapfu/AQUORA/issues/24#issuecomment-6667063213",
+    "https://github.com/CodingSlapfu/AQUORA/issues/24#issuecomment-6668178439",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6667122986",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6667411708",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668006552",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668037955",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668066059",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668179891",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668256013",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668391711",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668431595",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668667640",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668709652",
+    "https://github.com/CodingSlapfu/AQUORA/issues/27#issuecomment-6668038797",
+    "https://github.com/CodingSlapfu/AQUORA/issues/27#issuecomment-6668710827",
+    "https://github.com/CodingSlapfu/AQUORA/issues/29#issuecomment-6668427317",
+    "https://github.com/CodingSlapfu/AQUORA/issues/30#issuecomment-6668708536",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6679727088",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6700881928",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6700892557",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6701441163",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6702099240",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6705008055",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6705056419",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6705315455",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6712319419",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6712369148",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6712497014",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6712519041",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6712608331",
+    "https://github.com/CodingSlapfu/AQUORA/issues/34#issuecomment-6712368859",
+    "https://github.com/CodingSlapfu/AQUORA/issues/34#issuecomment-6712496676",
+    "https://github.com/CodingSlapfu/AQUORA/issues/39#issuecomment-6712496057",
+    "https://github.com/CodingSlapfu/AQUORA/issues/40#issuecomment-6712608669",
+    "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6665586582",
+    "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6668008063",
+    "https://github.com/CodingSlapfu/AQUORA/issues/7#issuecomment-6652539384",
+    "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6651077563",
+    "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6679722783",
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665534126",
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665585585",
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665677912",
+    "https://github.com/CodingSlapfu/AQUORA/pull/25#issuecomment-6667121634",
+    "https://github.com/CodingSlapfu/AQUORA/pull/25#issuecomment-6668179149"
   ],
   "owner_comment_dispositions": {
     "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6679727088": {

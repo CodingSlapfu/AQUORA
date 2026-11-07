@@ -52,6 +52,7 @@ typedef struct {
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
   uint32_t song_seed, visit_nonce;
+  uint8_t pending_scene, pending_mode, profile_applying;
   uint8_t music_mode, motion_manual, recent_patches[SR_MUSIC_MODES][SR_SCENES][SR_TRACKS];
   uint16_t sound_locks;
   uint8_t drum_presence, play_grid, groove_mode, groove_strength;

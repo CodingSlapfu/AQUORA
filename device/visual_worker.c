@@ -35,13 +35,14 @@ static struct {
     float onset[SR_TRACKS];
     float meter[SR_TRACKS];
 } vis_input __attribute__((aligned(64)));
-static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[256][4];uint16_t node_count;int16_t sand[512][2];uint8_t water_light[30][30];} vis_output __attribute__((aligned(64)));
+static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[512][4];uint16_t node_count;int16_t sand[512][2];uint8_t water_light[30][30];} vis_output __attribute__((aligned(64)));
 static float vis_sine[128];
-static unsigned worker_wait_us,worker_fallbacks;
+static unsigned worker_wait_us,worker_fallbacks,visual_last_ms;
+static float original_phase,original_activity;
 
 static void visual_init(void)
 {
-    worker_wait_us=worker_fallbacks=0;
+    worker_wait_us=worker_fallbacks=visual_last_ms=0;original_phase=original_activity=0;
     for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
 }
 
@@ -158,8 +159,14 @@ static void chladni_job(void)
     float c=x/radius,prev=1.f,now=c;
     for(unsigned n=2;n<=petals;n++){float next=2.f*c*now-prev;prev=now;now=next;}
     float radial=visual_sin(radius*(32.f+plate_order*11.f-bass*5.f));
-    float rect=visual_sin((x+1.f)*32.f*plate_order)*visual_sin((y+1.f)*32.f*(plate_order+1.f))
-      -visual_sin((y+1.f)*32.f*plate_order)*visual_sin((x+1.f)*32.f*(plate_order+1.f));
+    unsigned m=(unsigned)plate_order;float morph=plate_order-m;
+    float rect=0;
+    for(unsigned basis=0;basis<2;basis++){
+      float a=(float)(m+basis),b=a+1.f;
+      float wave=visual_sin(32.f+x*64.f*a)*visual_sin(32.f+y*64.f*b)
+        -visual_sin(32.f+y*64.f*a)*visual_sin(32.f+x*64.f*b);
+      rect+=wave*(basis?morph:1.f-morph);
+    }
     plate_grid[j][i]=rect*(1.f-plate_blend)+(radial+now*.65f)*plate_blend;
   }
   vis_output.node_count=0;
@@ -176,14 +183,23 @@ static void chladni_job(void)
     vis_output.sand[i][0]=120+(int)(sand_x[i]*112.f);
     vis_output.sand[i][1]=(int)(cy+sand_y[i]*sy);
   }
-  /* Thin interpolated zero crossings: nodal segments, never canned shapes. */
+  /* Marching cells join interpolated zero crossings into continuous thin
+   * nodal curves. Ambiguous saddles use deterministic paired crossings. */
   for(unsigned y=0;y<24;y++)for(unsigned x=0;x<24;x++){
-    float a=plate_grid[y][x],b=plate_grid[y][x+1],c=plate_grid[y+1][x];
-    if((a<0)!=(b<0)&&(a<0)!=(c<0)&&vis_output.node_count<256){
+    float f[4]={plate_grid[y][x],plate_grid[y][x+1],plate_grid[y+1][x+1],plate_grid[y+1][x]};
+    static const unsigned dx[4]={0,1,1,0},dy[4]={0,0,1,1};
+    int16_t px[4],py[4];unsigned count=0;
+    for(unsigned edge=0;edge<4;edge++){
+      unsigned next=(edge+1u)&3u;
+      if((f[edge]<0)==(f[next]<0))continue;
+      float at=f[edge]/(f[edge]-f[next]);
+      float gx=x+dx[edge]+at*((int)dx[next]-(int)dx[edge]);
+      float gy=y+dy[edge]+at*((int)dy[next]-(int)dy[edge]);
+      px[count]=120+(int)((gx-12.f)*(112.f/12.f));py[count]=(int)(cy+(gy-12.f)*(sy/12.f));count++;
+    }
+    for(unsigned edge=0;edge+1<count&&vis_output.node_count<512;edge+=2){
       int16_t *p=vis_output.nodes[vis_output.node_count++];
-      float px=((int)x-12)/12.f,py=((int)y-12)/12.f;
-      p[0]=120+(int)((px+a/(a-b)/12.f)*112.f);p[1]=(int)(cy+py*sy);
-      p[2]=120+(int)(px*112.f);p[3]=(int)(cy+(py+a/(a-c)/12.f)*sy);
+      p[0]=px[edge];p[1]=py[edge];p[2]=px[edge+1];p[3]=py[edge+1];
     }
   }
 }
@@ -221,7 +237,9 @@ static void visual_job(uint32_t unused)
 static void prepare_geometry(void)
 {
     AQ_VIS_COUNT(geometry_jobs);
-    vis_input.phase=plat_ms()/(visual_mode?35u:49u);
+    unsigned now=plat_ms(),dt=visual_last_ms?now-visual_last_ms:50u;visual_last_ms=now;
+    if(dt>100u)dt=100u;
+    vis_input.phase=now/(visual_mode?35u:49u);
     unsigned flags=plat_lock();
     vis_input.water=page==0?visual_mode:0;
     vis_input.full=fullscreen;
@@ -245,6 +263,14 @@ static void prepare_geometry(void)
       vis_input.meter[t]=engine.tracks[t].meter;
       vis_input.onset[t]=engine.tracks[t].events!=vis_input.event[t]&&engine.tracks[t].meter>.00001f?1.f:vis_input.onset[t]*.82f;
       vis_input.event[t]=engine.tracks[t].events;
+    }
+    if(!visual_mode){
+      float energy=0;for(unsigned t=0;t<SR_TRACKS;t++)energy+=vis_input.meter[t]*8.f;
+      energy+=vis_input.atmosphere;
+      float target=fm_clampf(energy,0,1);
+      original_activity+=(target-original_activity)*(target>original_activity?.45f:.12f);
+      if(original_activity>.0001f)original_phase+=dt*(.006f+.027f*original_activity);
+      vis_input.phase=(unsigned)original_phase;
     }
     plat_unlock(flags);
     plat_cpu2_sync();

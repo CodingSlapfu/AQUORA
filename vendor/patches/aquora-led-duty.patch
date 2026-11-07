@@ -9,16 +9,19 @@
  static uint8_t fm1__tick_col, fm1__dim_k = 16u;   /* the bits of the shift the dim pulse spans (0..16) */
  static uint16_t fm1__dim_t = FM1__DIM_T(FM1_LED_DIM_NS);   /* the pulse the tick aims at (fm1_led_dim_level) */
  /* the breath's constants for each glow (see top): its peak (/256 of lit), the glow G (of a lit frame, /65536),
-@@ -552,7 +554,7 @@
+@@ -552,8 +554,9 @@
      fm1__mid_n = (uint8_t)(lo ? FM1_LED_MID_N_LO : FM1_LED_MID_N);
  }
  /* column c's lit lines this frame: lit, a breath's lit frame (not dim), the mid level's lit frame */
 -#define FM1__LIT(c) (fm1_led[c] | (fm1__br_lit ? fm1_led_breath[c] & ~fm1_led_dim[c] : 0u) | \
-+#define FM1__LIT(c) ((fm1__aq_lit70 ? fm1_led_aquora70[c] : 0u) | (fm1__aq_lit50 ? fm1_led_aquora50[c] : 0u) | fm1_led[c] | (fm1__br_lit ? fm1_led_breath[c] & ~fm1_led_dim[c] : 0u) | \
-                      (!fm1__mid_ph ? fm1_led_mid[c] : 0u))
+-                     (!fm1__mid_ph ? fm1_led_mid[c] : 0u))
++#define FM1__LIT(c) ((fm1__aq_lit70 ? fm1_led_aquora70[c] : 0u) | (fm1__aq_lit50 ? fm1_led_aquora50[c] : 0u) | \
++                     ((fm1_led[c] | (fm1__br_lit ? fm1_led_breath[c] & ~fm1_led_dim[c] : 0u) | \
++                      (!fm1__mid_ph ? fm1_led_mid[c] : 0u)) & ~(fm1_led_aquora70[c] | fm1_led_aquora50[c])))
  #if FM1_LED_DIM_DIV > 1
  static uint8_t fm1__dim_ph;
-@@ -712,6 +714,12 @@
+ #endif
+@@ -712,6 +715,12 @@
      fm1__sr_bits(w, k, 16u);
      fm1__sr_latch();                               /* column n, the lines dark */
      if (n == 0u) {                                 /* (a new frame: the mid level's turn, before column 0 lights) */

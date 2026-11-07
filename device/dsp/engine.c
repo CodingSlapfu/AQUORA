@@ -421,6 +421,7 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
 
 void sr_set_scene(sr_engine *e,uint8_t scene){
   if(scene>=SR_SCENES)return;
+  if(e->running&&!e->profile_applying){e->pending_scene=scene+1u;return;}
   unsigned changed=1; /* This API is an explicit owner selection, including reselect. */
   if(changed)e->play_queued=0;
   if(e->running&&changed)for(int i=0;i<SR_VOICES;i++){
@@ -443,6 +444,7 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
 void sr_set_music_mode(sr_engine *e,uint8_t mode)
 {
   if(mode>=SR_MUSIC_MODES||mode==e->music_mode)return;
+  if(e->running&&!e->profile_applying){e->pending_mode=mode+1u;return;}
   e->music_mode=mode;
   /* Force one realization through the same safe scene-transition path. */
   e->song_seed=0;
@@ -486,7 +488,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   for(int t=0;t<SR_TRACKS;t++){
     e->gain_trim[t]=e->role_gain[t]=e->role_target[t]=1.f;
     e->tracks[t].patch=default_patches[t];e->tracks[t].volume=t==SR_BASS?.88f:t==SR_DRUMS?1.f:.68f; e->tracks[t].send=1.f;
-    e->tracks[t].pan=(float)(t%4-1)*.13f;
+    e->tracks[t].pan=((int)(t%4)-1)*.13f;
   }
   e->perfect_key=1; e->solo=SR_TRACKS; e->sacred_level=.08f; e->sacred_mode=1; e->sacred_harmonics=.32f;
   e->motion[0]=(sr_motion){120,0,0,45}; e->motion[1]=(sr_motion){90,0,0,32};
@@ -913,12 +915,12 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
     sr_note_on(e,SR_HARMONY,tonic+24+scale[(chord+4u)%7u],52,4.f);
   }
   if(e->music_mode==SR_CINEMATIC){
-    if((s&7u)==4&&degree>=0)sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic,5.5f);
+    if((s&7u)==(bar==1u?2u:bar==2u?0u:4u)&&degree>=0)sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic,5.5f);
     if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+(draw>>8)%3u*2u)%7u],58-dynamic,2.4f);
     if((s&7u)==2)sr_note_on(e,SR_GUITAR,tonic+12+scale[(chord+4u)%7u],54,2.2f);
     if((s&15u)==12)sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+2u)%7u],49,3.f);
   }else{
-    if((s&1u)==0){
+    if((s&1u)==(bar==1u?1u:0u)){
       unsigned arp=(s/2u+(draw>>12)%2u)%4u;
       unsigned d=(chord+arp*2u)%7u;
       sr_note_on(e,SR_PIANO,tonic+24+scale[d],78-dynamic+(s%8u==0?8:0),1.15f);
@@ -932,6 +934,14 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 }
 static void trigger(sr_engine *e){
   if(!e->loop_pos){
+    if(e->pending_scene||e->pending_mode){
+      e->profile_applying=1;
+      unsigned scene=e->pending_scene?e->pending_scene-1u:e->scene;
+      if(e->pending_mode)e->music_mode=e->pending_mode-1u;
+      e->pending_scene=e->pending_mode=0;
+      sr_set_scene(e,scene);plan_roles(e);
+      e->profile_applying=0;
+    }
     if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;e->play_queued=0;}
     if(e->pending_key){
       e->tonic_override=36+e->pending_key-1;
@@ -1004,7 +1014,7 @@ static void trigger(sr_engine *e){
       ornament(e,0,(uint8_t)note,e->scene==7?91:e->scene==6?61:80,1.45f,s,evolving);
     }
   }
-  if(k>=0 && (s%2u)==0){
+  if(k>=0 && (s%2u)==(bar==1u?1u:0u)){
     unsigned lead=evolving||stable?song_draw(phrase_seed,SR_LEAD+(s&15u)*8u):rng(e);
     if(lead%5u<=energy){
       int note=tonic+24+scale_notes[sc->scale][k];

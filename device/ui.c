@@ -153,7 +153,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  sr_motion *motion=&engine.motion[selected<=SR_BASS?selected:0];
  int number=0;
  switch(id){
- case 1:*name="INTENTION";{
+ case 1:*name=engine.pending_scene?"NEXT INTENTION":"INTENTION";{
    static const char *short_name[]={"Miracles","Blessing","Energy Cleanse","Cell Renewal","Anxiety Release","Bliss","Positive Vibrations","Neuro-Freq Detox"};
    return engine.scene>=13?short_name[engine.scene-13]:sr_scenes[engine.scene].name;
  }
@@ -865,7 +865,9 @@ static void draw(int animate)
        cv_text(101,25,&FONT_XS,"PRE",skin_dim());
        limited_text(127,25,105,&FONT_XS,patch_name(),skin_text());
      }
-     if(page!=0&&page!=PAGE_SOUND){
+     if(preferences_saved_ms&&plat_ms()-preferences_saved_ms<1800u&&page==PAGE_SETUP)
+       limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
+     else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
        unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?3:page==PAGE_SETUP?5:2;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;

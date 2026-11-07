@@ -33,7 +33,10 @@ static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm;
 static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, last_control_ms;
-static unsigned preferences_saving, preferences_generation, preferences_snapshot_generation, preferences_saved_ms;
+static unsigned preferences_saving, preferences_generation, preferences_saved_ms;
+#ifndef PLAT_HOST
+static unsigned preferences_snapshot_generation;
+#endif
 static unsigned ui_theme, ui_font_size=1, ui_background, preferences_dirty, preferences_changed;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
 static unsigned air_on, air_hold, air_poll, air_tab;
@@ -448,11 +451,11 @@ void app_init(void)
     midi_load();
     aq_settings settings={0};
     int prefs_size=plat_store_size(OBJ_SETTINGS);
-    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==24||prefs_size==(int)sizeof(settings))&&
+    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==24||prefs_size==28||prefs_size==(int)sizeof(settings))&&
        plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==prefs_size&&
        (settings.version==0x41513032u||
         (settings.version==0x41513033u&&prefs_size==24)||
-        ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||settings.version==0x41513037u))&&prefs_size==(int)sizeof(settings)))){
+        ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||settings.version==0x41513037u))&&(prefs_size==28||prefs_size==(int)sizeof(settings))))){
       for(unsigned i=0;i<2;i++){
         sr_motion m=settings.motion[i];
         if(m.glide_mode<=2&&m.glide_ms>=10&&m.glide_ms<=800&&
@@ -476,7 +479,7 @@ void app_init(void)
     /* arrangement_init resets its bank cursor and visual slot. Restore the
      * saved global visualizer before first intro frame, independent of banks. */
     if((settings.version==0x41513033u&&prefs_size==24)||
-       ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||settings.version==0x41513037u))&&prefs_size==(int)sizeof(settings)))
+       ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||settings.version==0x41513037u))&&(prefs_size==28||prefs_size==(int)sizeof(settings))))
       visual_mode=settings.visual<=2?settings.visual:0;
     if(settings.version>=0x41513035u&&settings.active_bank<4)bank_slot=settings.active_bank;
     if((settings.version==0x41513036u||settings.version==0x41513037u)){
@@ -1127,6 +1130,19 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"intro"))*got=intro_active;
  else if(!strcmp(what,"nature_bed"))*got=engine.bed_type;
  else if(!strcmp(what,"nature_style"))*got=engine.nature_style;
+ else if(!strcmp(what,"preferences_saved"))*got=!preferences_dirty&&!preferences_saving;
+ else if(!strcmp(what,"pending_scene"))*got=engine.pending_scene;
+ else if(!strcmp(what,"drum_presence"))*got=engine.drum_presence;
+ else if(!strcmp(what,"boot_drums"))*got=engine.drum_kit==0&&engine.drum_density==2&&engine.drum_hit==25&&engine.drum_presence==50&&engine.drum_level==.66f;
+ else if(!strcmp(what,"settings_066_fixture")){
+   aq_settings prior={0};prior.version=0x41513036u;prior.visual=1;prior.lighting=3;prior.font_size=1;prior.background=1;
+   *got=plat_store_save(OBJ_SETTINGS,&prior,28)==0;
+ }
+ else if(!strcmp(what,"visual_snapshot")){
+   unsigned hash=2166136261u;
+   for(unsigned t=0;t<SR_TRACKS;t++)hash=(hash^(unsigned)(vis_input.meter[t]*1000000.f))*16777619u;
+   printf("VIS %u %u %u %u %.5f %.5f\n",visual_mode,vis_input.phase,hash,vis_output.node_count,nodal_level,plate_activity);*got=1;
+ }
  else if(!strcmp(what,"lighting"))*got=lighting;
  else if(!strcmp(what,"frame_interval"))*got=visual_interval_ms;
  else if(!strcmp(what,"fps_auto"))*got=fps_auto;

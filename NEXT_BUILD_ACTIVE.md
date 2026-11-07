@@ -9,3 +9,5 @@ Owner scope captured once in validation/release-067/OWNER_REQUIREMENTS.json (#32
 - PARTIAL #40/#44: 21 complete scene/motion/nature/drum profiles appended without changing original IDs, profile reselect. Needs 189 scenario matrix, safe running transitions, bank migration, readback and audio evidence.
 - OPEN #32: reconcile current canonical register; native/repro/single-core/WASM/host/update gates; verified GitHub backups; new-version release and live installer only after all software gates.
 - OWNER-UNVERIFIED: physical flash/rollback, RF/AIR sensitivity, LCD FPS/XRUN/soak, LED perceived brightness, musical/visual aesthetics. AIR required, both performance MIDI deferred; KIRA-9 untouched.
+
+- ISSUE-31 / MIDI-USB / MIDI-BLE: DEFERRED by owner; revisit after working KIRA-9 and explicit reprioritization. No performance MIDI exposure. MIDI-AIR required and retained.
