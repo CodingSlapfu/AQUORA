@@ -334,7 +334,7 @@ static void performance(int band)
    }
    if(band==1){label(8,0,"CALLBACK MEAN us",callback_stats.mean);label(127,0,"CALLBACK PEAK us",callback_stats.peak);}
    if(band==2){label(8,0,"CALLBACK P95 us",callback_stats.p95);label(127,0,"CALLBACK P99 us",callback_stats.p99);}
-   if(band==3){label(8,0,"GEOMETRY us",graphics_us);label(127,0,"UI DRAW us",frame_us);}
+   if(band==3){timing_summary play_draw=summarize(&display_timing[PAGE_PLAY]);label(8,0,"PLAY DRAW P95 us",play_draw.p95*10u);label(127,0,"PLAY DRAW P99 us",play_draw.p99*10u);}
    if(band==4){
      int voices=0;for(int i=0;i<SR_VOICES;i++)voices+=!!engine.voices[i].active;
      label(8,0,"ACTIVE VOICES",voices);label(127,0,"INPUT DROPS",dropped);

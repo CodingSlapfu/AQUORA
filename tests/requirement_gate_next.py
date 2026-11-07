@@ -44,6 +44,10 @@ def validate(register, snapshot, release=False, queue_text=''):
                 errors.append(f"{row.get('id')}: deferred requirement missing from next queue")
             if not row.get('owner_scope_approval'):
                 errors.append(f"{row.get('id')}: deferral has no owner scope approval")
+    if release:
+        for gate in ('final_platform_source_match','native_repro_single_core_wasm','updater_paths','staged_installer','verified_source_backup'):
+            if not register.get('release_evidence',{}).get(gate):
+                errors.append('release evidence missing: '+gate)
     if release and (not register.get('audit_complete') or register.get('target') == 'next'):
         errors.append('reconciliation incomplete or stale release version')
     return errors
@@ -57,7 +61,9 @@ def self_test(register, snapshot):
     broken['requirements'][0]['status'] = 'COMPLETED SOFTWARE'
     broken['requirements'][0]['code'] = []
     assert any('missing code proof' in e for e in validate(broken, snapshot))
-    assert validate(register, snapshot, release=True), 'unfinished non-MIDI work must block release'
+    open_fixture=copy.deepcopy(register)
+    open_fixture['requirements'][0]['status']='OPEN'
+    assert validate(open_fixture, snapshot, release=True), 'unfinished non-MIDI work must block release'
     broken=copy.deepcopy(register)
     row=next(r for r in broken['requirements'] if r['id']=='ISSUE-17')
     row['carry_forward']='DEFERRED to explicit future version'
@@ -65,7 +71,7 @@ def self_test(register, snapshot):
     for deferred_id in ('MIDI-USB','MIDI-BLE'):
         approved=copy.deepcopy(next(r for r in register['requirements'] if r['id']==deferred_id))
         assert approved['status']=='OWNER-AUTHORIZED DEFERRED'
-        fixture=dict(target='0.6.6',audit_complete=True,requirements=[approved])
+        fixture=dict(target='0.6.6',audit_complete=True,requirements=[approved],release_evidence={k:True for k in ('final_platform_source_match','native_repro_single_core_wasm','updater_paths','staged_installer','verified_source_backup')})
         empty=dict(issues=[],comments=[])
         assert not validate(fixture,empty,True,deferred_id)
         assert validate(fixture,empty,True,'')

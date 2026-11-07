@@ -15,6 +15,7 @@ static unsigned displayed_revision;
 static unsigned dropped,page,selected,group,oldkeys,oldbuttons,lastdraw,dirty=1,debug;
 #ifdef PLAT_HOST
 static unsigned geometry_jobs,history_updates,ui_blits,worker_jobs,worker_waits;
+static unsigned test_led_black,test_led_white,test_led_bright;
 #define AQ_VIS_COUNT(x) (++(x))
 #else
 #define AQ_VIS_COUNT(x) ((void)0)
@@ -23,6 +24,8 @@ static float output_gain;
 typedef struct { unsigned max, count, sum, bins[64]; } timing;
 typedef struct { unsigned mean, p95, p99, peak; } timing_summary;
 static timing audio_timing, fx_timing, callback_timing;
+/* Per-page draw history uses 10us units: histogram covers 64ms, without audio work. */
+static timing display_timing[7];
 static timing_summary audio_stats, fx_stats, callback_stats;
 static unsigned window_ms;
 static volatile unsigned requested_play, stop_generation, physical_keys;
@@ -742,6 +745,7 @@ void app_input_only(void){midi_poll();unsigned b=plat_buttons(),k=plat_keys(),pr
  unsigned lights=k, dim_keys=0, dim_buttons=0, black_duty=0,white_duty=0;
  if(pending&&pending<=NKEYS)lights|=1u<<(pending-1);
  if(lighting==0){
+   lights=0; /* ON has fixed 70/50 duty; KEYS alone highlights held/pending keys. */
    for(unsigned key=0;key<NKEYS;key++)if(!(lights&(1u<<key))){
      if(aq_black_key(key))black_duty|=1u<<key;
      else white_duty|=1u<<key;
@@ -772,6 +776,7 @@ void app_input_only(void){midi_poll();unsigned b=plat_buttons(),k=plat_keys(),pr
 #ifndef PLAT_HOST
  plat_aquora_key_duty(black_duty,white_duty);
 #else
+ test_led_black=black_duty;test_led_white=white_duty;test_led_bright=lights;
  /* Binary host/browser LED previews show the idle groups at mid level;
   * exact 70/50 scan duty is validated separately against the native path. */
  plat_lights_mid(0,black_duty|white_duty);
@@ -945,6 +950,7 @@ void app_frame(void)
       unsigned draw_start=plat_ticks24();
       draw(animate);
       frame_us=(plat_ticks24()-draw_start)/24;
+      if(!debug&&!intro_active)measure(&display_timing[page],(frame_us+9u)/10u);
       if(animate&&page==0)frames++;
     }
 }
@@ -1003,6 +1009,12 @@ int app_expect(const char *what,int *got){
      }
    }
    page=PAGE_PLAY;song_tab=debug=selected=0;dirty=1;
+ }
+ else if(!strcmp(what,"led_black_mask"))*got=test_led_black;
+ else if(!strcmp(what,"led_white_mask"))*got=test_led_white;
+ else if(!strcmp(what,"led_bright_mask"))*got=test_led_bright;
+ else if(!strcmp(what,"page_draw_stats")){
+   for(unsigned p=0;p<7;p++){timing_summary t=summarize(&display_timing[p]);printf("PAGE_DRAW %u %u mean%u p95%u p99%u max%u us\n",p,display_timing[p].count,t.mean*10,t.p95*10,t.p99*10,t.peak*10);}*got=1;
  }
  else if(!strcmp(what,"perf_sample")){
    printf("PERF %u %u %u %u %u %u\n",graphics_us,frame_us,callback_stats.p95,vis_output.node_count,worker_fallbacks,geometry_jobs);*got=1;

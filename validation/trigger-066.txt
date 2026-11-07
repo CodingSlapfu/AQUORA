@@ -1,1 +1,1 @@
-Outstanding independent platform gates for owner-deferred MIDI v0.6.6.
+Final changed-source regression: ON duty fix, per-page timing, current updater paths and startup/action acceptance. Reuses unchanged DSP/geometry proofs.

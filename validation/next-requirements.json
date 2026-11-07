@@ -31,91 +31,133 @@
       "id": "ISSUE-02",
       "requirement": "P0: Full FM-1 interface discoverability/editability audit \u2014 every implemented AQUORA parameter reachable",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/2",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/parameters.def"
+      ],
+      "tests": [
+        "tests/parameter_registry_062.py"
+      ],
+      "artifacts": [
+        "validation/integration-065/COMPLETED.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "49abf6a26af81ffea9dc96014be3b6208b1d6d6911d7a61c03a920a674eed177",
-      "audit": "Compare with accepted v0.6.5 scope"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-03",
       "requirement": "P0: Intention- and style-aware Nature Beds \u2014 automatic coherent selection, overrides, and smooth evolution",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/3",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/corrective_061.c"
+      ],
+      "artifacts": [
+        "validation/next-development/dsp/corrective_061.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "cb30d7f54d2e3232ffa3ec6ef4b1e33fbe8093a9d86268e5b64799cfe6a19b68",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-04",
       "requirement": "P0: SOUND + EVOLVE dynamic audio-accurate interactive graphs, replacing static visuals",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/4",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/visibility_062.txt"
+      ],
+      "artifacts": [
+        "validation/integration-062/ISSUE_ACCEPTANCE.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "924e488d84fcd720e2f6fb13ab8858b5e4e49bbfebe90ec47a07afea4b4cf224",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-05",
       "requirement": "P0: Make Nature Birds and Forest convincing \u2014 eliminate synthetic repeating chirps and noise beds",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/5",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/corrective_061.c"
+      ],
+      "artifacts": [
+        "validation/integration-062/ISSUE_ACCEPTANCE.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "79b25d259ba76fe8a693a63a12f484a2da05188203424e4eebfb30e36267234a",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-06",
       "requirement": "P0: Expand FM-based sound library \u2014 intention-aware FM patches, drum kits, and natural ambience beds",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/6",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/music_modes_064.c"
+      ],
+      "artifacts": [
+        "validation/next-development/dsp/music_modes_064.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "9be588712bcdd9a482620931f69d28c3e83e4c29ad34bcc226bd0b34fa913c60",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-07",
       "requirement": "P0: Full-project optimization, deduplication and safe cleanup before next corrective release",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/7",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/music_load_064.c"
+      ],
+      "artifacts": [
+        "validation/next-development/dsp/music_load_064.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "9a4f88ea4ebe4cd3b915ea347a723e33f87033fb790cf41f5fdce56f7cef923d",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-08",
@@ -141,61 +183,89 @@
       "id": "ISSUE-09",
       "requirement": "P0: EVOLVE must drive sustained nonrepeating musical development across all intentions and 8 roles",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/9",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/music_modes_064.c"
+      ],
+      "artifacts": [
+        "validation/next-development/dsp/music_modes_064.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "730105c3933ec533d1fa8c1cc3423b8b7259d3ff30f0b8d17d0aa6de56f1bdea",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-10",
       "requirement": "P0: True edge-to-edge 240\u00d7240 immersive fullscreen \u2014 visualizer fills the screen",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/10",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/panel_062_regressions.py"
+      ],
+      "artifacts": [
+        "validation/integration-062/ISSUE_ACCEPTANCE.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "2662d008977fc48f24b4b247c5b8d9b308d8bb19f86a5c32f35ed7ce9e634f74",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-11",
       "requirement": "P1 late-add 0.6.1: compact battery status indicator with automatic fullscreen fade-out",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/11",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/corrective_previews.py"
+      ],
+      "artifacts": [
+        "validation/integration-062/ISSUE_ACCEPTANCE.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "fc0e372152eff4f0e582406ba269e7caca7a9119e3f686140d5900c4e1255f7f",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-12",
       "requirement": "P0 v0.6.1 hardware: 97% audio+FX, 82 XRUNs/2s, severe UI draw time and audible crackle",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/12",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/binaural_062.c"
+      ],
+      "artifacts": [
+        "validation/next-development/dsp/binaural_062.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "43dd10213e75d5dcece4a60cf22ddc5ef47db6b9bc0ad5b1fbe7e9095aac5569",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-13",
@@ -216,46 +286,67 @@
       "id": "ISSUE-14",
       "requirement": "P1 v0.6.1 hardware UI: fullscreen restores PLAY controls, visualizer vertical alignment, brighter LEDs",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/14",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c"
+      ],
+      "tests": [
+        "tests/fullscreen_060.txt"
+      ],
+      "artifacts": [
+        "validation/integration-062/ISSUE_ACCEPTANCE.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "b36aa2a0292e16ef4e8dbfcdaa4f7c08d616b922681bea9629d2fbb46915ce9f",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-15",
       "requirement": "P0 real-time performance: zero hidden visualization/graph DSP and rendering workload",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/15",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c"
+      ],
+      "tests": [
+        "tests/visibility_062.txt"
+      ],
+      "artifacts": [
+        "validation/integration-062/ISSUE_ACCEPTANCE.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "40f6db01e7ece39135e9351e62b0a6a594b3b15fe0ce9725a1c54826e31d0d64",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-16",
       "requirement": "P1: Persist selected visualizer for startup intro; ultra-lightweight refreshed UI with vibrant selectable themes",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/16",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/hotfix_ui_065.py"
+      ],
+      "artifacts": [
+        "validation/integration-065/COMPLETED.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "c4f7150f08fcc876f602d1bfe0de58575e7c0d1bed1ba187f698e6e77e575b3c",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-17",
@@ -283,196 +374,287 @@
       "id": "ISSUE-18",
       "requirement": "P0: All 19 AQUORA drum kits sound muffled \u2014 restore crisp attacks and distinct timbre without regressions",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/18",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/drum_analysis_062.py"
+      ],
+      "artifacts": [
+        "validation/integration-062/ISSUE_ACCEPTANCE.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "011b126085057efbe04fb86e80a7037e0b92a035c11cddc5665fbe0316dc1f4a",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-19",
       "requirement": "Public AQUORA showcase + real browser emulator + Studio editor \u2014 activate GitHub Pages",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/19",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/site"
+      ],
+      "tests": [
+        "tests/capture_ui_065.py"
+      ],
+      "artifacts": [
+        "validation/integration-065/LIVE_PUBLICATION.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "7fab06e02f40f0ec395df788ef52b838dc6ad4da65a4c5c7fe54398995064da7",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. Updated release hosting still requires final live-publication verification.",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-20",
       "requirement": "P0 Next Build: one-press SAVE from every page, even while playing, with clear bank confirmation",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/20",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/quicksave.c"
+      ],
+      "tests": [
+        "tests/actions_066.py"
+      ],
+      "artifacts": [
+        "validation/integration-065/COMPLETED.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "a83a90a64594ed58409d9f4d1591da8921ab5f12f7153f8f3fd4bd6eb02a252a",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-21",
       "requirement": "P0 Next Build UI: pure black/white fullscreen, theme and ALGO artifacts, PLAY/MIXER panel redesign",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/21",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/panel_062_regressions.py"
+      ],
+      "artifacts": [
+        "validation/integration-065/COMPLETED.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "7e9f84ca870d88f6ccf4c56772e8870c5f284e976546e60644d26d759b5fa49d",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-22",
       "requirement": "HOTFIX v0.6.4 \u2014 finish true Polar Bloom cymatics, live APNG showcase, and audit missed v0.6.3 requirements",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/22",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/visual_semantics_066.py"
+      ],
+      "artifacts": [
+        "validation/release-066/visual-semantics.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "3fb87f2a459e9290ae14bfb231c1bee52ae54869bf6c85d84f6b46e3b83d9f7f",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-23",
       "requirement": "v0.6.4 P0: Standard / Cinematic / Neoclassical music modes + automatic intention-aware glide/vibrato",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/23",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/music_modes_064.c"
+      ],
+      "artifacts": [
+        "validation/next-development/dsp/music_modes_064.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "16d132d5d3379efdf313d7c7a465f729c59e0937b14d3b3585392c1014ab8f8b",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-24",
       "requirement": "P0 v0.6.5 fast hotfix: restore animated AQUORA startup without showing either visualizer",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/24",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/startup_next.py"
+      ],
+      "artifacts": [
+        "validation/next-development/startup.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "9e8252078d474a59adfe6238e1015c081760a8c037dcf96c8fb92d5ab03ac5d3",
-      "audit": "Compare with accepted v0.6.5 scope"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-25",
       "requirement": "v0.6.5 intro hotfix: bring back animated AQUORA startup (no music visualizer)",
       "source": "https://github.com/CodingSlapfu/AQUORA/pull/25",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/startup_next.py"
+      ],
+      "artifacts": [
+        "validation/next-development/startup.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "c987e6a8e58a13dc7940bce33e130839ec01716ccca5f4016ea4fccdbf7304ab",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-26",
       "requirement": "P0 v0.6.5 hardware: visualizer freezes + audio lag (58ms UI draw, 6ms geometry); vibrant intro background",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/26",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c"
+      ],
+      "tests": [
+        "tests/performance_065.py"
+      ],
+      "artifacts": [
+        "validation/next-development/visual-pressure.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "fdbbe4a68fda99cdc7616593a14012dd620da20316015f966278e071938da901",
-      "audit": "Compare with accepted v0.6.5 scope"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-27",
       "requirement": "P0: SAVE hangs on \u201cSaving Bank\u201d during PLAY; verify flash progress, fullscreen transition and recall",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/27",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/quicksave.c"
+      ],
+      "tests": [
+        "tests/actions_066.py"
+      ],
+      "artifacts": [
+        "validation/integration-065/COMPLETED.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "77fde8b663e1fd8a8bfee0c25ec1314820af19fac21cd66018c3565aa3e99cdd",
-      "audit": "Compare with accepted v0.6.5 scope"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-28",
       "requirement": "v0.6.5 hotfix: add FM bass patches to existing sound library (no new tracks or mixer changes)",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/28",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/bass_library_065.c"
+      ],
+      "artifacts": [
+        "validation/next-development/dsp/bass_library_065.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "9ba42e84500403f16a99b3831dc41e2ccc0b44060882e374fd74fde53e9cdca2",
-      "audit": "Compare with accepted v0.6.5 scope"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-29",
       "requirement": "v0.6.5 MIX MASTER FX page: overlapping labels; surface Auto Gain/Auto Level (K3/K4)",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/29",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/hotfix_ui_065.py"
+      ],
+      "artifacts": [
+        "validation/integration-065/COMPLETED.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "eb13d5a3fefd1757dde827a76f0a9ec94b759a3c40ad842dad129d1fefc369f9",
-      "audit": "Compare with accepted v0.6.5 scope"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-30",
       "requirement": "v0.6.5 workflow: remove duplicate EDIT-section controls across UI (EVOLVE loop/freeze/variation confirmed)",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/30",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c"
+      ],
+      "tests": [
+        "tests/actions_066.py"
+      ],
+      "artifacts": [
+        "validation/integration-065/COMPLETED.md"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Physical/artistic owner checks remain unverified; accepted software preserved",
       "scope_sha256": "1b819c85991bac64573ee486e5d681b22eadb5afd8873f760027b3efa904c9a9",
-      "audit": "Compare with accepted v0.6.5 scope"
+      "audit": "Reconciled against accepted 0.6.2/0.6.4/0.6.5 evidence and current source; no blanket rebuild. ",
+      "source_commit": "9a0ce930d10f7ee51547cd7736fed895db4c00ef"
     },
     {
       "id": "ISSUE-31",
@@ -772,5 +954,12 @@
       "scope_sha256": "c7dbcb6a6326114317db26690939d3519fc92ae916b343bf691bd6dd5f3d4bb3",
       "audit": "AIR remains required; performance MIDI disabled at boot and in UI; updater and physical radio acceptance remain separate."
     }
-  ]
+  ],
+  "release_evidence": {
+    "final_platform_source_match": false,
+    "native_repro_single_core_wasm": false,
+    "updater_paths": false,
+    "staged_installer": false,
+    "verified_source_backup": true
+  }
 }

@@ -51,6 +51,7 @@ jobs:
             grep -F 'identity FM-1_73000606' "$out/$target/build.log"
           done
           cmp "$out/native/sound-healing-0.6.6.fwsc" "$out/native-repro/sound-healing-0.6.6.fwsc"
+          python3 tests/direct_update_066.py "$out/native/sound-healing-0.6.6.fwsc" | tee "$out/direct-update.log"
       - name: Outstanding host and visual semantics
         shell: bash
         run: |
@@ -60,6 +61,10 @@ jobs:
           out="$RUNNER_TEMP/results"
           python3 vendor/fm1-base/tools/build.py device --host --release 0.6.6 2>&1 | tee "$out/host-build.log"
           python3 tests/non_midi_066.py device/build/host/sound-healing_host "$out/non-midi"
+          mkdir "$out/lighting"
+          device/build/host/sound-healing_host tests/lighting_output_066.txt "$out/lighting" | tee "$out/lighting.log"
+          python3 tests/startup_modes_066.py device/build/host/sound-healing_host "$out/startup-modes"
+          python3 tests/actions_066.py device/build/host/sound-healing_host "$out/actions"
           python3 tests/visual_semantics_066.py "$out/visual-semantics"
           python3 tests/requirement_gate_next.py --self-test | tee "$out/scope-gate.log"
           python3 tests/parameter_registry_062.py | tee "$out/parameter-registry.log"
