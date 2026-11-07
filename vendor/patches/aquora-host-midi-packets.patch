@@ -1,0 +1,11 @@
+--- a/vendor/fm1-base/host/plat_host.c
++++ b/vendor/fm1-base/host/plat_host.c
+@@ -1113,7 +1113,7 @@
+ {
+     uint32_t st = (uint32_t)strtoul(a, 0, 16), d1 = b[0] ? (uint32_t)strtoul(b, 0, 16) : 0,
+              d2 = c[0] ? (uint32_t)strtoul(c, 0, 16) : 0;
+-    uint32_t cin = st >= 0xF0 ? 0x0F : st >> 4;
++    uint32_t cin = st == 0xF2 ? 3u : st == 0xF1 || st == 0xF3 ? 2u : st >= 0xF0 ? 0x0F : st >> 4;
+     return cin | st << 8 | d1 << 16 | d2 << 24;
+ }
+ static const char *const PORT_N[NPORTS] = {"USB", "BLE", "TRS"};

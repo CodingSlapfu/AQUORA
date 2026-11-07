@@ -1,0 +1,37 @@
+In file included from vendor/fm1-base/device/unity.c:379:
+In file included from device/app.c:6:
+device/midi_core.h:32:20: warning: suggest braces around initialization of subobject [-Wmissing-braces]
+ *m=(aq_midi_core){0};m->settings.sync=AQ_SYNC_MASTER;
+                   ^
+                   {}
+1 warning generated.
+warning: SDK uboot.boot differs from AC79NN_SDK_V1.2.1; the package will not match the reference
+warning: SDK cfg/eq_cfg_hw.bin differs from AC79NN_SDK_V1.2.1; the package will not match the reference
+font T: BarlowSemiCondensed-SemiBold.ttf 10px h 12, digit adv 5, 3600 B
+font XS: BarlowSemiCondensed-SemiBold.ttf 12px h 15, digit adv 6, 7005 B
+font S: BarlowSemiCondensed-Medium.ttf 15px h 16, digit adv 7, 8576 B
+font B: BarlowSemiCondensed-Bold.ttf 15px h 16, digit adv 8, 8752 B
+font M: BarlowSemiCondensed-SemiBold.ttf 23px h 24, digit adv 12, 11832 B
+font L: BarlowSemiCondensed-Bold.ttf 31px h 32, digit adv 16, 19776 B
+font set barlow: 60782 B (approx)
+words: 3 own + 51 common -> /workspace/scratch/759587c0312e/AQUORA/device/web/words/95a41ce197.json (1059 B)
+loader: image 9636 B at 0x1c0a800, bss end 0x1c12210
+loader: ota.bin 8340 B
+font T: InterTight-source.ttf@wght=650 9px h 12, digit adv 5, 5220 B
+font XS: InterTight-source.ttf@wght=620 11px h 14, digit adv 7, 6832 B
+font S: InterTight-source.ttf@wght=560 13px h 17, digit adv 8, 8993 B
+font B: InterTight-source.ttf@wght=720 13px h 17, digit adv 8, 8993 B
+font M: InterTight-source.ttf@wght=660 16px h 20, digit adv 10, 12140 B
+font L: InterTight-source.ttf@wght=720 27px h 34, digit adv 16, 29580 B
+font I: InterTight-source.ttf@wght=560 11px h 14, digit adv 8, 8736 B
+font set AQUORA Sans / Inter Tight derivative: 82172 B (approx)
+  ok    .ram_text: 4607 insns, no calls
+  ok    no 64-bit multiply inlined beside a load
+  ok    own Bluetooth stack: nothing of JieLi's linked, the radio's ramp in RAM
+  ok    no soft-double routines (single-precision FPU only)
+  ok    image 261260 B; RAM .data+.bss 82772 B of 98304; pool 96956 B of 344064
+  ok    register access: felucca-bsp only (device/, include/ and the app clean)
+parts    Bluetooth MIDI, Bluetooth MIDI devices, USB audio in, the second core  (not built in: WiFi, USB audio out, screen mirroring, backup and restore, USB MIDI host, velocity and pressure)
+app      /workspace/scratch/759587c0312e/AQUORA/device/build/sound-healing.bin  261260 B
+loader   /workspace/scratch/759587c0312e/AQUORA/device/build/loader/ota.bin  8340 B
+package  /workspace/scratch/759587c0312e/AQUORA/device/build/sound-healing-0.6.6.fwsc  611496 B, identity FM-1_73000606

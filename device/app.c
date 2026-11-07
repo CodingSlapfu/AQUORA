@@ -541,7 +541,7 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     measure(&callback_timing,total/24);
 }
 void app_say(const char*a,const char*b){(void)a;(void)b;dirty=1;}
-void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbuttons;oldbuttons=b;
+void app_input_only(void){midi_poll();unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbuttons;oldbuttons=b;
  int enc[7]={plat_enc(EN_ALGO),plat_enc(EN_SELECT),plat_enc(EN_PRESET),
              plat_enc(EN_K1),plat_enc(EN_K1+1),plat_enc(EN_K1+2),plat_enc(EN_K1+3)};
  int control=press!=0;
@@ -800,7 +800,6 @@ void app_ui_init(void){
 }
 void app_frame(void)
 {
-    midi_poll();
     app_input_only();
     arrangement_service();
     unsigned now=plat_ms();
@@ -918,9 +917,9 @@ void app_frame(void)
     /* Only pages with actually displayed live content schedule animation.
      * Static SOUND category pickers, stopped timelines and hidden mixer
      * views do not schedule recurrent blits. */
-    int live_sound=page==PAGE_SOUND&&!sound_picker&&(engine.running||engine.preview_frames);
-    int live_mix=page==PAGE_MIX&&engine.running;
-    int live_evolve=page==PAGE_EVOLVE&&engine.running;
+    int live_sound=page==PAGE_SOUND&&!sound_picker&&(engine.running||engine.preview_frames||engine.external_audio);
+    int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
+    int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
     int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve)&&elapsed>=visual_interval;
     if(animate&&page==0){
       missed+=elapsed/FRAME_MIN_MS-1u;
@@ -1078,7 +1077,14 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"midi_sync"))*got=midi.settings.sync;
  else if(!strcmp(what,"startup_chime"))*got=startup_chime;
  else if(!strcmp(what,"midi_received"))*got=midi.received;
+ else if(!strcmp(what,"midi_diag")){
+  printf("MIDI %u %u in%u ch%u role%u q%u/%u run%u mute%u vol%u stop%u\n",midi.received,midi.rejected,midi.settings.usb_in,midi.settings.rx_channel,midi.settings.source,qread,qwrite,engine.running,engine.tracks[midi.settings.source].mute,(unsigned)(engine.tracks[midi.settings.source].volume*100),engine.stop_frames);*got=1;
+ }
  else if(!strcmp(what,"midi_clock_out"))*got=midi_clock_sent;
+ else if(!strcmp(what,"midi_clock_exact"))*got=midi_clock_sent==1u+midi_position();
+ else if(!strcmp(what,"midi_rx_channel"))*got=midi.settings.rx_channel;
+ else if(!strcmp(what,"midi_tx_channel"))*got=midi.settings.tx_channel+1;
+
  else if(!strcmp(what,"midi_external_voices")){
   *got=0;for(unsigned v=0;v<SR_VOICES;v++)*got+=engine.voices[v].external&&engine.voices[v].gate;
  }

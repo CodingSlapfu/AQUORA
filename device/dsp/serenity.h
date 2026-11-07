@@ -36,7 +36,8 @@ typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_r
 typedef struct {
   sr_track tracks[SR_TRACKS]; sr_voice voices[SR_VOICES];
   uint32_t rng, frame_count, tick_phase, tick_length, sequence_step, phrase;
-  void (*midi_event)(unsigned role,unsigned note,unsigned velocity);
+  uint32_t midi_events[64],midi_event_lost;
+  uint8_t midi_read,midi_write,midi_enabled;
   uint8_t midi_suppress,external_sync,external_clock_count,external_audio;
   uint8_t scene, frequency, tuning_432, running, bed_type, isolate, frequency_auto, frequency_lock, pending_lock, lock_textures;
   uint8_t drums_enabled, drum_density, drum_kit, binaural_enabled;
@@ -120,6 +121,7 @@ void sr_preview_sound(sr_engine *e, unsigned role);
 void sr_set_track_patch(sr_engine *e, uint8_t track, uint8_t patch);
 void sr_set_loop_length(sr_engine *e, uint8_t length);
 uint8_t sr_tonic(const sr_engine *e);
+int sr_midi_event_pop(sr_engine *e,uint32_t *event);
 void sr_midi_note(sr_engine *e,unsigned role,unsigned channel,unsigned note,unsigned velocity);
 void sr_midi_panic(sr_engine *e);
 void sr_midi_bend(sr_engine *e,unsigned channel,int value);

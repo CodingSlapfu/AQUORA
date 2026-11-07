@@ -52,7 +52,7 @@ static void band_line(int x0,int y0,int x1,int y1,uint16_t color)
 static void geometry(int offset)
 {
  if(vis_input.water){
-   static const uint16_t water[16]={RGB(2,13,25),RGB(3,18,31),RGB(4,24,38),RGB(5,31,46),
+   static const uint16_t water[16]={RGB(0,0,0),RGB(3,18,31),RGB(4,24,38),RGB(5,31,46),
      RGB(7,39,55),RGB(9,49,66),RGB(12,61,78),RGB(16,74,91),
      RGB(23,89,105),RGB(33,106,121),RGB(48,126,137),RGB(67,147,155),
      RGB(91,171,175),RGB(121,194,195),RGB(158,217,213),RGB(207,242,230)};
@@ -62,7 +62,14 @@ static void geometry(int offset)
      int end=top+(int)(row+1)*(bottom-top)/30-offset;
      if(start<0)start=0;if(end>48)end=48;
      if(end<=start)continue;
-     for(unsigned x=0;x<30;x++)cv_rect(x*8,start,8,end-start,water[vis_output.water_light[row][x]]);
+          if(offset+start==0)start++;
+     if(offset+end>=240)end=239-offset;
+     if(end<=start)continue;
+     for(unsigned x=0;x<30;x++){
+       unsigned light=vis_output.water_light[row][x];
+       uint16_t color=ui_background?(light?RGB(255-light*5,255-light*2,255-light):RGB(255,255,255)):water[light];
+       cv_rect(x*8+(x==0),start,8-(x==0)-(x==29),end-start,color);
+     }
    }
    unsigned shade=nodal_level>.65f?3:nodal_level>.3f?2:1;
    static const uint16_t ink[2][4]={{RGB(9,24,31),RGB(27,84,108),RGB(48,156,184),RGB(127,245,224)},
@@ -74,7 +81,7 @@ static void geometry(int offset)
    }
    for(unsigned i=0;i<512;i++){
      int x=vis_output.sand[i][0],y=vis_output.sand[i][1]-offset;
-     if(y>=0&&y<48)cv_line(x,y,x+1,y,i%3?RGB(229,196,126):RGB(255,235,187));
+     if(y>=0&&y<48)cv_line(x,y,x+1,y,ui_background?RGB(117,79,25):i%3?RGB(229,196,126):RGB(255,235,187));
    }
    return;
  }
@@ -575,6 +582,7 @@ static void draw(int animate)
 {
  unsigned revision=state_revision;
  for(int band=0;band<5;band++){
+   midi_poll(); /* Service USB between display DMA strips. */
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));

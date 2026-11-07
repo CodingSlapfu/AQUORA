@@ -110,7 +110,7 @@ static void resonance_job(void)
       float radius=fm_sqrtf(px*px+py*py);
       float ripple=visual_sin(radius*(75.f+complexity*20.f)-vis_input.phase*3.f);
       float standing=sand_field(px,py);
-      float light=.45f+nodal_level*(ripple*.18f+standing*.12f);
+      float light=nodal_level*(.45f+ripple*.18f+standing*.12f);
       vis_output.water_light[y][x]=(uint8_t)fm_clampf(light*15.f,0,15);
       /* Bright short water reflections, never an outline of the nodes. */
       if(nodal_level>.004f&&x%2u==0&&y%2u==0&&vis_output.node_count<256){

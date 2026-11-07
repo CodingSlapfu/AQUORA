@@ -6,7 +6,7 @@
 static sr_engine e;
 static int16_t pcm[512];
 static unsigned on,off;
-static void event(unsigned r,unsigned n,unsigned v){assert(r<8&&n<128);if(v)on++;else off++;}
+static void drain(void){uint32_t e0;while(sr_midi_event_pop(&e,&e0)){assert((e0>>16)<8&&((e0>>8)&255u)<128);if(e0&127u)on++;else off++;}}
 static unsigned held(unsigned channel){unsigned n=0;for(unsigned i=0;i<SR_VOICES;i++)n+=e.voices[i].external&&e.voices[i].gate&&e.voices[i].channel==channel;return n;}
 int main(void){
  aq_midi_core m;aq_midi_defaults(&m);m.settings.input=1;
@@ -26,24 +26,24 @@ int main(void){
   (void)aq_midi_step_frames(&m,500+(uint32_t)((uint64_t)i*500u/24u));
   if(i%24000==0)aq_midi_release_source(&m);
  }
- sr_init(&e,66);e.bed_level=e.reverb_amount=e.delay_amount=0;e.midi_event=event;
+ sr_init(&e,66);e.bed_level=e.reverb_amount=e.delay_amount=0;e.midi_enabled=1;
  sr_midi_note(&e,SR_LEAD,0,60,100);sr_midi_note(&e,SR_LEAD,1,60,90);
  assert(held(0)==1&&held(1)==1&&on==0);
- sr_render(&e,pcm,256);unsigned nonzero=0;for(unsigned i=0;i<512;i++)nonzero+=pcm[i]!=0;
+ sr_render(&e,pcm,256);drain();unsigned nonzero=0;for(unsigned i=0;i<512;i++)nonzero+=pcm[i]!=0;
  assert(nonzero>10);
  sr_midi_note(&e,SR_LEAD,0,60,0);assert(!held(0)&&held(1)==1&&off==0);
  sr_midi_bend(&e,1,8191);
  for(unsigned i=0;i<SR_VOICES;i++)if(e.voices[i].external&&e.voices[i].channel==1)
   assert(fabsf(e.voices[i].freq/sr_note_frequency(&e,60)-1.12246f)<.001f);
  sr_midi_panic(&e);assert(!held(1)&&off==0);
- for(unsigned n=0;n<2000;n++)sr_render(&e,pcm,256);
+ for(unsigned n=0;n<2000;n++){sr_render(&e,pcm,256);drain();}
  for(unsigned i=0;i<512;i++)assert(!pcm[i]);
  sr_start(&e);e.variation=0;
- for(unsigned n=0;n<500;n++)sr_render(&e,pcm,256);
- assert(on>0);sr_stop(&e);sr_render(&e,pcm,256);assert(on==off);
+ for(unsigned n=0;n<500;n++){sr_render(&e,pcm,256);drain();}
+ assert(on>0);sr_stop(&e);sr_render(&e,pcm,256);drain();assert(on==off);
  sr_start(&e);e.external_sync=1;
- for(unsigned n=0;n<100;n++)sr_render(&e,pcm,256);
+ for(unsigned n=0;n<100;n++){sr_render(&e,pcm,256);drain();}
  assert(e.sequence_step==1);
- e.tick_phase=e.tick_length;sr_render(&e,pcm,256);assert(e.sequence_step==2);
+ e.tick_phase=e.tick_length;sr_render(&e,pcm,256);drain();assert(e.sequence_step==2);
  puts("PASS USB-neutral parser, channel/source policy, 8h virtual clock stream, idle received audio, channel note-off/bend, no echo, TX gate lifecycle and external phase hold");
 }

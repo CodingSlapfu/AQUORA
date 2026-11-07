@@ -14,11 +14,19 @@ extern void *memcpy(void *, const void *, size_t);
 #include <string.h>
 #endif
 
-static void release_voice(sr_engine *e,sr_voice *v)
+static inline __attribute__((always_inline)) void midi_push(sr_engine *e,unsigned role,unsigned note,unsigned velocity)
+{
+ if(!e->midi_enabled)return;
+ unsigned next=(e->midi_write+1u)&63u;
+ if(next==e->midi_read){e->midi_event_lost++;return;}
+ e->midi_events[e->midi_write]=(role<<16)|(note<<8)|velocity;
+ e->midi_write=(uint8_t)next;
+}
+static inline __attribute__((always_inline)) void release_voice(sr_engine *e,sr_voice *v)
 {
  if(v->gate){
   e->note_offs++;
-  if(e->midi_event&&!v->external)e->midi_event(v->track,v->midi,0);
+  if(!v->external)midi_push(e,v->track,v->midi,0);
  }
  v->gate=0;
 }
@@ -461,6 +469,7 @@ void sr_init(sr_engine *e,uint32_t seed){
  * generating a fresh downbeat, even when STOP and PLAY share a block. */
 static void clear_transport(sr_engine *e)
 {
+    e->external_audio=0;
     e->play_queued=0;
     e->play_released=0;
     memset(e->ornaments,0,sizeof e->ornaments);
@@ -551,8 +560,13 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   v->attack_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->attack,e->tracks[track].attack),.001f)*SR_RATE));
   v->release_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->release,e->tracks[track].release),.04f)*SR_RATE));
   v->remain=(uint32_t)clampf(beats*4.f*(float)e->tick_length,1.f,9.e6f);
-  if(e->midi_event&&!e->midi_suppress)e->midi_event(track,midi,velocity);
+  if(!e->midi_suppress)midi_push(e,track,midi,velocity);
   return v;
+}
+int sr_midi_event_pop(sr_engine *e,uint32_t *event)
+{
+ if(e->midi_read==e->midi_write)return 0;
+ *event=e->midi_events[e->midi_read];e->midi_read=(e->midi_read+1u)&63u;return 1;
 }
 void sr_midi_note(sr_engine *e,unsigned role,unsigned channel,unsigned note,unsigned velocity)
 {
@@ -565,7 +579,7 @@ void sr_midi_note(sr_engine *e,unsigned role,unsigned channel,unsigned note,unsi
  e->midi_suppress=1;
  sr_voice *v=note_on(e,(uint8_t)role,(uint8_t)note,(uint8_t)velocity,1.f);
  e->midi_suppress=0;
- if(v){v->external=1;v->channel=(uint8_t)channel;v->remain=0xffffffffu;}
+ if(v){v->external=1;v->channel=(uint8_t)channel;v->remain=0xffffffffu;e->external_audio=1;}
 }
 void sr_midi_panic(sr_engine *e)
 {
@@ -708,7 +722,7 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
 }
 void sr_preview_sound(sr_engine *e,unsigned role)
 {
-  if(e->running||e->stop_frames||e->frequency_lock||role>=SR_TRACKS)return;
+  if(e->running||e->stop_frames||e->external_audio||e->frequency_lock||role>=SR_TRACKS)return;
   if(!e->preview_frames)clear_transport(e);
   e->nature_audition=0;
   e->preview_role=role;
@@ -1405,8 +1419,10 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
  float dry[64*3];
  e->fx_ticks=0;
  while(frames){
-  e->external_audio=0;
-  for(unsigned v=0;v<SR_VOICES;v++)if(e->voices[v].active&&e->voices[v].external)e->external_audio=1;
+  if(e->external_audio){
+   e->external_audio=0;
+   for(unsigned v=0;v<SR_VOICES;v++)if(e->voices[v].active&&e->voices[v].external)e->external_audio=1;
+  }
   if(!e->external_audio&&!e->running&&!e->stop_frames&&!e->nature_audition&&!e->preview_frames){
     memset(out,0,frames*2*sizeof(*out));
     return;
