@@ -51,7 +51,20 @@ static void band_line(int x0,int y0,int x1,int y1,uint16_t color)
 }
 static void geometry(int offset)
 {
- if(vis_input.water){
+ if(vis_input.water==2){
+   uint16_t ink=ui_background?RGB(27,66,123):RGB(80,212,235);
+   uint16_t grain=ui_background?RGB(107,55,17):RGB(255,218,139);
+   for(unsigned i=0;i<vis_output.node_count;i++){
+     const int16_t *p=vis_output.nodes[i];
+     band_line(p[0],p[1]-offset,p[2],p[3]-offset,ink);
+   }
+   for(unsigned i=0;i<512;i++){
+     int x=vis_output.sand[i][0],y=vis_output.sand[i][1]-offset;
+     if(y>=0&&y<48)cv_line(x,y,x+1,y,grain);
+   }
+   return;
+ }
+ if(vis_input.water==1){
    static const uint16_t water[16]={RGB(0,0,0),RGB(3,18,31),RGB(4,24,38),RGB(5,31,46),
      RGB(7,39,55),RGB(9,49,66),RGB(12,61,78),RGB(16,74,91),
      RGB(23,89,105),RGB(33,106,121),RGB(48,126,137),RGB(67,147,155),
@@ -67,13 +80,13 @@ static void geometry(int offset)
      if(end<=start)continue;
      for(unsigned x=0;x<30;x++){
        unsigned light=vis_output.water_light[row][x];
-       uint16_t color=ui_background?(light?RGB(255-light*5,255-light*2,255-light):RGB(255,255,255)):water[light];
+       uint16_t color=ui_background?(light?RGB(255-light*11,255-light*7,255-light*4):RGB(255,255,255)):water[light];
        cv_rect(x*8+(x==0),start,8-(x==0)-(x==29),end-start,color);
      }
    }
    unsigned shade=nodal_level>.65f?3:nodal_level>.3f?2:1;
    static const uint16_t ink[2][4]={{RGB(9,24,31),RGB(27,84,108),RGB(48,156,184),RGB(127,245,224)},
-      {RGB(240,248,250),RGB(142,180,185),RGB(34,103,125),RGB(8,59,84)}};
+      {RGB(81,118,126),RGB(39,104,118),RGB(15,77,110),RGB(8,39,74)}};
    for(unsigned i=0;i<vis_output.node_count;i++){
      const int16_t *p=vis_output.nodes[i];int y0=p[1]-offset,y1=p[3]-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
@@ -87,7 +100,7 @@ static void geometry(int offset)
  }
  for(int t=0;t<SR_TRACKS;t++){
    int quiet=engine.tracks[t].mute||(engine.solo<SR_TRACKS&&engine.solo!=t);
-   uint16_t c=quiet?RGB(25,45,49):colors[t];
+   uint16_t c=ui_background?(quiet?RGB(145,157,160):RGB((colors[t]>>11)*4,((colors[t]>>5)&63)*2,(colors[t]&31)*4)):quiet?RGB(25,45,49):colors[t];
    for(unsigned j=1;j<vis_output.count[t];j++){
      int y0=vis_output.xy[t][j-1][1]-offset,y1=vis_output.xy[t][j][1]-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
@@ -98,7 +111,7 @@ static void geometry(int offset)
 
 static const char *onoff(int enabled){return enabled?"ON":"OFF";}
 static const char *music_modes[]={"Standard","Cinematic","Neoclassical"};
-static const char *visual_name(void){return visual_mode?"Cymatics":"Original";}
+static const char *visual_name(void){static const char *n[]={"Original","Cymatics","Chladni"};return n[visual_mode];}
 static const char *patch_name(void)
 {
  return selected==SR_DRUMS?sr_drum_kits[engine.drum_kit].name:
@@ -140,7 +153,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  sr_motion *motion=&engine.motion[selected<=SR_BASS?selected:0];
  int number=0;
  switch(id){
- case 1:*name="SCENE";return sr_scenes[engine.scene].name;
+ case 1:*name="INTENTION";{
+   static const char *short_name[]={"Miracles","Blessing","Energy Cleanse","Cell Renewal","Anxiety Release","Bliss","Positive Vibrations","Neuro-Freq Detox"};
+   return engine.scene>=13?short_name[engine.scene-13]:sr_scenes[engine.scene].name;
+ }
  case 2:*name=selected==SR_DRUMS?"KIT":"PATCH";return patch_name();
  case 4:*name="FIXED Hz";return sr_frequencies[engine.frequency].name;
  case 5:*name="NATURE %";number=engine.bed_level*100;break;
@@ -170,7 +186,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 29:*name="FX SEND %";number=track->send*100;break;
  case 30:*name="SACRED LEVEL %";number=engine.sacred_level*100;break;
  case 31:*name="SACRED SOURCE";return engine.sacred_mode==0?"Off":engine.sacred_mode==1?"Musical":"Reference";
- case 32:*name="GLIDE MODE";return selected>SR_BASS?"Use SELECT knob":motion->glide_mode==0?"Off":motion->glide_mode==1?"Legato":"Always";
+ case 32:*name="GLIDE MODE";return selected>SR_BASS?"Select Lead / Bass":motion->glide_mode==0?"Off":motion->glide_mode==1?"Legato":"Always";
  case 33:*name="GLIDE ms";if(selected>SR_BASS)return "-";number=motion->glide_ms;break;
  case 34:*name="VIBRATO Hz";if(selected>SR_BASS)return "-";return tenth(buffer,motion->vibrato_rate);
  case 35:*name="VIBRATO cents";if(selected>SR_BASS)return "-";number=motion->vibrato_depth;break;
@@ -390,7 +406,7 @@ static void mixer_overview(int band)
    limited_text(x+2,2,width-3,&FONT_XS,names[channel],ui_background?skin_text():color);
    float magnitude=bus?engine.bus_meter[id]:track->meter;
    int meter=(int)(fm_sqrtf(fm_sqrtf(fm_clampf(magnitude,0,1)))*26.f);
-   for(int w=0;w<5;w++)cv_line(x+3+w,45-meter,x+3+w,45,color);
+   if(meter)cv_rect(x+3,45-meter,width-7,meter+1,ui_background?skin_accent():color);
    if(!bus){
      int fader=45-(int)(track->volume*26.f);
      cv_line(x+11,19,x+11,45,RGB(75,90,112));
@@ -434,7 +450,7 @@ static void mixer_console(int band)
      int hi=bottom-meter;
      if(hi<offset)hi=offset;
      int lo=bottom;if(lo>offset+47)lo=offset+47;
-     if(meter&&lo>=hi)cv_rect(x+5,hi-offset,7,lo-hi+1,c);
+     if(meter&&lo>=hi)cv_rect(x+5,hi-offset,15,lo-hi+1,c);
      int fy=bottom-(int)(tr->volume*77.f);
      if(fy>=offset&&fy<offset+48)cv_line(x+12,fy-offset,x+21,fy-offset,chosen?skin_accent():skin_text());
    }
@@ -512,7 +528,7 @@ static void mixer_band(int band)
      float mag=fm_clampf(engine.bus_meter[b],0,1);
      int meter=(int)(fm_sqrtf(fm_sqrtf(mag))*58.f);
      cv_line(x+5,29-offset,x+5,87-offset,RGB(75,90,112));
-     if(meter)for(int w=0;w<6;w++)cv_line(x+8+w,87-meter-offset,x+8+w,87-offset,color);
+     if(meter)cv_rect(x+8,87-meter-offset,32,meter+1,ui_background?skin_accent():color);
    }
    return;
  }
@@ -839,16 +855,17 @@ static void draw(int animate)
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
      }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
-     if(0){
+     if(page==PAGE_SOUND){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
      cv_text(30,25,&FONT_XS,track,skin_text());
-     limited_text(44,25,55,&FONT_XS,role_names[selected],skin_text());
+     limited_text(44,25,63,&FONT_XS,role_names[selected],skin_accent());
+     limited_text(109,25,123,&FONT_T,"TURN TRACK / EDIT PAGE",skin_text());
      }
      if(0){
        cv_text(101,25,&FONT_XS,"PRE",skin_dim());
        limited_text(127,25,105,&FONT_XS,patch_name(),skin_text());
      }
-     if(page!=0){
+     if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
        unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?3:page==PAGE_SETUP?5:2;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
@@ -856,7 +873,9 @@ static void draw(int animate)
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
        limited_text(x+3,25,232-x,&FONT_XS,page==PAGE_MIX&&mix_tab==5?"SEL MUTE / LFO SOLO":"NEXT SECTION",skin_text());
      }
-     if(page==0){
+     if(page==0&&engine.scene>=13){
+       limited_text(8,24,224,&FONT_T,sr_scenes[engine.scene].name,skin_text());
+     }else if(page==0){
        cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",skin_accent());
        limited_text(155,25,43,&FONT_XS,engine.music_mode==0?"STD":engine.music_mode==1?"CINE":"NEO",skin_dim());
        const char *mode=engine.frequency_lock?"LOCK":engine.tone_level>0?"REF ON":"REF OFF";

@@ -14,7 +14,7 @@ static struct {
 
 int plat_aquora_save_begin(uint32_t obj,const void *src,uint32_t len)
 {
-    if(aq_store.phase||!flash_ok||obj<OBJ_BANK1||obj>OBJ_BANK4||!len||len>512)return -1;
+    if(aq_store.phase||!flash_ok||(obj!=OBJ_SETTINGS&&(obj<OBJ_BANK1||obj>OBJ_BANK4))||!len||len>512)return -1;
     st_hdr_t old;
     int cur=st_current(obj,&old);
     st_hdr_t *h=&aq_store.header;

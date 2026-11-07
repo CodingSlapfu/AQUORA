@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0
  * USB adapter over the reusable MIDI core. BLE is intentionally not exposed. */
 static aq_midi_core midi;
-static unsigned startup_chime=2;
+
 static uint8_t midi_tx_notes[128],midi_rx_keys[16][128],midi_sustain[16];
 static int16_t midi_bends[16];
 static unsigned midi_tx_running,midi_tx_tick,midi_idle_clock,midi_panic_pending,midi_panic_channel;
@@ -223,8 +223,4 @@ static void midi_load(void){
  midi_usb_was=midi_usb_ready();midi_tx_count=midi_clock_sent=midi_drops=0;midi_source_was=1;
  if(!AQ_PERFORMANCE_MIDI){midi.settings.usb_in=midi.settings.usb_out=midi.settings.controls_out=0;midi.settings.sync=AQ_SYNC_OFF;midi.settings.clock_out=AQ_CLOCK_OFF;}
  engine.midi_enabled=AQ_PERFORMANCE_MIDI;midi_engine_lost=0;engine.external_sync=AQ_PERFORMANCE_MIDI&&midi.settings.sync==AQ_SYNC_SLAVE;
-}
-static int midi_save(void){
- aq_usb_preferences p={0};p.version=0x41514d01u;p.midi=midi.settings;p.midi.radio=0;p.startup=(uint8_t)startup_chime;
- return plat_store_save(OBJ_MIDI,&p,sizeof p);
 }

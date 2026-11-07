@@ -33,6 +33,7 @@ static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm;
 static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, last_control_ms;
+static unsigned preferences_saving, preferences_generation, preferences_snapshot_generation, preferences_saved_ms;
 static unsigned ui_theme, ui_font_size=1, ui_background, preferences_dirty, preferences_changed;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
 static unsigned air_on, air_hold, air_poll, air_tab;
@@ -98,6 +99,7 @@ static unsigned battery_poll_ms, battery_overlay_ms, battery_fade, battery_dirty
 extern void plat_aquora_led_test_log(unsigned slot);
 extern void plat_aquora_key_duty(unsigned black,unsigned white);
 #endif
+static unsigned startup_chime=2;
 static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
@@ -123,17 +125,18 @@ typedef struct {
     uint8_t perfect_key, lighting, fps_auto;
     uint8_t visual, theme, font_size, background;
     uint8_t air_fx, air_depth, active_bank, music_mode, motion_manual;
+    uint8_t startup_sound;
 } aq_settings;
 
 /* Never write flash in the callback. All preference edits are coalesced and
  * committed only after the transport has stopped. The setting object is
  * separate from arrangement banks and preserves the pre-0.6.2 schema. */
-static int midi_save(void);
+
 static int save_preferences(void)
 {
     aq_settings settings={0};
     unsigned flags=plat_lock();
-    settings.version=0x41513036u;
+    settings.version=0x41513037u;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
     settings.lighting=lighting;settings.fps_auto=fps_auto;
@@ -142,14 +145,19 @@ static int save_preferences(void)
     settings.active_bank=bank_slot;settings.music_mode=engine.music_mode;settings.motion_manual=engine.motion_manual;
     settings.air_fx=engine.air_fx;settings.air_depth=engine.air_depth;
     plat_unlock(flags);
-    int result=plat_store_save(OBJ_SETTINGS,&settings,sizeof(settings));
-    if(!result)result=midi_save();
-    if(!result)preferences_dirty=0;
+    settings.startup_sound=startup_chime;
+#ifdef PLAT_HOST
+    int result=plat_store_save(OBJ_SETTINGS,&settings,sizeof settings);
+    if(!result){preferences_dirty=0;preferences_saved_ms=plat_ms();}
+#else
+    int result=plat_aquora_save_begin(OBJ_SETTINGS,&settings,sizeof settings);
+    if(!result){preferences_saving=1;preferences_snapshot_generation=preferences_generation;}
+#endif
     return result;
 }
 static void preferences_changed_now(void)
 {
-    preferences_dirty=1;
+    preferences_generation++;preferences_dirty=1;
     preferences_changed=plat_ms();
     dirty=1;
 }
@@ -221,7 +229,7 @@ static unsigned control_for(unsigned knob)
      return appearance[knob];
    }
    if(setup_tab==3)return knob==0?71:knob==1?72:0;
-   return setup_tab==2?0:(!setup_tab&&knob>=2?80u+knob-2u:sound_controls[setup_tab?GROUP_BANKS:GROUP_VISUAL][knob]);
+   return setup_tab==2?0:sound_controls[setup_tab?GROUP_BANKS:GROUP_VISUAL][knob];
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
@@ -444,7 +452,7 @@ void app_init(void)
        plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==prefs_size&&
        (settings.version==0x41513032u||
         (settings.version==0x41513033u&&prefs_size==24)||
-        ((settings.version==0x41513034u||settings.version==0x41513035u||settings.version==0x41513036u)&&prefs_size==(int)sizeof(settings)))){
+        ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||settings.version==0x41513037u))&&prefs_size==(int)sizeof(settings)))){
       for(unsigned i=0;i<2;i++){
         sr_motion m=settings.motion[i];
         if(m.glide_mode<=2&&m.glide_ms>=10&&m.glide_ms<=800&&
@@ -468,14 +476,20 @@ void app_init(void)
     /* arrangement_init resets its bank cursor and visual slot. Restore the
      * saved global visualizer before first intro frame, independent of banks. */
     if((settings.version==0x41513033u&&prefs_size==24)||
-       ((settings.version==0x41513034u||settings.version==0x41513035u||settings.version==0x41513036u)&&prefs_size==(int)sizeof(settings)))
-      visual_mode=settings.visual<=1?settings.visual:0;
+       ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||settings.version==0x41513037u))&&prefs_size==(int)sizeof(settings)))
+      visual_mode=settings.visual<=2?settings.visual:0;
     if(settings.version>=0x41513035u&&settings.active_bank<4)bank_slot=settings.active_bank;
-    if(settings.version==0x41513036u){
+    if((settings.version==0x41513036u||settings.version==0x41513037u)){
       sr_set_music_mode(&engine,settings.music_mode<SR_MUSIC_MODES?settings.music_mode:0);
       engine.motion_manual=settings.motion_manual&3u;
       for(unsigned t=0;t<2;t++)if(engine.motion_manual&(1u<<t))engine.motion[t]=settings.motion[t];
     }else if(settings.version){engine.motion_manual=sr_legacy_motion_manual(engine.motion,SR_SCENES);for(unsigned t=0;t<2;t++)if(!(engine.motion_manual&(1u<<t)))sr_motion_auto(&engine,t,1); }
+    if(settings.version==0x41513037u&&settings.startup_sound<=2)startup_chime=settings.startup_sound;
+    /* Song values are fresh defaults on power-on; banks restore only on request. */
+    engine.drum_kit=0;engine.drum_density=2;engine.drum_hit=25;
+    engine.drum_presence=50;engine.drum_level=.66f;
+    engine.tracks[SR_DRUMS].pan=0;engine.tracks[SR_DRUMS].send=.15f;
+    preferences_saving=0;preferences_saved_ms=0;
     visual_init();
     plat_cpu2_set(1);
     output_gain=0;
@@ -707,7 +721,7 @@ void app_input_only(void){midi_poll();unsigned b=plat_buttons(),k=plat_keys(),pr
       if(d<0){air_sensor.calibrated=0;air_sensor.near_reference=0;send(70,0);}
     }else if(control==69)air_hold=d>0;
     else if(control==109||(AQ_PERFORMANCE_MIDI&&control>=101&&control<=110)){send(control,d);preferences_changed_now();}
-    else if(control==38){visual_mode=d>0;preferences_changed_now();}
+    else if(control==38){visual_mode=bounded((int)visual_mode+d,0,2);preferences_changed_now();}
     else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);preferences_changed_now();bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
@@ -751,22 +765,32 @@ void app_input_only(void){midi_poll();unsigned b=plat_buttons(),k=plat_keys(),pr
      else white_duty|=1u<<key;
    }
    buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
- }else if(lighting==1){buttons=play_pulse?LED_PLAY_GREEN:0;}
- else if(lighting==2){buttons=play_pulse?LED_PLAY_GREEN:0;lights=0;}
- else {
-   buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
-   if(engine.running){
-   static unsigned seen[SR_TRACKS], pulse_until[SR_TRACKS];
-   unsigned now=plat_ms();
-   for(unsigned t=0;t<SR_TRACKS;t++){
-     unsigned event=engine.tracks[t].events;
-     if(event!=seen[t]){seen[t]=event;pulse_until[t]=now+100u;}
-     if(!engine.tracks[t].mute&&(engine.solo>=SR_TRACKS||engine.solo==t)&&
-        (int32_t)(pulse_until[t]-now)>0)
-       lights|=1u<<((event+t*3u)%NKEYS);
+ }else if(lighting==1||lighting==3){
+   buttons=play_pulse?LED_PLAY_GREEN:0;
+   unsigned generated=0;
+   unsigned flags=plat_lock();
+   for(unsigned v=0;v<SR_VOICES;v++){
+     const sr_voice *voice=&engine.voices[v];unsigned t=voice->track;
+     if(!voice->active||t>=SR_DRUMS||engine.tracks[t].mute||
+       (engine.solo<SR_TRACKS&&engine.solo!=t)||engine.tracks[t].meter<.00001f||voice->env<.005f)continue;
+     int note=voice->midi;
+     while(note<53)note+=12;while(note>79)note-=12;
+     generated|=1u<<(note-53);
    }
- }
- }
+   static unsigned drum_seen,drum_until;
+   unsigned now=plat_ms(),event=engine.tracks[SR_DRUMS].events;
+   if(event!=drum_seen){drum_seen=event;if(engine.tracks[SR_DRUMS].meter>.00001f)drum_until=now+250u;}
+   if(engine.running&&(int32_t)(drum_until-now)>0&&!engine.tracks[SR_DRUMS].mute&&
+      (engine.solo>=SR_TRACKS||engine.solo==SR_DRUMS))generated|=1u<<((event%3u)*7u);
+   plat_unlock(flags);
+   lights|=generated;
+   if(lighting==3){
+     /* Chord clusters and visible 250ms drum holds: more coverage, no current increase. */
+     unsigned mask=(1u<<NKEYS)-1u;
+     lights|=((generated<<7)|(generated>>5))&mask;
+     buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
+   }
+ }else if(lighting==2){buttons=play_pulse?LED_PLAY_GREEN:0;lights=0;}
  if(led_test&&page==PAGE_SETUP&&!setup_tab){
    buttons=led_step>=NKEYS?1u<<(led_step-NKEYS):0;
    lights=led_step<NKEYS?1u<<led_step:0;
@@ -814,9 +838,19 @@ void app_ui_init(void){
 void app_frame(void)
 {
     app_input_only();
-    arrangement_service();
+#ifndef PLAT_HOST
+    if(preferences_saving){
+      int result=plat_aquora_save_poll();
+      if(result!=1){
+        preferences_saving=0;
+        if(!result&&preferences_generation==preferences_snapshot_generation){preferences_dirty=0;preferences_saved_ms=plat_ms();dirty=1;}
+        if(result<0)preferences_changed=plat_ms();
+      }
+    }
+#endif
+    if(!preferences_saving)arrangement_service();
     unsigned now=plat_ms();
-    if(!quick_started&&!quick_pending&&preferences_dirty&&!engine.running&&!requested_play&&!engine.stop_frames&&!engine.external_audio&&
+    if(!quick_started&&!quick_pending&&!preferences_saving&&preferences_dirty&&
        now-preferences_changed>=1200u)save_preferences();
     if(quick_finished_ms&&now-quick_finished_ms>=3000u){quick_finished_ms=0;dirty=1;}
     unsigned scope_track=page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;

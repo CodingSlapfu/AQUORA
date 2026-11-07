@@ -125,16 +125,89 @@ static void resonance_job(void)
     }
 }
 
+/* Original vibrating-plate mode. A bounded modal grid combines rectangular
+ * interference with radial/angular basis functions. Particles descend |f|^2,
+ * accumulating at stationary nodes; attacks loosen grains and bass dilates
+ * the plate. Shared particle storage is re-seeded only on a mode switch. */
+static float plate_grid[25][25],plate_blend,plate_activity,plate_order=4;
+static unsigned particle_mode;
+static float plate_sample(float x,float y)
+{
+  float gx=fm_clampf((x+1.f)*12.f,0,23.999f),gy=fm_clampf((y+1.f)*12.f,0,23.999f);
+  unsigned ix=(unsigned)gx,iy=(unsigned)gy;float fx=gx-ix,fy=gy-iy;
+  float a=plate_grid[iy][ix],b=plate_grid[iy][ix+1];
+  float c=plate_grid[iy+1][ix],d=plate_grid[iy+1][ix+1];
+  return (a+(b-a)*fx)*(1.f-fy)+(c+(d-c)*fx)*fy;
+}
+static void chladni_job(void)
+{
+  float energy=0,hit=0;
+  for(unsigned t=0;t<SR_TRACKS;t++){energy+=vis_input.meter[t]*8.f;hit+=vis_input.onset[t]*.08f;}
+  float target=fm_clampf(energy+hit,0,1);
+  plate_activity+=(target-plate_activity)*(target>plate_activity?.55f:.10f);
+  float pitch=vis_input.pitch>0?vis_input.pitch:vis_input.frequency;
+  float order=2.f+fm_clampf(pitch/280.f,0,6.f);
+  plate_order+=(order-plate_order)*.045f;
+  float blend=(vis_input.scene%5u)*.16f+.15f;
+  plate_blend+=(blend-plate_blend)*.035f;
+  unsigned petals=2u+((unsigned)plate_order+vis_input.scene)%7u;
+  float bass=vis_input.meter[1]*4.f;
+  for(unsigned j=0;j<25;j++)for(unsigned i=0;i<25;i++){
+    float x=((int)i-12)/12.f,y=((int)j-12)/12.f;
+    float radius=fm_sqrtf(x*x+y*y+.00001f);
+    float c=x/radius,prev=1.f,now=c;
+    for(unsigned n=2;n<=petals;n++){float next=2.f*c*now-prev;prev=now;now=next;}
+    float radial=visual_sin(radius*(32.f+plate_order*11.f-bass*5.f));
+    float rect=visual_sin((x+1.f)*32.f*plate_order)*visual_sin((y+1.f)*32.f*(plate_order+1.f))
+      -visual_sin((y+1.f)*32.f*plate_order)*visual_sin((x+1.f)*32.f*(plate_order+1.f));
+    plate_grid[j][i]=rect*(1.f-plate_blend)+(radial+now*.65f)*plate_blend;
+  }
+  vis_output.node_count=0;
+  float cy=vis_input.full?120.f:96.f,sy=vis_input.full?112.f:42.f;
+  for(unsigned i=0;i<512;i++){
+    float x=sand_x[i],y=sand_y[i],f=plate_sample(x,y);
+    float gx=(plate_sample(x+.02f,y)-plate_sample(x-.02f,y))*25.f;
+    float gy=(plate_sample(x,y+.02f)-plate_sample(x,y-.02f))*25.f;
+    float impulse=hit*.0018f*visual_sin(i*17.f+vis_input.phase);
+    sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-6,6)*plate_activity*.0015f+impulse)*.78f;
+    sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-6,6)*plate_activity*.0015f-impulse)*.78f;
+    sand_x[i]=fm_clampf(x+sand_vx[i],-.98f,.98f);
+    sand_y[i]=fm_clampf(y+sand_vy[i],-.98f,.98f);
+    vis_output.sand[i][0]=120+(int)(sand_x[i]*112.f);
+    vis_output.sand[i][1]=(int)(cy+sand_y[i]*sy);
+  }
+  /* Thin interpolated zero crossings: nodal segments, never canned shapes. */
+  for(unsigned y=0;y<24;y++)for(unsigned x=0;x<24;x++){
+    float a=plate_grid[y][x],b=plate_grid[y][x+1],c=plate_grid[y+1][x];
+    if((a<0)!=(b<0)&&(a<0)!=(c<0)&&vis_output.node_count<256){
+      int16_t *p=vis_output.nodes[vis_output.node_count++];
+      float px=((int)x-12)/12.f,py=((int)y-12)/12.f;
+      p[0]=120+(int)((px+a/(a-b)/12.f)*112.f);p[1]=(int)(cy+py*sy);
+      p[2]=120+(int)(px*112.f);p[3]=(int)(cy+(py+a/(a-c)/12.f)*sy);
+    }
+  }
+}
+
 static void visual_job(uint32_t unused)
 {
     (void)unused;
     unsigned begin=plat_ticks24();
-    if(vis_input.water)resonance_job();
+    if(vis_input.water){
+      if(particle_mode!=vis_input.water){sand_ready=0;particle_mode=vis_input.water;}
+      if(vis_input.water==2){
+        if(!sand_ready){unsigned seed=0x43484c41u;for(unsigned i=0;i<512;i++){
+          seed=seed*1664525u+1013904223u;sand_x[i]=(seed>>8)*(2.f/16777216.f)-1.f;
+          seed=seed*1664525u+1013904223u;sand_y[i]=(seed>>8)*(2.f/16777216.f)-1.f;
+          sand_vx[i]=sand_vy[i]=0;
+        }sand_ready=1;}
+        chladni_job();
+      }else resonance_job();
+    }
     else for(unsigned t=0;t<SR_TRACKS;t++){
       vis_output.count[t]=33;
       unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;
-      float pulse=vis_input.meter[t]*55.f;
-      float radius=(vis_input.full?52.f+t*9.f:45.f+t*6.f)+(pulse>13.f?13.f:pulse);
+      float pulse=vis_input.meter[t]*140.f+vis_input.onset[t]*9.f;
+      float radius=(vis_input.full?52.f+t*9.f:45.f+t*6.f)+(pulse>22.f?22.f:pulse);
       for(unsigned j=0;j<=32;j++){
         unsigned a=j*4;
         float petal=radius*(.82f+.18f*vis_sine[(3*a+phase)&127]);
@@ -150,7 +223,7 @@ static void prepare_geometry(void)
     AQ_VIS_COUNT(geometry_jobs);
     vis_input.phase=plat_ms()/(visual_mode?35u:49u);
     unsigned flags=plat_lock();
-    vis_input.water=visual_mode&&page==0;
+    vis_input.water=page==0?visual_mode:0;
     vis_input.full=fullscreen;
     vis_input.frequency=(unsigned)sr_frequencies[engine.frequency].hz;
     vis_input.scene=engine.scene;

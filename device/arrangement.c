@@ -86,7 +86,7 @@ static int arrangement_valid(const arrangement *r)
        (r->version==AQ_BANK_VERSION&&(r->music_mode>=SR_MUSIC_MODES||r->motion_manual>3))||
        r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>=SR_BEDS||
        r->drum_kit>=SR_DRUM_KITS||r->drum_density>SR_DENSITY_MAX||r->solo>SR_TRACKS||
-       r->frequency_auto>1||r->lock_textures>1||r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
+       r->frequency_auto>1||r->lock_textures>1||r->sacred_mode>2||r->visual>2||r->tick_length<5512||r->tick_length>22050||
        r->tuning_432>1||r->drums_enabled>1||r->binaural_enabled>1||
        r->freeze>1||r->perfect_key>1)return 0;
     if(!range(r->reverb_amount,0,.8f)||!range(r->delay_amount,0,.7f)||
@@ -219,7 +219,7 @@ static void arrangement_apply(const arrangement *record)
     engine.auto_level=record->auto_level;
     if(engine.frequency_auto)engine.frequency=sr_scenes[engine.scene].frequency;
     engine.drum_hit=engine.drum_hit>SR_HIT_MAX?SR_HIT_MAX:engine.drum_hit;
-    visual_mode=record->visual;
+    /* Global display preference takes precedence over historical bank artwork. */
     memcpy(engine.melody,record->melody,sizeof(engine.melody));
     memcpy(engine.motif_home,record->version>=AQ_BANK_V3?record->motif_home:record->melody,
            sizeof(engine.motif_home));

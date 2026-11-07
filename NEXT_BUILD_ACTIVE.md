@@ -1,4 +1,11 @@
-# AQUORA outstanding work
+# AQUORA v0.6.7 active release queue
+Baseline: verified published v0.6.6 checkpoint 26602ba. Published artifacts immutable.
+Owner scope captured once in validation/release-067/OWNER_REQUIREMENTS.json (#32, #34–#44 including all comments).
 
-- MIDI-USB / MIDI-BLE / ISSUE-31: OWNER-AUTHORIZED DEFERRED for 0.6.6, after KIRA-9 has a good working firmware build and owner reprioritizes. Approval: https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918 and #32 comment 6702099240. Partial work preserved on aquora-preserved-midi-82ca1f1; no exposed performance MIDI in this release.
-- Owner hardware only: physical flash/update/rollback; FPS/audio deadline/XRUN soak; 70/50 brightness and beat LED; RF/AIR sensitivity; listening balance and Cymatics aesthetics remain OWNER-UNVERIFIED. User findings become the next corrective queue. KIRA-9 untouched.
+- PARTIAL #34/#43: shared multi-phrase section plan, stable groove drums and derived answer/bridge/cadence implementation. Needs complete audio/timeline/Freeze/bank/long-session acceptance.
+- PARTIAL #35/#41: permanent SOUND track context and full-lane mixer fills. Needs input-path/capture acceptance.
+- PARTIAL #36/#37/#38: third Chladni modal particle renderer, theme ink, stronger pre-master telemetry response. Needs complete visual/music/theme/master/fallback/performance acceptance. Preserve Original and Cymatics identities.
+- PARTIAL #39/#42: async live preferences, global bank precedence, actual-note KEYS/DANCE. Needs migration/power-cut/native scan tests, PWM diagnosis and physical owner checks.
+- PARTIAL #40/#44: 21 complete scene/motion/nature/drum profiles appended without changing original IDs, profile reselect. Needs 189 scenario matrix, safe running transitions, bank migration, readback and audio evidence.
+- OPEN #32: reconcile current canonical register; native/repro/single-core/WASM/host/update gates; verified GitHub backups; new-version release and live installer only after all software gates.
+- OWNER-UNVERIFIED: physical flash/rollback, RF/AIR sensitivity, LCD FPS/XRUN/soak, LED perceived brightness, musical/visual aesthetics. AIR required, both performance MIDI deferred; KIRA-9 untouched.
