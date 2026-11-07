@@ -703,25 +703,23 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/32",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/app.c",
-        "device/dsp/engine.c",
-        "device/ui.c",
-        "device/visual_worker.c"
+        "tests/requirement_gate_next.py",
+        "validation/next-requirements.json"
       ],
       "tests": [
-        "tests/release_067.c",
-        "tests/panel_067.py",
-        "tests/preferences_flash_067.c",
-        "tests/audio_067.c"
+        "tests/requirement_gate_next.py"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json",
+        "validation/release-067/LIVE_PUBLICATION.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Publication, live HTTPS runtime and final backup verification pending",
+      "carry_forward": "Physical owner acceptance remains unverified; release publication finalization tracked in NEXT_RESUME.md",
       "scope_sha256": "9300bfdf7b095d142280e66e536a18c84f000bd9df6064d0eeb8f28e30aabc8c",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "b9669ff3604b7252bcc507acd0146894a54c69ce"
     },
     {
       "id": "ISSUE-33",
@@ -1335,7 +1333,13 @@
       "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     }
   ],
-  "release_evidence": {},
+  "release_evidence": {
+    "final_platform_source_match": true,
+    "native_repro_single_core_wasm": true,
+    "updater_paths": true,
+    "staged_installer": true,
+    "verified_source_backup": true
+  },
   "reviewed_owner_comments": [
     "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700880739",
     "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700892234",
