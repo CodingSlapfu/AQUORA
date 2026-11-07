@@ -9,7 +9,7 @@ enum {AQ_CLOCK_OFF,AQ_CLOCK_PLAYING,AQ_CLOCK_ALWAYS};
 enum {AQ_RADIO_OFF,AQ_RADIO_HOST,AQ_RADIO_DEVICE,AQ_RADIO_AIR};
 typedef struct {
  uint8_t radio,sync,clock_out,source,tx_channel,rx_channel,input,peer;
- uint8_t usb_in,usb_out,name_variant,reserved;
+ uint8_t usb_in,usb_out,name_variant,controls_out;
  uint8_t peer_addr[6],peer_random,have_peer;char peer_name[21];
 } aq_midi_settings;
 typedef struct {

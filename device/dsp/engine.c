@@ -525,6 +525,7 @@ void sr_start(sr_engine *e)
     clear_transport(e);
     e->running=1;
     e->sequence_step=0;e->loop_pos=0;
+    e->external_clock_count=255;
     e->tick_phase=e->tick_length;
     plan_roles(e);
 }
@@ -1164,8 +1165,10 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     e->input_peak[t]*=1.f-(float)frames*.0005f;
     if(t==SR_DRUMS)level*=1.f+((int)e->drum_presence-50)*.006f;
     float send_level=track->send;
-    if(e->air_track==SR_TRACKS||e->air_track==t)
+    if(e->air_track==SR_TRACKS)
       send_level+=(1.f-send_level)*e->air_wet*(e->air_depth*.01f);
+    else if(e->air_track==t)
+      send_level+=.5f*e->air_wet*(e->air_depth*.01f); /* shared FX bus: audible role focus */
     send[t]=level*send_level;
     if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
     left[t]=level*(.5f-.31f*track->pan);
@@ -1484,7 +1487,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     clear_transport(e);
     e->restart=0;
     e->frequency_lock=e->pending_lock;
-    if(restart){e->running=1;e->sequence_step=0;e->loop_pos=0;e->tick_phase=e->tick_length;}
+    if(restart){e->running=1;e->sequence_step=0;e->loop_pos=0;e->tick_phase=e->tick_length;e->external_clock_count=255;}
   }
   if(e->running&&!fading){
     e->tick_phase+=(uint32_t)n;

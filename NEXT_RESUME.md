@@ -50,10 +50,7 @@ Run builds sequentially under one project owner.
   mode / loop cases and all eight post-gain roles observed. Zero-variation
   regression was fixed and its prior corrective test rerun successfully.
   Finish stems/click/level/SAVE/New Song/Reroll and native load acceptance.
-- **#31 universal BLE/USB MIDI remains OPEN / NOT IMPLEMENTED.** Existing BSP
-  APIs are available but do not constitute AQUORA integration. Complete generic
-  transport-neutral core, UI/persistence, master/slave/clock/note/control,
-  reconnect/peer discovery, no loops/stuck notes and strict AIR exclusion.
+- **#31 revised scope:** MIDI-USB remains REQUIRED; the existing candidate implements USB routing, clock/transport and controls. Continue missing acceptance from current source and preserve uncommitted recovery changes. MIDI-BLE is OWNER-AUTHORIZED DEFERRED until KIRA-9 has a good working firmware build; no exposed unfinished BLE controls. MIDI-AIR remains required. Approval: Issue #31 comment 6701439630 / Issue #32 comment 6701441163. Do not develop BLE or modify KIRA-9.
 - Finish #13/#18/#9 and every unresolved earlier requirement through the #32
   matrix. The register is deliberately `audit_complete=false`; no prior accepted
   feature is to be rewritten merely because its audit row is still OPEN.
@@ -65,6 +62,6 @@ negative checks. `--release` currently **must fail**. No missing requirement,
 unreviewed owner comment, incomplete P0 or unsupported completion can be waived.
 
 Still required: complete reconciliation and implementation, independent CI,
-reproducible native comparison, WASM/emulator, full BLE/USB/AIR integration,
+reproducible native comparison, WASM/emulator, required USB/AIR integration (BLE owner-deferred),
 flash/update/installer acceptance, source/package manifests and verified live
 publication. Hardware checks remain owner-only, never software release proof.

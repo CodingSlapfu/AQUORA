@@ -212,7 +212,7 @@ static unsigned control_for(unsigned knob)
    return controls[drum_tab][knob];
  }
  if(page==PAGE_SETUP){
-   if(setup_tab>=4){static const uint8_t ids[][4]={{101,102,103,104},{105,106,107,108},{109,0,0,0}};return ids[setup_tab-4][knob];}
+   if(setup_tab>=4){static const uint8_t ids[][4]={{101,102,103,104},{105,106,107,108},{109,110,0,0}};return ids[setup_tab-4][knob];}
    if(setup_tab==0&&display_subtab){
      static const uint8_t appearance[]={90,91,92,38};
      return appearance[knob];
@@ -266,14 +266,20 @@ static void consume(void){
  unsigned interrupted=stop!=applied_stop;
  if(interrupted){applied_stop=stop;sr_stop(&engine);}
  unsigned count=0;while(qread!=qwrite&&count++<64){command c=queue[qread];__asm__ volatile("":::"memory");qread=(qread+1)&63;sr_track *t=&engine.tracks[c.track];int d=c.value;
- state_revision++;command_applied++;
+ if(c.kind!=200||(((uint32_t)c.value>>8)&255u)!=0xf8)state_revision++;
+ command_applied++;
  switch(c.kind){
  case 200:midi_receive_audio((uint32_t)c.value);play=requested_play;break;
- case 201:midi_panic();sr_midi_panic(&engine);break;
+ case 201:midi_panic();sr_midi_panic(&engine);
+  if(midi_usb_ready()&&midi.settings.sync==AQ_SYNC_MASTER&&midi.settings.usb_out){
+   if(engine.running){midi_resync=1;midi_tx_running=0;}
+   else midi_emit(0xfc,0,0);
+  }break;
  case 101:case 102:case 103:case 104:case 105:case 106:case 107:
   midi_panic();sr_midi_panic(&engine);
   if(c.kind==101&&midi.settings.sync==AQ_SYNC_MASTER&&engine.running)midi_emit(0xfc,0,0);
   midi_tx_tick=midi_position();
+  midi_cc_program=midi_cc_volume=midi_cc_pan=midi_cc_send=midi_cc_bend=-1;
   if(c.kind==101)midi.settings.sync=bounded((int)midi.settings.sync+d,0,2);
   if(c.kind==102)midi.settings.clock_out=bounded((int)midi.settings.clock_out+d,0,2);
   if(c.kind==103)midi.settings.source=bounded((int)midi.settings.source+d,0,SR_DRUMS-1);
@@ -284,7 +290,8 @@ static void consume(void){
   engine.external_sync=midi.settings.sync==AQ_SYNC_SLAVE;
   if(c.kind==101&&engine.external_sync){requested_play=play=0;sr_stop(&engine);}
   engine.external_clock_count=255;break;
- case 108:midi_panic();sr_midi_panic(&engine);break;
+ case 108:if(!midi_panic_pending)midi_panic_channel=midi.settings.tx_channel;midi_panic_pending=1;midi_panic();sr_midi_panic(&engine);break;
+ case 110:midi.settings.controls_out=switched(midi.settings.controls_out,d);midi_cc_program=midi_cc_volume=midi_cc_pan=midi_cc_send=midi_cc_bend=-1;break;
  case 109:startup_chime=bounded((int)startup_chime+d,0,2);break;
 
  case 1:{
@@ -694,8 +701,9 @@ void app_input_only(void){midi_poll();unsigned b=plat_buttons(),k=plat_keys(),pr
 #endif
     }else if(control==68){
       if(d>0&&air_on)aq_air_calibrate(&air_sensor,plat_ms());
+      if(d<0){air_sensor.calibrated=0;air_sensor.near_reference=0;send(70,0);}
     }else if(control==69)air_hold=d>0;
-    else if(control>=101&&control<=109){send(control,d);preferences_changed_now();}
+    else if(control>=101&&control<=110){send(control,d);preferences_changed_now();}
     else if(control==38){visual_mode=d>0;preferences_changed_now();}
     else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);preferences_changed_now();bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
@@ -803,7 +811,7 @@ void app_frame(void)
     app_input_only();
     arrangement_service();
     unsigned now=plat_ms();
-    if(!quick_started&&!quick_pending&&preferences_dirty&&!engine.running&&!requested_play&&!engine.stop_frames&&
+    if(!quick_started&&!quick_pending&&preferences_dirty&&!engine.running&&!requested_play&&!engine.stop_frames&&!engine.external_audio&&
        now-preferences_changed>=1200u)save_preferences();
     if(quick_finished_ms&&now-quick_finished_ms>=3000u){quick_finished_ms=0;dirty=1;}
     unsigned scope_track=page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;
@@ -839,7 +847,7 @@ void app_frame(void)
         evolve_step=step;
       }
     }
-    if(air_on&&now-air_poll>=80u){
+    if(air_on&&now-air_poll>=40u){
       air_poll=now;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
       unsigned raw=plat_air_sample(&air_packets);
@@ -920,7 +928,8 @@ void app_frame(void)
     int live_sound=page==PAGE_SOUND&&!sound_picker&&(engine.running||engine.preview_frames||engine.external_audio);
     int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
     int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve)&&elapsed>=visual_interval;
+    int live_air=page==PAGE_AIR&&(air_on||engine.air_target>.0001f||engine.air_wet>.0001f);
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air)&&elapsed>=visual_interval;
     if(animate&&page==0){
       missed+=elapsed/FRAME_MIN_MS-1u;
 

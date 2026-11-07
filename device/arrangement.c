@@ -248,7 +248,7 @@ static void arrangement_apply(const arrangement *record)
 
 static void arrangement_execute(void)
 {
-    if(requested_play||engine.running||engine.stop_frames||qread!=qwrite){
+    if(requested_play||engine.running||engine.stop_frames||engine.external_audio||qread!=qwrite){
         bank_message=BANK_STOP;
         return;
     }
