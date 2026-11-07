@@ -364,6 +364,9 @@ static void performance(int band)
    if(band==4){
      int voices=0;for(int i=0;i<SR_VOICES;i++)voices+=!!engine.voices[i].active;
      label(8,0,"ACTIVE VOICES",voices);label(127,0,"INPUT DROPS",dropped);
+     timing snapshot;unsigned flags=plat_lock();snapshot=control_queue_timing[!!engine.running];plat_unlock(flags);
+     timing_summary q=summarize(&snapshot);
+     if(ui_font_size!=2){char v[12];cv_text(8,31,&FONT_XS,"ACK-DSP ms P95",skin_dim());num(v,q.p95/100u);cv_text(106,31,&FONT_XS,v,skin_text());cv_text(132,31,&FONT_XS,"P99",skin_dim());num(v,q.p99/100u);cv_text(166,31,&FONT_XS,v,skin_text());}
    }
    return;
  }
@@ -603,17 +606,20 @@ static void battery_glyph(void)
    for(int y=8;y<=12;y++)cv_line(x,y,x+2,y,ink);
  }
 }
-static void draw(int animate)
+static int draw(int animate)
 {
  unsigned revision=state_revision;
  unsigned inputs=input_revision;
- for(int band=0;band<5;band++){
+ const unsigned priority=!intro_active&&!fullscreen&&labelled_input!=input_revision;
+ static const uint8_t control_first[5]={3,4,0,1,2};
+ for(int strip=0;strip<5;strip++){
+   int band=priority?control_first[strip]:strip;
    /* Input dispatch must not wait for a complete animated LCD frame. Poll
     * only between bands, never while the canvas/snapshot is being drawn.
     * Navigation can change every page-local selector: abandon this frame
     * rather than mixing snapshots or clearing the new dirty notification. */
    app_input_only();
-   if(input_revision!=inputs){dirty=1;return;}
+   if(input_revision!=inputs){dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
@@ -990,8 +996,17 @@ static void draw(int animate)
    }
    if(band==0&&!intro_active)battery_glyph();
    cv_blit(0,band*48);AQ_VIS_COUNT(ui_blits);
+   /* Acknowledge the submitted control band, rather than charging later
+    * optional graphics to label feedback. Physical DMA completion is a
+    * separate device measurement, not represented by this counter. */
+   unsigned feedback_band=knob_until?(knob_focus<2?3u:4u):0u;
+   if((unsigned)band==feedback_band&&revision==state_revision&&qread==qwrite&&labelled_input!=input_revision){
+     measure(&control_label_timing[!!engine.running],(plat_ms()-input_changed_ms)*100u);
+     labelled_input=input_revision;
+   }
  }
  dirty=0;
  battery_dirty=0;
  displayed_revision=revision;
+ return 1;
 }

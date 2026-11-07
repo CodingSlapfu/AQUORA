@@ -8,7 +8,7 @@
 #include "lighting_policy.h"
 static sr_engine engine PLAT_POOL;
 static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
-typedef struct {int kind,value; unsigned track;} command;
+typedef struct {int kind,value; unsigned track, captured_ms;} command;
 static command queue[64];
 static volatile unsigned qread,qwrite,state_revision,command_enqueued,command_applied;
 static unsigned displayed_revision, input_revision;
@@ -24,6 +24,10 @@ static float output_gain;
 typedef struct { unsigned max, count, sum, bins[64]; } timing;
 typedef struct { unsigned mean, p95, p99, peak; } timing_summary;
 static timing audio_timing, fx_timing, callback_timing;
+/* Control histograms use 1ms bins (stored in 100-unit timing units).
+ * Capture means main-loop acknowledgement, not the physical switch edge. */
+static timing control_queue_timing[2],control_label_timing[2],control_poll_timing[2];
+static unsigned input_changed_ms,labelled_input,input_poll_ms;
 /* Per-page draw history uses 10us units: histogram covers 64ms, without audio work. */
 static timing display_timing[7];
 static timing_summary audio_stats, fx_stats, callback_stats;
@@ -277,7 +281,7 @@ static void drums_enable(int enabled)
 }
 static int bounded(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
 static float adjust(float x,int d,float step,float hi){return fm_clampf(x+d*step,0,hi);}
-static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
+static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected,plat_ms()};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
 #include "usb_midi.h"
 static void consume(void){
  unsigned stop=stop_generation;
@@ -286,6 +290,7 @@ static void consume(void){
  if(interrupted){applied_stop=stop;sr_stop(&engine);}
  unsigned count=0;while(qread!=qwrite&&count++<64){command c=queue[qread];__asm__ volatile("":::"memory");qread=(qread+1)&63;sr_track *t=&engine.tracks[c.track];int d=c.value;
  if(c.kind!=200||(((uint32_t)c.value>>8)&255u)!=0xf8)state_revision++;
+ measure(&control_queue_timing[!!engine.running],(plat_ms()-c.captured_ms)*100u);
  command_applied++;
  switch(c.kind){
  case 200:midi_receive_audio((uint32_t)c.value);play=requested_play;break;
@@ -590,12 +595,16 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     measure(&callback_timing,total/24);
 }
 void app_say(const char*a,const char*b){(void)a;(void)b;dirty=1;}
-void app_input_only(void){midi_poll();unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbuttons;oldbuttons=b;
+void app_input_only(void){
+ unsigned poll_now=plat_ms();
+ if(input_poll_ms)measure(&control_poll_timing[!!engine.running],(poll_now-input_poll_ms)*100u);
+ input_poll_ms=poll_now;
+ midi_poll();unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbuttons;oldbuttons=b;
  int enc[7]={plat_enc(EN_ALGO),plat_enc(EN_SELECT),plat_enc(EN_PRESET),
              plat_enc(EN_K1),plat_enc(EN_K1+1),plat_enc(EN_K1+2),plat_enc(EN_K1+3)};
  int control=press!=0;
  for(unsigned i=0;i<7;i++)control|=enc[i]!=0;
- if(control||k!=oldkeys)input_revision++;
+ if(control||k!=oldkeys){input_revision++;input_changed_ms=plat_ms();}
  if(intro_active){
    unsigned now=plat_ms();
    /* First sample after power-on is a baseline, not a user input edge. */
@@ -1009,20 +1018,26 @@ void app_frame(void)
     if(animate){
       lastdraw=now;
       unsigned begin=plat_ticks24();
-      if(page==PAGE_PLAY&&!intro_active&&((!quick_started&&!quick_pending)||quick_timeout))prepare_geometry();
+      if(page==PAGE_PLAY&&!intro_active&&labelled_input==input_revision&&((!quick_started&&!quick_pending)||quick_timeout))prepare_geometry();
       graphics_us=(plat_ticks24()-begin)/24;
     }
     if(animate||dirty||battery_dirty){
       redraw_ui_ms=now;
       unsigned draw_start=plat_ticks24();
-      draw(animate);
+      unsigned complete=draw(animate);
       frame_us=(plat_ticks24()-draw_start)/24;
       if(!debug&&!intro_active)measure(&display_timing[page],(frame_us+9u)/10u);
-      if(animate&&page==0)frames++;
+      if(complete&&animate&&page==0)frames++;
     }
 }
 #ifdef PLAT_HOST
 int app_expect(const char *what,int *got){
+ if(!strcmp(what,"control_metrics")){
+  for(unsigned run=0;run<2;run++){
+   timing_summary q=summarize(&control_queue_timing[run]),l=summarize(&control_label_timing[run]),p=summarize(&control_poll_timing[run]);
+   printf("CONTROL run=%u queue_p95_ms=%u queue_p99_ms=%u label_p95_ms=%u label_p99_ms=%u label_max_ms=%u poll_p99_ms=%u drops=%u\n",run,q.p95/100u,q.p99/100u,l.p95/100u,l.p99/100u,l.peak/100u,p.p99/100u,dropped);
+  }*got=1;return 1;
+ }
  if(!strcmp(what,"bank_migration_matrix")){
   *got=1;arrangement record,loaded;arrangement_snapshot(&record);
   for(unsigned version=1;version<=5;version++){
