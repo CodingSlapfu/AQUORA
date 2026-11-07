@@ -188,12 +188,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 65:*name="STRENGTH %";number=engine.groove_strength;break;
  case 66:*name="AIR RADIO";
    if(!FM1B_BLE_CENTRAL)return "Unavailable";
-   if(!air_on)return "Off";
-   if(aq_air_live(&air_sensor,plat_ms()))return "Receiving";
-   return air_sensor.calibrated?"Signal lost":"Listening / no broadcaster";
- case 67:*name="AIR TARGET";return engine.air_track<SR_TRACKS?role_names[engine.air_track]:"All tracks";
- case 68:*name="CALIBRATE";return !air_sensor.calibrated?"Turn right":
-   aq_air_live(&air_sensor,plat_ms())?"Calibrated / live":"Calibrated / waiting";
+   return aq_air_state(&air_sensor,air_on,plat_ble_state(),plat_ms());
+ case 67:*name="AIR FX FOCUS";return engine.air_track<SR_TRACKS?role_names[engine.air_track]:"All tracks";
+ case 68:*name="CALIBRATE";return !air_sensor.calibrated?"Right: Far":air_sensor.calibrated==1?"Right: Near":"Left: Reset";
+
  case 71:
    *name="QUICK FIND";
    if(quick_item<QUICK_CATEGORIES)return quick_names[quick_item];
@@ -243,6 +241,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 106:*name="USB MIDI IN";return onoff(midi.settings.usb_in);
  case 107:*name="USB MIDI OUT";return onoff(midi.settings.usb_out);
  case 108:*name="MIDI PANIC";return midi_panic_pending?"Flushing":"Turn right";
+ case 110:*name="MIDI CONTROLS";return onoff(midi.settings.controls_out);
  case 109:{static const char *m[]={"Off","Quiet","Normal"};*name="STARTUP SOUND";return m[startup_chime];}
 
  case 52:*name="RESET MIX";return mix_reset?"SEL RESET":"Turn to arm";
@@ -659,8 +658,7 @@ static void draw(int animate)
      unsigned live=air_on&&aq_air_live(&air_sensor,now);
      if(band==1){
        limited_text(8,0,226,&FONT_B,air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
-       const char *state=!air_on?"RADIO OFF":live?(air_sensor.calibrated?"SIGNAL LIVE / CALIBRATED":"RECEIVING / CALIBRATE FAR"):
-                    air_sensor.calibrated?"CALIBRATED / SIGNAL LOST":"NO BROADCASTER";
+       const char *state=aq_air_state(&air_sensor,air_on,plat_ble_state(),now);
        limited_text(8,24,226,&FONT_XS,state,live?skin_accent():skin_dim());
      }else if(band==2){
        unsigned value=(unsigned)(engine.air_wet*100.f+.5f);
@@ -674,17 +672,22 @@ static void draw(int animate)
        tag="  PKT/s ";while(*tag)line[pos++]=*tag++;
        num(numtext,air_packet_rate);for(const char*q=numtext;*q;q++)line[pos++]=*q;
        line[pos]=0;limited_text(8,0,224,&FONT_XS,line,skin_dim());
-       cv_text(8,20,&FONT_XS,"OUT %",skin_dim());num(numtext,value);
+       cv_text(8,20,&FONT_XS,"AIR %",skin_dim());num(numtext,value);
        cv_text(52,20,&FONT_XS,numtext,skin_accent());
-       static const char *effects[]={"REVERB","ECHO","BLOOM + ECHO"};
-       limited_text(86,20,146,&FONT_XS,effects[engine.air_fx],skin_text());
+       char wet[32],v[12];unsigned at=0;
+       const char *wet_tag=engine.air_fx==1?"ECHO ":"REV ";while(*wet_tag)wet[at++]=*wet_tag++;
+       num(v,(int)((engine.air_fx==1?engine.delay_wet:engine.reverb_wet)*100.f));
+       for(const char *q=v;*q;q++)wet[at++]=*q;wet[at++]='%';
+       if(engine.air_fx==2){wet[at++]=' ';wet[at++]='D';wet[at++]=' ';
+        num(v,(int)(engine.delay_wet*100.f));for(const char*q=v;*q;q++)wet[at++]=*q;wet[at++]='%';}
+       wet[at]=0;limited_text(86,20,146,&FONT_XS,wet,skin_text());
        cv_line(7,43,230,43,skin_dim());
        if(value)cv_rect(8,39,(int)(value*222u/100u),4,skin_accent());
      }else{
        label(8,0,"RAW RSSI",air_sensor.raw);
        label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
        label(183,0,"LAST PKTS",air_packets);
-       limited_text(8,33,226,&FONT_XS,air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"EDIT: FX + DEPTH / K3: FAR",skin_text());
+       limited_text(8,33,226,&FONT_XS,air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
@@ -780,18 +783,17 @@ static void draw(int animate)
      }
    }else if(visual&&page==PAGE_SETUP){
      if(band==1&&setup_tab==2){limited_text(8,1,224,&FONT_B,"AQUORA SANS / ABOUT",skin_text());limited_text(8,28,224,&FONT_T,aquora_font_provenance,skin_dim());}
-     else if(band==1)cv_text(8,3,&FONT_B,setup_tab>=4?(setup_tab==4?"USB MIDI SYNC":setup_tab==5?"USB MIDI I/O":"STARTUP SOUND"):setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
+     else if(band==1)cv_text(8,3,&FONT_B,setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
      if(band==2){
        if(setup_tab>=4){
-         label(8,0,"USB RX",midi.received);label(86,0,"USB TX",midi_tx_count);
-         label(166,0,"CLOCKS",midi_clock_sent);
-         limited_text(8,32,224,&FONT_T,midi_usb_ready()?"USB READY / HOST ROUTING UNKNOWN":"USB DISCONNECTED",skin_dim());
+         limited_text(8,0,224,&FONT_XS,"K1: OFF / QUIET / NORMAL",skin_text());
+         limited_text(8,32,224,&FONT_T,preferences_dirty?"STOP SAVES STARTUP SETTING":"PERFORMANCE MIDI NOT ENABLED",skin_dim());
        }else if(setup_tab==2){
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,skin_text());
          limited_text(8,26,224,&FONT_XS,save_info==0?"SELECT: SAVE SUMMARY 1/3":save_info==1?"SELECT: FLASH TIMES 2/3":"SELECT: COUNTERS 3/3",skin_text());
        }else if(setup_tab==1&&ui_font_size==2){
          static const char *messages[]={"SEL: LOAD / SAVE: STORE","STOP FIRST","EMPTY BANK","K3: ARM OVERWRITE","SAVED","LOADED","BANK ERROR","SAVING..."};
-         limited_text(8,10,224,&FONT_XS,messages[bank_message],skin_accent());
+         limited_text(8,10,224,&FONT_XS,(bank_message==BANK_STOP&&engine.external_audio)?"RELEASE MIDI NOTES":messages[bank_message],skin_accent());
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":setup_tab==0?(display_subtab?"TURN SELECT: LIGHTS":"TURN SELECT: APPEARANCE"):"SEL: LOAD / SAVE: STORE",skin_text());
      }
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==1){
@@ -835,7 +837,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?(setup_tab==4?"USB SYNC":setup_tab==5?"USB I/O":"STARTUP"):setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(0){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
@@ -913,7 +915,7 @@ static void draw(int animate)
          static const char *messages[]={"SEL LOAD / SAVE STORE","STOP FIRST","EMPTY BANK",
            "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED","SAVING..."};
          cv_text(8,33,&FONT_XS,bank_status[bank_slot]==1?"SAVED":bank_status[bank_slot]==2?"INVALID":"EMPTY",skin_accent());
-         limited_text(62,33,170,&FONT_XS,messages[bank_message],skin_text());
+         limited_text(62,33,170,&FONT_XS,(bank_message==BANK_STOP&&engine.external_audio)?"RELEASE MIDI NOTES":messages[bank_message],skin_text());
        }else{
          const char *status=engine.running?"PLAYING":"STOPPED";
          if(page==1&&group==6)status=saved_status==1?"MOTION SAVED":saved_status==2?"SAVE FAILED":"STOP THEN SAVE MOTION";

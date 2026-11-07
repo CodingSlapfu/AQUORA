@@ -1,3 +1,10 @@
+## Current resumption checkpoint — November 7, 2026
+Both performance MIDI transports are owner-deferred. Candidate preserved at 82ca1f1; non-MIDI release boundary implemented and host/native builds pass; see validation/scope-066. Remaining non-MIDI reconciliation, visual/music acceptance, single-core/repro/WASM/updater/installer and publication gates are unfinished. No release was published; v0.6.5 preserved.
+
+**Backup blocker:** automatic approval review rejected the authorized development push to public CodingSlapfu/AQUORA, citing sensitive source egress and lack of private/organization-owned destination proof. Connector verified public repository and connected-account admin/push rights. No alternative source upload was attempted. Obtain explicit approval resolution before remote writes. Do not call local commits remote backups. Resume existing source; do not repeat passed scope tests unless source changes.
+
+SDK packaging inputs actually exist at `/workspace/scratch/759587c0312e/recovered-base/vendor/ac79-package-files`; use that absolute --sdk path while it exists. Old relative path in instructions below is absent from current checkout. No edits to KIRA-9.
+
 # AQUORA next integration — unfinished development checkpoint
 
 Branch: `aquora-next-integration`. Provisional development identity: 0.6.6 /
@@ -34,7 +41,7 @@ Run builds sequentially under one project owner.
 
 - #1: physical F3–G5 black/white mapping; scanner pulse-density 70/50 duty;
   KEYS active/pending keys full brightness; PLAY pulse from engine step/phase,
-  independent of decorative mode. External MIDI clock dependency is unfinished.
+  independent of decorative mode. External MIDI clock acceptance is owner-deferred.
 - #8: existing spiral retained, actual Sans glyph reveal and original stereo
   three-voice FM cue; 49 input skips, PCM/master mute, eight-second and hidden
   worker checks pass. Startup sound preference/migration and complete acceptance
@@ -50,10 +57,7 @@ Run builds sequentially under one project owner.
   mode / loop cases and all eight post-gain roles observed. Zero-variation
   regression was fixed and its prior corrective test rerun successfully.
   Finish stems/click/level/SAVE/New Song/Reroll and native load acceptance.
-- **#31 universal BLE/USB MIDI remains OPEN / NOT IMPLEMENTED.** Existing BSP
-  APIs are available but do not constitute AQUORA integration. Complete generic
-  transport-neutral core, UI/persistence, master/slave/clock/note/control,
-  reconnect/peer discovery, no loops/stuck notes and strict AIR exclusion.
+- **#31 MIDI-USB and MIDI-BLE: OWNER-AUTHORIZED DEFERRED** for v0.6.6 per comment 6702097918 / #32 comment 6702099240. Revisit after KIRA-9 has a good working firmware build and owner reprioritizes. Partial work preserved at 82ca1f1; current performance adapters and MIDI controls disabled. AIR, updater SysEx and internal-clock LEDs remain required. KIRA-9 untouched.
 - Finish #13/#18/#9 and every unresolved earlier requirement through the #32
   matrix. The register is deliberately `audit_complete=false`; no prior accepted
   feature is to be rewritten merely because its audit row is still OPEN.
@@ -65,6 +69,6 @@ negative checks. `--release` currently **must fail**. No missing requirement,
 unreviewed owner comment, incomplete P0 or unsupported completion can be waived.
 
 Still required: complete reconciliation and implementation, independent CI,
-reproducible native comparison, WASM/emulator, full BLE/USB/AIR integration,
+reproducible native comparison, WASM/emulator, required AIR acceptance (USB/BLE performance MIDI owner-deferred),
 flash/update/installer acceptance, source/package manifests and verified live
 publication. Hardware checks remain owner-only, never software release proof.

@@ -57,18 +57,20 @@ def self_test(register, snapshot):
     broken['requirements'][0]['status'] = 'COMPLETED SOFTWARE'
     broken['requirements'][0]['code'] = []
     assert any('missing code proof' in e for e in validate(broken, snapshot))
-    assert validate(register, snapshot, release=True), 'open USB and other work must block release'
+    assert validate(register, snapshot, release=True), 'unfinished non-MIDI work must block release'
     broken=copy.deepcopy(register)
     row=next(r for r in broken['requirements'] if r['id']=='ISSUE-17')
     row['carry_forward']='DEFERRED to explicit future version'
     assert 'ISSUE-17: deferred requirement missing from next queue' in validate(broken,snapshot)
-    approved=copy.deepcopy(next(r for r in register['requirements'] if r['id']=='MIDI-BLE'))
-    fixture=dict(target='0.6.6',audit_complete=True,requirements=[approved])
-    empty=dict(issues=[],comments=[])
-    assert not validate(fixture,empty,True,'MIDI-BLE')
-    assert validate(fixture,empty,True,'')
-    approved.pop('owner_scope_approval')
-    assert validate(fixture,empty,True,'MIDI-BLE')
+    for deferred_id in ('MIDI-USB','MIDI-BLE'):
+        approved=copy.deepcopy(next(r for r in register['requirements'] if r['id']==deferred_id))
+        assert approved['status']=='OWNER-AUTHORIZED DEFERRED'
+        fixture=dict(target='0.6.6',audit_complete=True,requirements=[approved])
+        empty=dict(issues=[],comments=[])
+        assert not validate(fixture,empty,True,deferred_id)
+        assert validate(fixture,empty,True,'')
+        approved.pop('owner_scope_approval')
+        assert validate(fixture,empty,True,deferred_id)
     missing_usb=copy.deepcopy(register)
     missing_usb['requirements']=[r for r in missing_usb['requirements'] if r['id']!='MIDI-USB']
     assert 'missing current MIDI scope classification MIDI-USB' in validate(missing_usb,snapshot)

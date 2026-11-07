@@ -86,7 +86,7 @@ static void resonance_job(void)
     water_last_phase=vis_input.phase;
     dt=fm_clampf(dt,.015f,.1f);
     float pitch=vis_input.pitch>0?vis_input.pitch:(float)vis_input.frequency;
-    float complexity=fm_clampf(pitch*(1.f/450.f),0,3.f);
+    float complexity=fm_clampf(pitch*(1.f/450.f)+vis_input.frequency*(1.f/1600.f),0,3.f);
     float goal_m=2.f+(vis_input.scene%3u)+complexity*.3f;
     float goal_n=3.f+((vis_input.scene*7u)%4u)+complexity*.6f;
     water_m+=(goal_m-water_m)*dt*.9f;

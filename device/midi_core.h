@@ -4,12 +4,14 @@
 #define AQUORA_MIDI_CORE_H
 #include <stdint.h>
 #define AQ_MIDI_PROFILE_VERSION 1u
+/* Owner deferral #31 comment 6702097918: performance MIDI is unavailable in 0.6.6. */
+#define AQ_PERFORMANCE_MIDI 0
 enum {AQ_SYNC_OFF,AQ_SYNC_MASTER,AQ_SYNC_SLAVE};
 enum {AQ_CLOCK_OFF,AQ_CLOCK_PLAYING,AQ_CLOCK_ALWAYS};
 enum {AQ_RADIO_OFF,AQ_RADIO_HOST,AQ_RADIO_DEVICE,AQ_RADIO_AIR};
 typedef struct {
  uint8_t radio,sync,clock_out,source,tx_channel,rx_channel,input,peer;
- uint8_t usb_in,usb_out,name_variant,reserved;
+ uint8_t usb_in,usb_out,name_variant,controls_out;
  uint8_t peer_addr[6],peer_random,have_peer;char peer_name[21];
 } aq_midi_settings;
 typedef struct {
