@@ -4,6 +4,7 @@
  * Part of the unity build (unity.c), after usb.c, storage.c and panel.c. */
 
 uint32_t plat_ms(void) { return fm1_ms; }
+int plat_aquora_usb_ready(void){return usb.config&&!usb.suspended;}
 
 /* remote control over USB-MIDI (main_fm1.c remote_frame, tools/fm1_remote.py): buttons and keys held, turns and
  * MASTER, added to the panel's own, so a program can drive the app as a player would */

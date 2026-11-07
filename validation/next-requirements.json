@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "baseline": "b8743a39420e9f4c9fa2bd426d8ccf54876a0fba",
-  "target": "next",
+  "target": "0.6.6",
   "audit_complete": false,
   "requirements": [
     {
@@ -476,18 +476,18 @@
     },
     {
       "id": "ISSUE-31",
-      "requirement": "Next build: universal USB + BLE MIDI for AQUORA \u2194 KIRA-9 and compatible devices",
+      "requirement": "USB MIDI required now; BLE explicitly deferred by owner",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/31",
       "target": "next",
       "priority": "P0",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "code": [],
       "tests": [],
       "artifacts": [],
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
       "scope_sha256": "c7dbcb6a6326114317db26690939d3519fc92ae916b343bf691bd6dd5f3d4bb3",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "USB integration in progress; BLE excluded by owner approval https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630"
     },
     {
       "id": "ISSUE-32",
@@ -723,6 +723,52 @@
       "physical_owner": "owner",
       "carry_forward": "Mandatory next release; not deferred",
       "audit": "Restored 33-vertex baseline and candidate DMA overlap; full visual parity, per-page native instrumentation and acceptance pending"
+    },
+    {
+      "id": "MIDI-USB",
+      "requirement": "Class-compliant bidirectional USB MIDI: clock/transport/notes/control, recovery, routing and tests",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630",
+      "target": "next",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [],
+      "tests": [],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Mandatory next release; not deferred",
+      "scope_sha256": "c7dbcb6a6326114317db26690939d3519fc92ae916b343bf691bd6dd5f3d4bb3",
+      "audit": "USB integration in progress; BLE excluded by owner approval https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630"
+    },
+    {
+      "id": "MIDI-BLE",
+      "requirement": "BLE MIDI after KIRA-9 has a good working firmware build",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630",
+      "target": "future-after-KIRA9-working",
+      "priority": "P0",
+      "status": "OWNER-AUTHORIZED DEFERRED",
+      "code": [],
+      "tests": [],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "DEFERRED: future release after KIRA-9 has a good working firmware build",
+      "scope_sha256": "c7dbcb6a6326114317db26690939d3519fc92ae916b343bf691bd6dd5f3d4bb3",
+      "audit": "Owner explicitly approved; no exposed BLE performance feature in current release",
+      "owner_scope_approval": "https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630"
+    },
+    {
+      "id": "MIDI-AIR",
+      "requirement": "AIR functional; deferred BLE cannot claim radio or appear as finished capability",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630",
+      "target": "next",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [],
+      "tests": [],
+      "artifacts": [],
+      "physical_owner": "owner",
+      "carry_forward": "Mandatory next release; not deferred",
+      "scope_sha256": "c7dbcb6a6326114317db26690939d3519fc92ae916b343bf691bd6dd5f3d4bb3",
+      "audit": "USB integration in progress; BLE excluded by owner approval https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630"
     }
   ]
 }

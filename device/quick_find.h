@@ -25,7 +25,8 @@ static void open_parameter(unsigned index)
     case PAGE_MIX:mix_tab=tab;if(tab==5)mix_focus=selected;break;
     case PAGE_DRUMS:drum_tab=tab;break;
     case PAGE_SETUP:
-        if(tab==6){setup_tab=0;display_subtab=1;}
+        if(tab>=7){setup_tab=tab-3;}
+        else if(tab==6){setup_tab=0;display_subtab=1;}
         else if(tab>=4)debug=tab==4?1:3;
         else {setup_tab=tab;if(!tab)display_subtab=0;}
         break;

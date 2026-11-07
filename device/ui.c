@@ -228,6 +228,16 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 51:*name="AUTO LEVEL";return onoff(engine.auto_level);
  case 99:*name="OPEN BUS HOME";return "Turn right";
  case 100:*name="OPEN CHANNEL";return "Turn / FX";
+ case 101:{static const char *m[]={"Off","Master","USB Slave"};*name="MIDI SYNC";return m[midi.settings.sync];}
+ case 102:{static const char *m[]={"Off","Playing","Always"};*name="CLOCK OUT";return m[midi.settings.clock_out];}
+ case 103:*name="MIDI ROLE";return role_names[midi.settings.source];
+ case 104:*name="TX CHANNEL";number=midi.settings.tx_channel+1;break;
+ case 105:*name="RX CHANNEL";if(!midi.settings.rx_channel)return "Omni";number=midi.settings.rx_channel;break;
+ case 106:*name="USB MIDI IN";return onoff(midi.settings.usb_in);
+ case 107:*name="USB MIDI OUT";return onoff(midi.settings.usb_out);
+ case 108:*name="MIDI PANIC";return midi_panic_pending?"Flushing":"Turn right";
+ case 109:{static const char *m[]={"Off","Quiet","Normal"};*name="STARTUP SOUND";return m[startup_chime];}
+
  case 52:*name="RESET MIX";return mix_reset?"SEL RESET":"Turn to arm";
  case 48:*name="PITCH MODE";return engine.pending_lock?"Frequency Lock":"Reference Layer";
  case 47:*name="KEYBOARD";return engine.keyboard_mode?"Change Key":"Play Along";
@@ -762,9 +772,13 @@ static void draw(int animate)
      }
    }else if(visual&&page==PAGE_SETUP){
      if(band==1&&setup_tab==2){limited_text(8,1,224,&FONT_B,"AQUORA SANS / ABOUT",skin_text());limited_text(8,28,224,&FONT_T,aquora_font_provenance,skin_dim());}
-     else if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
+     else if(band==1)cv_text(8,3,&FONT_B,setup_tab>=4?(setup_tab==4?"USB MIDI SYNC":setup_tab==5?"USB MIDI I/O":"STARTUP SOUND"):setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
      if(band==2){
-       if(setup_tab==2){
+       if(setup_tab>=4){
+         label(8,0,"USB RX",midi.received);label(86,0,"USB TX",midi_tx_count);
+         label(166,0,"CLOCKS",midi_clock_sent);
+         limited_text(8,32,224,&FONT_T,midi_usb_ready()?"USB READY / HOST ROUTING UNKNOWN":"USB DISCONNECTED",skin_dim());
+       }else if(setup_tab==2){
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,skin_text());
          limited_text(8,26,224,&FONT_XS,save_info==0?"SELECT: SAVE SUMMARY 1/3":save_info==1?"SELECT: FLASH TIMES 2/3":"SELECT: COUNTERS 3/3",skin_text());
        }else if(setup_tab==1&&ui_font_size==2){
@@ -813,7 +827,7 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?(setup_tab==4?"USB SYNC":setup_tab==5?"USB I/O":"STARTUP"):setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(0){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
@@ -826,7 +840,7 @@ static void draw(int animate)
      }
      if(page!=0){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?3:page==PAGE_SETUP?4:2;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?3:page==PAGE_SETUP?7:2;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());

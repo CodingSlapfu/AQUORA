@@ -3,6 +3,7 @@
 #include "serenity.h"
 #include "fastmath.h"
 #include "air_sensor.h"
+#include "midi_core.h"
 #include "frame_policy.h"
 #include "lighting_policy.h"
 static sr_engine engine PLAT_POOL;
@@ -124,6 +125,7 @@ typedef struct {
 /* Never write flash in the callback. All preference edits are coalesced and
  * committed only after the transport has stopped. The setting object is
  * separate from arrangement banks and preserves the pre-0.6.2 schema. */
+static int midi_save(void);
 static int save_preferences(void)
 {
     aq_settings settings={0};
@@ -138,6 +140,7 @@ static int save_preferences(void)
     settings.air_fx=engine.air_fx;settings.air_depth=engine.air_depth;
     plat_unlock(flags);
     int result=plat_store_save(OBJ_SETTINGS,&settings,sizeof(settings));
+    if(!result)result=midi_save();
     if(!result)preferences_dirty=0;
     return result;
 }
@@ -209,6 +212,7 @@ static unsigned control_for(unsigned knob)
    return controls[drum_tab][knob];
  }
  if(page==PAGE_SETUP){
+   if(setup_tab>=4){static const uint8_t ids[][4]={{101,102,103,104},{105,106,107,108},{109,0,0,0}};return ids[setup_tab-4][knob];}
    if(setup_tab==0&&display_subtab){
      static const uint8_t appearance[]={90,91,92,38};
      return appearance[knob];
@@ -255,6 +259,7 @@ static void drums_enable(int enabled)
 static int bounded(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
 static float adjust(float x,int d,float step,float hi){return fm_clampf(x+d*step,0,hi);}
 static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
+#include "usb_midi.h"
 static void consume(void){
  unsigned stop=stop_generation;
  unsigned play=requested_play;
@@ -263,6 +268,24 @@ static void consume(void){
  unsigned count=0;while(qread!=qwrite&&count++<64){command c=queue[qread];__asm__ volatile("":::"memory");qread=(qread+1)&63;sr_track *t=&engine.tracks[c.track];int d=c.value;
  state_revision++;command_applied++;
  switch(c.kind){
+ case 200:midi_receive_audio((uint32_t)c.value);play=requested_play;break;
+ case 201:midi_panic();sr_midi_panic(&engine);break;
+ case 101:case 102:case 103:case 104:case 105:case 106:case 107:
+  midi_panic();sr_midi_panic(&engine);
+  if(c.kind==101&&midi.settings.sync==AQ_SYNC_MASTER&&engine.running)midi_emit(0xfc,0,0);
+  midi_tx_tick=midi_position();
+  if(c.kind==101)midi.settings.sync=bounded((int)midi.settings.sync+d,0,2);
+  if(c.kind==102)midi.settings.clock_out=bounded((int)midi.settings.clock_out+d,0,2);
+  if(c.kind==103)midi.settings.source=bounded((int)midi.settings.source+d,0,SR_DRUMS-1);
+  if(c.kind==104)midi.settings.tx_channel=bounded((int)midi.settings.tx_channel+d,0,15);
+  if(c.kind==105)midi.settings.rx_channel=bounded((int)midi.settings.rx_channel+d,0,16);
+  if(c.kind==106)midi.settings.usb_in=switched(midi.settings.usb_in,d);
+  if(c.kind==107)midi.settings.usb_out=switched(midi.settings.usb_out,d);
+  engine.external_sync=midi.settings.sync==AQ_SYNC_SLAVE;
+  if(c.kind==101&&engine.external_sync){requested_play=play=0;sr_stop(&engine);}
+  engine.external_clock_count=255;break;
+ case 108:midi_panic();sr_midi_panic(&engine);break;
+ case 109:startup_chime=bounded((int)startup_chime+d,0,2);break;
 
  case 1:{
    unsigned next=bounded(engine.scene+d,0,SR_SCENES-1);
@@ -389,8 +412,9 @@ static void consume(void){
  engine.play_released|=engine.play_queued&~physical_keys;
  for(unsigned i=0;i<SR_VOICES;i++){
    sr_voice *v=&engine.voices[i];
-   if(v->gate&&v->key&&!(physical_keys&(1u<<(v->key-1)))){engine.note_offs+=v->gate!=0;v->gate=0;}
+   if(v->gate&&v->key&&!(physical_keys&(1u<<(v->key-1)))){sr_key_up(&engine,v->key-1u);}
  }
+ if(midi_rx_overrun){sr_midi_panic(&engine);memset(midi_sustain,0,sizeof midi_sustain);midi_rx_overrun=0;}
  if(play&&!engine.running&&!engine.restart){sr_start(&engine);state_revision++;}
  if(!play&&engine.running){sr_stop(&engine);state_revision++;}
 }
@@ -403,6 +427,7 @@ void app_init(void)
     sr_init(&engine,song_nonce^7301u);
     sr_generate_song(&engine,song_nonce,0);
     engine.clock_ticks=plat_ticks24;
+    midi_load();
     aq_settings settings={0};
     int prefs_size=plat_store_size(OBJ_SETTINGS);
     if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==24||prefs_size==(int)sizeof(settings))&&
@@ -480,7 +505,9 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     unsigned begin=plat_ticks24();
     consume();
     if(n>APP_BLOCK)n=APP_BLOCK;
+    midi_audio_before();
     sr_render(&engine,pcm,n);
+    midi_audio_after(n);
     float target=(float)master*(1.f/4096.f);
     if(!master)output_gain=0;
     if(intro_active){
@@ -499,7 +526,7 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
         intro_gain+=((float)playing_intro-intro_gain)*.003f;
         /* Master zero remains real silence. The start of the synth timeline
          * is the first ready audio callback, not an early boot wall clock. */
-        if(master){bell=intro_note(intro+i)*intro_gain;bell_right=intro_right*intro_gain;}
+        if(master&&startup_chime){float level=startup_chime==1?.35f:1.f;bell=intro_note(intro+i)*intro_gain*level;bell_right=intro_right*intro_gain*level;}
       }
       output_gain+=(target-output_gain)*.002f;
       lr[2*i]=(int32_t)((pcm[2*i]+bell)*256.f*output_gain);
@@ -585,7 +612,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
    }
    if(page==PAGE_AIR)air_tab=!air_tab;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%3;
-   if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%4;
+   if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%7;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
      mix_tab=mix_tab>=4?0:mix_tab+1;mix_reset=0;}
    bank_confirm=song_arm=0;if(!quick_started&&!quick_pending)bank_message=BANK_IDLE;
@@ -668,6 +695,7 @@ void app_input_only(void){unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbu
     }else if(control==68){
       if(d>0&&air_on)aq_air_calibrate(&air_sensor,plat_ms());
     }else if(control==69)air_hold=d>0;
+    else if(control>=101&&control<=109){send(control,d);preferences_changed_now();}
     else if(control==38){visual_mode=d>0;preferences_changed_now();}
     else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);preferences_changed_now();bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
@@ -772,6 +800,7 @@ void app_ui_init(void){
 }
 void app_frame(void)
 {
+    midi_poll();
     app_input_only();
     arrangement_service();
     unsigned now=plat_ms();
@@ -939,7 +968,7 @@ int app_expect(const char *what,int *got){
    *got=1;
    /* UI-local actions and the passive scanner are exercised in their own
     * panel and radio fixtures. Here verify engine-queued edits and labels. */
-   static const uint8_t local[]={38,39,40,41,42,52,56,57,58,59,66,68,69,80,81,90,91,92};
+   static const uint8_t local[]={38,39,40,41,42,52,56,57,58,59,66,68,69,80,81,90,91,92,108};
    for(unsigned i=0;i<sizeof parameter_routes/sizeof parameter_routes[0];i++){
      unsigned id=parameter_routes[i].id, skip=0;
      for(unsigned j=0;j<sizeof local;j++)skip|=id==local[j];
@@ -994,17 +1023,17 @@ int app_expect(const char *what,int *got){
    *got=1;debug=0;mix_focus=0;
    for(unsigned p=PAGE_SOUND;p<=PAGE_AIR;p++){
      unsigned seen[128]={0};page=p;
-     unsigned count=p==PAGE_SOUND?sizeof(sound_groups):p==PAGE_EVOLVE?5:p==PAGE_MIX?6:p==PAGE_DRUMS?3:p==PAGE_SETUP?5:2;
+     unsigned count=p==PAGE_SOUND?sizeof(sound_groups):p==PAGE_EVOLVE?5:p==PAGE_MIX?6:p==PAGE_DRUMS?3:p==PAGE_SETUP?8:2;
      for(unsigned tab=0;tab<count;tab++){
        if(p==PAGE_SOUND)group=sound_groups[tab];
        if(p==PAGE_EVOLVE)song_tab=tab;
        if(p==PAGE_MIX)mix_tab=tab;
        if(p==PAGE_DRUMS)drum_tab=tab;
-       if(p==PAGE_SETUP){setup_tab=tab==4?0:tab;display_subtab=tab==4;}
+       if(p==PAGE_SETUP){setup_tab=tab==4?0:tab>=5?tab-1:tab;display_subtab=tab==4;}
        if(p==PAGE_AIR)air_tab=tab;
        for(unsigned k=0;k<4;k++){
          unsigned id=control_for(k);printf("ROUTE %u %u %u %u\n",p,tab,k,id);
-         if(id&&id<99&&seen[id]++)*got=0;
+         if(id&&id!=99&&id!=100&&id<128&&seen[id]++)*got=0;
        }
      }
    }
@@ -1046,6 +1075,20 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"lighting"))*got=lighting;
  else if(!strcmp(what,"frame_interval"))*got=visual_interval_ms;
  else if(!strcmp(what,"fps_auto"))*got=fps_auto;
+ else if(!strcmp(what,"midi_sync"))*got=midi.settings.sync;
+ else if(!strcmp(what,"startup_chime"))*got=startup_chime;
+ else if(!strcmp(what,"midi_received"))*got=midi.received;
+ else if(!strcmp(what,"midi_clock_out"))*got=midi_clock_sent;
+ else if(!strcmp(what,"midi_external_voices")){
+  *got=0;for(unsigned v=0;v<SR_VOICES;v++)*got+=engine.voices[v].external&&engine.voices[v].gate;
+ }
+ else if(!strcmp(what,"midi_tx_active")){
+  *got=0;for(unsigned n=0;n<128;n++)*got+=midi_tx_notes[n]!=0;
+ }
+ else if(!strcmp(what,"midi_steps"))*got=engine.sequence_step;
+ else if(!strcmp(what,"usb_unplug")){midi_test_online=0;*got=1;}
+ else if(!strcmp(what,"usb_replug")){midi_test_online=1;*got=1;}
+
  else if(!strcmp(what,"air_rate"))*got=air_packet_rate;
  else if(!strcmp(what,"air_packets_total"))*got=air_packet_total;
  else if(!strcmp(what,"ui_theme"))*got=ui_theme;

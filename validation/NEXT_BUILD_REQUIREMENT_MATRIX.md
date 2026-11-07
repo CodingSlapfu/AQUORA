@@ -1,8 +1,6 @@
-# Next build requirement reconciliation — IN PROGRESS
+# v0.6.6 requirement reconciliation — in progress
 
-Baseline: `b8743a39420e9f4c9fa2bd426d8ccf54876a0fba`. No release is authorized by this register until every source/comment has been reconciled and all software blockers have evidence. Hardware acceptance remains owner-unverified.
-
-The immutable issue/comment snapshot is `next-owner-scope.json`; authoritative machine register: `next-requirements.json`. Prior accepted work is preserved; OPEN during audit does not assert that it needs reimplementation.
+BLE MIDI is owner-authorized deferred until KIRA-9 has a good working build; USB MIDI and AIR remain required. Approval and full text: `USB_BLE_SCOPE_CHANGE.json`. Source register: `next-requirements.json`.
 
 | ID | Requirement | Status | Evidence / disposition |
 |---|---|---|---|
@@ -36,7 +34,7 @@ The immutable issue/comment snapshot is `next-owner-scope.json`; authoritative m
 | ISSUE-28 | [v0.6.5 hotfix: add FM bass patches to existing sound library (no new tracks or mixer changes)](https://github.com/CodingSlapfu/AQUORA/issues/28) | OPEN | Compare with accepted v0.6.5 scope; Mandatory next release; not deferred |
 | ISSUE-29 | [v0.6.5 MIX MASTER FX page: overlapping labels; surface Auto Gain/Auto Level (K3/K4)](https://github.com/CodingSlapfu/AQUORA/issues/29) | OPEN | Compare with accepted v0.6.5 scope; Mandatory next release; not deferred |
 | ISSUE-30 | [v0.6.5 workflow: remove duplicate EDIT-section controls across UI (EVOLVE loop/freeze/variation confirmed)](https://github.com/CodingSlapfu/AQUORA/issues/30) | OPEN | Compare with accepted v0.6.5 scope; Mandatory next release; not deferred |
-| ISSUE-31 | [Next build: universal USB + BLE MIDI for AQUORA ↔ KIRA-9 and compatible devices](https://github.com/CodingSlapfu/AQUORA/issues/31) | OPEN | Source and evidence reconciliation pending; Mandatory next release; not deferred |
+| ISSUE-31 | [USB MIDI required now; BLE explicitly deferred by owner](https://github.com/CodingSlapfu/AQUORA/issues/31) | PARTIAL | USB integration in progress; BLE excluded by owner approval https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630; Mandatory next release; not deferred |
 | ISSUE-32 | [P0 next build: reconcile deferred work and enforce evidence-based requirement coverage (Visualizer 2 #17)](https://github.com/CodingSlapfu/AQUORA/issues/32) | PARTIAL | Register covers issue inventory; complete atomic acceptance/owner-comment reconciliation still required; Mandatory next release; not deferred |
 | ISSUE-33 | [NEXT BUILD: Restore stock/Original visualizer fidelity; optimize performance elsewhere](https://github.com/CodingSlapfu/AQUORA/issues/33) | PARTIAL | Restored 33-vertex baseline and candidate DMA overlap; full visual parity, per-page native instrumentation and acceptance pending; Mandatory next release; not deferred |
 | ISSUE-34 | [P0 next build: eight-role arrangement evolution, fading entrances/exits and inactive mixer tracks](https://github.com/CodingSlapfu/AQUORA/issues/34) | PARTIAL | 117-case candidate passes; long stems/click/level/CPU/SAVE acceptance still pending; Mandatory next release; not deferred |
@@ -48,3 +46,6 @@ The immutable issue/comment snapshot is `next-owner-scope.json`; authoritative m
 | INTRO-AUDIO | [Original airy FM cue synchronized to title; exact-path WAV](https://github.com/CodingSlapfu/AQUORA/issues/8) | PARTIAL | Exact-path captures/level and skip acceptance, startup preference and migration still pending; Mandatory next release; not deferred |
 | INTRO-SAFETY | [Eight seconds, mute/skip/migration and bounded overhead](https://github.com/CodingSlapfu/AQUORA/issues/8) | PARTIAL | Exact-path captures/level and skip acceptance, startup preference and migration still pending; Mandatory next release; not deferred |
 | FPS-POLICY | [Fixed vs AUTO cadence; measured-XRUN safety override](https://github.com/CodingSlapfu/AQUORA/issues/33) | PARTIAL | Restored 33-vertex baseline and candidate DMA overlap; full visual parity, per-page native instrumentation and acceptance pending; Mandatory next release; not deferred |
+| MIDI-USB | [Class-compliant bidirectional USB MIDI: clock/transport/notes/control, recovery, routing and tests](https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630) | PARTIAL | USB integration in progress; BLE excluded by owner approval https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630; Mandatory next release; not deferred |
+| MIDI-BLE | [BLE MIDI after KIRA-9 has a good working firmware build](https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630) | OWNER-AUTHORIZED DEFERRED | Owner explicitly approved; no exposed BLE performance feature in current release; DEFERRED: future release after KIRA-9 has a good working firmware build |
+| MIDI-AIR | [AIR functional; deferred BLE cannot claim radio or appear as finished capability](https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630) | PARTIAL | USB integration in progress; BLE excluded by owner approval https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6701439630; Mandatory next release; not deferred |

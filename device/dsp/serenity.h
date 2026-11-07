@@ -31,11 +31,13 @@ typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
 typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; } sr_track;
-typedef struct { uint8_t active, track, gate, midi, key; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
+typedef struct { uint8_t active, track, gate, midi, key, external, channel; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {
   sr_track tracks[SR_TRACKS]; sr_voice voices[SR_VOICES];
   uint32_t rng, frame_count, tick_phase, tick_length, sequence_step, phrase;
+  void (*midi_event)(unsigned role,unsigned note,unsigned velocity);
+  uint8_t midi_suppress,external_sync,external_clock_count,external_audio;
   uint8_t scene, frequency, tuning_432, running, bed_type, isolate, frequency_auto, frequency_lock, pending_lock, lock_textures;
   uint8_t drums_enabled, drum_density, drum_kit, binaural_enabled;
   float master, reverb_amount, delay_amount, bed_level, current_energy;
@@ -118,6 +120,9 @@ void sr_preview_sound(sr_engine *e, unsigned role);
 void sr_set_track_patch(sr_engine *e, uint8_t track, uint8_t patch);
 void sr_set_loop_length(sr_engine *e, uint8_t length);
 uint8_t sr_tonic(const sr_engine *e);
+void sr_midi_note(sr_engine *e,unsigned role,unsigned channel,unsigned note,unsigned velocity);
+void sr_midi_panic(sr_engine *e);
+void sr_midi_bend(sr_engine *e,unsigned channel,int value);
 void sr_start(sr_engine *e);
 void sr_stop(sr_engine *e);
 void sr_note_on(sr_engine *e, uint8_t track, uint8_t midi, uint8_t velocity, float beats);

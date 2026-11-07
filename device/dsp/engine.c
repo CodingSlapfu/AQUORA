@@ -14,6 +14,14 @@ extern void *memcpy(void *, const void *, size_t);
 #include <string.h>
 #endif
 
+static void release_voice(sr_engine *e,sr_voice *v)
+{
+ if(v->gate){
+  e->note_offs++;
+  if(e->midi_event&&!v->external)e->midi_event(v->track,v->midi,0);
+ }
+ v->gate=0;
+}
 #define PI 3.14159265358979323846f
 #define LUT 1024
 #define LUT_MASK (LUT-1)
@@ -374,7 +382,7 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
   if(changed)e->play_queued=0;
   if(e->running&&changed)for(int i=0;i<SR_VOICES;i++){
     sr_voice *v=&e->voices[i];
-    if(!v->key){e->note_offs+=v->gate!=0;v->gate=0;v->remain=0;v->release_coef=.0012f;}
+    if(!v->key){release_voice(e,v);v->remain=0;v->release_coef=.0012f;}
   }
   e->scene=scene; e->tick_length=(uint32_t)((float)SR_RATE*60.f/(float)sr_scenes[scene].bpm/4.f);
   if(e->frequency_auto)e->frequency=sr_scenes[scene].frequency;
@@ -456,7 +464,7 @@ static void clear_transport(sr_engine *e)
     e->play_queued=0;
     e->play_released=0;
     memset(e->ornaments,0,sizeof e->ornaments);
-    for(unsigned i=0;i<SR_VOICES;i++)e->note_offs+=e->voices[i].gate!=0;
+    for(unsigned i=0;i<SR_VOICES;i++)release_voice(e,&e->voices[i]);
     memset(e->voices,0,sizeof(e->voices));
     memset(e->rev_pos,0,sizeof(e->rev_pos));
     e->delay_pos=0;
@@ -518,14 +526,14 @@ void sr_stop(sr_engine *e)
     e->running=0;
 }
 static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats){
-  if((!e->running&&!e->preview_frames)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
+  if((!e->running&&!e->preview_frames&&!e->midi_suppress)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
   int slot=-1;float quiet=1.e9f;
   for(int i=0;i<SR_VOICES;i++){
     if(!e->voices[i].active){slot=i;break;}
     float score=e->voices[i].env+(e->voices[i].track==SR_BASS?.35f:e->voices[i].key&&e->voices[i].gate?.25f:0);
     if(score<quiet){quiet=score;slot=i;}
   }
-  sr_voice *v=&e->voices[slot];e->note_offs+=v->gate!=0;e->note_ons++;float tail=v->active?v->filter*v->env*sr_patches[e->tracks[v->track].patch].gain:0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;
+  sr_voice *v=&e->voices[slot];release_voice(e,v);e->note_ons++;float tail=v->active?v->filter*v->env*sr_patches[e->tracks[v->track].patch].gain:0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;
   const sr_patch *p=&sr_patches[e->tracks[track].patch];
   v->born=e->frame_count;v->freq=sr_note_frequency(e,midi);v->pitch=v->freq;v->midi=midi;
   if(track<=SR_BASS){
@@ -543,8 +551,37 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   v->attack_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->attack,e->tracks[track].attack),.001f)*SR_RATE));
   v->release_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->release,e->tracks[track].release),.04f)*SR_RATE));
   v->remain=(uint32_t)clampf(beats*4.f*(float)e->tick_length,1.f,9.e6f);
+  if(e->midi_event&&!e->midi_suppress)e->midi_event(track,midi,velocity);
   return v;
 }
+void sr_midi_note(sr_engine *e,unsigned role,unsigned channel,unsigned note,unsigned velocity)
+{
+ if(role>=SR_DRUMS||channel>15||note>127||velocity>127)return;
+ if(!velocity){
+  for(unsigned i=0;i<SR_VOICES;i++)if(e->voices[i].external&&e->voices[i].channel==channel&&e->voices[i].midi==note)
+   release_voice(e,&e->voices[i]);
+  return;
+ }
+ e->midi_suppress=1;
+ sr_voice *v=note_on(e,(uint8_t)role,(uint8_t)note,(uint8_t)velocity,1.f);
+ e->midi_suppress=0;
+ if(v){v->external=1;v->channel=(uint8_t)channel;v->remain=0xffffffffu;}
+}
+void sr_midi_panic(sr_engine *e)
+{
+ for(unsigned i=0;i<SR_VOICES;i++)if(e->voices[i].external){
+  release_voice(e,&e->voices[i]);e->voices[i].release_coef=.003f;
+ }
+}
+void sr_midi_bend(sr_engine *e,unsigned channel,int value)
+{
+ float ratio=expf((float)value*(.11552453f/8192.f));
+ for(unsigned i=0;i<SR_VOICES;i++)if(e->voices[i].external&&e->voices[i].channel==channel){
+  sr_voice *v=&e->voices[i];v->freq=sr_note_frequency(e,v->midi)*ratio;
+  v->pitch=v->freq;v->increment=v->freq*(1.f/SR_RATE);
+ }
+}
+
 void sr_note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats)
 {
     if(track<SR_TRACKS&&e->running&&!e->preview_frames&&e->solo>=SR_TRACKS&&
@@ -625,8 +662,7 @@ void sr_key_up(sr_engine *e,unsigned key)
     if(key>=27)return;
     e->play_released|=e->play_queued&(1u<<key);
     for(int j=0;j<SR_VOICES;j++)if(e->voices[j].key==key+1){
-      e->note_offs+=e->voices[j].gate!=0;
-      e->voices[j].gate=0;
+      release_voice(e,&e->voices[j]);
 
     }
 }
@@ -678,7 +714,7 @@ void sr_preview_sound(sr_engine *e,unsigned role)
   e->preview_role=role;
   e->preview_frames=SR_RATE;
   for(unsigned i=0;i<SR_VOICES;i++){
-    e->voices[i].gate=0;
+    release_voice(e,&e->voices[i]);
     e->voices[i].release_coef=.002f;
   }
   if(role==SR_DRUMS){
@@ -846,8 +882,7 @@ static void trigger(sr_engine *e){
       e->pending_key=e->pending_physical_key=0;
       for(unsigned i=0;i<SR_VOICES;i++){
         sr_voice *v=&e->voices[i];
-        e->note_offs+=v->gate!=0;
-        v->gate=0;v->remain=0;v->release_coef=.002f;
+        release_voice(e,v);v->remain=0;v->release_coef=.002f;
       }
     }
   }
@@ -1125,9 +1160,8 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int j=0;j<SR_VOICES;j++){
     sr_voice *v=&e->voices[j];
     if(!v->active)continue;
-    if(e->frame_count-v->born>SR_RATE*30u&&v->release_coef<.003f){
-      e->note_offs+=v->gate!=0;
-      v->gate=0;v->remain=0;v->release_coef=.003f;e->watchdogs++;
+    if(!v->external&&e->frame_count-v->born>SR_RATE*30u&&v->release_coef<.003f){
+      release_voice(e,v);v->remain=0;v->release_coef=.003f;e->watchdogs++;
     }
     if(v->track==SR_BASS&&v->gate){
       bass_envelope=fmaxf(bass_envelope,v->env);
@@ -1153,7 +1187,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     }
     config->cutoff=.028f+brightness*.24f;
     config->gain=patch->gain;
-    float role_level=v->key||preview||e->solo<SR_TRACKS?1.f:e->role_gain[v->track];
+    float role_level=v->key||v->external||preview||e->solo<SR_TRACKS?1.f:e->role_gain[v->track];
     config->left=left[v->track]*role_level;
     config->right=right[v->track]*role_level;
     config->send=send[v->track]*.5f*role_level;
@@ -1189,7 +1223,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       sr_voice *v=config->voice;
       if(!v->active)continue;
       if(v->remain>0&&--v->remain==0&&v->gate){
-        v->gate=0;e->note_offs++;
+        release_voice(e,v);
         if(v->key){v->release_coef=.002f;e->watchdogs++;}
       }
       if(v->gate)v->env+=(v->peak-v->env)*v->attack_coef;
@@ -1256,7 +1290,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     l+=drums*left[SR_DRUMS];r+=drums*right[SR_DRUMS];
     mix+=drums*send[SR_DRUMS]*.5f;
     e->tracks[SR_DRUMS].meter=e->drum_meter*e->drum_level*(left[SR_DRUMS]+right[SR_DRUMS]);
-    e->transport_env+=((e->running||audition?1.f:0.f)-e->transport_env)*.0008f;
+    e->transport_env+=((e->running||audition||e->external_audio?1.f:0.f)-e->transport_env)*.0008f;
     float bed_gain=audition?e->bed_level*clampf(((float)e->nature_audition-i)*(1.f/1102.5f),0,1):e->bed_level;
     float nature=0, nature_side=0;
     if(!preview&&(audition||e->solo==SR_TRACKS)&&bed_gain>0&&
@@ -1371,7 +1405,9 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
  float dry[64*3];
  e->fx_ticks=0;
  while(frames){
-  if(!e->running&&!e->stop_frames&&!e->nature_audition&&!e->preview_frames){
+  e->external_audio=0;
+  for(unsigned v=0;v<SR_VOICES;v++)if(e->voices[v].active&&e->voices[v].external)e->external_audio=1;
+  if(!e->external_audio&&!e->running&&!e->stop_frames&&!e->nature_audition&&!e->preview_frames){
     memset(out,0,frames*2*sizeof(*out));
     return;
   }
@@ -1403,7 +1439,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     }
   }
 
-  if(e->running&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;
+  if(e->running&&!e->external_sync&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;
   if(e->stop_frames&&n>e->stop_frames)n=e->stop_frames;
   if(e->nature_audition&&n>e->nature_audition)n=e->nature_audition;
   if(e->preview_frames&&n>e->preview_frames)n=e->preview_frames;
@@ -1434,7 +1470,10 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     e->frequency_lock=e->pending_lock;
     if(restart){e->running=1;e->sequence_step=0;e->loop_pos=0;e->tick_phase=e->tick_length;}
   }
-  if(e->running&&!fading)e->tick_phase+=(uint32_t)n;
+  if(e->running&&!fading){
+    e->tick_phase+=(uint32_t)n;
+    if(e->external_sync&&e->tick_phase>=e->tick_length)e->tick_phase=e->tick_length-1u;
+  }
   out+=n*2;frames-=n;
  }
 }
