@@ -35,6 +35,13 @@ def validate(register, snapshot, release=False, queue_text=''):
             for field in ('code','tests','artifacts'):
                 if not row.get(field):
                     errors.append(f"{row['id']}: missing {field} proof")
+        if release and row.get('status') in {'COMPLETED SOFTWARE','OWNER-HARDWARE-UNVERIFIED'}:
+            if not row.get('source_commit'):
+                errors.append(f"{row['id']}: missing source commit")
+            for field in ('code','tests','artifacts'):
+                for proof in row.get(field,[]):
+                    if not (ROOT/proof).exists():
+                        errors.append(f"{row['id']}: missing {field} path {proof}")
         if row.get('status')=='OWNER-AUTHORIZED DEFERRED' and not row.get('owner_scope_approval'):
             errors.append(f"{row.get('id')}: missing owner deferral approval")
         if release and row.get('status') not in {'COMPLETED SOFTWARE','OWNER-HARDWARE-UNVERIFIED','OWNER-AUTHORIZED DEFERRED'}:

@@ -156,10 +156,18 @@ static void prepare_geometry(void)
     vis_input.scene=engine.scene;
     vis_input.tuning=engine.tuning_432;vis_input.tonic=sr_tonic(&engine);
     vis_input.atmosphere=engine.transport_env*engine.bed_level+engine.reverb_wet*.6f;
-    vis_input.pitch=0;
-    for(unsigned v=0;v<SR_VOICES;v++)if(engine.voices[v].active&&engine.voices[v].gate){
-      vis_input.pitch=engine.voices[v].freq;break;
+    /* Audible voice-weighted pitch avoids a muted/stolen first slot freezing
+     * the water mode. Runs only on visible-frame telemetry, never in audio. */
+    float pitch_sum=0,pitch_weight=0;
+    for(unsigned v=0;v<SR_VOICES;v++){
+      const sr_voice *voice=&engine.voices[v];unsigned t=voice->track;
+      if(!voice->active||!voice->gate||t>=SR_DRUMS||engine.tracks[t].mute||
+         (engine.solo<SR_TRACKS&&engine.solo!=t))continue;
+      float weight=voice->env*voice->peak*engine.tracks[t].volume;
+      if(!voice->key&&!voice->external)weight*=engine.role_gain[t];
+      pitch_sum+=voice->freq*weight;pitch_weight+=weight;
     }
+    vis_input.pitch=pitch_weight>.00001f?pitch_sum/pitch_weight:0;
     for(unsigned t=0;t<SR_TRACKS;t++){
       vis_input.meter[t]=engine.tracks[t].meter;
       vis_input.onset[t]=engine.tracks[t].events!=vis_input.event[t]&&engine.tracks[t].meter>.00001f?1.f:vis_input.onset[t]*.82f;

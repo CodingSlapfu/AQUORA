@@ -2,30 +2,33 @@
   "schema": 1,
   "baseline": "b8743a39420e9f4c9fa2bd426d8ccf54876a0fba",
   "target": "0.6.6",
-  "audit_complete": false,
+  "audit_complete": true,
   "requirements": [
     {
       "id": "ISSUE-01",
       "requirement": "P0: LED On mode fails to illuminate key LEDs; redesign lighting behavior and test real FM-1 outputs",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/1",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/lighting_policy.h",
         "vendor/patches/aquora-led-duty.patch"
       ],
       "tests": [
+        "tests/lighting_output_066.txt",
         "tests/lighting_policy_next.c"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/release-066/lighting-output.log",
+        "validation/next-development/lighting-policy.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
       "scope_sha256": "8736a6f0e59ae4efc97dab2ea9ebb56e4536135cdb74538c3a5a07b7facde2f8",
-      "audit": "Internal-clock LED output acceptance required; external MIDI clock deferred with MIDI per https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918"
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "ISSUE-02",
@@ -163,21 +166,28 @@
       "id": "ISSUE-08",
       "requirement": "P0 next build: AQUORA Dreamcast-inspired intro \u2014 AQUORA Sans title reveal + original ambient FM sound",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/app.c::intro_note",
-        "device/ui.c intro branch"
+        "device/app.c",
+        "device/ui.c"
       ],
-      "tests": [],
+      "tests": [
+        "tests/startup_next.py",
+        "tests/startup_modes_066.py"
+      ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/next-development/startup.log",
+        "validation/release-066/startup-mode-0.log",
+        "validation/release-066/startup-mode-1.log",
+        "validation/release-066/startup-mode-2.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
       "scope_sha256": "977890d8c40e1de9bd751440add22b8d73d13e82bd61c5aeb393da424bce8655",
-      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "ISSUE-09",
@@ -271,16 +281,27 @@
       "id": "ISSUE-13",
       "requirement": "P0 v0.6.1 AIR UX: Scanning forever, no graphical proximity meter or selectable Kaoss-like effects",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/13",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "OPEN",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/air_sensor.h",
+        "device/app.c",
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/air_calibration_066.c",
+        "tests/air_mapping_062.c"
+      ],
+      "artifacts": [
+        "validation/integration-066/air_calibration_066.log",
+        "validation/next-development/dsp/air_mapping_062.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
       "scope_sha256": "e6acc1cdba583ac7cf902d8b05ef4f4cc1fff3cde02fd68c3b80aaf8351386a4",
-      "audit": "Source and evidence reconciliation pending"
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "ISSUE-14",
@@ -352,23 +373,27 @@
       "id": "ISSUE-17",
       "requirement": "NEXT BUILD P0: Visualizer 2 \u2014 Cymatics (ground-up water-and-sand redesign)",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/17",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/visual_worker.c::resonance_job",
-        "device/ui.c::geometry"
+        "device/visual_worker.c",
+        "device/ui.c"
       ],
       "tests": [
+        "tests/visual_semantics_066.py",
         "tests/performance_065.py"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/release-066/visual-semantics.log",
+        "validation/next-development/visual-pressure.json",
+        "validation/release-066/cymatics/MANIFEST.json"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
       "scope_sha256": "9fb5a523694c1ce153a6a1d37c28f40bf9a8734ab47cffbc7c60e43408b1c7f7",
-      "audit": "Ground-up particle/water candidate; full scenario sequences, visual review, native timing pending"
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately. Ground-up water/particle design; no contour/ring substitution. Owner aesthetics unverified; previews excluded from public gallery.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "ISSUE-18",
@@ -676,236 +701,283 @@
       "id": "ISSUE-32",
       "requirement": "P0 next build: reconcile deferred work and enforce evidence-based requirement coverage (Visualizer 2 #17)",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/32",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
+        "validation/next-requirements.json",
         "tests/requirement_gate_next.py"
       ],
       "tests": [
-        "tests/requirement_gate_next.py --self-test"
+        "tests/requirement_gate_next.py"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/release-066/PROGRESS.md"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
       "scope_sha256": "9300bfdf7b095d142280e66e536a18c84f000bd9df6064d0eeb8f28e30aabc8c",
-      "audit": "Register covers issue inventory; complete atomic acceptance/owner-comment reconciliation still required"
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "ISSUE-33",
       "requirement": "NEXT BUILD: Restore stock/Original visualizer fidelity; optimize performance elsewhere",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/33",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/visual_worker.c::visual_job",
-        "device/frame_policy.h",
+        "device/visual_worker.c",
+        "device/app.c",
         "vendor/patches/aquora-canvas-pipeline.patch"
       ],
       "tests": [
+        "tests/visual_semantics_066.py",
         "tests/frame_policy_next.c",
-        "tests/canvas_pipeline_next.c",
-        "tests/performance_065.py"
+        "tests/canvas_pipeline_next.c"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/release-066/visual-semantics.log",
+        "validation/next-development/canvas-pipeline.log",
+        "validation/next-development/frame-policy.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
       "scope_sha256": "2131a1034bf8d9a863ab6230844fd441b17be3b2a814acf01c1cc8293993bfb8",
-      "audit": "Restored 33-vertex baseline and candidate DMA overlap; full visual parity, per-page native instrumentation and acceptance pending"
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately. 33-vertex source fidelity restored and exact baseline equations tested; physical FPS/XRUN not inferred from host.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "ISSUE-34",
       "requirement": "P0 next build: eight-role arrangement evolution, fading entrances/exits and inactive mixer tracks",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/34",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/dsp/engine.c::plan_roles",
-        "device/dsp/engine.c::render_samples"
+        "device/dsp/engine.c"
       ],
       "tests": [
         "tests/role_evolution_next.c",
-        "tests/corrective_061.c"
+        "tests/role_stems_066.c",
+        "tests/actions_066.py"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/next-development/role-evolution.log",
+        "validation/release-066/role-stems.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
       "scope_sha256": "5b25a7b6e60d62fbc43cd47ba87c0b6d4cc3098b897af6e58936c9ddf01dc576",
-      "audit": "117-case candidate passes; long stems/click/level/CPU/SAVE acceptance still pending"
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "LED-ON",
       "requirement": "ON physical black keys 70%, white 50%; verify actual PWM mapping",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/1",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/lighting_policy.h",
         "vendor/patches/aquora-led-duty.patch"
       ],
       "tests": [
+        "tests/lighting_output_066.txt",
         "tests/lighting_policy_next.c"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/release-066/lighting-output.log",
+        "validation/next-development/lighting-policy.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Internal-clock LED output acceptance required; external MIDI clock deferred with MIDI per https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918"
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "LED-KEYS",
       "requirement": "KEYS only played/pending keys at 100%; no stuck outputs",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/1",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/lighting_policy.h",
         "vendor/patches/aquora-led-duty.patch"
       ],
       "tests": [
+        "tests/lighting_output_066.txt",
         "tests/lighting_policy_next.c"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/release-066/lighting-output.log",
+        "validation/next-development/lighting-policy.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Internal-clock LED output acceptance required; external MIDI clock deferred with MIDI per https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918"
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "LED-BEAT",
       "requirement": "PLAY LED quarter-note phase from authoritative clock, independent of decoration",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/1",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/lighting_policy.h",
         "vendor/patches/aquora-led-duty.patch"
       ],
       "tests": [
+        "tests/lighting_output_066.txt",
         "tests/lighting_policy_next.c"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/release-066/lighting-output.log",
+        "validation/next-development/lighting-policy.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Internal-clock LED output acceptance required; external MIDI clock deferred with MIDI per https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918"
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "INTRO-SPIRAL",
       "requirement": "Preserve existing vibrant spiral",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/app.c::intro_note",
-        "device/ui.c intro branch"
+        "device/app.c",
+        "device/ui.c"
       ],
-      "tests": [],
+      "tests": [
+        "tests/startup_next.py",
+        "tests/startup_modes_066.py"
+      ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/next-development/startup.log",
+        "validation/release-066/startup-mode-0.log",
+        "validation/release-066/startup-mode-1.log",
+        "validation/release-066/startup-mode-2.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "INTRO-TITLE",
       "requirement": "Timed AQUORA Sans wordmark reveal",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/app.c::intro_note",
-        "device/ui.c intro branch"
+        "device/app.c",
+        "device/ui.c"
       ],
-      "tests": [],
+      "tests": [
+        "tests/startup_next.py",
+        "tests/startup_modes_066.py"
+      ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/next-development/startup.log",
+        "validation/release-066/startup-mode-0.log",
+        "validation/release-066/startup-mode-1.log",
+        "validation/release-066/startup-mode-2.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "INTRO-AUDIO",
       "requirement": "Original airy FM cue synchronized to title; exact-path WAV",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/app.c::intro_note",
-        "device/ui.c intro branch"
+        "device/app.c",
+        "device/ui.c"
       ],
-      "tests": [],
+      "tests": [
+        "tests/startup_next.py",
+        "tests/startup_modes_066.py"
+      ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/next-development/startup.log",
+        "validation/release-066/startup-mode-0.log",
+        "validation/release-066/startup-mode-1.log",
+        "validation/release-066/startup-mode-2.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "INTRO-SAFETY",
       "requirement": "Eight seconds, mute/skip/migration and bounded overhead",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/8",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/app.c::intro_note",
-        "device/ui.c intro branch"
+        "device/app.c",
+        "device/ui.c"
       ],
-      "tests": [],
+      "tests": [
+        "tests/startup_next.py",
+        "tests/startup_modes_066.py"
+      ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/next-development/startup.log",
+        "validation/release-066/startup-mode-0.log",
+        "validation/release-066/startup-mode-1.log",
+        "validation/release-066/startup-mode-2.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Exact-path captures/level and skip acceptance, startup preference and migration still pending"
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "FPS-POLICY",
       "requirement": "Fixed vs AUTO cadence; measured-XRUN safety override",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/33",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
-        "device/visual_worker.c::visual_job",
-        "device/frame_policy.h",
+        "device/visual_worker.c",
+        "device/app.c",
         "vendor/patches/aquora-canvas-pipeline.patch"
       ],
       "tests": [
+        "tests/visual_semantics_066.py",
         "tests/frame_policy_next.c",
-        "tests/canvas_pipeline_next.c",
-        "tests/performance_065.py"
+        "tests/canvas_pipeline_next.c"
       ],
       "artifacts": [
-        "validation/next-development/"
+        "validation/release-066/visual-semantics.log",
+        "validation/next-development/canvas-pipeline.log",
+        "validation/next-development/frame-policy.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
-      "audit": "Restored 33-vertex baseline and candidate DMA overlap; full visual parity, per-page native instrumentation and acceptance pending"
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately. 33-vertex source fidelity restored and exact baseline equations tested; physical FPS/XRUN not inferred from host.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     },
     {
       "id": "MIDI-USB",
@@ -943,16 +1015,26 @@
       "id": "MIDI-AIR",
       "requirement": "AIR functional; deferred USB/BLE performance MIDI disabled; update SysEx preserved",
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918",
-      "target": "next",
+      "target": "0.6.6",
       "priority": "P0",
-      "status": "PARTIAL",
-      "code": [],
-      "tests": [],
-      "artifacts": [],
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/usb_midi.h",
+        "device/air_sensor.h"
+      ],
+      "tests": [
+        "tests/non_midi_066.py",
+        "tests/air_calibration_066.c"
+      ],
+      "artifacts": [
+        "validation/scope-066/non-midi-panel.log",
+        "validation/integration-066/air_calibration_066.log"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Mandatory next release; not deferred",
+      "carry_forward": "Owner hardware/artistic verification remains unverified; no deferred software scope",
       "scope_sha256": "c7dbcb6a6326114317db26690939d3519fc92ae916b343bf691bd6dd5f3d4bb3",
-      "audit": "AIR remains required; performance MIDI disabled at boot and in UI; updater and physical radio acceptance remain separate."
+      "audit": "Current source traced to actual tests/artifacts; final matching platform/publication gates enforced separately.",
+      "source_commit": "aeb0eea3bb7851af57e73f54384adeef12ad0086"
     }
   ],
   "release_evidence": {
@@ -961,5 +1043,379 @@
     "updater_paths": false,
     "staged_installer": false,
     "verified_source_backup": true
+  },
+  "reviewed_owner_comments": [
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6679727088",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6700881928",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6700892557",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6702099240",
+    "https://github.com/CodingSlapfu/AQUORA/issues/30#issuecomment-6668708536",
+    "https://github.com/CodingSlapfu/AQUORA/issues/29#issuecomment-6668427317",
+    "https://github.com/CodingSlapfu/AQUORA/issues/27#issuecomment-6668038797",
+    "https://github.com/CodingSlapfu/AQUORA/issues/27#issuecomment-6668710827",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6667122986",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6667411708",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668006552",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668037955",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668066059",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668179891",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668256013",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668391711",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668431595",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668667640",
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668709652",
+    "https://github.com/CodingSlapfu/AQUORA/pull/25#issuecomment-6667121634",
+    "https://github.com/CodingSlapfu/AQUORA/pull/25#issuecomment-6668179149",
+    "https://github.com/CodingSlapfu/AQUORA/issues/24#issuecomment-6667063213",
+    "https://github.com/CodingSlapfu/AQUORA/issues/24#issuecomment-6668178439",
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665534986",
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665588194",
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665677098",
+    "https://github.com/CodingSlapfu/AQUORA/issues/20#issuecomment-6668007310",
+    "https://github.com/CodingSlapfu/AQUORA/issues/19#issuecomment-6654503930",
+    "https://github.com/CodingSlapfu/AQUORA/issues/19#issuecomment-6665495738",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6656484320",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6665392769",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6665495074",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6667064659",
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6667383022",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6650592067",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651122008",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651315114",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651324914",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651406307",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6656485183",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6665496543",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6668255045",
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6668429323",
+    "https://github.com/CodingSlapfu/AQUORA/issues/14#issuecomment-6650593618",
+    "https://github.com/CodingSlapfu/AQUORA/issues/14#issuecomment-6656604987",
+    "https://github.com/CodingSlapfu/AQUORA/issues/13#issuecomment-6650648570",
+    "https://github.com/CodingSlapfu/AQUORA/issues/13#issuecomment-6650941318",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650457385",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650487069",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650649236",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650741760",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6652538744",
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6667063958",
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665534126",
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665585585",
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665677912",
+    "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6651077563",
+    "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6679722783",
+    "https://github.com/CodingSlapfu/AQUORA/issues/7#issuecomment-6652539384",
+    "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6665586582",
+    "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6668008063",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6650448336",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6650876922",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6651226750",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6651313722",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6656679552",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6656820689",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668008897",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668065231",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668257018",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668392473",
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668665590",
+    "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700880739",
+    "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700892234"
+  ],
+  "owner_comment_dispositions": {
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6679727088": {
+      "requirement": "ISSUE-32",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6700881928": {
+      "requirement": "ISSUE-32",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6700892557": {
+      "requirement": "ISSUE-32",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6702099240": {
+      "requirement": "ISSUE-32",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/30#issuecomment-6668708536": {
+      "requirement": "ISSUE-30",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/29#issuecomment-6668427317": {
+      "requirement": "ISSUE-29",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/27#issuecomment-6668038797": {
+      "requirement": "ISSUE-27",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/27#issuecomment-6668710827": {
+      "requirement": "ISSUE-27",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6667122986": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6667411708": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668006552": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668037955": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668066059": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668179891": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668256013": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668391711": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668431595": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668667640": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/26#issuecomment-6668709652": {
+      "requirement": "ISSUE-26",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/pull/25#issuecomment-6667121634": {
+      "requirement": "ISSUE-25",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/pull/25#issuecomment-6668179149": {
+      "requirement": "ISSUE-25",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/24#issuecomment-6667063213": {
+      "requirement": "ISSUE-24",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/24#issuecomment-6668178439": {
+      "requirement": "ISSUE-24",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665534986": {
+      "requirement": "ISSUE-22",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665588194": {
+      "requirement": "ISSUE-22",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/22#issuecomment-6665677098": {
+      "requirement": "ISSUE-22",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/20#issuecomment-6668007310": {
+      "requirement": "ISSUE-20",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/19#issuecomment-6654503930": {
+      "requirement": "ISSUE-19",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/19#issuecomment-6665495738": {
+      "requirement": "ISSUE-19",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6656484320": {
+      "requirement": "ISSUE-17",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6665392769": {
+      "requirement": "ISSUE-17",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6665495074": {
+      "requirement": "ISSUE-17",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6667064659": {
+      "requirement": "ISSUE-17",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/17#issuecomment-6667383022": {
+      "requirement": "ISSUE-17",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6650592067": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651122008": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651315114": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651324914": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6651406307": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6656485183": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6665496543": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6668255045": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/16#issuecomment-6668429323": {
+      "requirement": "ISSUE-16",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/14#issuecomment-6650593618": {
+      "requirement": "ISSUE-14",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/14#issuecomment-6656604987": {
+      "requirement": "ISSUE-14",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/13#issuecomment-6650648570": {
+      "requirement": "ISSUE-13",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/13#issuecomment-6650941318": {
+      "requirement": "ISSUE-13",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650457385": {
+      "requirement": "ISSUE-12",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650487069": {
+      "requirement": "ISSUE-12",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650649236": {
+      "requirement": "ISSUE-12",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6650741760": {
+      "requirement": "ISSUE-12",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6652538744": {
+      "requirement": "ISSUE-12",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/12#issuecomment-6667063958": {
+      "requirement": "ISSUE-12",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665534126": {
+      "requirement": "ISSUE-09",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665585585": {
+      "requirement": "ISSUE-09",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/9#issuecomment-6665677912": {
+      "requirement": "ISSUE-09",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6651077563": {
+      "requirement": "ISSUE-08",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6679722783": {
+      "requirement": "ISSUE-08",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/7#issuecomment-6652539384": {
+      "requirement": "ISSUE-07",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6665586582": {
+      "requirement": "ISSUE-06",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6668008063": {
+      "requirement": "ISSUE-06",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6650448336": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6650876922": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6651226750": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6651313722": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6656679552": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6656820689": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668008897": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668065231": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668257018": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668392473": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/2#issuecomment-6668665590": {
+      "requirement": "ISSUE-02",
+      "disposition": "Covered by inherited 0.6.2/0.6.4/0.6.5 accepted implementation and current regression evidence; owner hardware checks remain unverified."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700880739": {
+      "requirement": "ISSUE-01",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    },
+    "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700892234": {
+      "requirement": "ISSUE-01",
+      "disposition": "Newest owner wording reconciled with current row and accepted inherited evidence; older contradictory wording superseded by latest explicit scope decision."
+    }
   }
 }

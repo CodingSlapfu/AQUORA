@@ -964,6 +964,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
  else if(!strcmp(what,"music_mode"))*got=engine.music_mode;
  else if(!strcmp(what,"motion_manual"))*got=engine.motion_manual;
+ else if(!strcmp(what,"visual_pitch_hz"))*got=(int)vis_input.pitch;
  else if(!strcmp(what,"node_count"))*got=vis_output.node_count;
  else if(!strcmp(what,"song_armed"))*got=song_arm;
  else if(!strcmp(what,"directory_ok")){

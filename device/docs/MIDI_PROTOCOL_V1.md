@@ -1,17 +1,16 @@
 # AQUORA MIDI core / application profile v1
 
-AQUORA v0.6.6 supports class-compliant USB MIDI 1.0 IN and OUT. Connect it to
-an ordinary MIDI host, or an iPad through a powered USB hub and route ports in
-CoreMIDI software such as midimittr. Firmware can observe USB enumeration, not
-whether a host app has made a route. No custom driver, proprietary peer name or
-lyric payload is required. KIRA-9 was not changed by this release.
+**Development specification only — NOT ENABLED in AQUORA v0.6.6.**
+Both USB and BLE performance MIDI are explicitly owner-authorized deferred.
+Revisit after KIRA-9 has a good working firmware build and owner reprioritizes.
+The partial transport-neutral core and USB adapter are preserved for future
+work, with performance routing and editable MIDI controls disabled. The
+contracts below describe that preserved candidate, not released capabilities.
 
-BLE performance MIDI is **owner-authorized deferred until KIRA-9 has a good
-working firmware build**. There is no pairing/discovery UI in v0.6.6. AIR remains
-available and USB MIDI does not start, stop or claim its radio. The reusable
-`midi_core.h` provides transport-neutral validation and source/channel policy;
-`usb_midi.h` is the current adapter. The existing lower-level Bluetooth code
-needed by AIR is not a claim of an enabled BLE MIDI performance interface.
+AIR remains available; neither deferred adapter may claim the radio or alter
+internal playback. Firmware-update SysEx is separate and remains required.
+Approval: Issue #31 comment 6702097918 / Issue #32 comment 6702099240.
+KIRA-9 was not changed.
 
 ## Setup
 

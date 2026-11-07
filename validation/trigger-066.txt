@@ -1,1 +1,1 @@
-Final changed-source regression: ON duty fix, per-page timing, current updater paths and startup/action acceptance. Reuses unchanged DSP/geometry proofs.
+Changed visual telemetry: audible weighted pitch, real low/high fixture; reuse successful unchanged seven updater paths from run 42353129424.
