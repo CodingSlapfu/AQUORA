@@ -11,7 +11,7 @@ static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
 typedef struct {int kind,value; unsigned track;} command;
 static command queue[64];
 static volatile unsigned qread,qwrite,state_revision,command_enqueued,command_applied;
-static unsigned displayed_revision;
+static unsigned displayed_revision, input_revision;
 static unsigned dropped,page,selected,group,oldkeys,oldbuttons,lastdraw,dirty=1,debug;
 #ifdef PLAT_HOST
 static unsigned geometry_jobs,history_updates,ui_blits,worker_jobs,worker_waits;
@@ -573,6 +573,7 @@ void app_input_only(void){midi_poll();unsigned b=plat_buttons(),k=plat_keys(),pr
              plat_enc(EN_K1),plat_enc(EN_K1+1),plat_enc(EN_K1+2),plat_enc(EN_K1+3)};
  int control=press!=0;
  for(unsigned i=0;i<7;i++)control|=enc[i]!=0;
+ if(control||k!=oldkeys)input_revision++;
  if(intro_active){
    unsigned now=plat_ms();
    /* First sample after power-on is a baseline, not a user input edge. */

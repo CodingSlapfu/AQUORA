@@ -596,8 +596,14 @@ static void battery_glyph(void)
 static void draw(int animate)
 {
  unsigned revision=state_revision;
+ unsigned inputs=input_revision;
  for(int band=0;band<5;band++){
-   midi_poll(); /* Service USB between display DMA strips. */
+   /* Input dispatch must not wait for a complete animated LCD frame. Poll
+    * only between bands, never while the canvas/snapshot is being drawn.
+    * Navigation can change every page-local selector: abandon this frame
+    * rather than mixing snapshots or clearing the new dirty notification. */
+   app_input_only();
+   if(input_revision!=inputs){dirty=1;return;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));

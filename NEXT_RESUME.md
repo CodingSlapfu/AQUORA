@@ -1,4 +1,10 @@
-# AQUORA 0.6.7 release continuation
-Sole owner c38396342210 holds /workspace/.aquora-release.lock. Checkout /workspace/scratch/22ea018dd526/aquora-resumed; build /workspace/scratch/c38396342210/source; site /workspace/scratch/c38396342210/site (public existing project appgprj_6ad6d0ae409c8191b45224ecdec724db). Do not start competing builds.
-Accepted platform run 42412774240 from 3566af4, with unchanged firmware source 17c2e3d539cd606ec96806511f835c1e2567b39b. Native/repro/single-core/WASM/eight updater paths PASS. Independently downloaded /workspace/scratch/c38396342210/platform.zip SHA256 4e93d784ef82aae1872154daee85213b9e38ca6e16741d7151107959a5594b5d; every inner hash verified. Do not repeat these successful gates. See validation/release-067/SOFTWARE_ACCEPTANCE.json.
-189 scenario profiles, 567 form cases, 36 stereo mixes, 24 three-minute stems, 189 bank cases plus authentic 066 migration, preferences power-cut tests, SOUND/control/lighting/visual/fallback/master-zero tests PASS; source and exact evidence in validation/release-067. Final native source/device/vendor unchanged. Site out/ staged with matching firmware/WASM and current manual; public still 0.6.6 until final publication. HTTP preview lacks secure AudioWorklet/WebMIDI, so verify real HTTPS emulator/Studio and enabled installer after publication. Preserve 0.6.6 for rollback. Release must include source, native/single-core, site package, checksums and independent downloadable acceptance/review artifacts. User authorizes completion without further permission; both MIDI transports deferred; AIR required; KIRA-9 untouched.
+# AQUORA 0.6.8 resume
+
+Sole current session: 0c64376c3cd0; lock /workspace/.aquora-release.lock/owner.
+Git checkout /workspace/scratch/22ea018dd526/aquora-resumed.
+Reconstructed full source /workspace/scratch/0c64376c3cd0/source from tools/prepare_next_source.sh.
+Baseline integration 335e1fd; published 067 preserved. Read NEXT_BUILD_ACTIVE.md.
+
+Candidate #46 adds input_revision and polls/dispatches between LCD bands; abandons partially drawn stale frame on input without clearing dirty. tests/input_bands_068.py injects a knob after first completed strip; passes all seven pages STOP/PLAY, drains queue on next audio callback and completes redraw. Deterministic 5ms strip fixture is NOT measured physical latency or proof of complete root cause. No new DSP/feature work yet; finish #46 latency/native review before load additions.
+Host candidate built successfully with python3 vendor/fm1-base/tools/build.py device --host --release 0.6.8 in reconstructed tree. Test log validation/release-068/input-bands.log. Do not rerun successful unmodified 067 tests. Remaining scope listed in active queue; no publication authorized until gates pass.
+Native toolchain retained at /workspace/scratch/759587c0312e/jieli-verified/jieli-linux-toolchains-20260730.1. Reuse it if needed.

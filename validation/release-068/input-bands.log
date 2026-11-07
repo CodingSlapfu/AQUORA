@@ -1,0 +1,53 @@
+In file included from /workspace/scratch/0c64376c3cd0/source/device/app.c:189,
+                 from /workspace/scratch/0c64376c3cd0/source/vendor/fm1-base/host/plat_host.c:696:
+/workspace/scratch/0c64376c3cd0/source/device/visual_worker.c: In function ‘resonance_job’:
+/workspace/scratch/0c64376c3cd0/source/device/visual_worker.c:123:9: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  123 |         if(p[1]<0)p[1]=0;if(p[1]>239)p[1]=239;
+      |         ^~
+/workspace/scratch/0c64376c3cd0/source/device/visual_worker.c:123:26: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  123 |         if(p[1]<0)p[1]=0;if(p[1]>239)p[1]=239;
+      |                          ^~
+In file included from /workspace/scratch/0c64376c3cd0/source/device/app.c:276:
+/workspace/scratch/0c64376c3cd0/source/device/usb_midi.h: In function ‘midi_audio_before’:
+/workspace/scratch/0c64376c3cd0/source/device/usb_midi.h:127:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  127 |  if(!active&&midi_source_was)midi_panic();midi_source_was=active;
+      |  ^~
+/workspace/scratch/0c64376c3cd0/source/device/usb_midi.h:127:43: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  127 |  if(!active&&midi_source_was)midi_panic();midi_source_was=active;
+      |                                           ^~~~~~~~~~~~~~~
+/workspace/scratch/0c64376c3cd0/source/device/app.c: In function ‘app_input_only’:
+/workspace/scratch/0c64376c3cd0/source/device/app.c:781:6: warning: this ‘while’ clause does not guard... [-Wmisleading-indentation]
+  781 |      while(note<53)note+=12;while(note>79)note-=12;
+      |      ^~~~~
+/workspace/scratch/0c64376c3cd0/source/device/app.c:781:29: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘while’
+  781 |      while(note<53)note+=12;while(note>79)note-=12;
+      |                             ^~~~~
+In file included from /workspace/scratch/0c64376c3cd0/source/device/app.c:819:
+/workspace/scratch/0c64376c3cd0/source/device/ui.c: In function ‘geometry’:
+/workspace/scratch/0c64376c3cd0/source/device/ui.c:76:6: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   76 |      if(start<0)start=0;if(end>48)end=48;
+      |      ^~
+/workspace/scratch/0c64376c3cd0/source/device/ui.c:76:25: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   76 |      if(start<0)start=0;if(end>48)end=48;
+      |                         ^~
+/workspace/scratch/0c64376c3cd0/source/device/ui.c: In function ‘draw’:
+/workspace/scratch/0c64376c3cd0/source/device/ui.c:702:8: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+  702 |        for(const char *q=v;*q;q++)wet[at++]=*q;wet[at++]='%';
+      |        ^~~
+/workspace/scratch/0c64376c3cd0/source/device/ui.c:702:48: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+  702 |        for(const char *q=v;*q;q++)wet[at++]=*q;wet[at++]='%';
+      |                                                ^~~
+PASS run=0 page=0 capture_to_dispatch_fixture_ms=0 commands=1
+PASS run=0 page=1 capture_to_dispatch_fixture_ms=0 commands=1
+PASS run=0 page=2 capture_to_dispatch_fixture_ms=0 commands=0
+PASS run=0 page=3 capture_to_dispatch_fixture_ms=0 commands=0
+PASS run=0 page=4 capture_to_dispatch_fixture_ms=0 commands=1
+PASS run=0 page=5 capture_to_dispatch_fixture_ms=0 commands=0
+PASS run=0 page=6 capture_to_dispatch_fixture_ms=0 commands=0
+PASS run=1 page=0 capture_to_dispatch_fixture_ms=0 commands=1
+PASS run=1 page=1 capture_to_dispatch_fixture_ms=0 commands=1
+PASS run=1 page=2 capture_to_dispatch_fixture_ms=0 commands=0
+PASS run=1 page=3 capture_to_dispatch_fixture_ms=0 commands=1
+PASS run=1 page=4 capture_to_dispatch_fixture_ms=0 commands=1
+PASS run=1 page=5 capture_to_dispatch_fixture_ms=0 commands=0
+PASS run=1 page=6 capture_to_dispatch_fixture_ms=0 commands=0
