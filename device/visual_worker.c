@@ -81,7 +81,8 @@ static void resonance_job(void)
     for(unsigned t=0;t<SR_TRACKS;t++){
       activity+=vis_input.meter[t]*8.f;hit+=vis_input.onset[t]*.06f;
     }
-    float target=fm_clampf(activity+hit,0,1);
+    float drive=activity+hit;
+    float target=2.5f*drive/(1.f+2.5f*drive);
     nodal_level+=(target-nodal_level)*(target>nodal_level?.4f:.12f);
     float dt=(vis_input.phase-water_last_phase)*.035f;
     water_last_phase=vis_input.phase;
@@ -98,7 +99,7 @@ static void resonance_job(void)
       float gx=(sand_field(x+.008f,y)-sand_field(x-.008f,y))*62.5f;
       float gy=(sand_field(x,y+.008f)-sand_field(x,y-.008f))*62.5f;
       float drive=nodal_level*.08f;
-      float scatter=hit*.11f*visual_sin(vis_input.phase*3.f+i*17.f);
+      float scatter=hit*.275f*visual_sin(vis_input.phase*3.f+i*17.f);
       sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-12,12)*drive*dt+scatter*dt)*.77f;
       sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-12,12)*drive*dt-scatter*dt)*.77f;
       sand_x[i]=fm_clampf(x+sand_vx[i]*dt,-.99f,.99f);
@@ -144,7 +145,8 @@ static void chladni_job(void)
 {
   float energy=0,hit=0;
   for(unsigned t=0;t<SR_TRACKS;t++){energy+=vis_input.meter[t]*8.f;hit+=vis_input.onset[t]*.08f;}
-  float target=fm_clampf(energy+hit,0,1);
+  float drive=energy+hit;
+  float target=2.5f*drive/(1.f+2.5f*drive);
   plate_activity+=(target-plate_activity)*(target>plate_activity?.55f:.10f);
   float pitch=vis_input.pitch>0?vis_input.pitch:vis_input.frequency;
   float order=2.f+fm_clampf(pitch/280.f,0,6.f);
@@ -175,7 +177,7 @@ static void chladni_job(void)
     float x=sand_x[i],y=sand_y[i],f=plate_sample(x,y);
     float gx=(plate_sample(x+.02f,y)-plate_sample(x-.02f,y))*25.f;
     float gy=(plate_sample(x,y+.02f)-plate_sample(x,y-.02f))*25.f;
-    float impulse=hit*.0018f*visual_sin(i*17.f+vis_input.phase);
+    float impulse=hit*.0045f*visual_sin(i*17.f+vis_input.phase);
     sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-6,6)*plate_activity*.0015f+impulse)*.78f;
     sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-6,6)*plate_activity*.0015f-impulse)*.78f;
     sand_x[i]=fm_clampf(x+sand_vx[i],-.98f,.98f);

@@ -240,6 +240,8 @@ static void arrangement_apply(const arrangement *record)
     engine.song_seed=record->version==AQ_BANK_VERSION?record->song_seed:record->rng;
     engine.music_mode=record->version==AQ_BANK_VERSION?record->music_mode:SR_STANDARD;
     engine.motion_manual=record->version==AQ_BANK_VERSION?record->motion_manual:sr_legacy_motion_manual(record->motion,record->scene);
+    for(unsigned role=0;role<2;role++)
+        if(!(engine.motion_manual&(1u<<role)))sr_motion_auto(&engine,role,1);
     engine.restart=0;
     qread=qwrite;
     state_revision++;

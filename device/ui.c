@@ -80,13 +80,13 @@ static void geometry(int offset)
      if(end<=start)continue;
      for(unsigned x=0;x<30;x++){
        unsigned light=vis_output.water_light[row][x];
-       uint16_t color=ui_background?(light?RGB(255-light*11,255-light*7,255-light*4):RGB(255,255,255)):water[light];
+       uint16_t color=ui_background?(light?RGB(255-light*5,255-light*2,255-light):RGB(255,255,255)):water[light];
        cv_rect(x*8+(x==0),start,8-(x==0)-(x==29),end-start,color);
      }
    }
    unsigned shade=nodal_level>.65f?3:nodal_level>.3f?2:1;
    static const uint16_t ink[2][4]={{RGB(9,24,31),RGB(27,84,108),RGB(48,156,184),RGB(127,245,224)},
-      {RGB(81,118,126),RGB(39,104,118),RGB(15,77,110),RGB(8,39,74)}};
+      {RGB(240,248,250),RGB(142,180,185),RGB(34,103,125),RGB(8,59,84)}};
    for(unsigned i=0;i<vis_output.node_count;i++){
      const int16_t *p=vis_output.nodes[i];int y0=p[1]-offset,y1=p[3]-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
@@ -843,7 +843,8 @@ static void draw(int animate)
            unsigned index=(evolve_step+1u+j)&63u;
            if(evolve_history[index]&(1u<<t)){
              unsigned x=9+j*222u/64u;
-             cv_line(x,y,x+2,y,colors[t]);
+             uint16_t marker=ui_background?RGB((colors[t]>>11)*4,((colors[t]>>5)&63)*2,(colors[t]&31)*4):colors[t];
+             cv_rect(x,y-1,3,3,marker);
            }
          }
        }

@@ -282,15 +282,21 @@ static void apply_motion_profile(sr_engine *e)
   for(unsigned t=0;t<2;t++)if(!(e->motion_manual&(1u<<t))){
     sr_motion m=intention_motion[e->scene][t];
     if(e->music_mode==SR_CINEMATIC){
-      m.glide_ms+=t?55:95;
+      m.glide_ms=(uint16_t)(m.glide_ms*6u/5u);
       m.glide_mode=e->scene==0?0:1;
-      m.vibrato_depth=e->scene==0?0:(t?2:8+e->scene%5);
+      m.vibrato_depth=e->scene==0?0:(t?0:3+e->scene%3);
       m.vibrato_rate=t?28:34+e->scene%8;
     }else if(e->music_mode==SR_NEOCLASSICAL){
       m.glide_mode=0;m.glide_ms=t?45:55;
       m.vibrato_depth=t?0:(e->scene%3==0?0:2+e->scene%3);
       m.vibrato_rate=t?30:46;
     }
+    /* AUTO is an expressive ceiling, not an instruction to slide every note.
+     * Keep the saved MANUAL path unchanged, including explicit OFF. */
+    m.glide_ms=(uint16_t)(m.glide_ms*(t?28u:35u)/100u);
+    if(m.glide_ms<18u)m.glide_ms=18u;
+    if(m.glide_ms>80u)m.glide_ms=80u;
+    m.vibrato_depth=(uint8_t)((m.vibrato_depth+1u)/2u);
     e->motion[t]=m;
   }
 }
@@ -558,7 +564,10 @@ static void plan_roles(sr_engine *e)
       if(section==3u&&t!=SR_DRONE&&t!=SR_CHOIR)probability/=3u;
       e->role_target[t]=song_draw(seed,100u+t)%100u<probability?1.f:0.f;
     }
-    e->role_target[SR_BASS]=section==3u?0.f:1.f;
+    /* The hush retains a quiet tonal through-line. Explicit mute/solo
+     * still wins downstream; Nature is never substituted for an arranger. */
+    e->role_target[SR_BASS]=section==3u?.55f:1.f;
+    if(section==3u)e->role_target[SR_DRONE]=1.f;
     /* Groove remains present throughout unfold/bloom/return; rests are form decisions. */
     e->role_target[SR_DRUMS]=(section==1u||section==2u||section==4u)?1.f:0.f;
 }
@@ -594,7 +603,23 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
     int held=0;
     for(int j=0;j<SR_VOICES;j++)if(&e->voices[j]!=v && e->voices[j].active &&
         e->voices[j].gate && e->voices[j].track==track)held=1;
-    if((m->glide_mode==2||(m->glide_mode==1&&held))&&e->pitch_last[track]>0)
+    int expression=1;
+    if(!(e->motion_manual&(1u<<track))){
+      /* Connected neighboring tones at a phrase answer/bloom; detached
+       * starts, large leaps and grounding bass pulses stay straight. */
+      int neighboring=0;
+      for(unsigned j=0;j<SR_VOICES;j++){
+        const sr_voice *prior=&e->voices[j];
+        int interval=(int)prior->midi-(int)midi;
+        if(prior!=v&&prior->active&&prior->gate&&prior->track==track&&
+           interval&&interval>=-5&&interval<=5)neighboring=1;
+      }
+      unsigned position=e->sequence_step&15u;
+      expression=neighboring&&beats>=1.5f&&position!=0&&
+          (position==6u||(song_section(e)==2u&&position==10u));
+      if(track==SR_BASS)expression=expression&&beats>=3.f&&sr_scenes[e->scene].energy==0;
+    }
+    if(expression&&(m->glide_mode==2||(m->glide_mode==1&&held))&&e->pitch_last[track]>0)
         v->pitch=e->pitch_last[track];
     e->pitch_last[track]=v->freq;
   }
@@ -1266,6 +1291,14 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       float amount=m->glide_mode&&m->glide_ms?clampf((float)frames*(1000.f/SR_RATE)/m->glide_ms,0,1):1;
       v->pitch+=(v->freq-v->pitch)*amount;
       modulation=vibrato[v->track];
+      if(!(e->motion_manual&(1u<<v->track))){
+        unsigned age=e->frame_count-v->born;
+        /* Delayed, shallow expression only in sustained phrase answers;
+         * no per-sample policy work or modulation on reference-locked audio. */
+        if(v->track==SR_BASS||age<SR_RATE/2u||age+v->remain<SR_RATE||
+           patch->attack<.03f||((v->born/e->tick_length)&7u)<4u||e->frequency_lock)
+          modulation=0;
+      }
     }
     config->step=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
   }

@@ -3,11 +3,11 @@
 Owner scope: Issue #32 and latest owner requirements #45–#54, 2026-11-07.
 Baseline: integration 335e1fd; preserve v0.6.6/v0.6.7 and accepted gates.
 
-- PARTIAL #46: dispatch controls between LCD bands; abort stale frame after input. 14 STOP/PLAY page fixtures pass. Hardware scan/IRQ, queue/state/LCD p50/p95/p99 and native/single-core acceptance still open. Fix/verify before new playback processing.
-- OPEN #45: restore 066 Cymatics aesthetics, stronger source-driven Cymatics/Chladni response; unchanged Original and master-zero behavior.
-- OPEN #47/#48: musical continuity, deliberate multiscale form, original melodic ambient electronica and stem/listening evidence.
-- OPEN #49: larger EVOLVE marks, preserve design and actual events.
-- OPEN #50/#52: restrained context-aware AUTO glide/vibrato, voiced chords/voice-leading, Together/Strum, bounded scheduler, SOUND controls, manual precedence and bank migration.
+- PARTIAL #46: dispatch controls between LCD bands; abort stale frame after input. 448 STOP/PLAY strip-arrival fixtures pass (all seven encoders and HOME across seven pages, four strip boundaries, audio preemption). Native dual/single-core compile passes. Hardware scan/IRQ, queue/state/LCD p50/p95/p99 and native/single-core acceptance still open. Fix/verify before new playback processing.
+- PARTIAL #45: restored 066 Cymatics color values; soft-ceiling gain and 2.5x onset displacement. Original 77,616 vertices exactly match 067. Chladni kernel passes. Full side-by-side/fallback/zero-master and perceptual acceptance remain. Remaining: restore 066 Cymatics aesthetics, stronger source-driven Cymatics/Chladni response; unchanged Original and master-zero behavior.
+- PARTIAL #47/#48: hush retains quiet bass/drone targets; 189 profiles/567 form scenarios pass. Post-gain dead-zone timelines, original listening comparisons and expanded form remain. Remaining: musical continuity, deliberate multiscale form, original melodic ambient electronica and stem/listening evidence.
+- PARTIAL #49: actual event markers enlarged from 3x1 to 3x3; six theme/visual renderer fixtures pass. Dense/sparse/font-size matrix and final contrast review remain.
+- PARTIAL #50 / OPEN #52: AUTO motion durations shortened; connected neighboring phrase answers only, delayed sustained-note vibrato, MANUAL preserved and bank AUTO refreshed. 63 expression profiles pass; PCM A/B and motion/bank regression pending. Remaining: restrained context-aware AUTO glide/vibrato, voiced chords/voice-leading, Together/Strum, bounded scheduler, SOUND controls, manual precedence and bank migration.
 - OPEN #51/#53: optional Auto/Experimental IDM/Ambient Broken rhythms, clear 19-kit kicks, subtle coherent rolls/builds/breaks/returns, persistence and audible evidence.
 - OPEN #54/#13: audible selective AIR effects; calibrated 1D gestures with cooldown, queued evolution/fill/harmony/swells, truthful UI and safe persistent mappings.
 - OPEN #32: complete targeted software acceptance, native/repro/single-core/WASM/updater/migration, source/artifact backups, publication and live verification only after all blockers pass.
