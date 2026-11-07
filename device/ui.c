@@ -850,7 +850,7 @@ static void draw(int animate)
      }
      if(page!=0){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?3:page==PAGE_SETUP?7:2;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?3:page==PAGE_SETUP?5:2;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());

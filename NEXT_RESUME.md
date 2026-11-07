@@ -1,7 +1,7 @@
 ## Current resumption checkpoint — November 7, 2026
 Both performance MIDI transports are owner-deferred. Candidate preserved at 82ca1f1; non-MIDI release boundary implemented and host/native builds pass; see validation/scope-066. Remaining non-MIDI reconciliation, visual/music acceptance, single-core/repro/WASM/updater/installer and publication gates are unfinished. No release was published; v0.6.5 preserved.
 
-**Backup blocker:** automatic approval review rejected the authorized development push to public CodingSlapfu/AQUORA, citing sensitive source egress and lack of private/organization-owned destination proof. Connector verified public repository and connected-account admin/push rights. No alternative source upload was attempted. Obtain explicit approval resolution before remote writes. Do not call local commits remote backups. Resume existing source; do not repeat passed scope tests unless source changes.
+**Backup resolved:** owner explicitly authorized public source/test/config/checkpoint uploads. Connected GitHub plugin backed up the exact a3f1b13 source tree at 9a0ce930d10f7ee51547cd7736fed895db4c00ef; tree 5851dc234e43a4c93ec87d02fa711d464f7dfb5e independently fetched and matched locally. Shell Git push lacks credentials; use the connected plugin's blob/tree/commit/ref APIs with expected-head checks. Do not force or overwrite newer remote work.
 
 SDK packaging inputs actually exist at `/workspace/scratch/759587c0312e/recovered-base/vendor/ac79-package-files`; use that absolute --sdk path while it exists. Old relative path in instructions below is absent from current checkout. No edits to KIRA-9.
 
