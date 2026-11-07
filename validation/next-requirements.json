@@ -718,7 +718,7 @@
       ],
       "artifacts": [],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Publication, live HTTPS runtime and final backup verification pending",
       "scope_sha256": "9300bfdf7b095d142280e66e536a18c84f000bd9df6064d0eeb8f28e30aabc8c",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
       "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
@@ -757,7 +757,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/34",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -770,12 +770,16 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "scope_sha256": "5b25a7b6e60d62fbc43cd47ba87c0b6d4cc3098b897af6e58936c9ddf01dc576",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "LED-ON",
@@ -1046,7 +1050,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/35",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1059,11 +1063,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-36",
@@ -1071,7 +1079,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/36",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1084,11 +1092,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-37",
@@ -1096,7 +1108,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/37",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1109,11 +1121,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-38",
@@ -1121,7 +1137,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/38",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1134,11 +1150,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-39",
@@ -1146,7 +1166,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/39",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1159,11 +1179,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-40",
@@ -1171,7 +1195,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/40",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1184,11 +1208,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-41",
@@ -1196,7 +1224,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/41",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1209,11 +1237,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-42",
@@ -1221,7 +1253,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/42",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1234,11 +1266,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-43",
@@ -1246,7 +1282,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/43",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1259,11 +1295,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     },
     {
       "id": "ISSUE-44",
@@ -1271,7 +1311,7 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/44",
       "target": "0.6.7",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/app.c",
         "device/dsp/engine.c",
@@ -1284,11 +1324,15 @@
         "tests/preferences_flash_067.c",
         "tests/audio_067.c"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "validation/release-067/TEST_RESULTS.md",
+        "validation/release-067/SCENARIOS.log",
+        "validation/release-067/SOFTWARE_ACCEPTANCE.json"
+      ],
       "physical_owner": "owner",
-      "carry_forward": "Required v0.6.7 software gates pending; physical aesthetics/performance owner-unverified",
+      "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
-      "source_commit": "1ab6c0fe857aec448b9aded8053ca7f1e8d12fad"
+      "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
     }
   ],
   "release_evidence": {},

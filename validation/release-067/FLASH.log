@@ -1,0 +1,1 @@
+PASS 100 power-cut boundaries per each of five objects (four banks + global settings); modeled max IRQ 106us, not hardware timing. CRC fallback and prior-good preservation.
