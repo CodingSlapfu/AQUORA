@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: aquora-067-platform
   cancel-in-progress: false
@@ -22,6 +23,19 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install Pillow==11.3.0
           echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42412671294
+          name: aquora-067-platform
+          path: ${{ runner.temp }}/inherited
+      - name: Reuse successfully compiled identical native source
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin 17c2e3d539cd606ec96806511f835c1e2567b39b
+          git diff --exit-code 17c2e3d539cd606ec96806511f835c1e2567b39b HEAD -- device vendor
+          (cd "$RUNNER_TEMP/inherited" && sha256sum -c --strict SHA256SUMS.txt)
+          cp -r "$RUNNER_TEMP/inherited/native" "$RUNNER_TEMP/results/native"
       - name: Restore verified native toolchain
         run: |
           curl --fail --location --max-time 180 --retry 2 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
@@ -35,11 +49,11 @@ jobs:
           set -euo pipefail
           cd "$RUNNER_TEMP/source"
           export AC79_SDK="$PWD/vendor/ac79-package-files"
-          for kind in native native-repro single-core; do
+          for kind in native-repro single-core; do
             mkdir "$RUNNER_TEMP/results/$kind"
             if [ "$kind" = single-core ]; then export FM1B_CPU2=0; else unset FM1B_CPU2; fi
             python3 vendor/fm1-base/tools/build.py device --release 0.6.7 2>&1 | tee "$RUNNER_TEMP/results/$kind/build.log"
-            cp device/build/*.fwsc device/build/*.map device/build/*.elf "$RUNNER_TEMP/results/$kind/"
+            cp device/build/*.fwsc device/build/*.elf "$RUNNER_TEMP/results/$kind/"
             rm -rf device/build
           done
           cmp "$RUNNER_TEMP/results/native/sound-healing-0.6.7.fwsc" "$RUNNER_TEMP/results/native-repro/sound-healing-0.6.7.fwsc"
