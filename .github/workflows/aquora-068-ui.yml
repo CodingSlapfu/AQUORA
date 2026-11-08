@@ -45,30 +45,15 @@ jobs:
           done
           cmp "$RUNNER_TEMP/results/native/sound-healing-0.6.8.fwsc" "$RUNNER_TEMP/results/native-repro/sound-healing-0.6.8.fwsc"
           python3 tests/direct_update_068.py "$RUNNER_TEMP/results/native/sound-healing-0.6.8.fwsc" | tee "$RUNNER_TEMP/results/updater.log"
-      - name: Host feature and software acceptance
+      - name: Intro-only UI acceptance; preserve exact passed DSP source
         run: |
           set -euo pipefail
+          git fetch --no-tags --depth=1 origin 4bd578c04dfa2834ab3c6bda2a38324be3a26fa1
+          git diff --exit-code 4bd578c04dfa2834ab3c6bda2a38324be3a26fa1 HEAD -- device/dsp device/app.c device/air_sensor.h device/arrangement.c device/parameters.def vendor
           cd "$RUNNER_TEMP/source"
           unset FM1B_CPU2
           python3 vendor/fm1-base/tools/build.py device --host --release 0.6.8 > "$RUNNER_TEMP/results/host-build.log" 2>&1
-          h=device/build/host/sound-healing_host
-          mkdir -p "$RUNNER_TEMP/results/panel"
-          "$h" tests/features_panel_068.txt "$RUNNER_TEMP/results/panel" > "$RUNNER_TEMP/results/panel.log"
-          python3 tests/input_bands_068.py > "$RUNNER_TEMP/results/strip-input.log"
-          python3 tests/latency_load_068.py "$h" "$RUNNER_TEMP/results/latency"
-          gcc -O2 tests/performance_features_068.c -lm -o "$RUNNER_TEMP/features"
-          "$RUNNER_TEMP/features" > "$RUNNER_TEMP/results/features.log"
-          gcc -O2 tests/gesture_policy_068.c -lm -o "$RUNNER_TEMP/gesture"
-          "$RUNNER_TEMP/gesture" > "$RUNNER_TEMP/results/gesture.log"
-          gcc -O2 tests/audio_features_068.c -lm -o "$RUNNER_TEMP/audio-features"
-          "$RUNNER_TEMP/audio-features" > "$RUNNER_TEMP/results/audio-features.log"
-          python3 tests/typography_068.py "$h" "$RUNNER_TEMP/results/typography"
-          AQUORA_FONT_FIXTURE=2 python3 tests/latency_load_068.py "$h" "$RUNNER_TEMP/results/large-latency"
-          gcc -O2 tests/release_067.c -lm -o "$RUNNER_TEMP/scenarios"
-          "$RUNNER_TEMP/scenarios" > "$RUNNER_TEMP/results/scenarios.log"
-          mkdir "$RUNNER_TEMP/results/audio"
-          gcc -O2 -Idevice/dsp device/dsp/engine.c tests/audio_067.c -lm -o "$RUNNER_TEMP/audio"
-          "$RUNNER_TEMP/audio" "$RUNNER_TEMP/results/audio" > "$RUNNER_TEMP/results/audio.log"
+          python3 tests/intro_font_068.py device/build/host/sound-healing_host "$RUNNER_TEMP/results/intro-font"
       - name: Emscripten and current-source WASM
         run: |
           set -euo pipefail

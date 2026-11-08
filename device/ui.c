@@ -23,7 +23,7 @@ static int text_room(int y){return y<8?24:47-y;}
 static unsigned large_text_overflow,large_font_mask;
 #endif
 static int ui_text(int x,int y,const felucca_font_t *font,const char *text,uint16_t color){
- if(ui_font_size==2){
+ if(ui_font_size==2&&!intro_active){
   if(y>35)y=35;
   int room=text_room(y);if(room>font->h)room=font->h;
   if(ui_equal(text,"SEL MUTE / LFO SOLO"))text="SEL:M LFO:S";
@@ -36,7 +36,7 @@ static int ui_text(int x,int y,const felucca_font_t *font,const char *text,uint1
  return cv_text(x,y,font,text,color);
 }
 #define cv_text ui_text
-static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?&FONT_T:&FONT_XS;}
+static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?(intro_active?&FONT_S:&FONT_T):&FONT_XS;}
 static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_L:&FONT_B;}
 #define FONT_XS (*ui_caption_font())
 #define FONT_B (*ui_value_font())

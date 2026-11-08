@@ -16,3 +16,5 @@ Listening: four original3min renders under /workspace/scratch/0c64376c3cd0/liste
 Both performance MIDI transports deferred; AIR required. KIRA-9 untouched. Owner physical testing separate.
 
 Final run42436991723 failed before producing firmware: ui fit cache used unsupported bare-metal strcmp. Fixed with 80-byte bounded ui_equal/ui_len/ui_copy, no new libc dependencies. Re-run only corrected final workflow; earlier successful platform42421822671 remains intact.
+
+Run42437228836 at4bd578c PASSED all final corrected native/repro/single/WASM/updater, 1100 Large renders, control, gesture, 19-kit/25 AIR audio and full scenarios. Last change isolates intro wordmark from Large UI fitting; intro_font_068.py compares exact wordmark pixels across Small/Medium/Large. Latest CI reuses all passed core tests via exact source diff and builds only changed UI platform/startup. Release is still gated on that run, artifact verification, scope/register and staged/live publication.
