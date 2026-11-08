@@ -733,6 +733,9 @@ void app_input_only(void){
  oldkeys=k;
  int d=enc[0];
  if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_AIR);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
+ static unsigned role_page=~0u;
+ if(page==PAGE_MIX&&role_page!=PAGE_MIX&&mix_tab!=4)mix_focus=selected;
+ role_page=page;
  d=enc[1];
  if(d&&!debug){
    if(page==PAGE_SOUND&&sound_picker){
@@ -1106,6 +1109,7 @@ int app_expect(const char *what,int *got){
    printf("CONTROL run=%u queue_p95_ms=%u queue_p99_ms=%u label_p95_ms=%u label_p99_ms=%u label_max_ms=%u poll_p99_ms=%u drops=%u\n",run,q.p95/100u,q.p99/100u,l.p95/100u,l.p99/100u,l.peak/100u,p.p99/100u,dropped);
   }*got=1;return 1;
  }
+ if(!strcmp(what,"mix_focus")){*got=mix_focus;return 1;}
  if(!strcmp(what,"boot_starts")){*got=boot_starts;return 1;}
  if(!strcmp(what,"learn_count")){*got=engine.capture.count;return 1;}
  if(!strcmp(what,"learn_applied")){*got=engine.learned.count;return 1;}

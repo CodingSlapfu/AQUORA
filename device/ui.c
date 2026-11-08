@@ -277,10 +277,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 130:{static const char *v[]={"Auto","Gentle","Experimental","Off"};*name="TRANSITIONS";return v[engine.fill_character];}
  case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo","Tone Sweep","Soft Pulse"};*name="AIR FX";return effects[engine.air_fx];}
  case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
- case 132:{static const char *m[]={"Off","Play Alone","Alone + Along"};*name="LEARN FROM PLAYING";return m[engine.learn_mode];}
+ case 132:{static const char *m[]={"Off","Play Alone","Alone + Along"};*name="LEARN CAPTURE";return m[engine.learn_mode];}
  case 133:{static const char *m[]={"Original","Subtle","Balanced","Strong"};*name="LEARN STRENGTH";return m[engine.learn_strength];}
  case 134:*name="APPLY TO SONG";return engine.learn_pending?"Queued / next loop":engine.capture.count>=3?"Right: Apply":"Play 3+ notes";
- case 135:*name="DISCARD / CLEAR";return "Left: Discard / Right: Clear";
+ case 135:*name="DISCARD / CLEAR";return "Left / Right";
  case 96:*name=engine.pending_mode?"NEXT BEAT MODE":"MUSIC MODE";return music_modes[engine.pending_mode?engine.pending_mode-1u:engine.music_mode];
  case 97:*name="LEAD MOTION";return engine.motion_manual&1u?"MANUAL":"AUTO";
  case 98:*name="BASS MOTION";return engine.motion_manual&2u?"MANUAL":"AUTO";

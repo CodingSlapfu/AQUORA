@@ -389,7 +389,6 @@ static void apply_sound_profile(sr_engine *e,uint32_t seed,int sounds_only)
     if(kit==e->drum_kit||kit+1u==previous)kit=15u+(pick+e->music_mode)%4u;
     e->drum_kit=kit;e->recent_patches[e->music_mode][scene][SR_DRUMS]=kit+1u;
     if(!sounds_only){
-    e->learned.count=e->capture.count=e->learn_pending=0;e->form_loop=0;
       e->drum_presence=30u+palette[scene].hit/2u+(e->music_mode==SR_CINEMATIC?8u:0u);
       e->drum_level=.48f+.025f*palette[scene].density+(e->music_mode==SR_NEOCLASSICAL?-.08f:.02f);
       e->tracks[SR_DRUMS].pan=((int)(scene%5u)-2)*.035f;
@@ -415,6 +414,7 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
 {
   if(e->running||e->stop_frames)return;
   if(!sounds_only){
+    e->learned.count=e->capture.count=e->learn_pending=0;e->form_loop=0;
     e->song_seed=song_draw(seed,100u+e->music_mode);
     e->rng=song_draw(seed,12);
     e->drum_rng=song_draw(seed,13);
@@ -572,6 +572,7 @@ static void plan_roles(sr_engine *e)
     }
     /* The hush retains a quiet tonal through-line. Explicit mute/solo
      * still wins downstream; Nature is never substituted for an arranger. */
+    if(learned_active(e)&&section!=3u)e->role_target[SR_LEAD]=.85f;
     e->role_target[SR_BASS]=section==3u?.55f:1.f;
     if(section==3u)e->role_target[SR_DRONE]=1.f;
     /* Groove remains present throughout unfold/bloom/return; rests are form decisions. */
@@ -582,7 +583,7 @@ void sr_start(sr_engine *e)
     if(e->stop_frames){e->restart=1;return;}
     clear_transport(e);
     e->running=1;
-    e->sequence_step=0;e->loop_pos=0;
+    e->sequence_step=0;e->loop_pos=0;e->learn_origin=0;
     e->external_clock_count=255;
     e->tick_phase=e->tick_length;
     plan_roles(e);
@@ -1068,7 +1069,7 @@ static void trigger(sr_engine *e){
     }
   }
   if(!e->loop_pos){
-    if(e->learn_pending&&!e->freeze){e->learned=e->capture;e->capture.count=0;e->learn_pending=0;}
+    if(e->learn_pending&&!e->freeze){e->learned=e->capture;e->capture.count=0;e->learn_pending=0;e->learn_origin=e->sequence_step;}
     if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
     if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;e->play_queued=0;}
     if(e->pending_key){

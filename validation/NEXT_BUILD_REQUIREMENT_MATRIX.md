@@ -49,3 +49,19 @@ Both performance MIDI transports remain OWNER-AUTHORIZED DEFERRED. Source regist
 | MIDI-USB | [Class-compliant bidirectional USB MIDI: clock/transport/notes/control, recovery, routing and tests](https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918) | OWNER-AUTHORIZED DEFERRED | DEFERRED: after KIRA-9 has a good working firmware build and owner reprioritizes |
 | MIDI-BLE | [BLE MIDI after KIRA-9 has a good working firmware build](https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918) | OWNER-AUTHORIZED DEFERRED | DEFERRED: after KIRA-9 has a good working firmware build and owner reprioritizes |
 | MIDI-AIR | [AIR functional; deferred USB/BLE performance MIDI disabled; update SysEx preserved](https://github.com/CodingSlapfu/AQUORA/issues/31#issuecomment-6702097918) | COMPLETED SOFTWARE | validation/scope-066/non-midi-panel.log; validation/integration-066/air_calibration_066.log |
+
+## v0.6.9 owner corrective delta (baseline8b5627d)
+All previously accepted0.6.8 scope/CI/artifacts remains preserved. New/expanded owner requests are not erased by historical completion claims.
+
+| IDs | Current candidate implementation | Targeted evidence | Remaining gate |
+|---|---|---|---|
+| #1/#42 | Physical duty overrides, generated-note latches, music-driven Dance buttons, tempo/pending feedback | production scanner duty + role/state policy; frame fixtures | owner physical LEDs retest |
+| #59/#46 | Selection frame-completion fast path, visible role/patch, shared Mix focus |448 strip cases,24load/worker cases, shared_selection069 | final native/WASM integration + owner actual cadence |
+| #56 | Beat-bound latest intention/mode, STOP commit, loop-bound key/length preserved |252scene cases, cancellation and CONTROL_POLICY.md | final integration + owner audible latency |
+| #58 |16-event local capture, durations, multi-loop rhythm, scaled answers, apply/discard/clear/strength, V6 persistence |capture/apply/recall;V1–V6×4banks; sanitizer cases | final integration + owner recognizable performance |
+| #57/#34/#48/#43/#47 | Fourth mode;16functional multiloop sections, harmonic/orchestration/pulse paths, returns and continuous tonal anchors |252form cases;12×180s PCM comparisons and Bass timelines | final integration, accessible listening pack; owner taste |
+| #45 | Original nodal choreography from role/bass/note activity; moderate Cymatics boost; Original exact |77,616Original vertices equal, causal field/settling metrics, actual240px sequences | owner perceptual response/FPS |
+| #18 | Retrigger-aware quiet kick attack, controlled body/harmonics |19small-hit kits;76real-tempo full-mix cases;ceiling/headroom | owner speaker/headphone clarity |
+| #60 | Hardware-entropy coherent boot randomization; one post-intro start; manual STOP/panic honored |84boot seeds all21×4;timeout/button/knob;master mute;STOP+Learn | final binaries/HTTPS and physical boot |
+| #61/#54/#13 | Single-source RF, stationary/noise-aware calibration, robust control filtering and gesture suppression, diagnostics/source persistence |30min synthetic idle0%excursion/0false gestures;weak span/outlier/loss/reacquire/held hand;advertiser interference | final native/WASM integration + owner physical RF |
+| #32/#19 | Existing site only, matching firmware/Studio/emulator;067/068rollback | source opened93c5d946; release packaging pending | ALL final software gates, backup and independent public HTTPS hash/version |

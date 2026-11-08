@@ -31,7 +31,8 @@ static int learned_index(const sr_engine *e,unsigned step){
  if(!learned_active(e))return -1;
  unsigned span=16u,last=e->learned.count-1u;
  while(span<=e->learned.step[last]&&span<64u)span*=2u;
- for(unsigned n=0;n<e->learned.count;n++)if(e->learned.step[n]==step%span)return (int)n;
+ unsigned position=e->running&&e->sequence_step?(e->sequence_step-1u-e->learn_origin)%span:step%span;
+ for(unsigned n=0;n<e->learned.count;n++)if(e->learned.step[n]==position)return (int)n;
  return -1;
 }
 static int learned_degree(const sr_engine *e,unsigned step,int original){

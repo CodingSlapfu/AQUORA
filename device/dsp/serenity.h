@@ -36,7 +36,7 @@ typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_r
 typedef struct {uint8_t count;uint8_t note[16],step[16],length[16];} sr_learn_phrase;
 typedef struct {
   sr_learn_phrase learned,capture;
-  uint32_t capture_ms,capture_down[16];
+  uint32_t capture_ms,capture_down[16],learn_origin;
   uint8_t capture_raw[16],learn_mode,learn_strength,learn_pending;
   uint8_t chord_mode, chord_gap, chord_inversion, chord_direction, rhythm_style, fill_character;
   uint8_t air_mode, air_request, air_result, chord_alternate, rhythm_pending;

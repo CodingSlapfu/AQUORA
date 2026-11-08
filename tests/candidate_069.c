@@ -24,9 +24,13 @@ int main(void){
  assert(e.capture.count==3&&e.capture.length[2]>0);
  sr_learn_action(&e,1);assert(e.learned.count==3&&!e.capture.count);
  for(unsigned n=0;n<16;n++)assert(motif_degree(&e,n)>=-1&&motif_degree(&e,n)<=6);
+ sr_set_scene(&e,4);assert(e.learned.count==3);
+ sr_set_music_mode(&e,SR_EXPERIMENTAL);assert(e.learned.count==3);
  sr_start(&e);e.learn_mode=2;for(unsigned n=0;n<40;n++)sr_learn_event(&e,n%27,1,3000+n*50);
  assert(e.capture.count<=16);sr_learn_action(&e,1);assert(e.learn_pending);
  e.loop_pos=0;trigger(&e);assert(!e.learn_pending&&!e.capture.count);
+ e.learned.count=3;e.learned.step[0]=0;e.learned.step[1]=17;e.learned.step[2]=31;e.learn_strength=3;e.learn_origin=0;
+ e.sequence_step=18;assert(learned_index(&e,1)==1);e.sequence_step=32;assert(learned_index(&e,15)==2);
  sr_learn_action(&e,2);assert(!e.learned.count);
  puts("PASS 252 intention/mode/length cases: next-beat last-choice scene, 16-section routes, Freeze; bounded capture/apply/clear and scale mapping");
 }
