@@ -97,7 +97,7 @@ static int arrangement_valid(const arrangement *r)
         (r->pending_length&&r->pending_length!=16&&r->pending_length!=32&&r->pending_length!=64)||
         r->keyboard_mode>1||r->pending_key>12||r->frequency_lock>1||r->auto_gain>1||r->auto_level>1||
         (r->tonic_override&&(r->tonic_override<36||r->tonic_override>47))))||
-       (r->version>=AQ_BANK_V4&&(r->music_mode>=SR_MUSIC_MODES||r->motion_manual>3))||
+       (r->version>=AQ_BANK_V4&&(r->music_mode>=SR_MUSIC_MODES||r->motion_manual>7))||
        r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>=SR_BEDS||
        r->drum_kit>=SR_DRUM_KITS||r->drum_density>SR_DENSITY_MAX||r->solo>SR_TRACKS||
        r->frequency_auto>1||r->lock_textures>1||r->sacred_mode>2||r->visual>2||r->tick_length<5512||r->tick_length>22050||

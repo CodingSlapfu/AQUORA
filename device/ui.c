@@ -909,25 +909,23 @@ static int draw(int animate)
        limited_text(8,24,224,&FONT_XS,"MANUAL OVERRIDES AUTO DEFAULTS",skin_dim());
      }
    }else if(visual&&page==PAGE_EVOLVE){
-     if(band==1){
-       label(8,0,"STEP",engine.loop_pos+1);
-       label(86,0,engine.freeze?"FROZEN":engine.evolve_next?"NEXT QUEUED":"PHRASE",engine.phrase);
-       
-       cv_text(162,0,&FONT_XS,"SECTION",skin_dim());
-       limited_text(162,15,72,&FONT_B,sr_section_name(&engine,0),skin_text());
-     }else{
-       for(unsigned t=0;t<SR_TRACKS;t++){
-         unsigned y=t*5u+3u;
-         for(unsigned j=0;j<64;j++){
-           unsigned index=(evolve_step+1u+j)&63u;
-           if(evolve_history[index]&(1u<<t)){
-             unsigned x=9+j*222u/64u;
-             uint16_t marker=ui_background?RGB((colors[t]>>11)*4,((colors[t]>>5)&63)*2,(colors[t]&31)*4):colors[t];
-             cv_rect(x,y-1,3,3,marker);
-           }
+     if(band==1||band==2){
+       unsigned first=band==1?0u:4u;
+       unsigned start=((evolve_step+1u)&63u)/32u*32u;
+       for(unsigned row=0;row<4;row++){
+         unsigned t=first+row,y=3u+row*8u;
+         cv_line(8,y+6,232,y+6,skins[ui_theme][ui_background].border);
+         for(unsigned j=0;j<32;j++)if(evolve_history[start+j]&(1u<<t)){
+           uint16_t marker=ui_background?RGB((colors[t]>>11)*4,((colors[t]>>5)&63)*2,(colors[t]&31)*4):colors[t];
+           cv_rect(9+j*7u,y,6,6,marker);
          }
        }
-       cv_line(232,2,232,42,RGB(87,135,140));
+       unsigned cursor=(evolve_step&31u)*7u+9u;
+       cv_line(cursor,1,cursor,35,skin_accent());
+       if(band==1){
+         for(unsigned j=0;j<64;j++)if(evolve_history[j])cv_rect(9+j*3u,39,2,2,skin_dim());
+         cv_line(9+start*3u,43,9+(start+31u)*3u,43,skin_accent());
+       }else limited_text(8,36,224,&FONT_T,sr_section_name(&engine,0),skin_dim());
      }
    }else if(visual&&page==3&&band<3)mixer_band(band);
    else if(visual&&page==PAGE_PLAY)geometry(band*48);

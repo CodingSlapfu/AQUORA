@@ -376,7 +376,7 @@ static void consume(void){
  case 22:engine.tone_level=adjust(engine.tone_level,d,.005f,.10f);break;
  case 23:engine.binaural_level=adjust(engine.binaural_level,d,.005f,.10f);break;
  case 24:t->pan=fm_clampf(t->pan+d*.05f,-1,1);break;
- case 25:engine.play_queued=0;engine.tick_length=bounded((int)engine.tick_length-d*80,5512,22050);break;
+ case 25:engine.motion_manual|=4u;engine.play_queued=0;engine.tick_length=bounded((int)engine.tick_length-d*80,5512,22050);break;
  case 27:sr_set_perfect_key(&engine,!engine.perfect_key);break;
  case 28:if(d<0)engine.solo=SR_TRACKS;else engine.solo=d>0?c.track:engine.solo==c.track?SR_TRACKS:c.track;break;
  case 29:t->send=adjust(t->send,d,.05f,1);break;
@@ -1290,7 +1290,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"preferences_saved"))*got=!preferences_dirty&&!preferences_saving;
  else if(!strcmp(what,"pending_scene"))*got=engine.pending_scene;
  else if(!strcmp(what,"drum_presence"))*got=engine.drum_presence;
- else if(!strcmp(what,"boot_drums"))*got=engine.drum_kit==0&&engine.drum_density==2&&engine.drum_hit==25&&engine.drum_presence==50&&engine.drum_level==.66f;
+ else if(!strcmp(what,"boot_drums"))*got=engine.drum_kit==0&&engine.drum_density==2&&engine.drum_hit==25&&engine.drum_presence==100&&engine.drum_level==.66f;
  else if(!strcmp(what,"settings_066_fixture")){
    aq_settings prior={0};prior.version=0x41513036u;prior.visual=1;prior.lighting=3;prior.font_size=1;prior.background=1;
    *got=plat_store_save(OBJ_SETTINGS,&prior,28)==0;

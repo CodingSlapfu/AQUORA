@@ -1,9 +1,7 @@
-# AQUORA v0.6.9 — LIVE; entire website refreshed
+# AQUORA 0.6.10 — development, NOT accepted or published
 
-Website-only #63 COMPLETE. Existing URL https://parallax8-studio.jminie66.chatgpt.site/ . Site version190/source0d9ac7c428c9dcde5b131dcdeed6d2d9c7ab677f; deployment appgdep_6af02ca59d1c8191888c55605cf61e05 succeeded and independently verified on actual public HTTPS.
-
-Read validation/release-069/WEBSITE_REFRESH63.json for page checks,14actual accepted-WASM LCD scenes, three24-frame visualizer animations, source/media backupZIP and exact hashes. Current guide/downloads/navigation replace obsolete UI;30old assets/duplicate metadata removed without deleting historical firmware/rollback/source/recovery.273reference inventory passes. Public firmware/WASM downloads still match original accepted bytes. No firmware rebuild or completed-test rerun.
-
-Original Puya P25Q80/0x856014 hardware only. UC25HQ80/0xB36014 unsupported; #62 OPEN/OWNER-DEFERRED. Warning and no-auto-detection disclosure remain visible. Physical flashing/performance/LED/RF/listening/artistic checks remain owner-unverified. Both performance MIDI transports deferred; AIR required; KIRA-9 untouched.
-
-Accepted source dc3db773, native firmware611496bytes FM-1_73000609 SHA25694dc7df0038b90b783913c2c9549b120120e87fd6a7506eeb15e3564b0baeae9. WASM213114bytes SHA2562b79c5b3e55d4982d0f2b7a51bbad6924347dfc6735ed75e393a42b364bc8d6a. Independent website source/media overlay backup in validation/release-069/AQUORA-0.6.9-website-refresh.zip; Site source is separately committed/pushed. Resume actual existing checkout, not stale landing template. Previous56c15b7cf3b9lock retained; never remove an active lock/start competing build.
+Baseline c9813170bdc4fab29e46ed6beb23de6c27f879e3; accepted 0.6.9 stays public.
+Current owner session9e3e15408fe4, lock /workspace/.aquora-release.lock/owner, Git checkout /workspace/scratch/9e3e15408fe4/AQUORA, reconstructed source /workspace/scratch/9e3e15408fe4/source. Do not overlap an active owner.
+Read NEXT_BUILD_ACTIVE.md and validation/release-0610/OWNER_SCOPE.json. Latest #71 overrides earlier no-visualizer-changes wording. Initial implementation compiles host; no release acceptance claim.
+Recover complete source via tools/prepare_next_source.sh once when necessary. Native toolchain pinned archive SHA256 a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd; local /workspace/scratch/9e3e15408fe4/jieli/jieli-linux-toolchains-20260730.1. Matching 0.6.9 host and visual kernel retained for equal-seed A/B in parent scratch; recreate from baseline if absent.
+Do not repeat unchanged accepted 0.6.9 tests. Run new composition_0610.c plus affected acceptance, native/repro/single/WASM/update, visual/source backup gates. Complete all scope before publishing existing site. Hardware62/performance MIDI deferred; AIR/rollback/KIRA-9 preserved.

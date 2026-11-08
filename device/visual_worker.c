@@ -31,7 +31,7 @@ uint32_t plat_cpu2_stack(void) { return 0; }
 static struct {
     unsigned phase, event[SR_TRACKS], water, frequency, scene, full;
     float atmosphere, pitch;
-    unsigned tuning, tonic;
+    unsigned tuning, tonic, note_class;
     float onset[SR_TRACKS];
     float meter[SR_TRACKS];
 } vis_input __attribute__((aligned(64)));
@@ -53,7 +53,7 @@ static void visual_init(void)
 static float nodal_level;
 static float sand_x[512],sand_y[512],sand_vx[512],sand_vy[512];
 static unsigned sand_ready,water_last_phase;
-static float water_m=2.f,water_n=3.f;
+static float water_m=2.f,water_n=3.f,water_shape,water_breath;
 static float visual_sin(float phase)
 {
     int a=(int)phase;float f=phase-a;
@@ -63,8 +63,11 @@ static float visual_sin(float phase)
 }
 static float sand_field(float x,float y)
 {
-    return visual_sin((x+1.f)*32.f*water_m)*visual_sin((y+1.f)*32.f*water_n)
+    float cross=visual_sin((x+1.f)*32.f*water_m)*visual_sin((y+1.f)*32.f*water_n)
       -visual_sin((x+1.f)*32.f*water_n)*visual_sin((y+1.f)*32.f*water_m);
+    float rings=visual_sin((x*x+y*y)*(35.f+water_n*12.f)+water_breath);
+    return cross*(1.f-water_shape)+rings*water_shape;
+
 }
 static void resonance_job(void)
 {
@@ -89,8 +92,12 @@ static void resonance_job(void)
     dt=fm_clampf(dt,.015f,.1f);
     float pitch=vis_input.pitch>0?vis_input.pitch:(float)vis_input.frequency;
     float complexity=fm_clampf(pitch*(1.f/450.f)+vis_input.frequency*(1.f/1600.f),0,3.f);
-    float goal_m=2.f+(vis_input.scene%3u)+complexity*.3f;
-    float goal_n=3.f+((vis_input.scene*7u)%4u)+complexity*.6f;
+    unsigned pitch_class=vis_input.note_class;
+    float shape_goal=(pitch_class%4u)*.24f;
+    water_shape+=(shape_goal-water_shape)*dt*.8f*nodal_level;
+    water_breath+=(vis_input.meter[SR_BASS]*18.f+hit*.5f-water_breath)*dt*2.f;
+    float goal_m=2.f+(pitch_class%3u)+complexity*.3f;
+    float goal_n=3.f+((pitch_class+vis_input.scene)%4u)+complexity*.6f;
     water_m+=(goal_m-water_m)*dt*.9f;
     water_n+=(goal_n-water_n)*dt*.9f;
     float cy=vis_input.full?120.f:96.f,sy=vis_input.full?117.f:44.f;
@@ -98,8 +105,8 @@ static void resonance_job(void)
       float x=sand_x[i],y=sand_y[i],f=sand_field(x,y);
       float gx=(sand_field(x+.008f,y)-sand_field(x-.008f,y))*62.5f;
       float gy=(sand_field(x,y+.008f)-sand_field(x,y-.008f))*62.5f;
-      float drive=nodal_level*.08f;
-      float scatter=hit*.275f*visual_sin(vis_input.phase*3.f+i*17.f);
+      float drive=nodal_level*.18f;
+      float scatter=hit*.46f*visual_sin(vis_input.phase*3.f+i*17.f);
       sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-12,12)*drive*dt+scatter*dt)*.77f;
       sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-12,12)*drive*dt-scatter*dt)*.77f;
       sand_x[i]=fm_clampf(x+sand_vx[i]*dt,-.99f,.99f);
@@ -170,10 +177,10 @@ static void chladni_job(void)
   bass_goal=bass_goal/(.18f+bass_goal);
   plate_bass+=(bass_goal-plate_bass)*(bass_goal>plate_bass?.6f:.12f);
   plate_turn+=(steer_x*.12f-plate_turn)*.22f;
-  if(drive>.00001f)plate_phase+=plate_activity*.7f;
+  if(drive>.00001f)plate_phase+=plate_activity*1.7f;
   float bass=plate_bass*1.6f;
-  float zoom=1.f+.16f*plate_bass;
-  float shift_x=steer_x*.035f,shift_y=steer_y*.035f;
+  float zoom=1.f+.24f*plate_bass;
+  float shift_x=steer_x*.055f,shift_y=steer_y*.055f;
   float rotation=plate_turn;
 
   for(unsigned j=0;j<25;j++)for(unsigned i=0;i<25;i++){
@@ -183,7 +190,7 @@ static void chladni_job(void)
     float radius=fm_sqrtf(x*x+y*y+.00001f);
     float c=x/radius,prev=1.f,now=c;
     for(unsigned n=2;n<=petals;n++){float next=2.f*c*now-prev;prev=now;now=next;}
-    float radial=visual_sin(radius*(32.f+plate_order*11.f-bass*5.f)+plate_activity*visual_sin(plate_phase)*9.f);
+    float radial=visual_sin(radius*(32.f+plate_order*11.f-bass*5.f)+plate_activity*(visual_sin(plate_phase)*14.f+visual_sin(plate_phase*1.37f+x*32.f)*plate_role[0]*5.f));
     unsigned m=(unsigned)plate_order;float morph=plate_order-m;
     float rect=0;
     for(unsigned basis=0;basis<2;basis++){
@@ -200,9 +207,9 @@ static void chladni_job(void)
     float x=sand_x[i],y=sand_y[i],f=plate_sample(x,y);
     float gx=(plate_sample(x+.02f,y)-plate_sample(x-.02f,y))*25.f;
     float gy=(plate_sample(x,y+.02f)-plate_sample(x,y-.02f))*25.f;
-    float impulse=hit*.012f*visual_sin(i*17.f+plate_phase);
-    sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-6,6)*plate_activity*.0015f+impulse)*.78f;
-    sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-6,6)*plate_activity*.0015f-impulse)*.78f;
+    float impulse=hit*.026f*visual_sin(i*17.f+plate_phase);
+    sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-6,6)*plate_activity*.0032f+impulse)*.78f;
+    sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-6,6)*plate_activity*.0032f-impulse)*.78f;
     sand_x[i]=fm_clampf(x+sand_vx[i],-.98f,.98f);
     sand_y[i]=fm_clampf(y+sand_vy[i],-.98f,.98f);
     vis_output.sand[i][0]=120+(int)(sand_x[i]*112.f);
@@ -247,7 +254,7 @@ static void visual_job(uint32_t unused)
     else for(unsigned t=0;t<SR_TRACKS;t++){
       vis_output.count[t]=33;
       unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;
-      float pulse=vis_input.meter[t]*140.f+vis_input.onset[t]*9.f;
+      float pulse=vis_input.meter[t]*154.f+vis_input.onset[t]*10.f;
       float radius=(vis_input.full?52.f+t*9.f:45.f+t*6.f)+(pulse>22.f?22.f:pulse);
       for(unsigned j=0;j<=32;j++){
         unsigned a=j*4;
@@ -274,13 +281,14 @@ static void prepare_geometry(void)
     vis_input.atmosphere=engine.transport_env*engine.bed_level+engine.reverb_wet*.6f;
     /* Audible voice-weighted pitch avoids a muted/stolen first slot freezing
      * the water mode. Runs only on visible-frame telemetry, never in audio. */
-    float pitch_sum=0,pitch_weight=0;
+    float pitch_sum=0,pitch_weight=0,loudest=0;vis_input.note_class=vis_input.tonic%12u;
     for(unsigned v=0;v<SR_VOICES;v++){
       const sr_voice *voice=&engine.voices[v];unsigned t=voice->track;
       if(!voice->active||!voice->gate||t>=SR_DRUMS||engine.tracks[t].mute||
          (engine.solo<SR_TRACKS&&engine.solo!=t))continue;
       float weight=voice->env*voice->peak*engine.tracks[t].volume;
       if(!voice->key&&!voice->external)weight*=engine.role_gain[t];
+      if(weight>loudest){loudest=weight;vis_input.note_class=voice->midi%12u;}
       pitch_sum+=voice->freq*weight;pitch_weight+=weight;
     }
     vis_input.pitch=pitch_weight>.00001f?pitch_sum/pitch_weight:0;
@@ -294,7 +302,7 @@ static void prepare_geometry(void)
       energy+=vis_input.atmosphere;
       float target=fm_clampf(energy,0,1);
       original_activity+=(target-original_activity)*(target>original_activity?.45f:.12f);
-      if(original_activity>.0001f)original_phase+=dt*(.006f+.027f*original_activity);
+      if(original_activity>.0001f)original_phase+=dt*(.006f+.030f*original_activity);
       vis_input.phase=(unsigned)original_phase;
     }
     plat_unlock(flags);
