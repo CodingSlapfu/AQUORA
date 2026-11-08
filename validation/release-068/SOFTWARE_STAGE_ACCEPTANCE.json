@@ -1,6 +1,6 @@
 {
   "version": "0.6.8",
-  "status": "SOFTWARE_STAGE_PASSED_PUBLICATION_PENDING",
+  "status": "PUBLISHED_SOFTWARE_VERIFIED",
   "ci_reused": [
     42421822671,
     42437228836,
@@ -34,5 +34,6 @@
     "all existing backup/source history",
     "KIRA-9"
   ],
-  "midi": "Both performance transports owner-authorized deferred"
+  "midi": "Both performance transports owner-authorized deferred",
+  "live_evidence": "validation/release-068/LIVE_PUBLICATION.json"
 }

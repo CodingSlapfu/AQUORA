@@ -1,7 +1,9 @@
-# AQUORA 0.6.8
+# AQUORA 0.6.8 — published
 
-Adds optional Experimental IDM/Ambient Broken rhythm, song-aware restrained transitions, contextual chord voicing/strum and selective AUTO motion, audible AIR mappings and phrase-safe gestures. Restores Cymatics aesthetics with enhanced reaction; preserves Original and Chladni. Large Text maximizes actual glyph fit; intro wordmark remains independent of UI size.
+Original generative ambient music with optional Experimental IDM/Ambient Broken rhythm, restrained song transitions, contextual chord/strum and AUTO motion, audible AIR mappings and phrase-safe gestures. Cymatics restored/enhanced, Original preserved, Chladni enhanced; Large Text fits actual glyph bounds independently of the intro wordmark.
 
-Final native/repro/single-core/WASM/update CI passed; software evidence is in validation/release-068/SOFTWARE_STAGE_ACCEPTANCE.json. Both performance MIDI transports remain owner-authorized deferred. Actual hardware and subjective listening/visual approval remain owner-unverified. v0.6.7 rollback preserved; KIRA-9 untouched.
+Install: https://parallax8-studio.jminie66.chatgpt.site/install/
 
-Publication is pending staged package/source synchronization and live HTTPS verification. Do not describe this checkpoint as live.
+Final native/repro/single-core/WASM/updater CI and staged/live software gates passed. Exact evidence: validation/release-068/SOFTWARE_STAGE_ACCEPTANCE.json and LIVE_PUBLICATION.json. Independent installer ZIP SHA256 cb47ba130e424bac3db589fed2e598a3041730ab1ed308c77aefbc6e6a6437b1.
+
+Physical FM-1 and subjective listening/visual acceptance remain owner-unverified. Performance MIDI transports deferred; AIR retained. v0.6.7 rollback preserved. KIRA-9 untouched.
