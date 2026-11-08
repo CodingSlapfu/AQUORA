@@ -145,7 +145,7 @@ static void geometry(int offset)
 }
 
 static const char *onoff(int enabled){return enabled?"ON":"OFF";}
-static const char *music_modes[]={"Standard","Cinematic","Neoclassical"};
+static const char *music_modes[]={"Standard","Cinematic","Neoclassical","Experimental Ambient"};
 static const char *visual_name(void){static const char *n[]={"Original","Cymatics","Chladni"};return n[visual_mode];}
 static const char *patch_name(void)
 {
@@ -276,6 +276,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 130:{static const char *v[]={"Auto","Gentle","Experimental","Off"};*name="TRANSITIONS";return v[engine.fill_character];}
  case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo","Tone Sweep","Soft Pulse"};*name="AIR FX";return effects[engine.air_fx];}
  case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
+ case 132:{static const char *m[]={"Off","Play Alone","Alone + Along"};*name="LEARN FROM PLAYING";return m[engine.learn_mode];}
+ case 133:{static const char *m[]={"Original","Subtle","Balanced","Strong"};*name="LEARN STRENGTH";return m[engine.learn_strength];}
+ case 134:*name="APPLY TO SONG";return engine.learn_pending?"Queued / next loop":engine.capture.count>=3?"Right: Apply":"Play 3+ notes";
+ case 135:*name="DISCARD / CLEAR";return "Left: Discard / Right: Clear";
  case 96:*name="MUSIC MODE";return music_modes[engine.music_mode];
  case 97:*name="LEAD MOTION";return engine.motion_manual&1u?"MANUAL":"AUTO";
  case 98:*name="BASS MOTION";return engine.motion_manual&2u?"MANUAL":"AUTO";
@@ -662,7 +666,7 @@ static void battery_glyph(void)
 static int draw(int animate)
 {
  unsigned revision=state_revision;
- unsigned inputs=input_revision;
+ unsigned inputs=input_revision, selections=select_revision;
  const unsigned priority=!intro_active&&!fullscreen&&labelled_input!=input_revision;
  static const uint8_t control_first[5]={3,4,0,1,2};
  for(int strip=0;strip<5;strip++){
@@ -672,7 +676,7 @@ static int draw(int animate)
     * Navigation can change every page-local selector: abandon this frame
     * rather than mixing snapshots or clearing the new dirty notification. */
    app_input_only();
-   if(input_revision!=inputs){dirty=1;return 0;}
+   if(input_revision-inputs!=select_revision-selections){dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
@@ -887,13 +891,16 @@ static int draw(int animate)
          limited_text(8,10,224,&FONT_XS,(bank_message==BANK_STOP&&engine.external_audio)?"RELEASE MIDI NOTES":messages[bank_message],skin_accent());
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":setup_tab==0?(display_subtab?"TURN SELECT: LIGHTS":"TURN SELECT: APPEARANCE"):"SEL: LOAD / SAVE: STORE",skin_text());
      }
+   }else if(visual&&page==PAGE_EVOLVE&&song_tab==5){
+     if(band==1)limited_text(8,2,224,&FONT_B,"LEARN FROM PLAYING",skin_accent());
+     if(band==2){label(8,0,"CAPTURED",engine.capture.count);label(127,0,"APPLIED",engine.learned.count);}
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==1){
      if(band==1){limited_text(8,1,224,&FONT_B,"NEW SONG / REROLL",skin_accent());
        limited_text(8,27,224,&FONT_XS,engine.running?"STOP TO GENERATE":song_arm==58?"NEW SONG ARMED":song_arm==59?"REROLL ARMED":"TURN K1 / K2 TO ARM",skin_text());}
      if(band==2){limited_text(8,1,224,&FONT_XS,"SEL: CONFIRM / SAVE: BANK",skin_text());limited_text(8,27,224,&FONT_XS,"REROLL KEEPS MOTIF / LOCKS",skin_dim());}
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==4){
      if(band==1){limited_text(8,1,224,&FONT_B,music_modes[engine.music_mode],skin_accent());
-       limited_text(8,27,224,&FONT_I,engine.music_mode==0?"Ambient balance":engine.music_mode==1?"Spacious expression":"Chamber movement",skin_text());}
+       limited_text(8,27,224,&FONT_I,engine.music_mode==0?"Ambient balance":engine.music_mode==1?"Spacious expression":engine.music_mode==2?"Chamber movement":"Evolving pulse / textures",skin_text());}
      if(band==2){
        limited_text(8,0,224,&FONT_XS,"SCENE x MODE / MOTION PROFILE",skin_text());
        limited_text(8,24,224,&FONT_XS,"MANUAL OVERRIDES AUTO DEFAULTS",skin_dim());
@@ -902,9 +909,9 @@ static int draw(int animate)
      if(band==1){
        label(8,0,"STEP",engine.loop_pos+1);
        label(86,0,engine.freeze?"FROZEN":engine.evolve_next?"NEXT QUEUED":"PHRASE",engine.phrase);
-       static const char *sections[]={"Opening","Build","Resolve","Rest","Return"};
+       
        cv_text(162,0,&FONT_XS,"SECTION",skin_dim());
-       limited_text(162,15,72,&FONT_B,sections[engine.phrase/4u%5u],skin_text());
+       limited_text(162,15,72,&FONT_B,sr_section_name(&engine,0),skin_text());
      }else{
        for(unsigned t=0;t<SR_TRACKS;t++){
          unsigned y=t*5u+3u;
@@ -929,13 +936,13 @@ static int draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
-     if(page==PAGE_SOUND){
+     if(page==PAGE_SOUND||page==PAGE_PLAY){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
      cv_text(30,25,&FONT_XS,track,skin_text());
      limited_text(44,25,63,&FONT_XS,role_names[selected],skin_accent());
-     limited_text(109,25,123,&FONT_T,"TURN TRACK / EDIT PAGE",skin_text());
+     limited_text(109,25,123,&FONT_T,page==PAGE_PLAY?patch_name():"TURN TRACK / EDIT PAGE",skin_text());
      }
      if(0){
        cv_text(101,25,&FONT_XS,"PRE",skin_dim());
@@ -945,21 +952,15 @@ static int draw(int animate)
        limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
      else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:3;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?6:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:3;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
        limited_text(x+3,25,232-x,&FONT_XS,page==PAGE_MIX&&mix_tab==5?"SEL MUTE / LFO SOLO":"NEXT SECTION",skin_text());
      }
-     if(page==0&&engine.scene>=13){
-       limited_text(8,24,224,&FONT_T,sr_scenes[engine.scene].name,skin_text());
-     }else if(page==0){
-       cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",skin_accent());
-       limited_text(155,25,43,&FONT_XS,engine.music_mode==0?"STD":engine.music_mode==1?"CINE":"NEO",skin_dim());
-       const char *mode=engine.frequency_lock?"LOCK":engine.tone_level>0?"REF ON":"REF OFF";
-       int x=cv_text(107,2,&FONT_XS,mode,skin_accent());
-       cv_text(x+4,2,&FONT_XS,sr_frequencies[engine.frequency].name,skin_text());
-     }
+     if(page==PAGE_PLAY&&(engine.pending_scene||engine.pending_mode))
+       limited_text(107,2,125,&FONT_T,"NEXT BEAT",skin_accent());
+
    }else if(page==PAGE_SETUP&&setup_tab==2){
      if(save_info==0){
        if(band==3){label(8,0,"SNAPSHOT ms",quick_snapshot_ms>=quick_request_ms?quick_snapshot_ms-quick_request_ms:0);label(127,0,"FLASH ms",quick_flash_ms);}
@@ -1058,7 +1059,7 @@ static int draw(int animate)
      labelled_input=input_revision;
    }
  }
- dirty=0;
+ dirty=input_revision!=inputs;
  battery_dirty=0;
  displayed_revision=revision;
  return 1;

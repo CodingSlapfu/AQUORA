@@ -11,7 +11,7 @@ static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
 typedef struct {int kind,value; unsigned track, captured_ms;} command;
 static command queue[64];
 static volatile unsigned qread,qwrite,state_revision,command_enqueued,command_applied;
-static unsigned displayed_revision, input_revision;
+static unsigned displayed_revision, input_revision, select_revision;
 static unsigned dropped,page,selected,group,oldkeys,oldbuttons,lastdraw,dirty=1,debug;
 #ifdef PLAT_HOST
 static unsigned geometry_jobs,history_updates,ui_blits,worker_jobs,worker_waits;
@@ -245,7 +245,7 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
-   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0}};
+   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0},{132,133,134,135}};
    return ids[song_tab-1][knob];
  }
  if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
@@ -316,11 +316,16 @@ static void consume(void){
   engine.external_clock_count=255;break;
  case 108:if(!midi_panic_pending)midi_panic_channel=midi.settings.tx_channel;midi_panic_pending=1;midi_panic();sr_midi_panic(&engine);break;
  case 110:midi.settings.controls_out=switched(midi.settings.controls_out,d);midi_cc_program=midi_cc_volume=midi_cc_pan=midi_cc_send=midi_cc_bend=-1;break;
+ case 136:sr_learn_event(&engine,d&31u,!(d&32u),c.captured_ms);break;
+ case 132:engine.learn_mode=bounded((int)engine.learn_mode+d,0,2);break;
+ case 133:engine.learn_strength=bounded((int)engine.learn_strength+d,0,3);break;
+ case 134:if(d>0)sr_learn_action(&engine,1);break;
+ case 135:sr_learn_action(&engine,d>0?2:0);break;
  case 109:startup_chime=bounded((int)startup_chime+d,0,2);break;
 
  case 1:{
-   unsigned next=bounded(engine.scene+d,0,SR_SCENES-1);
-   if(next!=engine.scene)sr_set_scene(&engine,next);
+   unsigned next=bounded((int)(engine.pending_scene?engine.pending_scene-1u:engine.scene)+d,0,SR_SCENES-1);
+   sr_set_scene(&engine,next);
    break;
  }
  case 2:case 16:{
@@ -331,7 +336,7 @@ static void consume(void){
    sr_preview_sound(&engine,role);
    break;
  }
- case 3:if(!interrupted&&play&&((physical_keys&(1u<<d))||(engine.play_grid&&engine.play_strength&&!engine.keyboard_mode)))sr_key_down(&engine,c.track,(unsigned)d);break;
+ case 3:if(!interrupted&&(play||engine.learn_mode)&&((physical_keys&(1u<<d))||(engine.play_grid&&engine.play_strength&&!engine.keyboard_mode)))sr_key_down(&engine,c.track,(unsigned)d);break;
  case 4:sr_set_frequency(&engine,bounded(engine.frequency+d,0,SR_FREQUENCIES-1));break;
  case 5:engine.nature_level_manual=1;engine.bed_level=adjust(engine.bed_level,d,.02f,1);break;
  case 6:sr_set_binaural(&engine,switched(engine.binaural_enabled,d));break;
@@ -408,7 +413,7 @@ static void consume(void){
  case 130:engine.fill_character=bounded(engine.fill_character+d,0,3);break;
  case 93:engine.air_fx=bounded(engine.air_fx+d,0,4);break;
  case 94:engine.air_depth=bounded(engine.air_depth+d*5,0,100);break;
- case 96:sr_set_music_mode(&engine,bounded(engine.music_mode+d,0,2));break;
+ case 96:sr_set_music_mode(&engine,bounded((engine.pending_mode?engine.pending_mode-1u:engine.music_mode)+d,0,SR_MUSIC_MODES-1));break;
  case 97:sr_motion_auto(&engine,SR_LEAD,d<0);break;
  case 98:sr_motion_auto(&engine,SR_BASS,d<0);break;
  case 95:engine.air_target=adjust(engine.air_target,d,.05f,1);break;
@@ -664,7 +669,7 @@ void app_input_only(void){
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
-   if(!debug&&page==2)song_tab=(song_tab+1)%5;
+   if(!debug&&page==2)song_tab=(song_tab+1)%6;
    if(page==PAGE_SOUND){
      unsigned index=0;
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
@@ -692,8 +697,10 @@ void app_input_only(void){
  blocked_keys&=k;
  physical_keys=k&~blocked_keys;
  for(unsigned i=0;i<NKEYS;i++){
-   if(!(press&(1u<<B_PLAY))&&requested_play&&((physical_keys&~oldkeys)&(1u<<i)))send(3,i);
+   if(!(press&(1u<<B_PLAY))&&(requested_play||engine.learn_mode)&&((physical_keys&~oldkeys)&(1u<<i)))send(3,i);
  }
+ for(unsigned i=0;i<NKEYS;i++)if(engine.learn_mode&&((physical_keys^oldkeys)&(1u<<i)))
+   send(136,i|((physical_keys&(1u<<i))?0:32));
  oldkeys=k;
  int d=enc[0];
  if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_AIR);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
@@ -707,7 +714,7 @@ void app_input_only(void){
    else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3||mix_tab==5))mix_select(d);
    else if(page==PAGE_SETUP&&setup_tab==2)save_info=bounded((int)save_info+d,0,2);
    else if(page==PAGE_SETUP&&setup_tab==0)display_subtab=bounded((int)display_subtab+d,0,1);
-   else if(page!=PAGE_DRUMS)selected=bounded((int)selected+d,0,7);
+   else if(page!=PAGE_DRUMS){selected=bounded((int)selected+d,0,7);if(page==PAGE_PLAY)select_revision++;}
    knob_until=0;dirty=1;
  }
  d=enc[2];
@@ -798,7 +805,7 @@ void app_input_only(void){
  unsigned lights=k, dim_keys=0, dim_buttons=0, black_duty=0,white_duty=0;
  if(pending&&pending<=NKEYS)lights|=1u<<(pending-1);
  if(lighting==0){
-   lights=0; /* ON has fixed 70/50 duty; KEYS alone highlights held/pending keys. */
+   /* Held and queued physical keys override idle duty at full brightness. */
    for(unsigned key=0;key<NKEYS;key++)if(!(lights&(1u<<key))){
      if(aq_black_key(key))black_duty|=1u<<key;
      else white_duty|=1u<<key;
@@ -1019,7 +1026,7 @@ void app_frame(void)
     if(animate){
       lastdraw=now;
       unsigned begin=plat_ticks24();
-      if(page==PAGE_PLAY&&!intro_active&&labelled_input==input_revision&&((!quick_started&&!quick_pending)||quick_timeout))prepare_geometry();
+      if(page==PAGE_PLAY&&!intro_active&&((!quick_started&&!quick_pending)||quick_timeout))prepare_geometry();
       graphics_us=(plat_ticks24()-begin)/24;
     }
     if(animate||dirty||battery_dirty){

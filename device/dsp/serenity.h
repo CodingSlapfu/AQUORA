@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 enum {SR_BUS_NATURE, SR_BUS_SACRED, SR_BUS_REFERENCE, SR_BUS_BINAURAL, SR_BUS_FX, SR_BUS_COUNT};
-enum {SR_STANDARD, SR_CINEMATIC, SR_NEOCLASSICAL, SR_MUSIC_MODES};
+enum {SR_STANDARD, SR_CINEMATIC, SR_NEOCLASSICAL, SR_EXPERIMENTAL, SR_MUSIC_MODES};
 typedef enum {SR_LEAD, SR_BASS, SR_DRONE, SR_HARMONY, SR_PIANO, SR_GUITAR, SR_CHOIR, SR_DRUMS} sr_role;
 enum {SR_ISOLATE_MIX, SR_ISOLATE_TRACK1, SR_ISOLATE_FIXED=SR_TRACKS+1,
       SR_ISOLATE_SACRED, SR_ISOLATE_BINAURAL, SR_ISOLATE_NATURE, SR_ISOLATE_FX};
@@ -33,7 +33,11 @@ typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, 
 typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; } sr_track;
 typedef struct { uint8_t active, track, gate, midi, key, external, channel; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
+typedef struct {uint8_t count;uint8_t note[16],step[16],length[16];} sr_learn_phrase;
 typedef struct {
+  sr_learn_phrase learned,capture;
+  uint32_t capture_ms,capture_down[16];
+  uint8_t capture_raw[16],learn_mode,learn_strength,learn_pending;
   uint8_t chord_mode, chord_gap, chord_inversion, chord_direction, rhythm_style, fill_character;
   uint8_t air_mode, air_request, air_result, chord_alternate, rhythm_pending;
   int8_t chord_previous[3];
@@ -48,7 +52,7 @@ typedef struct {
   uint8_t drums_enabled, drum_density, drum_kit, binaural_enabled;
   float master, reverb_amount, delay_amount, bed_level, current_energy;
   float wind_lp, rain_lp, limiter, dc_x, dc_y, low_bass;
-  float drum_level, drum_meter, kick_phase, kick_env, hand_phase, hand_env;
+  float drum_level, drum_meter, kick_phase, kick_env, kick_previous, kick_attack, hand_phase, hand_env;
   float shaker_env, shaker_lp, hand_noise_lp;
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;
@@ -56,7 +60,7 @@ typedef struct {
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
-  uint32_t song_seed, visit_nonce;
+  uint32_t song_seed, visit_nonce, form_loop;
   uint8_t pending_scene, pending_mode, profile_applying;
   uint8_t music_mode, motion_manual, recent_patches[SR_MUSIC_MODES][SR_SCENES][SR_TRACKS];
   uint16_t sound_locks;
@@ -102,6 +106,9 @@ extern const sr_scene sr_scenes[SR_SCENES];
 extern const sr_frequency sr_frequencies[SR_FREQUENCIES];
 extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
+const char *sr_section_name(const sr_engine *e,unsigned next);
+void sr_learn_event(sr_engine *e,unsigned key,unsigned down,uint32_t ms);
+void sr_learn_action(sr_engine *e,unsigned action);
 void sr_init(sr_engine *e, uint32_t seed);
 void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only);
 void sr_select_nature(sr_engine *e, uint32_t seed);

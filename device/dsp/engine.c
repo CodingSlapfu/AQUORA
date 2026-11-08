@@ -220,10 +220,11 @@ uint8_t sr_tonic(const sr_engine *e)
  * No additional bank schema, allocation or per-sample composition work. */
 static unsigned phrase_chord(const sr_engine *e,unsigned bar)
 {
-  static const uint8_t harmony[3][4]={{0,4,2,0},{0,5,3,0},{0,3,4,0}};
+  static const uint8_t harmony[SR_MUSIC_MODES][4]={{0,4,2,0},{0,5,3,0},{0,3,4,0},{0,2,5,4}};
   return harmony[e->music_mode][bar&3u];
 }
-static int motif_degree(const sr_engine *e,unsigned step)
+#include "learn.h"
+static int motif_degree_base(const sr_engine *e,unsigned step)
 {
   unsigned bar=(step% e->loop_length)/16u, pos=step&15u;
   if(!bar)return e->melody[pos];
@@ -235,6 +236,7 @@ static int motif_degree(const sr_engine *e,unsigned step)
   if(bar==2u)return (degree+3+(int)(pos/4u))%7;
   return pos<8u?degree:(degree+4)%7;
 }
+static int motif_degree(const sr_engine *e,unsigned step){return learned_degree(e,step,motif_degree_base(e,step));}
 void sr_set_loop_length(sr_engine *e,uint8_t length)
 {
   if(length!=16&&length!=32&&length!=64)return;
@@ -321,10 +323,11 @@ void sr_motion_auto(sr_engine *e,unsigned role,int automatic)
 }
 static unsigned fresh_patch(sr_engine *e,unsigned role,uint32_t seed)
 {
-  static const uint8_t pools[3][7][6]={
+  static const uint8_t pools[SR_MUSIC_MODES][7][6]={
    {{12,13,14,16,29,12},{0,30,31,32,33,34},{3,4,5,23,26,4},{15,16,20,21,29,20},{6,7,8,24,7,6},{9,10,11,17,27,10},{19,23,4,20,25,19}},
    {{14,15,29,12,16,14},{2,28,30,31,33,35},{3,5,23,26,4,26},{20,21,15,29,16,20},{7,24,8,6,24,7},{10,17,27,9,11,10},{19,25,23,20,4,25}},
-   {{12,13,15,16,29,13},{0,1,30,31,32,34},{20,21,23,4,26,20},{20,21,15,16,29,21},{6,7,24,8,7,6},{9,10,11,27,10,9},{20,21,19,25,23,20}}
+   {{12,13,15,16,29,13},{0,1,30,31,32,34},{20,21,23,4,26,20},{20,21,15,16,29,21},{6,7,24,8,7,6},{9,10,11,27,10,9},{20,21,19,25,23,20}},
+   {{29,16,14,12,15,13},{30,32,34,31,33,35},{26,23,5,4,3,26},{21,29,16,20,15,21},{24,8,6,7,24,8},{27,17,11,10,9,27},{25,23,19,4,20,25}}
   };
   const uint8_t *pool=pools[e->music_mode][role];
   unsigned at=(song_draw(seed,role)+e->scene*3u+e->nature_style)%6u;
@@ -489,7 +492,7 @@ void sr_init(sr_engine *e,uint32_t seed){
     wave_base[w][i]=base;wave_color[w][i]=wave_reference((sr_wave)w,phase,1)-base;
   }lut_ready=1;}
   e->chord_gap=100; e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
-  e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
+  e->learn_strength=2;e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
@@ -542,11 +545,9 @@ static void clear_transport(sr_engine *e)
  * energy, music mode and current harmony. No audio RNG is consumed. */
 /* A shared form holds orchestration for multiple phrases. Role choices use
  * section identity, never independent per-phrase drum coin tosses. */
-static unsigned song_section(const sr_engine *e)
-{
-  static const uint8_t form[3][8]={{0,1,1,2,3,1,2,4},{0,0,1,2,3,1,2,4},{0,1,2,1,3,2,1,4}};
-  return form[e->music_mode][(e->phrase/(2u+sr_scenes[e->scene].energy%2u))%8u];
-}
+#include "song_form.h"
+const char *sr_section_name(const sr_engine *e,unsigned next){return sr_sections[form_index(e,!!next)].name;}
+static unsigned song_section(const sr_engine *e){return sr_sections[form_index(e,0)].family;}
 static void plan_roles(sr_engine *e)
 {
     if(e->variation<=0.f){
@@ -555,7 +556,7 @@ static void plan_roles(sr_engine *e)
     }
     unsigned section=song_section(e);
     static const uint8_t weight[SR_MUSIC_MODES][SR_TRACKS]={
-      {52,87,70,30,53,46,48,57}, {43,90,85,42,38,26,72,40}, {39,84,37,49,90,64,30,24}
+      {52,87,70,30,53,46,48,57}, {43,90,85,42,38,26,72,40}, {39,84,37,49,90,64,30,24}, {64,91,88,65,47,83,59,70}
     };
     uint32_t seed=e->song_seed+section*0x9e3779b9u+e->scene*65537u;
     for(unsigned t=0;t<SR_TRACKS;t++){
@@ -563,14 +564,15 @@ static void plan_roles(sr_engine *e)
       if(section==0u&&t!=SR_BASS&&t!=SR_DRONE)probability/=2u;
       if(section==2u)probability+=20u;
       if(section==3u&&t!=SR_DRONE&&t!=SR_CHOIR)probability/=3u;
-      e->role_target[t]=song_draw(seed,100u+t)%100u<probability?1.f:0.f;
+      unsigned mask=sr_sections[form_index(e,0)].roles;
+      e->role_target[t]=(mask&(1u<<t))&&song_draw(seed,100u+t)%100u<probability?1.f:0.f;
     }
     /* The hush retains a quiet tonal through-line. Explicit mute/solo
      * still wins downstream; Nature is never substituted for an arranger. */
     e->role_target[SR_BASS]=section==3u?.55f:1.f;
     if(section==3u)e->role_target[SR_DRONE]=1.f;
     /* Groove remains present throughout unfold/bloom/return; rests are form decisions. */
-    e->role_target[SR_DRUMS]=(section==1u||section==2u||section==4u)?1.f:0.f;
+    e->role_target[SR_DRUMS]=sr_sections[form_index(e,0)].pulse?1.f:0.f;
 }
 void sr_start(sr_engine *e)
 {
@@ -731,7 +733,8 @@ static uint32_t play_delay(const sr_engine *e,unsigned track)
 
 void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
 {
-    if(!e->running||key>=27||track>=SR_TRACKS)return;
+    if(key>=27||track>=SR_TRACKS)return;
+    if(!e->running){e->preview_role=track;e->preview_frames=SR_RATE*10u;play_key(e,track,key,0);return;}
     if(e->keyboard_mode){
       e->pending_key=(uint8_t)((53u+key)%12u+1u);
       e->pending_physical_key=(uint8_t)(key+1u);
@@ -829,7 +832,7 @@ static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
   /* Silence is a common path in the default generator. Skip all oscillators,
    * noise and kit inspection when no percussion envelope is active. */
   if(e->kick_env<=.0003f&&e->hand_env<=.0003f&&e->shaker_env<=.0003f){
-    e->kick_env=e->hand_env=e->shaker_env=0.f;
+    e->kick_env=e->kick_previous=e->kick_attack=e->hand_env=e->shaker_env=0.f;
     return 0.f;
   }
   const sr_drum_kit *kit=&sr_drum_kits[e->drum_kit];
@@ -842,14 +845,16 @@ static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
                   sine(e->kick_phase)*.82f+sine(e->kick_phase*2.f)*.18f;
     /* Short, brightness-aware noise attack: makes soft 50-70Hz kicks
      * perceptible on the FM-1 speaker without boosting the whole mix. */
-    float transient=0.f;
-    if(e->kick_env>.91f){
-      float edge=(e->kick_env-.91f)*(1.f/.09f);
-      transient=(rnd(e)*2.f-1.f)*edge*(.12f+kit->skin*.00014f);
-    }
-    sound+=(tone*.45f+transient*.42f)*e->kick_env*kit->kick;
+    /* Each triggered hit gets an attack, including quiet velocity hits.
+     * The previous >.91 envelope threshold skipped almost every generated
+     * kick, whose initial envelope is usually much smaller than .91. */
+    if(e->kick_env>e->kick_previous+.003f)e->kick_attack=e->kick_env;
+    float transient=(rnd(e)*2.f-1.f)*e->kick_attack*(.055f+kit->skin*.000045f);
+    e->kick_attack*=.982f;
+    sound+=(tone*.43f+sine(e->kick_phase*3.f)*.035f)*e->kick_env*kit->kick+transient*kit->kick;
     e->kick_env*=kit->decay;
   }else e->kick_env=0.f;
+  e->kick_previous=e->kick_env;
   if(e->hand_env>.0003f){
     float noise=rnd(e)*2.f-1.f;
     e->hand_noise_lp+=(noise-e->hand_noise_lp)*kit->brush;
@@ -1002,7 +1007,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   const sr_scene *sc=&sr_scenes[e->scene];
   const int8_t *scale=scale_notes[sc->scale];
   unsigned bar=s/16u;
-  unsigned chord=phrase_chord(e,bar);
+  unsigned chord=(phrase_chord(e,bar)+sr_sections[form_index(e,0)].harmony)%7u;
   int tonic=sr_tonic(e),degree=motif_degree(e,s);
   unsigned draw=song_draw(seed,s&63u);
   unsigned dynamic=6u+(draw&7u);
@@ -1013,7 +1018,18 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
     sr_note_on(e,SR_CHOIR,tonic+24+scale[(chord+2u)%7u],56,7.f);
     sr_note_on(e,SR_HARMONY,tonic+24+scale[(chord+4u)%7u],52,4.f);
   }
-  if(e->music_mode==SR_CINEMATIC){
+  if(e->music_mode==SR_EXPERIMENTAL){
+    /* Three- and five-step interlocks answer a stable motif. Harmonic
+     * notes remain in the intention scale; rests leave space for tails. */
+    if(degree>=0&&(s%3u==0u||(s&15u)==10u))
+      sr_note_on(e,SR_LEAD,tonic+24+scale[degree],64-dynamic,1.8f);
+    if((s+e->phrase)%5u==0u)
+      sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+(s/5u)*2u)%7u],56,2.2f);
+    if((s&15u)==6u||((s&15u)==14u&&bar))
+      sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+4u)%7u],62-dynamic,2.8f);
+    if((s&15u)==12u&&degree>=0)
+      sr_note_on(e,SR_HARMONY,tonic+24+scale[(degree+2u)%7u],49,3.6f);
+  }else if(e->music_mode==SR_CINEMATIC){
     if((s&7u)==(bar==1u?2u:bar==2u?0u:4u)&&degree>=0)sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic,5.5f);
     if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+(draw>>8)%3u*2u)%7u],58-dynamic,2.4f);
     if((s&7u)==2)sr_note_on(e,SR_GUITAR,tonic+12+scale[(chord+4u)%7u],54,2.2f);
@@ -1033,8 +1049,9 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 }
 static void trigger(sr_engine *e){
   unsigned requested=0;
-  if(!e->loop_pos){
-    if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
+  /* Scene/mode changes commit on the next quarter beat, independent of
+   * loop length. Latest encoder target replaces the previous target. */
+  if((e->sequence_step&3u)==0u){
     if(e->pending_scene||e->pending_mode){
       e->profile_applying=1;
       unsigned scene=e->pending_scene?e->pending_scene-1u:e->scene;
@@ -1043,6 +1060,10 @@ static void trigger(sr_engine *e){
       sr_set_scene(e,scene);plan_roles(e);
       e->profile_applying=0;
     }
+  }
+  if(!e->loop_pos){
+    if(e->learn_pending&&!e->freeze){e->learned=e->capture;e->capture.count=0;e->learn_pending=0;}
+    if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
     if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;e->play_queued=0;}
     if(e->pending_key){
       memset(e->scheduled,0,sizeof e->scheduled);
@@ -1058,6 +1079,7 @@ static void trigger(sr_engine *e){
     requested=e->air_request;e->air_request=0;
     if(requested==1)e->evolve_next=1;
   }
+  if(e->loop_pos==0&&e->sequence_step&&!e->freeze){e->form_loop++;plan_roles(e);}
   uint32_t absolute=e->sequence_step++;
   uint32_t s=e->loop_pos;
   unsigned idx=e->loop_pos++;
@@ -1065,7 +1087,7 @@ static void trigger(sr_engine *e){
   s=idx;
   const sr_scene *sc=&sr_scenes[e->scene];
   int tonic=sr_tonic(e);
-  unsigned chord=phrase_chord(e,idx/16u);
+  unsigned chord=(phrase_chord(e,idx/16u)+sr_sections[form_index(e,0)].harmony)%7u;
   uint8_t energy=(uint8_t)(1.f+e->energy*2.99f);
   /* The absolute counter survives phrase wrap; idx is only the loop position. */
   unsigned pace=e->evolve_pace?1u<<e->evolve_pace:(e->loop_length==16?2u:1u);
