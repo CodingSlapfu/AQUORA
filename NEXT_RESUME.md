@@ -1,3 +1,6 @@
+# FINAL RECOVERY BLOCKED — #62 is mandatory
+Read validation/release-069/FINAL_RECOVERY_BLOCKED.md first. Original completed acceptance below remains valid through #61 only. The smaller deployment archive passes the per-file size check but contains pre-#62 firmware; do not publish it as compatible. No lock removed, no rebuild/retest/publication in final bounded audit.
+
 # AQUORA 0.6.9 — SOFTWARE PASSED, publication pending
 Use newest aquora-next-integration head. All owner implementation deltas through #61 complete in gated source dc3db77347bdf9abfad1045c5d9b562b99fd1abf. Do not rebuild or repeat passed tests. Read NEXT_BUILD_ACTIVE and validation/release-069/SOFTWARE_GATE.json/STAGE.json. Remaining work is artifact read-back, existing-site publication and independent actual HTTPS verification only.
 
