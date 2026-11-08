@@ -1,7 +1,9 @@
-# AQUORA 0.6.10 — development, NOT accepted or published
+# AQUORA 0.6.10 — BLOCKED, NOT PUBLISHED
 
-Baseline c9813170bdc4fab29e46ed6beb23de6c27f879e3; accepted 0.6.9 stays public.
-Current owner session9e3e15408fe4, lock /workspace/.aquora-release.lock/owner, Git checkout /workspace/scratch/9e3e15408fe4/AQUORA, reconstructed source /workspace/scratch/9e3e15408fe4/source. Do not overlap an active owner.
-Read NEXT_BUILD_ACTIVE.md and validation/release-0610/OWNER_SCOPE.json. Latest #71 overrides earlier no-visualizer-changes wording. Initial implementation compiles host; no release acceptance claim.
-Recover complete source via tools/prepare_next_source.sh once when necessary. Native toolchain pinned archive SHA256 a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd; local /workspace/scratch/9e3e15408fe4/jieli/jieli-linux-toolchains-20260730.1. Matching 0.6.9 host and visual kernel retained for equal-seed A/B in parent scratch; recreate from baseline if absent.
-Do not repeat unchanged accepted 0.6.9 tests. Run new composition_0610.c plus affected acceptance, native/repro/single/WASM/update, visual/source backup gates. Complete all scope before publishing existing site. Hardware62/performance MIDI deferred; AIR/rollback/KIRA-9 preserved.
+Read validation/release-0610/BLOCKED_CHECKPOINT.md then NEXT_BUILD_ACTIVE.md. Complete owner #64–#71 scope is preserved in validation/release-0610/OWNER_SCOPE.json; canonical rows are PARTIAL. Composition acceptance and native engineering build pass; final release gates do not.
+
+Existing-site source helper exits1 `Unable to prepare the Site.` even from an empty directory. No more retries until concrete recovery. Public accepted0.6.9 remains unchanged. Visual A/B probe also fails baseline master0/full determinism, so it supplies no valid candidate comparison yet. See exact evidence and remaining gates in checkpoint.
+
+Git checkout /workspace/scratch/9e3e15408fe4/AQUORA; reconstructed source /workspace/scratch/9e3e15408fe4/source. Session stopped and its own lock released after verified backup; no active build intentionally left. Check ownership once on resume. Recover exact checkpoint from GitHub if scratch absent; no restart of accepted work. Git CLI push lacks credentials, but connected GitHub tree/commit/ref tools succeeded.
+
+Preserve accepted0.6.9 and previous rollbacks, AIR, KIRA-9. Hardware62/performance MIDI deferred; physical device/listening/artistic acceptance owner-unverified.

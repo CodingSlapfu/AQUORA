@@ -911,7 +911,7 @@ static int draw(int animate)
    }else if(visual&&page==PAGE_EVOLVE){
      if(band==1||band==2){
        unsigned first=band==1?0u:4u;
-       unsigned start=((evolve_step+1u)&63u)/32u*32u;
+       unsigned start=evolve_step/32u*32u;
        for(unsigned row=0;row<4;row++){
          unsigned t=first+row,y=3u+row*8u;
          cv_line(8,y+6,232,y+6,skins[ui_theme][ui_background].border);

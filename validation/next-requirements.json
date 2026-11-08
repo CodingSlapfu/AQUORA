@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "baseline": "26602ba005a562ac34cb9f1cf656e3076658fd36",
-  "target": "0.6.8",
+  "baseline": "c9813170bdc4fab29e46ed6beb23de6c27f879e3",
+  "target": "0.6.10",
   "audit_complete": false,
   "requirements": [
     {
@@ -1639,6 +1639,188 @@
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
       ]
+    },
+    {
+      "id": "ISSUE-64",
+      "requirement": "NEXT BUILD: Generated songs need varied BPM distributions for each of four music modes, not fixed ~40 BPM",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/64",
+      "target": "0.6.10",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/dsp/engine.c",
+        "device/dsp/song_form.h"
+      ],
+      "tests": [
+        "tests/composition_0610.c"
+      ],
+      "artifacts": [
+        "validation/release-0610/composition.log",
+        "validation/release-0610/native-development.log"
+      ],
+      "physical_owner": "owner",
+      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
+      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
+      "scope_sha256": "623fb52702691e52073ffb088153140723d8741f82301e36996e7274bfc901e1"
+    },
+    {
+      "id": "ISSUE-65",
+      "requirement": "NEXT BUILD: Drums default to 100% PRESENCE on every generated song, remain clear and punchy in all modes",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/65",
+      "target": "0.6.10",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/dsp/engine.c",
+        "device/dsp/song_form.h"
+      ],
+      "tests": [
+        "tests/composition_0610.c"
+      ],
+      "artifacts": [
+        "validation/release-0610/composition.log",
+        "validation/release-0610/native-development.log"
+      ],
+      "physical_owner": "owner",
+      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
+      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
+      "scope_sha256": "ced26bd259e6a97749a52013ad9864e5ce6f5a337e4a9ebd922cd765da0744c0"
+    },
+    {
+      "id": "ISSUE-66",
+      "requirement": "NEXT BUILD: Seamless ever-evolving long-form songs, richer section vocabulary and no abrupt drum/role cutoffs",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/66",
+      "target": "0.6.10",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/dsp/engine.c",
+        "device/dsp/song_form.h"
+      ],
+      "tests": [
+        "tests/composition_0610.c"
+      ],
+      "artifacts": [
+        "validation/release-0610/composition.log",
+        "validation/release-0610/native-development.log"
+      ],
+      "physical_owner": "owner",
+      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
+      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
+      "scope_sha256": "82c2d6e014d630da56e12ca3e6fde476a9468cdd79ff1a7643249101b04e8255"
+    },
+    {
+      "id": "ISSUE-67",
+      "requirement": "NEXT BUILD: Make EVOLVE event-note markers significantly larger while preserving the graph design",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/67",
+      "target": "0.6.10",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/ui.c"
+      ],
+      "tests": [
+        "tests/composition_0610.c"
+      ],
+      "artifacts": [
+        "validation/release-0610/composition.log",
+        "validation/release-0610/native-development.log"
+      ],
+      "physical_owner": "owner",
+      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
+      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
+      "scope_sha256": "7ab112e27221ddb0f5da10872b0f49d46e49a17248d918c0013e96494491d349"
+    },
+    {
+      "id": "ISSUE-68",
+      "requirement": "NEXT BUILD: Section-aware drum rolls, fills, breaks and breakout/return patterns without abrupt cuts",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/68",
+      "target": "0.6.10",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/dsp/engine.c",
+        "device/dsp/song_form.h"
+      ],
+      "tests": [
+        "tests/composition_0610.c"
+      ],
+      "artifacts": [
+        "validation/release-0610/composition.log",
+        "validation/release-0610/native-development.log"
+      ],
+      "physical_owner": "owner",
+      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
+      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
+      "scope_sha256": "8aea37374cf537a4b666ffb8985bbce4b34a83958217a4b5761203fc259c4c69"
+    },
+    {
+      "id": "ISSUE-69",
+      "requirement": "NEXT BUILD: All 21 intentions must draw patches from entire 36-patch/19-drum-kit library with meaningful variety",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/69",
+      "target": "0.6.10",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/dsp/engine.c",
+        "device/dsp/song_form.h"
+      ],
+      "tests": [
+        "tests/composition_0610.c"
+      ],
+      "artifacts": [
+        "validation/release-0610/composition.log",
+        "validation/release-0610/native-development.log"
+      ],
+      "physical_owner": "owner",
+      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
+      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
+      "scope_sha256": "dd2c0f43ea2fd529e9f6406a3bcd8fe985bb8b49d16fa723a98adbfb34e183a4"
+    },
+    {
+      "id": "ISSUE-70",
+      "requirement": "NEXT BUILD: Sonic Candy, recurring Ostinato motifs and emotional Frisson arcs in generative music",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/70",
+      "target": "0.6.10",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/dsp/engine.c",
+        "device/dsp/song_form.h"
+      ],
+      "tests": [
+        "tests/composition_0610.c"
+      ],
+      "artifacts": [
+        "validation/release-0610/composition.log",
+        "validation/release-0610/native-development.log"
+      ],
+      "physical_owner": "owner",
+      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
+      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
+      "scope_sha256": "1163169a810e813ad4738641b1bb911f217d2bf50ea2da4c8184c3fd60fb172c"
+    },
+    {
+      "id": "ISSUE-71",
+      "requirement": "NEXT BUILD: Chladni \u22652\u00d7 richer music reaction, Cymatics sand morphs into acoustic geometries, Original subtly more reactive",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/71",
+      "target": "0.6.10",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "code": [
+        "device/visual_worker.c"
+      ],
+      "tests": [
+        "tests/visual_0610.py"
+      ],
+      "artifacts": [
+        "validation/release-0610/composition.log",
+        "validation/release-0610/native-development.log"
+      ],
+      "physical_owner": "owner",
+      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
+      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
+      "scope_sha256": "e6ce385e07b064eea3b1668e5e1b715229db5366a7ba21a923ffeb5c8cd9f7c1"
     }
   ],
   "release_evidence": {},

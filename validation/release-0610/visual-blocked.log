@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/9e3e15408fe4/source/tests/visual_0610.py", line 21, in <module>
+    assert not ImageChops.difference(a,b).getbbox(),(version,mode,theme,n,'volume0 causality')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('baseline', 0, 0, 0, 'volume0 causality')
