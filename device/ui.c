@@ -1,6 +1,10 @@
 _Static_assert(AQUORA_FONT_FAMILY==0x41515335u,"AQUORA Sans atlas required");
 static const char aquora_font_provenance[]="AQUORA Sans:" AQUORA_FONT_ATLAS_SHA256;
 /* SPDX-License-Identifier: MPL-2.0 */
+/* The bare-metal runtime deliberately has no general strcmp/strcpy ABI. */
+static unsigned ui_len(const char *s){unsigned n=0;while(n<80u&&s[n])n++;return n;}
+static int ui_equal(const char *a,const char *b){for(unsigned n=0;n<80u;n++){if(a[n]!=b[n])return 0;if(!a[n])return 1;}return 0;}
+static void ui_copy(char *to,const char *from){unsigned n=0;while(n<79u&&from[n]){to[n]=from[n];n++;}to[n]=0;}
 static const felucca_font_t *const fit_fonts[]={&FONT_L,&FONT_M,&FONT_B,&FONT_XS,&FONT_T};
 static int fit_width(const felucca_font_t *f,const char *text){int width=0;for(;*text;text++)width+=f->adv[glyph(f,(uint8_t)*text)];return width;}
 static const felucca_font_t *fit_font(const char *text,int width,int height){
@@ -8,10 +12,10 @@ static const felucca_font_t *fit_font(const char *text,int width,int height){
  static struct {char text[80];int width,height;const felucca_font_t *font;} cache[32] PLAT_POOL;
  static unsigned next,initialized;
  if(!initialized){memset(cache,0,sizeof cache);initialized=1;}
- for(unsigned i=0;i<32;i++)if(cache[i].font&&cache[i].width==width&&cache[i].height==height&&!strcmp(cache[i].text,text))return cache[i].font;
+ for(unsigned i=0;i<32;i++)if(cache[i].font&&cache[i].width==width&&cache[i].height==height&&ui_equal(cache[i].text,text))return cache[i].font;
  const felucca_font_t *result=fit_fonts[4];
  for(unsigned i=0;i<5;i++)if(fit_fonts[i]->h<=height&&fit_width(fit_fonts[i],text)<=width){result=fit_fonts[i];break;}
- if(strlen(text)<sizeof cache[0].text){unsigned i=next++&31u;strcpy(cache[i].text,text);cache[i].width=width;cache[i].height=height;cache[i].font=result;}
+ if(ui_len(text)<sizeof cache[0].text){unsigned i=next++&31u;ui_copy(cache[i].text,text);cache[i].width=width;cache[i].height=height;cache[i].font=result;}
  return result;
 }
 static int text_room(int y){return y<8?24:47-y;}
@@ -22,7 +26,7 @@ static int ui_text(int x,int y,const felucca_font_t *font,const char *text,uint1
  if(ui_font_size==2){
   if(y>35)y=35;
   int room=text_room(y);if(room>font->h)room=font->h;
-  if(!strcmp(text,"SEL MUTE / LFO SOLO"))text="SEL:M LFO:S";
+  if(ui_equal(text,"SEL MUTE / LFO SOLO"))text="SEL:M LFO:S";
   font=fit_font(text,236-x,room);
 #ifdef PLAT_HOST
   if(fit_width(font,text)>236-x||font->h>47-y)large_text_overflow++;
@@ -340,14 +344,14 @@ static void knob_cell(unsigned knob,int x)
  if(ui_font_size==2){
    const felucca_font_t *font=fit_font(shown,106,34);
    if(font->h<17){
-     char first[80],second[80];unsigned split=0,length=(unsigned)strlen(shown);
+     char first[80],second[80];unsigned split=0,length=(unsigned)ui_len(shown);
      for(unsigned j=1;j<length;j++)if(shown[j]==' '){
        unsigned before=j>length/2?j-length/2:length/2-j;
        unsigned best=split>length/2?split-length/2:length/2-split;
        if(!split||before<best)split=j;
      }
      if(split&&length<sizeof first){
-       memcpy(first,shown,split);first[split]=0;strcpy(second,shown+split+1);
+       memcpy(first,shown,split);first[split]=0;ui_copy(second,shown+split+1);
        const felucca_font_t *a=fit_font(first,106,17),*b=fit_font(second,106,17);
        if(fit_width(a,first)<=106&&fit_width(b,second)<=106){
          limited_text(x,12,106,a,first,focus?skin_accent():skin_text());

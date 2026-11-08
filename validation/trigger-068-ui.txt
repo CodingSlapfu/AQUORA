@@ -1,1 +1,2 @@
 Final corrected source: issue55 typography plus phrase-queued rhythm, honest blocked AIR feedback and nonduplicating harmony. Preserve prior successful run42421822671 and artifacts.
+Native cache uses bounded local string helpers (minimal runtime has no strcmp ABI).

@@ -14,3 +14,5 @@ Site source opening succeeded: project appgprj_6ad6d0ae409c8191b45224ecdec724db 
 Listening: four original3min renders under /workspace/scratch/0c64376c3cd0/listening; tests/listening_068.py uses RELATIVE wav mix.wav because host prefixes output dir. Old absolute-path attempt produced no audio; do not repeat it. Need persist audio/review analysis and baseline comparisons. No subjective approval invented.
 
 Both performance MIDI transports deferred; AIR required. KIRA-9 untouched. Owner physical testing separate.
+
+Final run42436991723 failed before producing firmware: ui fit cache used unsupported bare-metal strcmp. Fixed with 80-byte bounded ui_equal/ui_len/ui_copy, no new libc dependencies. Re-run only corrected final workflow; earlier successful platform42421822671 remains intact.
