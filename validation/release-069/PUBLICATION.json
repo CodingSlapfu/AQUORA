@@ -1,0 +1,53 @@
+{
+  "status": "PUBLISHED_ORIGINAL_HARDWARE_ONLY",
+  "date": "2026-11-08",
+  "site_project": "appgprj_6ad6d0ae409c8191b45224ecdec724db",
+  "site_source": "c620c47979ce2ae4f4cd26e4b08d918712997707",
+  "saved_version": 189,
+  "saved_version_id": "appgprj_6ad6d0ae409c8191b45224ecdec724db~appgver_03d14e9ac3c88191976d7235acfc19eb",
+  "deployment": "appgdep_6af026ceb984819187747e01eebaf890",
+  "url": "https://parallax8-studio.jminie66.chatgpt.site/install/",
+  "firmware_source": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf",
+  "owner_decisions": [
+    "32#issuecomment-6718797907",
+    "62#issuecomment-6718797646"
+  ],
+  "compatibility": "Original Puya P25Q80 / 0x856014 only; UC25HQ80 / 0xB36014 unsupported, #62 OWNER-DEFERRED and OPEN",
+  "firmware_rebuilt": false,
+  "prior_software_tests_repeated": false,
+  "checks": {
+    "archive_max_file_bytes": 25165824,
+    "public_browser_downloads": {
+      "firmware": {
+        "bytes": 611496,
+        "sha256": "94dc7df0038b90b783913c2c9549b120120e87fd6a7506eeb15e3564b0baeae9",
+        "public_browser_download": "/workspace/scratch/647e2c46-478c-419c-8b1f-bbab5202eefb/f684d0b8-2066-46da-9c51-9d58cdef4185"
+      },
+      "wasm": {
+        "bytes": 213114,
+        "sha256": "2b79c5b3e55d4982d0f2b7a51bbad6924347dfc6735ed75e393a42b364bc8d6a",
+        "public_browser_download": "/workspace/scratch/647e2c46-478c-419c-8b1f-bbab5202eefb/ef2c7ab2-ffaf-427b-8165-ddb445f1653d"
+      },
+      "installer_zip": {
+        "bytes": 395466,
+        "sha256": "f1b0e7b42ce9437db8448eea20a3809304937076a89d8d447b3d7a54a954da84",
+        "public_browser_download": "/workspace/scratch/647e2c46-478c-419c-8b1f-bbab5202eefb/fbc2882f-6c28-456b-a1a1-7457591a7cda"
+      }
+    },
+    "installer": "Fresh HTTPS /install/ shows 0.6.9 warning/help link and enabled Install after package SHA/product/CRC validation; no hardware write attempted",
+    "emulator": "HTTPS /emu/ started successfully; controls visible, live animated visualizer rendered",
+    "studio": "HTTPS /studio/ displays 0.6.9, started embedded emulator, status Emulator online — live editing enabled",
+    "rollback": "Both public rollback installers 0.6.7 and 0.6.8 display correct versions, enabled Install and version status",
+    "release_metadata": "Fresh public /release.json shows version, hashes, explicit supported/unsupported IDs, automatic_flash_detection false",
+    "network_limit": "Shell HTTPS fetch returned403; actual downloads and visitor UI independently verified through public browser, not credential bypass"
+  },
+  "hardware": "Owner-unverified; no physical flashing, RF, listening or performance results invented",
+  "ownership": "One bounded check: no running compiler/uploader. Resumed existing publication; previous session lock retained without clearing/reassignment",
+  "preserved": [
+    "0.6.7 rollback",
+    "0.6.8 rollback",
+    "accepted069firmware/WASM",
+    "KIRA-9"
+  ],
+  "archive_sha256": "66831bbf25cdf6025b0c531bd84cc9498f262cf4739560b3dc1075a6e55f23af"
+}

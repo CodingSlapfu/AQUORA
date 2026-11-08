@@ -20,11 +20,25 @@
   },
   "installer_zip": {
     "url": "downloads/0.6.9/AQUORA-0.6.9-installer.zip",
-    "sha256": "8838043e789607f247031eaa21cd4362fc8f86525c8b05828512056c45abd5de"
+    "sha256": "f1b0e7b42ce9437db8448eea20a3809304937076a89d8d447b3d7a54a954da84"
   },
   "source_archive_sha256": "adf7f01e9eddefb5d33512f02e925323354abc0bd49ff6304b70d465ffc727cc",
   "rollback": {
     "0.6.7": "5dcd602134b37c6b81e982aea9998086360dc4e665664dc6dbfbb0ba60c6c83a",
     "0.6.8": "86527d3167c125ee3e9e433b3663f335f102e98b53bb89e00e1fd5091c15a525"
-  }
+  },
+  "compatibility": {
+    "supported_flash_ids": [
+      "0x856014"
+    ],
+    "unsupported_flash_ids": [
+      "0xB36014"
+    ],
+    "scope": "original FM-1 with Puya P25Q80 only",
+    "warning": "AQUORA v0.6.9 supports the original FM-1 hardware with Puya P25Q80 flash (JEDEC 0x856014). Newer FM-1 units with UC25HQ80 flash (0xB36014) are NOT supported by this release. Do not install on an unverified newer unit.",
+    "automatic_flash_detection": false,
+    "issue_62": "owner-deferred; open for future release",
+    "help_url": "https://github.com/CodingSlapfu/AQUORA/issues/62"
+  },
+  "release_notes": "downloads/0.6.9/RELEASE.md"
 }

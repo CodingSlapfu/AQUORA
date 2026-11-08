@@ -1,3 +1,15 @@
+# AQUORA v0.6.9 — original FM-1 hardware only
+
+AQUORA v0.6.9 supports the original FM-1 hardware with Puya P25Q80 flash (JEDEC 0x856014). Newer FM-1 units with UC25HQ80 flash (0xB36014) are NOT supported by this release. Do not install on an unverified newer unit.
+
+The installer does not reliably identify the flash chip. Ask your seller/manufacturer to confirm it, or ask for help at https://github.com/CodingSlapfu/AQUORA/issues/62 before installing. Saving, updating and recovery on unsupported units may fail or be unsafe.
+
+#62 is owner-deferred to a future release; it is not fixed. All accepted firmware bytes and original-hardware safety checks remain unchanged. Software acceptance through #61 passed; physical hardware and artistic acceptance remain owner-unverified. Performance MIDI is deferred. v0.6.7/v0.6.8 rollback is retained.
+
+Includes Learn from Playing, Experimental Ambient and musical evolution, AIR stability corrections, randomized startup arrangement, track selection and control responsiveness improvements.
+
+## Full usage guide
+
 # AQUORA 0.6.9 guide
 After the intro finishes or is skipped, AQUORA starts one fresh, coherent randomized song: one of21 intentions, one of4 Music Modes, and a compatible sound/drum palette. The physical master knob controls output; the existing smooth master/transport ramp protects startup. PLAY stops it. It will not resume automatically after you stop. This startup behavior is always ON in production. It does not overwrite saved banks.
 
