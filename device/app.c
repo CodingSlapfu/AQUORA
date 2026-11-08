@@ -401,9 +401,10 @@ static void consume(void){
  case 123:engine.chord_direction=bounded(engine.chord_direction+d,0,3);break;
  case 124:engine.air_mode=bounded(engine.air_mode+d,0,4);engine.air_request=0;break;
  case 127:if(engine.running&&!engine.freeze&&!engine.air_request)engine.air_request=bounded(d,1,3);break;
- case 128:if(d>0&&engine.air_mode&&engine.air_mode<4&&!engine.freeze)engine.air_request=engine.air_mode;break;
+ case 128:if(d>0&&engine.running&&engine.air_mode&&engine.air_mode<4&&!engine.freeze)engine.air_request=engine.air_mode;break;
  case 131:engine.air_request=0;break;
- case 129:engine.rhythm_style=bounded(engine.rhythm_style+d,0,2);break;
+ case 129:{unsigned next=bounded((int)(engine.rhythm_pending?engine.rhythm_pending-1u:engine.rhythm_style)+d,0,2);
+   if(engine.running)engine.rhythm_pending=next+1u;else engine.rhythm_style=next;break;}
  case 130:engine.fill_character=bounded(engine.fill_character+d,0,3);break;
  case 93:engine.air_fx=bounded(engine.air_fx+d,0,4);break;
  case 94:engine.air_depth=bounded(engine.air_depth+d*5,0,100);break;
@@ -1032,6 +1033,9 @@ void app_frame(void)
 }
 #ifdef PLAT_HOST
 int app_expect(const char *what,int *got){
+ if(!strcmp(what,"large_text_overflow")){*got=large_text_overflow;return 1;}
+ if(!strcmp(what,"large_font_used")){*got=!!(large_font_mask&1u);return 1;}
+ if(!strcmp(what,"large_font_mask")){*got=large_font_mask;return 1;}
  if(!strcmp(what,"control_metrics")){
   for(unsigned run=0;run<2;run++){
    timing_summary q=summarize(&control_queue_timing[run]),l=summarize(&control_label_timing[run]),p=summarize(&control_poll_timing[run]);
@@ -1063,6 +1067,7 @@ int app_expect(const char *what,int *got){
  }
  if(!strcmp(what,"chord_mode")){*got=engine.chord_mode;return 1;}
  if(!strcmp(what,"chord_gap")){*got=engine.chord_gap;return 1;}
+ if(!strcmp(what,"rhythm_pending")){*got=engine.rhythm_pending;return 1;}
  if(!strcmp(what,"rhythm_style")){*got=engine.rhythm_style;return 1;}
  if(!strcmp(what,"fill_character")){*got=engine.fill_character;return 1;}
  if(!strcmp(what,"air_mode")){*got=engine.air_mode;return 1;}

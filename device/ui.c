@@ -1,8 +1,39 @@
 _Static_assert(AQUORA_FONT_FAMILY==0x41515335u,"AQUORA Sans atlas required");
 static const char aquora_font_provenance[]="AQUORA Sans:" AQUORA_FONT_ATLAS_SHA256;
 /* SPDX-License-Identifier: MPL-2.0 */
-static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?&FONT_S:&FONT_XS;}
-static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_M:&FONT_B;}
+static const felucca_font_t *const fit_fonts[]={&FONT_L,&FONT_M,&FONT_B,&FONT_XS,&FONT_T};
+static int fit_width(const felucca_font_t *f,const char *text){int width=0;for(;*text;text++)width+=f->adv[glyph(f,(uint8_t)*text)];return width;}
+static const felucca_font_t *fit_font(const char *text,int width,int height){
+ /* Main-loop only: bounded cache of actual glyph advances and font heights. */
+ static struct {char text[80];int width,height;const felucca_font_t *font;} cache[32] PLAT_POOL;
+ static unsigned next,initialized;
+ if(!initialized){memset(cache,0,sizeof cache);initialized=1;}
+ for(unsigned i=0;i<32;i++)if(cache[i].font&&cache[i].width==width&&cache[i].height==height&&!strcmp(cache[i].text,text))return cache[i].font;
+ const felucca_font_t *result=fit_fonts[4];
+ for(unsigned i=0;i<5;i++)if(fit_fonts[i]->h<=height&&fit_width(fit_fonts[i],text)<=width){result=fit_fonts[i];break;}
+ if(strlen(text)<sizeof cache[0].text){unsigned i=next++&31u;strcpy(cache[i].text,text);cache[i].width=width;cache[i].height=height;cache[i].font=result;}
+ return result;
+}
+static int text_room(int y){return y<8?24:47-y;}
+#ifdef PLAT_HOST
+static unsigned large_text_overflow,large_font_mask;
+#endif
+static int ui_text(int x,int y,const felucca_font_t *font,const char *text,uint16_t color){
+ if(ui_font_size==2){
+  if(y>35)y=35;
+  int room=text_room(y);if(room>font->h)room=font->h;
+  if(!strcmp(text,"SEL MUTE / LFO SOLO"))text="SEL:M LFO:S";
+  font=fit_font(text,236-x,room);
+#ifdef PLAT_HOST
+  if(fit_width(font,text)>236-x||font->h>47-y)large_text_overflow++;
+  for(unsigned i=0;i<5;i++)if(font==fit_fonts[i])large_font_mask|=1u<<i;
+#endif
+ }
+ return cv_text(x,y,font,text,color);
+}
+#define cv_text ui_text
+static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?&FONT_T:&FONT_XS;}
+static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_L:&FONT_B;}
 #define FONT_XS (*ui_caption_font())
 #define FONT_B (*ui_value_font())
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
@@ -27,10 +58,10 @@ static uint16_t skin_accent(void){return skins[ui_theme][ui_background].accent;}
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
 static void limited_text(int x,int y,int width,const felucca_font_t *font,const char *s,uint16_t color);
 static void label(int x,int y,const char *name,int value){
- char v[12];num(v,value);if(ui_font_size==2&&y>6)y=6;
+ char v[12];num(v,value);
  int width=x==86?70:x==87?72:x==166?66:x>=125?232-x:72;
  limited_text(x,y,width,&FONT_XS,name,skin_dim());
- limited_text(x,y+(ui_font_size==2?18:15),width,&FONT_B,v,skin_text());
+ limited_text(x,y+(ui_font_size==2?12:15),width,&FONT_B,v,skin_text());
 }
 static const char *role_names[SR_TRACKS]={
  "Lead","Bass","Pads","Harmony","Piano","Plucks","Choir","Drums"
@@ -128,7 +159,8 @@ static const char *drum_status(void)
 }
 static void limited_text(int x,int y,int width,const felucca_font_t *font,const char *s,uint16_t color)
 {
- char text[36];
+ if(ui_font_size==2){int height=text_room(y);if(height>font->h)height=font->h;font=fit_font(s,width,height);}
+ char text[80];
  unsigned length=0;
  int used=0;
  while(s[length]&&length+1<sizeof(text)){
@@ -235,8 +267,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 124:{static const char *v[]={"FX","Next Evolution","Drum Fill","Harmony","Energy Swell"};*name="AIR ACTION";return v[engine.air_mode];}
  case 125:*name="SENSITIVITY %";number=air_sensitivity;break;
  case 126:*name="INVERT AIR";return onoff(air_invert);
- case 128:*name="MUSIC REQUEST";return engine.air_request?"Queued / phrase":engine.air_result?"Applied":"Right: trigger";
- case 129:{static const char *v[]={"Intention / Auto","Experimental IDM","Ambient Broken"};*name="RHYTHM STYLE";return v[engine.rhythm_style];}
+ case 128:*name="MUSIC REQUEST";return !engine.running?"PLAY required":engine.air_request?"Queued / phrase":engine.air_result>=128?"Blocked / locks":engine.air_result?"Applied":"Right: trigger";
+ case 129:{static const char *v[]={"Intention / Auto","Experimental IDM","Ambient Broken"};*name=engine.rhythm_pending?"NEXT RHYTHM":"RHYTHM STYLE";return v[engine.rhythm_pending?engine.rhythm_pending-1u:engine.rhythm_style];}
  case 130:{static const char *v[]={"Auto","Gentle","Experimental","Off"};*name="TRANSITIONS";return v[engine.fill_character];}
  case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo","Tone Sweep","Soft Pulse"};*name="AIR FX";return effects[engine.air_fx];}
  case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
@@ -301,17 +333,34 @@ static void knob_cell(unsigned knob,int x)
  const char *name;
  const char *shown=knob_value(control_for(knob),&name,value);
  tag[1]=(char)('1'+knob);
- const felucca_font_t *caption=ui_font_size==2?&FONT_S:&FONT_XS;
+ const felucca_font_t *caption=ui_font_size==2?&FONT_T:&FONT_XS;
  int label_x=cv_text(x,0,caption,tag,skin_accent());
  limited_text(label_x,0,108-(label_x-x),caption,name,skin_dim());
  int focus=knob_until&&knob_focus==knob;
- const felucca_font_t *font=ui_font_size==2?&FONT_M:ui_font_size==0?&FONT_S:&FONT_B;
  if(ui_font_size==2){
-    for(const char *q=shown;*q;q++)if(*q>='a'&&*q<='z'){font=&FONT_B;break;}
+   const felucca_font_t *font=fit_font(shown,106,34);
+   if(font->h<17){
+     char first[80],second[80];unsigned split=0,length=(unsigned)strlen(shown);
+     for(unsigned j=1;j<length;j++)if(shown[j]==' '){
+       unsigned before=j>length/2?j-length/2:length/2-j;
+       unsigned best=split>length/2?split-length/2:length/2-split;
+       if(!split||before<best)split=j;
+     }
+     if(split&&length<sizeof first){
+       memcpy(first,shown,split);first[split]=0;strcpy(second,shown+split+1);
+       const felucca_font_t *a=fit_font(first,106,17),*b=fit_font(second,106,17);
+       if(fit_width(a,first)<=106&&fit_width(b,second)<=106){
+         limited_text(x,12,106,a,first,focus?skin_accent():skin_text());
+         limited_text(x,30,106,b,second,focus?skin_accent():skin_text());return;
+       }
+     }
+   }
+   limited_text(x,12,106,font,shown,focus?skin_accent():skin_text());return;
  }
+ const felucca_font_t *font=ui_font_size==0?&FONT_S:&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_XS;
- limited_text(x,ui_font_size==2?18:14,108,font,shown,focus?skin_accent():skin_text());
+ limited_text(x,14,108,font,shown,focus?skin_accent():skin_text());
 }
 static void voice_diagnostics(int band)
 {
@@ -725,7 +774,7 @@ static int draw(int animate)
        label(8,0,"RAW RSSI",air_sensor.raw);
        label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
        label(183,0,"LAST PKTS",air_packets);
-       limited_text(8,33,226,&FONT_XS,air_tab==2?(engine.air_request?"WAVE QUEUED / NEXT PHRASE":engine.air_result?"MUSICAL ACTION APPLIED":"NEAR THEN FAR / RIGHT: TEST"):air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
+       limited_text(8,33,226,&FONT_XS,air_tab==2?(engine.air_request?"WAVE QUEUED / NEXT PHRASE":engine.air_result>=128?"BLOCKED / MUTE, OFF OR VOICES":engine.air_result?"MUSICAL ACTION APPLIED":"NEAR THEN FAR / RIGHT: TEST"):air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
@@ -1010,3 +1059,5 @@ static int draw(int animate)
  displayed_revision=revision;
  return 1;
 }
+
+#undef cv_text

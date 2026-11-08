@@ -35,7 +35,7 @@ typedef struct { uint8_t active, track, gate, midi, key, external, channel; floa
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {
   uint8_t chord_mode, chord_gap, chord_inversion, chord_direction, rhythm_style, fill_character;
-  uint8_t air_mode, air_request, air_result, chord_alternate;
+  uint8_t air_mode, air_request, air_result, chord_alternate, rhythm_pending;
   int8_t chord_previous[3];
   uint32_t scheduled_overflows, air_actions;
   struct { uint32_t due; float beats; uint8_t role,note,velocity,active; } scheduled[12];

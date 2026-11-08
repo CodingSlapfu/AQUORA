@@ -588,6 +588,7 @@ void sr_stop(sr_engine *e)
     e->restart=0;
     e->running=0;
     memset(e->scheduled,0,sizeof e->scheduled);e->air_request=0;
+    if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
 }
 static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats){
   if((!e->running&&!e->preview_frames&&!e->midi_suppress)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
@@ -943,27 +944,27 @@ static void ornament(sr_engine *e,unsigned slot,uint8_t midi,uint8_t velocity,fl
 }
 /* Fixed-capacity control-rate event queue. Overflow drops optional detail.
  * Bass, direct keys and base drum pulse never use this queue. */
-static void schedule(sr_engine *e,unsigned role,unsigned note,unsigned velocity,float beats,unsigned delay)
+static unsigned schedule(sr_engine *e,unsigned role,unsigned note,unsigned velocity,float beats,unsigned delay)
 {
  for(unsigned i=0;i<12;i++)if(!e->scheduled[i].active){
   e->scheduled[i].due=e->frame_count+delay;e->scheduled[i].role=role;
   e->scheduled[i].note=note;e->scheduled[i].velocity=velocity;
-  e->scheduled[i].beats=beats;e->scheduled[i].active=1;return;
+  e->scheduled[i].beats=beats;e->scheduled[i].active=1;return 1;
  }
- e->scheduled_overflows++;
+ e->scheduled_overflows++;return 0;
 }
-static void chord_phrase(sr_engine *e,unsigned step)
+static unsigned chord_voice(sr_engine *e,unsigned step,unsigned flourish)
 {
- if(e->chord_mode==3||e->frequency_lock)return;
+ if(e->chord_mode==3||e->frequency_lock)return 0;
  unsigned role=e->music_mode==SR_NEOCLASSICAL?SR_PIANO:SR_GUITAR;
- if(e->tracks[role].mute||(e->solo<SR_TRACKS&&e->solo!=role)||e->role_target[role]<.01f)return;
+ if(e->tracks[role].mute||(e->solo<SR_TRACKS&&e->solo!=role)||e->role_target[role]<.01f||e->tracks[role].volume<=0)return 0;
  unsigned active=0;for(unsigned i=0;i<SR_VOICES;i++)active+=e->voices[i].active;
- unsigned count=active>12?2:3;if(active>14)return;
+ unsigned count=active>12?2:3;if(active>14)return 0;
  unsigned degree=phrase_chord(e,step/16u),inversion=e->chord_inversion;
  if(!inversion)inversion=1u+song_draw(e->song_seed,e->phrase+step/16u)%3u;
  int notes[3];const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
  for(unsigned i=0;i<count;i++){
-  unsigned d=degree+i*2u;notes[i]=sr_tonic(e)+12+scale[d%7u]+12*(d/7u);
+  unsigned d=degree+i*2u+(flourish?2u:0u);notes[i]=sr_tonic(e)+12+scale[d%7u]+12*(d/7u);
   if(i<inversion-1u)notes[i]+=12;
   if(e->chord_previous[i]){
    while(notes[i]-e->chord_previous[i]>7)notes[i]-=12;
@@ -975,22 +976,26 @@ static void chord_phrase(sr_engine *e,unsigned step)
  unsigned strum=e->chord_mode==2||(e->chord_mode==0&&!e->freeze&&
    e->music_mode!=SR_NEOCLASSICAL&&patch->attack<.2f&&song_section(e)==2u&&(step&31u)==16u);
  unsigned reverse=e->chord_direction==2||(e->chord_direction==3&&(e->chord_alternate++&1u));
+ unsigned performed=0;
  for(unsigned i=0;i<count;i++){
   unsigned index=reverse?count-1u-i:i;
   e->chord_previous[index]=notes[index];
-  if(strum&&i)schedule(e,role,notes[index],58-i*4,2.8f,(i*e->chord_gap*SR_RATE+500u)/1000u);
-  else sr_note_on(e,role,notes[index],62-i*4,2.8f);
+  if(strum&&i)performed+=schedule(e,role,notes[index],58-i*4,2.8f,(i*e->chord_gap*SR_RATE+500u)/1000u);
+  else {unsigned before=e->tracks[role].events;sr_note_on(e,role,notes[index],62-i*4,2.8f);performed+=e->tracks[role].events!=before;}
  }
+ return performed;
 }
-static void transition_fill(sr_engine *e,unsigned step,int gesture)
+static unsigned chord_phrase(sr_engine *e,unsigned step){return chord_voice(e,step,0);}
+static unsigned transition_fill(sr_engine *e,unsigned step,int gesture)
 {
  if(e->freeze||!e->drums_enabled||!e->drum_density||e->fill_character==3||
-    e->tracks[SR_DRUMS].mute||(e->solo<SR_TRACKS&&e->solo!=SR_DRUMS))return;
+    e->tracks[SR_DRUMS].mute||(e->solo<SR_TRACKS&&e->solo!=SR_DRUMS)||e->tracks[SR_DRUMS].volume<=0||e->drum_level<=0||e->role_target[SR_DRUMS]<.1f)return 0;
  unsigned exploratory=e->rhythm_style==1||e->fill_character==2;
  unsigned period=e->music_mode==SR_NEOCLASSICAL?7u:exploratory?3u:5u;
- if(!gesture&&((step+1u)%e->loop_length||e->phrase%period!=period-1u))return;
+ if(!gesture&&((step+1u)%e->loop_length||e->phrase%period!=period-1u))return 0;
  unsigned count=exploratory?3u:2u;
- for(unsigned i=0;i<count;i++)schedule(e,SR_DRUMS,i&1u?2:1,32+i*9,0,(i+1u)*e->tick_length/(count+1u));
+ unsigned performed=0;for(unsigned i=0;i<count;i++)performed+=schedule(e,SR_DRUMS,i&1u?2:1,32+i*9,0,(i+1u)*e->tick_length/(count+1u));
+ return performed;
 }
 static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 {
@@ -1027,7 +1032,9 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   }
 }
 static void trigger(sr_engine *e){
+  unsigned requested=0;
   if(!e->loop_pos){
+    if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
     if(e->pending_scene||e->pending_mode){
       e->profile_applying=1;
       unsigned scene=e->pending_scene?e->pending_scene-1u:e->scene;
@@ -1047,11 +1054,9 @@ static void trigger(sr_engine *e){
       }
     }
   }
-  if(!e->loop_pos&&e->air_request&&!e->freeze){
-    unsigned action=e->air_request;e->air_request=0;e->air_result=action;e->air_actions++;
-    if(action==1)e->evolve_next=1;
-    else if(action==2)transition_fill(e,0,1);
-    else if(action==3)chord_phrase(e,0);
+  if(!e->loop_pos&&e->air_request&&!e->freeze&&e->sequence_step){
+    requested=e->air_request;e->air_request=0;
+    if(requested==1)e->evolve_next=1;
   }
   uint32_t absolute=e->sequence_step++;
   uint32_t s=e->loop_pos;
@@ -1085,7 +1090,12 @@ static void trigger(sr_engine *e){
     if((section==2||section==3)&&energy>1)energy--;
     if(section==1&&energy<3)energy++;
   }
-  if((s&15u)==0)chord_phrase(e,s);
+  if(requested){
+    unsigned performed=requested==1?1:requested==2?transition_fill(e,s,1):chord_voice(e,s,1);
+    e->air_result=(uint8_t)(performed?requested:128u+requested);
+    if(performed)e->air_actions++;
+  }
+  if((s&15u)==0&&requested!=3)chord_phrase(e,s);
   transition_fill(e,s,0);
   if(e->music_mode){mode_phrase(e,s,phrase_seed);return;}
   drum_trigger(e,s,energy);

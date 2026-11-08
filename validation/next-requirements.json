@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "baseline": "26602ba005a562ac34cb9f1cf656e3076658fd36",
-  "target": "0.6.7",
-  "audit_complete": true,
+  "target": "0.6.8",
+  "audit_complete": false,
   "requirements": [
     {
       "id": "ISSUE-01",
@@ -1331,15 +1331,317 @@
       "carry_forward": "Owner physical brightness, AIR/RF, LCD FPS/XRUN/soak, audio listening and visual aesthetics remain unverified; software scope complete",
       "audit": "All issue text and latest owner comments preserved in validation/release-067/OWNER_REQUIREMENTS.json; implementation and targeted acceptance underway",
       "source_commit": "17c2e3d539cd606ec96806511f835c1e2567b39b"
+    },
+    {
+      "id": "ISSUE-45",
+      "requirement": "Restore 066 Cymatics and amplify musical response without altering Original",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/45",
+      "target": "0.6.8",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-46",
+      "requirement": "PLAY control dispatch, label feedback and timing telemetry",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/46",
+      "target": "0.6.8",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-47",
+      "requirement": "Prevent unintended Nature-only gaps with musical anchors",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/47",
+      "target": "0.6.8",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-48",
+      "requirement": "Original melodic ambient electronic form and listening comparisons",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/48",
+      "target": "0.6.8",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-49",
+      "requirement": "Larger truthful EVOLVE note/hit marks",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/49",
+      "target": "0.6.8",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-50",
+      "requirement": "Restrained AUTO motion, manual precedence and saved profiles",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/50",
+      "target": "0.6.8",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-51",
+      "requirement": "Optional experimental rhythms, clear 19-kit kicks and bank persistence",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/51",
+      "target": "0.6.8",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-52",
+      "requirement": "Voiced chords, true Together/Strum, context-aware Auto and manual persistence",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/52",
+      "target": "0.6.8",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-53",
+      "requirement": "Restrained rolls/builds/breaks/returns with bounded scheduling",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/53",
+      "target": "0.6.8",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-54",
+      "requirement": "Audible targeted AIR effects and safe phrase-queued musical gestures",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/54",
+      "target": "0.6.8",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
+    },
+    {
+      "id": "ISSUE-55",
+      "requirement": "Maximal fit-to-box Large Text across pages, values and themes",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/55",
+      "target": "0.6.8",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "physical_owner": "Owner FM-1 / subjective acceptance unverified",
+      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
+      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "code": [
+        "device/app.c",
+        "device/ui.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/performance_features_068.c",
+        "tests/features_panel_068.txt",
+        "tests/gesture_policy_068.c",
+        "tests/audio_features_068.c",
+        "tests/typography_068.py"
+      ],
+      "artifacts": [
+        "validation/release-068/features.log",
+        "validation/release-068/audio-features.log",
+        "validation/release-068/typography.log"
+      ]
     }
   ],
-  "release_evidence": {
-    "final_platform_source_match": true,
-    "native_repro_single_core_wasm": true,
-    "updater_paths": true,
-    "staged_installer": true,
-    "verified_source_backup": true
-  },
+  "release_evidence": {},
   "reviewed_owner_comments": [
     "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700880739",
     "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700892234",

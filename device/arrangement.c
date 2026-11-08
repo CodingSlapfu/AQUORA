@@ -182,6 +182,7 @@ static void arrangement_snapshot(arrangement *record)
     SAVE_OPTION(chord_mode) SAVE_OPTION(chord_gap) SAVE_OPTION(chord_inversion) SAVE_OPTION(chord_direction)
     SAVE_OPTION(rhythm_style) SAVE_OPTION(fill_character) SAVE_OPTION(air_mode) SAVE_OPTION(air_fx) SAVE_OPTION(air_depth) SAVE_OPTION(air_track)
 #undef SAVE_OPTION
+    if(engine.rhythm_pending)record->rhythm_style=engine.rhythm_pending-1u;
     record->version=AQ_BANK_VERSION;record->crc5=arrangement_crc(record);
 }
 
@@ -261,7 +262,7 @@ static void arrangement_apply(const arrangement *record)
       engine.chord_mode=engine.chord_inversion=engine.chord_direction=0;engine.chord_gap=100;
       engine.rhythm_style=engine.fill_character=engine.air_mode=0;
     }
-    memset(engine.scheduled,0,sizeof engine.scheduled);engine.air_request=0;
+    memset(engine.scheduled,0,sizeof engine.scheduled);engine.air_request=engine.rhythm_pending=0;
     engine.restart=0;
     qread=qwrite;
     state_revision++;
