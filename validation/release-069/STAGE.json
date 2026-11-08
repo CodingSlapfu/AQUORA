@@ -20,7 +20,7 @@
   },
   "installer_zip": {
     "url": "downloads/0.6.9/AQUORA-0.6.9-installer.zip",
-    "sha256": "76639fb62fcdcb2fc90b0a7d3d4818d0bfc157a045f4d66bf8df3a50cc5c0443"
+    "sha256": "8838043e789607f247031eaa21cd4362fc8f86525c8b05828512056c45abd5de"
   },
   "source_archive_sha256": "adf7f01e9eddefb5d33512f02e925323354abc0bd49ff6304b70d465ffc727cc",
   "rollback": {

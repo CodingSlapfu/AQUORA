@@ -34,8 +34,8 @@ page='<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport"
 page=page.replace('-6.8.ogg','-068.ogg').replace('-6.9.ogg','-069.ogg');(lp/'index.html').write_text(page)
 d=out/'downloads/0.6.9';d.mkdir(parents=True,exist_ok=True)
 archive=final/'AQUORA-0.6.9-source.tar.gz';data=archive.read_bytes();parts=[]
-for at in range(0,len(data),28*1024*1024):
- p=d/f'AQUORA-0.6.9-source.tar.gz.part{at//(28*1024*1024):03}';p.write_bytes(data[at:at+28*1024*1024]);parts.append({'file':p.name,'bytes':p.stat().st_size,'sha256':sha(p)})
+for at in range(0,len(data),24*1024*1024):
+ p=d/f'AQUORA-0.6.9-source.tar.gz.part{at//(24*1024*1024):03}';p.write_bytes(data[at:at+24*1024*1024]);parts.append({'file':p.name,'bytes':p.stat().st_size,'sha256':sha(p)})
 (d/'SOURCE-MANIFEST.json').write_text(json.dumps({'source_commit':'dc3db77347bdf9abfad1045c5d9b562b99fd1abf','archive_sha256':sha(archive),'restore':'Concatenate parts in listed order, verify SHA256, then extract tar.gz.','parts':parts},indent=2))
 z=d/'AQUORA-0.6.9-installer.zip'
 with zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED) as f:
