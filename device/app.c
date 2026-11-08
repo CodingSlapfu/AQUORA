@@ -47,10 +47,16 @@ static unsigned air_on, air_hold, air_poll, air_tab;
 static aq_air_sensor air_sensor;
 static aq_air_gesture air_gesture;
 static unsigned air_sensitivity=70,air_invert;
+static unsigned boot_armed,boot_starts;
+#ifndef PLAT_HOST
+extern uint32_t plat_aquora_boot_seed(void);
+#endif
 static unsigned air_packets, air_packet_window, air_packet_rate, air_last_packet_ms, air_packet_total;
 static unsigned air_window_start;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-static unsigned air_sent;
+static unsigned air_sent,air_calibrated_source;
+extern unsigned plat_air_source_id(void);
+extern unsigned plat_air_source_rejected(void);
 #endif
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
 extern unsigned plat_air_sample(unsigned *packets);
@@ -137,6 +143,8 @@ typedef struct {
     uint8_t startup_sound;
     uint8_t air_mode,air_sensitivity,air_invert,air_calibrated;
     uint16_t air_far,air_near;
+    uint8_t air_noise; /* formerly zero alignment padding, schema39 */
+    uint32_t air_source;
 } aq_settings;
 
 /* Never write flash in the callback. All preference edits are coalesced and
@@ -147,7 +155,10 @@ static int save_preferences(void)
 {
     aq_settings settings={0};
     unsigned flags=plat_lock();
-    settings.version=0x41513038u;
+    settings.version=0x41513039u;settings.air_noise=air_sensor.noise;
+#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
+    settings.air_source=air_calibrated_source;
+#endif
     settings.air_mode=engine.air_mode;settings.air_sensitivity=air_sensitivity;settings.air_invert=air_invert;settings.air_calibrated=air_sensor.calibrated;settings.air_far=air_sensor.reference;settings.air_near=air_sensor.near_reference;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
@@ -229,7 +240,7 @@ static void mix_select(int delta)
 static unsigned control_for(unsigned knob)
 {
  if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
- if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128}};return controls[air_tab][knob];}
+ if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128},{0,0,0,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0}};
    return controls[drum_tab][knob];
@@ -477,11 +488,11 @@ void app_init(void)
     midi_load();
     aq_settings settings={0};
     int prefs_size=plat_store_size(OBJ_SETTINGS);
-    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==24||prefs_size==28||prefs_size==32||prefs_size==32||prefs_size==(int)sizeof(settings))&&
+    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==24||prefs_size==28||prefs_size==40||prefs_size==32||prefs_size==32||prefs_size==(int)sizeof(settings))&&
        plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==prefs_size&&
        (settings.version==0x41513032u||
         (settings.version==0x41513033u&&prefs_size==24)||
-        ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||settings.version==0x41513038u)))&&(prefs_size==28||prefs_size==32||prefs_size==(int)sizeof(settings))))){
+        ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||settings.version==0x41513039u))))&&(prefs_size==28||prefs_size==32||prefs_size==40||prefs_size==(int)sizeof(settings))))){
       for(unsigned i=0;i<2;i++){
         sr_motion m=settings.motion[i];
         if(m.glide_mode<=2&&m.glide_ms>=10&&m.glide_ms<=800&&
@@ -500,31 +511,49 @@ void app_init(void)
         }
       }
     }
-    if(settings.version==0x41513038u){
+    if((settings.version==0x41513038u||settings.version==0x41513039u)){
       engine.air_mode=settings.air_mode<=4?settings.air_mode:0;
       air_sensitivity=settings.air_sensitivity>=20&&settings.air_sensitivity<=100?settings.air_sensitivity:70;
       air_invert=!!settings.air_invert;
       air_sensor.reference=settings.air_far;air_sensor.near_reference=settings.air_near;
       air_sensor.calibrated=settings.air_calibrated<=2?settings.air_calibrated:0;
+      air_sensor.noise=settings.version==0x41513039u&&settings.air_noise?settings.air_noise:3;
+#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
+      air_calibrated_source=settings.version==0x41513039u?settings.air_source:0;
+#endif
     }
     arrangement_init();
     quick_pending=quick_started=quick_has_save=quick_finished_ms=0;
     /* arrangement_init resets its bank cursor and visual slot. Restore the
      * saved global visualizer before first intro frame, independent of banks. */
     if((settings.version==0x41513033u&&prefs_size==24)||
-       ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||settings.version==0x41513038u)))&&(prefs_size==28||prefs_size==32||prefs_size==(int)sizeof(settings))))
+       ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||settings.version==0x41513039u))))&&(prefs_size==28||prefs_size==32||prefs_size==40||prefs_size==(int)sizeof(settings))))
       visual_mode=settings.visual<=2?settings.visual:0;
     if(settings.version>=0x41513035u&&settings.active_bank<4)bank_slot=settings.active_bank;
-    if((settings.version==0x41513036u||(settings.version==0x41513037u||settings.version==0x41513038u))){
+    if((settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||settings.version==0x41513039u)))){
       sr_set_music_mode(&engine,settings.music_mode<SR_MUSIC_MODES?settings.music_mode:0);
       engine.motion_manual=settings.motion_manual&3u;
       for(unsigned t=0;t<2;t++)if(engine.motion_manual&(1u<<t))engine.motion[t]=settings.motion[t];
     }else if(settings.version){engine.motion_manual=sr_legacy_motion_manual(engine.motion,SR_SCENES);for(unsigned t=0;t<2;t++)if(!(engine.motion_manual&(1u<<t)))sr_motion_auto(&engine,t,1); }
-    if((settings.version==0x41513037u||settings.version==0x41513038u)&&settings.startup_sound<=2)startup_chime=settings.startup_sound;
-    /* Song values are fresh defaults on power-on; banks restore only on request. */
-    engine.drum_kit=0;engine.drum_density=2;engine.drum_hit=25;
-    engine.drum_presence=50;engine.drum_level=.66f;
-    engine.tracks[SR_DRUMS].pan=0;engine.tracks[SR_DRUMS].send=.15f;
+    if((settings.version==0x41513037u||(settings.version==0x41513038u||settings.version==0x41513039u))&&settings.startup_sound<=2)startup_chime=settings.startup_sound;
+    /* Cold boot only. Hardware entropy comes from the BSP random source;
+     * the test seed is explicit and never used by production firmware. */
+    unsigned boot_seed=song_nonce;
+#ifndef PLAT_HOST
+    boot_seed^=plat_aquora_boot_seed();
+#else
+    boot_seed^=(unsigned)clock()^(unsigned)time(0);
+    const char *boot_fixture=getenv("AQUORA_TEST_BOOT_SEED");
+    if(boot_fixture)boot_seed=(unsigned)strtoul(boot_fixture,0,0);
+#endif
+    sr_set_music_mode(&engine,(boot_seed>>8)%SR_MUSIC_MODES);
+    sr_set_scene(&engine,boot_seed%SR_SCENES);
+    sr_generate_song(&engine,boot_seed^0x41513039u,0);
+    engine.rhythm_style=(boot_seed>>16)%8u<4u?0u:1u+(boot_seed>>20)%2u;
+    boot_armed=1;boot_starts=0;
+#ifdef PLAT_HOST
+    if(getenv("AQUORA_TEST_AUTOSTART")&&!strcmp(getenv("AQUORA_TEST_AUTOSTART"),"0"))boot_armed=0;
+#endif
     preferences_saving=0;preferences_saved_ms=0;
     visual_init();
     plat_cpu2_set(1);
@@ -551,7 +580,7 @@ void app_init(void)
 }
 void app_panic(void)
 {
-    requested_play=0;
+    boot_armed=0;requested_play=0;
     engine.running=0;
     engine.stop_frames=0;
     engine.restart=0;
@@ -675,7 +704,7 @@ void app_input_only(void){
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
      group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
    }
-   if(page==PAGE_AIR)air_tab=(air_tab+1)%3;
+   if(page==PAGE_AIR)air_tab=(air_tab+1)%4;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%4;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
@@ -755,12 +784,19 @@ void app_input_only(void){
       air_packets=air_sent=air_hold=0;
       air_packet_window=air_packet_rate=air_packet_total=air_last_packet_ms=0;
       air_window_start=plat_ms();
-      air_sensor.raw=air_sensor.last_signal=0;air_sensor.filtered=0;air_gesture=(aq_air_gesture){0};
+      unsigned far=air_sensor.reference,near=air_sensor.near_reference,cal=air_sensor.calibrated,noise=air_sensor.noise;
+      air_sensor=(aq_air_sensor){0};air_sensor.reference=far;air_sensor.near_reference=near;air_sensor.calibrated=cal;air_sensor.noise=noise;
+      air_gesture=(aq_air_gesture){0};
       if(!air_on){send(70,0);send(131,0);}
       plat_air_enable(air_on);
 #endif
     }else if(control==68){
-      if(d>0&&air_on&&aq_air_calibrate(&air_sensor,plat_ms()))preferences_changed_now();
+      if(d>0&&air_on&&aq_air_calibrate(&air_sensor,plat_ms())){
+#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
+        air_calibrated_source=plat_air_source_id();
+#endif
+        preferences_changed_now();
+      }
       if(d<0){air_sensor.calibrated=0;air_sensor.near_reference=0;send(70,0);}
     }else if(control==69)air_hold=d>0;
     else if(control==125){air_sensitivity=bounded((int)air_sensitivity+d*5,20,100);preferences_changed_now();}
@@ -898,6 +934,9 @@ void app_ui_init(void){
 void app_frame(void)
 {
     app_input_only();
+    if(boot_armed&&!intro_active){
+      boot_armed=0;boot_starts++;requested_play=1;last_control_ms=plat_ms();dirty=1;
+    }
 #ifndef PLAT_HOST
     if(preferences_saving){
       int result=plat_aquora_save_poll();
@@ -954,11 +993,15 @@ void app_frame(void)
       air_packet_total+=air_packets;
       if(air_packets)air_last_packet_ms=now;
       unsigned target=aq_air_update(&air_sensor,raw,air_packets,now);
-      unsigned live=aq_air_live(&air_sensor,now)&&air_sensor.calibrated==2;
+      unsigned live=aq_air_live(&air_sensor,now)&&air_sensor.calibrated==2&&aq_air_span(&air_sensor)>=aq_air_min_span(&air_sensor);
+      if(air_sensor.calibrated==2&&air_calibrated_source!=plat_air_source_id()){
+        live=0;target=0;air_sensor.calibration_error=4;
+      }
+      unsigned gesture_target=target;
       if(air_invert&&live)target=100-target;
-      if(aq_air_gesture_update(&air_gesture,target,live,air_packets,now,air_sensitivity)&&engine.air_mode&&engine.air_mode<4)
+      if(aq_air_gesture_update(&air_gesture,gesture_target,live,air_packets,now,air_sensitivity)&&engine.air_mode&&engine.air_mode<4)
         send(127,engine.air_mode);
-      if((!air_hold||!air_sensor.raw)&&target!=air_sent){send(70,target);air_sent=target;}
+      if((!air_hold||!live)&&target!=air_sent){send(70,target);air_sent=target;}
 #endif
       if(now-air_window_start>=2000u){
         unsigned span=now-air_window_start;
@@ -1063,6 +1106,7 @@ int app_expect(const char *what,int *got){
    printf("CONTROL run=%u queue_p95_ms=%u queue_p99_ms=%u label_p95_ms=%u label_p99_ms=%u label_max_ms=%u poll_p99_ms=%u drops=%u\n",run,q.p95/100u,q.p99/100u,l.p95/100u,l.p99/100u,l.peak/100u,p.p99/100u,dropped);
   }*got=1;return 1;
  }
+ if(!strcmp(what,"boot_starts")){*got=boot_starts;return 1;}
  if(!strcmp(what,"learn_count")){*got=engine.capture.count;return 1;}
  if(!strcmp(what,"learn_applied")){*got=engine.learned.count;return 1;}
  if(!strcmp(what,"learn_bank_saved")){

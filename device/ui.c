@@ -753,9 +753,11 @@ static int draw(int animate)
      unsigned now=plat_ms();
      unsigned live=air_on&&aq_air_live(&air_sensor,now);
      if(band==1){
-       limited_text(8,0,226,&FONT_B,air_tab==2?"AIR / MUSIC GESTURES":air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
+       limited_text(8,0,226,&FONT_B,air_tab==3?"AIR / DIAGNOSTICS":air_tab==2?"AIR / MUSIC GESTURES":air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
        const char *state=aq_air_state(&air_sensor,air_on,plat_ble_state(),now);
        limited_text(8,24,226,&FONT_XS,state,live?skin_accent():skin_dim());
+     }else if(air_tab==3&&band==3){label(8,0,"IDLE NOISE",air_sensor.noise);label(87,0,"SPAN",aq_air_span(&air_sensor));label(183,0,"CONF",air_sensor.confidence);
+     }else if(air_tab==3&&band==4){label(8,0,"AGE ms",now-air_sensor.last_signal);label(87,0,"REJECTED",air_sensor.rejected);label(183,0,"STABLE %",air_sensor.last_value);
      }else if(band==2){
        unsigned value=(unsigned)(engine.air_wet*100.f+.5f);
        if(value>100)value=100;
@@ -783,7 +785,7 @@ static int draw(int animate)
        label(8,0,"RAW RSSI",air_sensor.raw);
        label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
        label(183,0,"LAST PKTS",air_packets);
-       limited_text(8,33,226,&FONT_XS,air_tab==2?(engine.air_request?"WAVE QUEUED / NEXT PHRASE":engine.air_result>=128?"BLOCKED / MUTE, OFF OR VOICES":engine.air_result?"MUSICAL ACTION APPLIED":"NEAR THEN FAR / RIGHT: TEST"):air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
+       limited_text(8,33,226,&FONT_XS,air_tab==2?(engine.air_request?"WAVE QUEUED / NEXT PHRASE":engine.air_result>=128?"BLOCKED / MUTE, OFF OR VOICES":engine.air_result?"MUSICAL ACTION APPLIED":air_gesture.stage==2?"DETECTED / RELEASE HAND":"NEAR THEN FAR / RIGHT: TEST"):air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
@@ -953,7 +955,7 @@ static int draw(int animate)
        limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
      else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?6:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:3;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?6:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:4;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());

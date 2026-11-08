@@ -42,6 +42,7 @@ int32_t plat_enc(int role)
 static volatile uint32_t master_pos = 0;   /* MASTER's position, 0..4096 (main_fm1.c reads the pot; the remote's
                                                * or the mirror's when they set it) */
 uint32_t plat_master(void) { return master_pos; }
+uint32_t plat_aquora_boot_seed(void) { return fm1_ble_rng32() ^ fm1_ticks() ^ master_pos; }
 
 /* the battery: ADC ch3 (its divider), a slow average by the main loop. The stock firmware's thresholds, as X0X, melodee
  * and dxsloop use them, give 0-3 bars; there is no charger line, so a USB host means power */

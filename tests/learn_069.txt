@@ -1,5 +1,8 @@
 master 2048
 tap HOME
+wait 80
+tap PLAY
+wait 80
 turn ALGO 2
 tap EDIT
 tap EDIT
