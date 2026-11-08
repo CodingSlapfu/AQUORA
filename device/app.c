@@ -815,6 +815,19 @@ void app_input_only(void){
    buttons=play_pulse?LED_PLAY_GREEN:0;
    unsigned generated=0;
    unsigned flags=plat_lock();
+   static unsigned led_event[SR_TRACKS],led_until[SR_TRACKS],led_note[SR_TRACKS];
+   unsigned led_now=plat_ms();
+   for(unsigned t=0;t<SR_DRUMS;t++){
+     const sr_track *track=&engine.tracks[t];
+     if(track->events!=led_event[t]){
+       led_event[t]=track->events;int note=track->last_note;
+       while(note<53)note+=12;while(note>79)note-=12;
+       led_note[t]=1u<<(note-53);led_until[t]=led_now+(lighting==3?300u:140u);
+     }
+     if((engine.running||engine.preview_frames)&&!track->mute&&
+        (engine.solo>=SR_TRACKS||engine.solo==t)&&(int32_t)(led_until[t]-led_now)>0)
+       generated|=led_note[t];
+   }
    for(unsigned v=0;v<SR_VOICES;v++){
      const sr_voice *voice=&engine.voices[v];unsigned t=voice->track;
      if(!voice->active||t>=SR_DRUMS||engine.tracks[t].mute||
@@ -834,7 +847,8 @@ void app_input_only(void){
      /* Chord clusters and visible 250ms drum holds: more coverage, no current increase. */
      unsigned mask=(1u<<NKEYS)-1u;
      lights|=((generated<<7)|(generated>>5))&mask;
-     buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
+     if(generated)buttons|=(1u<<B_LFO)|(1u<<B_SEL);
+     if((int32_t)(drum_until-now)>0)buttons|=1u<<B_ARP;
    }
  }else if(lighting==2){buttons=play_pulse?LED_PLAY_GREEN:0;lights=0;}
  if(led_test&&page==PAGE_SETUP&&!setup_tab){
@@ -1049,13 +1063,21 @@ int app_expect(const char *what,int *got){
    printf("CONTROL run=%u queue_p95_ms=%u queue_p99_ms=%u label_p95_ms=%u label_p99_ms=%u label_max_ms=%u poll_p99_ms=%u drops=%u\n",run,q.p95/100u,q.p99/100u,l.p95/100u,l.p99/100u,l.peak/100u,p.p99/100u,dropped);
   }*got=1;return 1;
  }
+ if(!strcmp(what,"learn_count")){*got=engine.capture.count;return 1;}
+ if(!strcmp(what,"learn_applied")){*got=engine.learned.count;return 1;}
+ if(!strcmp(what,"learn_bank_saved")){
+   arrangement r;*got=arrangement_read(0,&r);if(*got){arrangement_apply(&r);*got=engine.learned.count==3;}return 1;
+ }
+ if(!strcmp(what,"learn_bank")){
+   arrangement r;arrangement_snapshot(&r);engine.learned.count=0;arrangement_apply(&r);*got=engine.learned.count==3;return 1;
+ }
  if(!strcmp(what,"bank_migration_matrix")){
   *got=1;arrangement record,loaded;arrangement_snapshot(&record);
-  for(unsigned version=1;version<=5;version++){
+  for(unsigned version=1;version<=6;version++){
    record.version=0x41514200u+version;
-   size_t size=version==1?offsetof(arrangement,loop_length):version==2?offsetof(arrangement,motif_home):version==3?offsetof(arrangement,song_seed):version==4?offsetof(arrangement,chord_mode):sizeof(record);
+   size_t size=version==1?offsetof(arrangement,loop_length):version==2?offsetof(arrangement,motif_home):version==3?offsetof(arrangement,song_seed):version==4?offsetof(arrangement,chord_mode):version==5?offsetof(arrangement,learned):sizeof(record);
    uint32_t crc=arrangement_crc(&record);
-   if(version==1)record.legacy_crc=crc;else if(version==2)record.v2_crc=crc;else if(version==3)record.crc=crc;else if(version==4)record.crc4=crc;else record.crc5=crc;
+   if(version==1)record.legacy_crc=crc;else if(version==2)record.v2_crc=crc;else if(version==3)record.crc=crc;else if(version==4)record.crc4=crc;else if(version==5)record.crc5=crc;else record.crc6=crc;
    for(unsigned slot=0;slot<4;slot++){
     if(plat_store_save(OBJ_BANK1+slot,&record,size)||!arrangement_read(slot,&loaded)){*got=0;return 1;}
     arrangement_apply(&loaded);

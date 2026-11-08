@@ -1,0 +1,40 @@
+master 2048
+tap HOME
+turn ALGO 2
+tap EDIT
+tap EDIT
+tap EDIT
+tap EDIT
+spin K1 3
+wait 50
+expect music_mode 3
+tap EDIT
+spin K1 1
+wait 50
+key 0 down
+wait 200
+key 0 up
+wait 200
+key 4 down
+wait 200
+key 4 up
+wait 200
+key 7 down
+wait 200
+key 7 up
+wait 100
+expect learn_count 3
+shot learn-capture.png
+spin K3 1
+wait 50
+expect learn_applied 3
+expect learn_bank 1
+shot learn-applied.png
+tap SAVE
+wait 350
+expect bank_message 4
+reboot
+expect learn_bank_saved 1
+expect learn_applied 3
+expect bank_migration_matrix 1
+expect directory_ok 1

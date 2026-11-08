@@ -9,3 +9,5 @@ Baseline: aquora-next-integration `8b5627d`; v0.6.8 accepted CI/artifacts retain
 - PARTIAL #18: generated low-velocity kick attack threshold defect identified and replaced with retrigger-aware bounded onset. Need all 19 kits isolated/post-mix level-matched measurements and examples.
 - OPEN #45: retrieve archived EIN-1 behavioral reference, original music-driven V3 choreography and moderate V2 response preserving appearance/normal smoothness.
 - OPEN release gates: targeted host/native/repro/single/WASM/updater, independent artifact hashes/source backup, matching existing installer/stage/live HTTPS verification. Do not publish before gates pass.
+- OPEN #60 owner mid-build: cold-boot random intention/all four modes/fresh coherent song/drum settings; start exactly once after intro end/skip, volume-safe, manual STOP never auto-resumes. Saved banks untouched.
+- OPEN #61 owner mid-build: measured AIR calibration windows/noise floor, robust filtering/hysteresis/freshness/reacquisition suppression, idle/gesture stress traces, truthful raw/stable/applied diagnostics. Physical RF acceptance owner-unverified.

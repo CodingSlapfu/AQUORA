@@ -26,18 +26,19 @@ void sr_learn_action(sr_engine *e,unsigned action){
  if(e->running){e->learn_pending=1;return;}
  e->learned=e->capture;e->capture.count=0;e->learn_pending=0;
 }
-static int learned_degree(const sr_engine *e,unsigned step,int original){
- if(e->learned.count<3||!e->learn_strength)return original;
+static unsigned learned_active(const sr_engine *e){return e->learned.count>=3&&e->learn_strength&&(e->learn_strength==3||e->phrase%4u<e->learn_strength);}
+static int learned_index(const sr_engine *e,unsigned step){
+ if(!learned_active(e))return -1;
  unsigned span=16u,last=e->learned.count-1u;
  while(span<=e->learned.step[last]&&span<64u)span*=2u;
- unsigned pos=step%span;
- for(unsigned n=0;n<e->learned.count;n++)if(e->learned.step[n]==pos){
-  if(e->learn_strength<3&&((step/4u+e->phrase)%4u)>=e->learn_strength)return original;
-  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
-  int pc=((int)e->learned.note[n]-sr_tonic(e)+120)%12,best=0,distance=99;
-  for(unsigned d=0;d<7;d++){int delta=pc-scale[d];if(delta<0)delta=-delta;if(delta>6)delta=12-delta;if(delta<distance){best=d;distance=delta;}}
-  /* Alternating answer keeps a recognizable contour without endless copying. */
-  return e->phrase%4u==2u?(best+2)%7:best;
- }
- return e->learn_strength==3?-1:original;
+ for(unsigned n=0;n<e->learned.count;n++)if(e->learned.step[n]==step%span)return (int)n;
+ return -1;
+}
+static int learned_degree(const sr_engine *e,unsigned step,int original){
+ if(!learned_active(e))return original;
+ int n=learned_index(e,step);if(n<0)return -1;
+ const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+ int pc=((int)e->learned.note[n]-sr_tonic(e)+120)%12,best=0,distance=99;
+ for(unsigned d=0;d<7;d++){int delta=pc-scale[d];if(delta<0)delta=-delta;if(delta>6)delta=12-delta;if(delta<distance){best=d;distance=delta;}}
+ return e->phrase%4u==2u?(best+2)%7:best;
 }

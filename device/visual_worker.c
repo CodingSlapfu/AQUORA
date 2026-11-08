@@ -82,7 +82,7 @@ static void resonance_job(void)
       activity+=vis_input.meter[t]*8.f;hit+=vis_input.onset[t]*.06f;
     }
     float drive=activity+hit;
-    float target=2.5f*drive/(1.f+2.5f*drive);
+    float target=3.1f*drive/(1.f+3.1f*drive);
     nodal_level+=(target-nodal_level)*(target>nodal_level?.4f:.12f);
     float dt=(vis_input.phase-water_last_phase)*.035f;
     water_last_phase=vis_input.phase;
@@ -132,6 +132,7 @@ static void resonance_job(void)
  * accumulating at stationary nodes; attacks loosen grains and bass dilates
  * the plate. Shared particle storage is re-seeded only on a mode switch. */
 static float plate_grid[25][25],plate_blend,plate_activity,plate_order=4;
+static float plate_role[SR_TRACKS],plate_phase,plate_bass,plate_turn;
 static unsigned particle_mode;
 static float plate_sample(float x,float y)
 {
@@ -146,7 +147,7 @@ static void chladni_job(void)
   float energy=0,hit=0;
   for(unsigned t=0;t<SR_TRACKS;t++){energy+=vis_input.meter[t]*8.f;hit+=vis_input.onset[t]*.08f;}
   float drive=energy+hit;
-  float target=2.5f*drive/(1.f+2.5f*drive);
+  float target=drive/(.28f+drive);
   plate_activity+=(target-plate_activity)*(target>plate_activity?.55f:.10f);
   float pitch=vis_input.pitch>0?vis_input.pitch:vis_input.frequency;
   float order=2.f+fm_clampf(pitch/280.f,0,6.f);
@@ -154,13 +155,35 @@ static void chladni_job(void)
   float blend=(vis_input.scene%5u)*.16f+.15f;
   plate_blend+=(blend-plate_blend)*.035f;
   unsigned petals=2u+((unsigned)plate_order+vis_input.scene)%7u;
-  float bass=vis_input.meter[1]*4.f;
+  /* Original choreography informed by the archived instrument's independent
+   * role responses: onset expands, bass breathes and pitched voices steer
+   * the shared nodal field. No archived renderer code is included. */
+  float steer_x=0,steer_y=0;
+  for(unsigned t=0;t<SR_TRACKS;t++){
+    float stimulus=vis_input.meter[t]*12.f+vis_input.onset[t]*.18f;
+    float response=stimulus/(.12f+stimulus);
+    plate_role[t]+=(response-plate_role[t])*(response>plate_role[t]?.65f:.14f);
+    steer_x+=plate_role[t]*visual_sin(t*16.f+32.f);
+    steer_y+=plate_role[t]*visual_sin(t*16.f);
+  }
+  float bass_goal=vis_input.meter[1]*18.f+vis_input.onset[7]*.10f;
+  bass_goal=bass_goal/(.18f+bass_goal);
+  plate_bass+=(bass_goal-plate_bass)*(bass_goal>plate_bass?.6f:.12f);
+  plate_turn+=(steer_x*.12f-plate_turn)*.22f;
+  if(drive>.00001f)plate_phase+=plate_activity*.7f;
+  float bass=plate_bass*1.6f;
+  float zoom=1.f+.16f*plate_bass;
+  float shift_x=steer_x*.035f,shift_y=steer_y*.035f;
+  float rotation=plate_turn;
+
   for(unsigned j=0;j<25;j++)for(unsigned i=0;i<25;i++){
-    float x=((int)i-12)/12.f,y=((int)j-12)/12.f;
+    float px=((int)i-12)/12.f,py=((int)j-12)/12.f;
+    float x=(px+py*rotation)/zoom+shift_x;
+    float y=(py-px*rotation)/zoom+shift_y;
     float radius=fm_sqrtf(x*x+y*y+.00001f);
     float c=x/radius,prev=1.f,now=c;
     for(unsigned n=2;n<=petals;n++){float next=2.f*c*now-prev;prev=now;now=next;}
-    float radial=visual_sin(radius*(32.f+plate_order*11.f-bass*5.f));
+    float radial=visual_sin(radius*(32.f+plate_order*11.f-bass*5.f)+plate_activity*visual_sin(plate_phase)*9.f);
     unsigned m=(unsigned)plate_order;float morph=plate_order-m;
     float rect=0;
     for(unsigned basis=0;basis<2;basis++){
@@ -177,7 +200,7 @@ static void chladni_job(void)
     float x=sand_x[i],y=sand_y[i],f=plate_sample(x,y);
     float gx=(plate_sample(x+.02f,y)-plate_sample(x-.02f,y))*25.f;
     float gy=(plate_sample(x,y+.02f)-plate_sample(x,y-.02f))*25.f;
-    float impulse=hit*.0045f*visual_sin(i*17.f+vis_input.phase);
+    float impulse=hit*.012f*visual_sin(i*17.f+plate_phase);
     sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-6,6)*plate_activity*.0015f+impulse)*.78f;
     sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-6,6)*plate_activity*.0015f-impulse)*.78f;
     sand_x[i]=fm_clampf(x+sand_vx[i],-.98f,.98f);

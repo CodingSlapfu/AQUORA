@@ -30,7 +30,7 @@ typedef struct { const char *name; sr_wave wave; float attack, release, brightne
 typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance, tonic, frequency; } sr_scene;
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
-typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; } sr_track;
+typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; uint8_t last_note; } sr_track;
 typedef struct { uint8_t active, track, gate, midi, key, external, channel; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {uint8_t count;uint8_t note[16],step[16],length[16];} sr_learn_phrase;

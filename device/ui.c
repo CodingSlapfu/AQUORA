@@ -191,7 +191,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  switch(id){
  case 1:*name=engine.pending_scene?"NEXT INTENTION":"INTENTION";{
    static const char *short_name[]={"Miracles","Blessing","Energy Cleanse","Cell Renewal","Anxiety Release","Bliss","Positive Vibrations","Neuro-Freq Detox"};
-   return engine.scene>=13?short_name[engine.scene-13]:sr_scenes[engine.scene].name;
+   unsigned scene=engine.pending_scene?engine.pending_scene-1u:engine.scene;
+   return scene>=13?short_name[scene-13]:sr_scenes[scene].name;
  }
  case 2:*name=selected==SR_DRUMS?"KIT":"PATCH";return patch_name();
  case 4:*name="FIXED Hz";return sr_frequencies[engine.frequency].name;
@@ -280,7 +281,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 133:{static const char *m[]={"Original","Subtle","Balanced","Strong"};*name="LEARN STRENGTH";return m[engine.learn_strength];}
  case 134:*name="APPLY TO SONG";return engine.learn_pending?"Queued / next loop":engine.capture.count>=3?"Right: Apply":"Play 3+ notes";
  case 135:*name="DISCARD / CLEAR";return "Left: Discard / Right: Clear";
- case 96:*name="MUSIC MODE";return music_modes[engine.music_mode];
+ case 96:*name=engine.pending_mode?"NEXT BEAT MODE":"MUSIC MODE";return music_modes[engine.pending_mode?engine.pending_mode-1u:engine.music_mode];
  case 97:*name="LEAD MOTION";return engine.motion_manual&1u?"MANUAL":"AUTO";
  case 98:*name="BASS MOTION";return engine.motion_manual&2u?"MANUAL":"AUTO";
  case 95:*name="MANUAL AIR %";number=engine.air_target*100;break;
@@ -942,7 +943,7 @@ static int draw(int animate)
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
      cv_text(30,25,&FONT_XS,track,skin_text());
      limited_text(44,25,63,&FONT_XS,role_names[selected],skin_accent());
-     limited_text(109,25,123,&FONT_T,page==PAGE_PLAY?patch_name():"TURN TRACK / EDIT PAGE",skin_text());
+     limited_text(109,25,90,&FONT_T,page==PAGE_PLAY?patch_name():"TURN TRACK / EDIT PAGE",skin_text());
      }
      if(0){
        cv_text(101,25,&FONT_XS,"PRE",skin_dim());
