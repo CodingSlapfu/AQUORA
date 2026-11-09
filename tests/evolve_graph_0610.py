@@ -7,12 +7,12 @@ s=original.replace('int main(int argc, char **argv)','int unused_host_main(int a
 s+=r'''
 #include <assert.h>
 int main(int argc,char**argv){boot();engine.running=requested_play=0;intro_active=0;page=PAGE_EVOLVE;song_tab=0;fullscreen=0;
- for(unsigned bg=0;bg<2;bg++)for(unsigned density=0;density<3;density++)for(unsigned len=16;len<=64;len*=2)for(unsigned cursor=31;cursor<=63;cursor+=32){
+ for(unsigned bg=0;bg<2;bg++)for(unsigned density=0;density<3;density++)for(unsigned len=16;len<=64;len*=2)for(unsigned phase=0;phase<2;phase++)for(unsigned cursor=31+phase;cursor<=192;cursor+=32){
   ui_background=bg;engine.loop_length=len;evolve_step=cursor;
   for(unsigned i=0;i<64;i++)evolve_history[i]=density==2||i%(density==1?2u:8u)==0u?255:0;
-  draw(1);char path[4096];snprintf(path,sizeof path,"%s/g%u-%u-%u-%u.png",argv[1],bg,density,len,cursor);png_write(path);
+  dirty=1;draw(1);char path[4096];snprintf(path,sizeof path,"%s/g%u-%u-%u-%u.png",argv[1],bg,density,len,cursor);png_write(path);
  }
- puts("PASS36 true240px EVOLVE images: sparse/moderate/dense,16/32/64, two pages/two themes");return 0;}
+ puts("PASS216 true240px EVOLVE images: sparse/moderate/dense,16/32/64, twelve history-wrap positions/two themes");return 0;}
 '''
 try:
  p.write_text(s);subprocess.run([sys.executable,'vendor/fm1-base/tools/build.py','device','--host','--release','0.6.10'],cwd=root,check=True,stdout=subprocess.DEVNULL)

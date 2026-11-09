@@ -1338,10 +1338,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/45",
       "target": "0.6.8",
       "priority": "P1",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1355,10 +1355,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-46",
@@ -1366,10 +1368,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/46",
       "target": "0.6.8",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1383,10 +1385,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-47",
@@ -1394,10 +1398,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/47",
       "target": "0.6.8",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1411,10 +1415,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-48",
@@ -1422,10 +1428,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/48",
       "target": "0.6.8",
       "priority": "P1",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1439,10 +1445,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-49",
@@ -1450,10 +1458,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/49",
       "target": "0.6.8",
       "priority": "P1",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1467,10 +1475,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-50",
@@ -1478,10 +1488,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/50",
       "target": "0.6.8",
       "priority": "P1",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1495,10 +1505,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-51",
@@ -1506,10 +1518,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/51",
       "target": "0.6.8",
       "priority": "P1",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1523,10 +1535,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-52",
@@ -1534,10 +1548,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/52",
       "target": "0.6.8",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1551,10 +1565,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-53",
@@ -1562,10 +1578,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/53",
       "target": "0.6.8",
       "priority": "P1",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1579,10 +1595,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-54",
@@ -1590,10 +1608,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/54",
       "target": "0.6.8",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1607,10 +1625,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-55",
@@ -1618,10 +1638,10 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/55",
       "target": "0.6.8",
       "priority": "P1",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "physical_owner": "Owner FM-1 / subjective acceptance unverified",
-      "carry_forward": "Finish final corrected software acceptance and publication; no silent deferral",
-      "audit": "Implemented; final corrected source acceptance pending. Earlier run42421822671 and prior accepted gates preserved.",
+      "carry_forward": "Physical/artistic acceptance remains owner-unverified; no software deferral",
+      "audit": "Accepted0.6.9 software evidence retained; changed compositor/UI/visual paths covered by0.6.10 targeted evidence. Latest71 supersedes45 Original-preservation wording;67 supersedes49 marker size.",
       "code": [
         "device/app.c",
         "device/ui.c",
@@ -1635,10 +1655,12 @@
         "tests/typography_068.py"
       ],
       "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json",
         "validation/release-068/features.log",
         "validation/release-068/audio-features.log",
         "validation/release-068/typography.log"
-      ]
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf"
     },
     {
       "id": "ISSUE-64",
@@ -1821,6 +1843,187 @@
       "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
       "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
       "scope_sha256": "e6ce385e07b064eea3b1668e5e1b715229db5366a7ba21a923ffeb5c8cd9f7c1"
+    },
+    {
+      "id": "ISSUE-63",
+      "requirement": "Website still shows outdated screens/landing content after v0.6.9 \u2014 update real UI previews on EXISTING Site",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/63",
+      "target": "0.6.9",
+      "priority": "P0",
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "validation/release-069/AQUORA-0.6.9-website-refresh.zip"
+      ],
+      "tests": [
+        "tools/check_site_069.py"
+      ],
+      "artifacts": [
+        "validation/release-069/WEBSITE_REFRESH63.json"
+      ],
+      "source_commit": "c9813170bdc4fab29e46ed6beb23de6c27f879e3",
+      "physical_owner": "owner",
+      "carry_forward": "Accepted0.6.9 baseline preserved; physical/artistic checks owner-unverified",
+      "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred."
+    },
+    {
+      "id": "ISSUE-62",
+      "requirement": "P0 v0.6.9 compatibility: support new FM-1 UC25HQ80 flash (JEDEC 0xB36014) in app, rescue and update loader",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/62",
+      "target": "future",
+      "priority": "P0",
+      "status": "OWNER-AUTHORIZED DEFERRED",
+      "code": [
+        "device/aquora_async_store.h"
+      ],
+      "tests": [
+        "tests/direct_update_069.py"
+      ],
+      "artifacts": [
+        "validation/release-069/FINAL_RECOVERY_BLOCKED.md"
+      ],
+      "source_commit": "c9813170bdc4fab29e46ed6beb23de6c27f879e3",
+      "physical_owner": "owner",
+      "carry_forward": "DEFERRED ISSUE-62 original Puya only; newer flash requires future owner authorization",
+      "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred.",
+      "owner_scope_approval": "Owner explicitly defers hardware62 in current0.6.10 authorization; preserve original Puya support."
+    },
+    {
+      "id": "ISSUE-61",
+      "requirement": "P0: AIR sensor fluctuates with hands away \u2014 suppress idle RF jitter and phantom gestures",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/61",
+      "target": "0.6.9",
+      "priority": "P0",
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/startup_distribution_069.py",
+        "tests/candidate_069.c"
+      ],
+      "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json"
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf",
+      "physical_owner": "owner",
+      "carry_forward": "Accepted0.6.9 baseline preserved; physical/artistic checks owner-unverified",
+      "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred."
+    },
+    {
+      "id": "ISSUE-60",
+      "requirement": "v0.6.9 startup: after intro automatically PLAY fresh randomized intention, music mode and coherent drum/song settings",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/60",
+      "target": "0.6.9",
+      "priority": "P0",
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/startup_distribution_069.py",
+        "tests/candidate_069.c"
+      ],
+      "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json"
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf",
+      "physical_owner": "owner",
+      "carry_forward": "Accepted0.6.9 baseline preserved; physical/artistic checks owner-unverified",
+      "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred."
+    },
+    {
+      "id": "ISSUE-59",
+      "requirement": "PLAY SELECT encoder: choose the same 8 musical tracks as SOUND, with zero visualizer stutter",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/59",
+      "target": "0.6.9",
+      "priority": "P0",
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/startup_distribution_069.py",
+        "tests/candidate_069.c"
+      ],
+      "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json"
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf",
+      "physical_owner": "owner",
+      "carry_forward": "Accepted0.6.9 baseline preserved; physical/artistic checks owner-unverified",
+      "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred."
+    },
+    {
+      "id": "ISSUE-58",
+      "requirement": "Play Alone / Play Along: teach the generative engine motifs from live FM-1 keyboard performances",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/58",
+      "target": "0.6.9",
+      "priority": "P0",
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/startup_distribution_069.py",
+        "tests/candidate_069.c"
+      ],
+      "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json"
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf",
+      "physical_owner": "owner",
+      "carry_forward": "Accepted0.6.9 baseline preserved; physical/artistic checks owner-unverified",
+      "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred."
+    },
+    {
+      "id": "ISSUE-57",
+      "requirement": "New fourth music mode: Experimental Ambient \u2014 deeper original generative composition and calibrated musical quality",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/57",
+      "target": "0.6.9",
+      "priority": "P0",
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/startup_distribution_069.py",
+        "tests/candidate_069.c"
+      ],
+      "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json"
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf",
+      "physical_owner": "owner",
+      "carry_forward": "Accepted0.6.9 baseline preserved; physical/artistic checks owner-unverified",
+      "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred."
+    },
+    {
+      "id": "ISSUE-56",
+      "requirement": "PLAY: PRESET intention and other knobs wait until loop wrap \u2014 prompt musical response and audit all deferred controls",
+      "source": "https://github.com/CodingSlapfu/AQUORA/issues/56",
+      "target": "0.6.9",
+      "priority": "P0",
+      "status": "COMPLETED SOFTWARE",
+      "code": [
+        "device/app.c",
+        "device/dsp/engine.c"
+      ],
+      "tests": [
+        "tests/startup_distribution_069.py",
+        "tests/candidate_069.c"
+      ],
+      "artifacts": [
+        "validation/release-069/SOFTWARE_GATE.json"
+      ],
+      "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf",
+      "physical_owner": "owner",
+      "carry_forward": "Accepted0.6.9 baseline preserved; physical/artistic checks owner-unverified",
+      "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred."
     }
   ],
   "release_evidence": {},
@@ -1898,12 +2101,38 @@
     "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6712497014",
     "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6712519041",
     "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6712608331",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6713267414",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6713391883",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6713441550",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6713499377",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6713509274",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6713544980",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6713566853",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6714375473",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6717810237",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6717941707",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718008819",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718048507",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718225866",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718252642",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718521269",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718797907",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718866756",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718919042",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6718925654",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6719082553",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6727463205",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6727492244",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6727522937",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6727629759",
+    "https://github.com/CodingSlapfu/AQUORA/issues/32#issuecomment-6727687035",
     "https://github.com/CodingSlapfu/AQUORA/issues/34#issuecomment-6712368859",
     "https://github.com/CodingSlapfu/AQUORA/issues/34#issuecomment-6712496676",
     "https://github.com/CodingSlapfu/AQUORA/issues/39#issuecomment-6712496057",
     "https://github.com/CodingSlapfu/AQUORA/issues/40#issuecomment-6712608669",
     "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6665586582",
     "https://github.com/CodingSlapfu/AQUORA/issues/6#issuecomment-6668008063",
+    "https://github.com/CodingSlapfu/AQUORA/issues/66#issuecomment-6727523917",
     "https://github.com/CodingSlapfu/AQUORA/issues/7#issuecomment-6652539384",
     "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6651077563",
     "https://github.com/CodingSlapfu/AQUORA/issues/8#issuecomment-6679722783",

@@ -1,0 +1,47 @@
+In file included from /workspace/scratch/9e3e15408fe4/source/device/app.c:211,
+                 from /workspace/scratch/9e3e15408fe4/source/vendor/fm1-base/host/plat_host.c:694:
+/workspace/scratch/9e3e15408fe4/source/device/visual_worker.c: In function ‘resonance_job’:
+/workspace/scratch/9e3e15408fe4/source/device/visual_worker.c:131:9: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  131 |         if(p[1]<0)p[1]=0;if(p[1]>239)p[1]=239;
+      |         ^~
+/workspace/scratch/9e3e15408fe4/source/device/visual_worker.c:131:26: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  131 |         if(p[1]<0)p[1]=0;if(p[1]>239)p[1]=239;
+      |                          ^~
+In file included from /workspace/scratch/9e3e15408fe4/source/device/app.c:298:
+/workspace/scratch/9e3e15408fe4/source/device/usb_midi.h: In function ‘midi_audio_before’:
+/workspace/scratch/9e3e15408fe4/source/device/usb_midi.h:127:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  127 |  if(!active&&midi_source_was)midi_panic();midi_source_was=active;
+      |  ^~
+/workspace/scratch/9e3e15408fe4/source/device/usb_midi.h:127:43: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  127 |  if(!active&&midi_source_was)midi_panic();midi_source_was=active;
+      |                                           ^~~~~~~~~~~~~~~
+/workspace/scratch/9e3e15408fe4/source/device/app.c: In function ‘app_input_only’:
+/workspace/scratch/9e3e15408fe4/source/device/app.c:871:8: warning: this ‘while’ clause does not guard... [-Wmisleading-indentation]
+  871 |        while(note<53)note+=12;while(note>79)note-=12;
+      |        ^~~~~
+/workspace/scratch/9e3e15408fe4/source/device/app.c:871:31: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘while’
+  871 |        while(note<53)note+=12;while(note>79)note-=12;
+      |                               ^~~~~
+/workspace/scratch/9e3e15408fe4/source/device/app.c:883:6: warning: this ‘while’ clause does not guard... [-Wmisleading-indentation]
+  883 |      while(note<53)note+=12;while(note>79)note-=12;
+      |      ^~~~~
+/workspace/scratch/9e3e15408fe4/source/device/app.c:883:29: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘while’
+  883 |      while(note<53)note+=12;while(note>79)note-=12;
+      |                             ^~~~~
+In file included from /workspace/scratch/9e3e15408fe4/source/device/app.c:922:
+/workspace/scratch/9e3e15408fe4/source/device/ui.c: In function ‘geometry’:
+/workspace/scratch/9e3e15408fe4/source/device/ui.c:111:6: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  111 |      if(start<0)start=0;if(end>48)end=48;
+      |      ^~
+/workspace/scratch/9e3e15408fe4/source/device/ui.c:111:25: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  111 |      if(start<0)start=0;if(end>48)end=48;
+      |                         ^~
+/workspace/scratch/9e3e15408fe4/source/device/ui.c: In function ‘draw’:
+/workspace/scratch/9e3e15408fe4/source/device/ui.c:778:8: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+  778 |        for(const char *q=v;*q;q++)wet[at++]=*q;wet[at++]='%';
+      |        ^~~
+/workspace/scratch/9e3e15408fe4/source/device/ui.c:778:48: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+  778 |        for(const char *q=v;*q;q++)wet[at++]=*q;wet[at++]='%';
+      |                                                ^~~
+PASS36 true240px EVOLVE images: sparse/moderate/dense,16/32/64, two pages/two themes
+

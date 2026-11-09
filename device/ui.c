@@ -911,7 +911,7 @@ static int draw(int animate)
    }else if(visual&&page==PAGE_EVOLVE){
      if(band==1||band==2){
        unsigned first=band==1?0u:4u;
-       unsigned start=evolve_step/32u*32u;
+       unsigned start=(evolve_step&63u)/32u*32u;
        for(unsigned row=0;row<4;row++){
          unsigned t=first+row,y=3u+row*8u;
          cv_line(8,y+6,232,y+6,skins[ui_theme][ui_background].border);
@@ -925,7 +925,12 @@ static int draw(int animate)
        if(band==1){
          for(unsigned j=0;j<64;j++)if(evolve_history[j])cv_rect(9+j*3u,39,2,2,skin_dim());
          cv_line(9+start*3u,43,9+(start+31u)*3u,43,skin_accent());
-       }else limited_text(8,36,224,&FONT_T,sr_section_name(&engine,0),skin_dim());
+       }else {
+         char phrase[12];num(phrase,engine.phrase);
+         int at=cv_text(8,36,&FONT_T,"PHRASE ",skin_dim());
+         at=cv_text(at,36,&FONT_T,phrase,skin_accent());
+         limited_text(at+8,36,224-at,&FONT_T,sr_section_name(&engine,0),skin_dim());
+       }
      }
    }else if(visual&&page==3&&band<3)mixer_band(band);
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
