@@ -965,6 +965,15 @@ void app_frame(void)
 #endif
     if(!preferences_saving)arrangement_service();
     unsigned now=plat_ms();
+    /* HOME's header is otherwise static. Invalidate it when the committed
+     * musical section changes, even with no encoder/button activity. */
+    static uint32_t shown_form_key,shown_form_slot;
+    if(page==PAGE_PLAY||page==PAGE_EVOLVE){
+      unsigned flags=plat_lock();
+      uint32_t key=engine.form_key,slot=engine.form_loop/(2u+sr_scenes[engine.scene].energy%3u);
+      plat_unlock(flags);
+      if(key!=shown_form_key||slot!=shown_form_slot){shown_form_key=key;shown_form_slot=slot;dirty=1;}
+    }
     if(!quick_started&&!quick_pending&&!preferences_saving&&preferences_dirty&&
        now-preferences_changed>=1200u)save_preferences();
     if(quick_finished_ms&&now-quick_finished_ms>=3000u){quick_finished_ms=0;dirty=1;}
