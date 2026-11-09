@@ -26,7 +26,13 @@ jobs:
           "$RUNNER_TEMP/arranger" | tee "$RUNNER_TEMP/results/arranger.log"
           cc -O2 -Idevice/dsp tests/music_load_0610.c device/dsp/engine.c -lm -o "$RUNNER_TEMP/load"
           "$RUNNER_TEMP/load" | tee "$RUNNER_TEMP/results/load.log"
+          cc -O2 tests/performance_features_070.c -lm -o "$RUNNER_TEMP/features"
+          "$RUNNER_TEMP/features" | tee "$RUNNER_TEMP/results/features.log"
+          cc -O2 tests/boundaries_070.c -lm -o "$RUNNER_TEMP/boundaries"
+          "$RUNNER_TEMP/boundaries" | tee "$RUNNER_TEMP/results/boundaries.log"
           python3 -m pip install Pillow==11.3.0
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.0
+          python3 tests/graphics_070.py device/build/host/sound-healing_host "$RUNNER_TEMP/results/graphics" | tee "$RUNNER_TEMP/results/graphics.log"
       - name: Restore verified compiler
         run: |
           set -euo pipefail

@@ -868,13 +868,28 @@ void sr_key_up(sr_engine *e,unsigned key)
 
     }
 }
+/* Compose underneath the owner's density cap. A breakdown thins prepared
+ * subdivisions while retaining its kick/bass thread and displayed defaults. */
+static unsigned groove_density(const sr_engine *e,unsigned step){
+ unsigned cap=e->drum_density;if(!cap||e->variation<=0.f)return cap;
+ unsigned current=form_index(e,0),next=form_index(e,1);
+ unsigned level[3]={2,5,8};
+ unsigned density=level[sr_sections[current].pulse];
+ unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+ if(e->form_loop%hold==hold-1u&&!e->freeze){
+  unsigned target=level[sr_sections[next].pulse];
+  density=(density*(e->loop_length-step)+target*step)/e->loop_length;
+ }
+ return density<cap?density:cap;
+}
 static float groove_kick(const sr_engine *e,unsigned step){
  if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return 0;
+ unsigned density=groove_density(e,step);
  unsigned beat=step&15u,bar=e->loop_length>16?step/16u:0;
  if(e->variation>0.f&&e->phrase)bar^=(e->phrase/2u)&3u;
- if(!beat||(beat==8u&&e->drum_density>=2u))return 1.f;
- if(e->drum_density>=6u&&beat==(bar&1u?6u:10u))return .54f;
- if(e->rhythm_style==1u&&e->drum_density>=2u&&(beat==3u||beat==11u))return .65f;
+ if(!beat||(beat==8u&&density>=2u))return 1.f;
+ if(density>=6u&&beat==(bar&1u?6u:10u))return .54f;
+ if(e->rhythm_style==1u&&density>=2u&&(beat==3u||beat==11u))return .65f;
  if(e->rhythm_style==2u&&beat==10u)return .68f;
  if(!e->freeze&&e->variation>0.f){
   unsigned id=form_index(e,0);
@@ -903,22 +918,23 @@ static void bass_groove(sr_engine *e,unsigned step){
 }
 static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return;
+  unsigned density=groove_density(e,step);
   uint32_t beat=step&15u;
   unsigned bar=e->loop_length>16?step/16u:0;
   if(e->variation>0.f&&e->phrase)bar^=(e->phrase/2u)&3u;
   unsigned hits=0,parts=0;
   uint32_t stable_draw=song_draw(e->scene+bar*13u,beat);
   float kick=groove_kick(e,step);if(kick){e->kick_env=kick;parts|=1u;hits++;}
-  if((beat==4||beat==12) && (e->drum_density>=2 || ((e->variation==0?stable_draw:rng(e))&3u)==0)){
+  if((beat==4||beat==12) && (density>=2 || ((e->variation==0?stable_draw:rng(e))&3u)==0)){
     e->hand_env=bar&&(beat==4?bar&1u:bar&2u)?.78f:1.f;parts|=2u;hits++;
   }
-  if(e->drum_density>=3 && (beat&1u)){e->shaker_env=.72f;parts|=4u;hits++;}
-  else if(e->drum_density==2 && (beat&3u)==2){e->shaker_env=.65f;parts|=4u;hits++;}
-  else if(e->drum_density==1 && beat==8 && ((e->variation==0?stable_draw:rng(e))&1u)==0){e->shaker_env=.45f;parts|=4u;hits++;}
-  if(e->drum_density>=4&&(beat&3u)==2){e->shaker_env=.56f;parts|=4u;hits++;}
-  if(e->drum_density>=5&&beat==(bar&1u?10u:6u)){e->hand_env=.48f;parts|=2u;hits++;}
-  if(e->drum_density>=7&&(beat==2||beat==14)){e->hand_env=.42f;parts|=2u;hits++;}
-  if(e->drum_density>=8&&(beat==3||beat==15)){e->hand_env=bar&1u?.52f:.37f;parts|=2u;hits++;}
+  if(density>=3 && (beat&1u)){e->shaker_env=.72f;parts|=4u;hits++;}
+  else if(density==2 && (beat&3u)==2){e->shaker_env=.65f;parts|=4u;hits++;}
+  else if(density==1 && beat==8 && ((e->variation==0?stable_draw:rng(e))&1u)==0){e->shaker_env=.45f;parts|=4u;hits++;}
+  if(density>=4&&(beat&3u)==2){e->shaker_env=.56f;parts|=4u;hits++;}
+  if(density>=5&&beat==(bar&1u?10u:6u)){e->hand_env=.48f;parts|=2u;hits++;}
+  if(density>=7&&(beat==2||beat==14)){e->hand_env=.42f;parts|=2u;hits++;}
+  if(density>=8&&(beat==3||beat==15)){e->hand_env=bar&1u?.52f:.37f;parts|=2u;hits++;}
   /* A bloom grows within the musical phrase, without global gain ramps.
    * Longer phrases have more gradual development and a small final answer. */
   if(!e->freeze&&e->fill_character!=3&&song_section(e)==2u&&e->loop_length>16){
@@ -927,7 +943,7 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
     if(bar_progress==e->loop_length/16u-1u&&beat==14u){e->hand_env=.43f;parts|=2u;hits++;}
   }
   /* Optional rhythm character: the downbeat is always preserved. */
-  if(e->rhythm_style==1&&e->drum_density>=2){
+  if(e->rhythm_style==1&&density>=2){
     if(beat==7||beat==14){e->hand_env=.48f;parts|=2u;hits++;}
     if((beat&1u)&&((bar+beat)%3u)){e->shaker_env=.38f+.08f*(bar&1u);parts|=4u;hits++;}
   }else if(e->rhythm_style==2){
@@ -947,7 +963,7 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
                     energy>=2 ? (beat==3||beat==7||beat==11||beat==15) :
                     (beat==7||beat==15);
   /* Answer bars add off-beat pickups, with a two-hit closing fill at full HIT. */
-  if(bar&&e->drum_density>=2){
+  if(bar&&density>=2){
     if(bar&1u)eligible|=beat==5||beat==13;
     if(bar&2u)eligible|=beat==1||beat==9;
   }
@@ -1842,6 +1858,10 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
       if(role==SR_DRUMS){
         if(!e->drums_enabled||e->freeze||e->tracks[role].mute)continue;
         float velocity=e->scheduled[i].velocity*(1.f/127.f);
+        if(e->timeline_enabled){unsigned j=e->timeline_write++%96u;
+          e->timeline[j].frame=e->frame_count;e->timeline[j].duration=e->tick_length/2u;
+          e->timeline[j].role=SR_DRUMS;e->timeline[j].note=e->scheduled[i].note==0?36:e->scheduled[i].note==1?38:42;
+          e->timeline[j].velocity=e->scheduled[i].velocity;}
         if(e->scheduled[i].note==0)e->kick_env=velocity;
         else if(e->scheduled[i].note==1)e->hand_env=velocity;else e->shaker_env=velocity;
         e->tracks[role].events++;

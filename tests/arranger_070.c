@@ -10,13 +10,17 @@ int main(void){
  for(unsigned scene=0;scene<SR_SCENES;scene++)for(unsigned mode=0;mode<4;mode++){
   sr_init(&e,700+scene);sr_set_music_mode(&e,mode);sr_set_scene(&e,scene);
   assert(e.auto_gain&&e.auto_level&&e.drum_density==8&&e.drum_level==1.f&&e.drum_presence==100&&e.tracks[7].volume==1.f);
-  for(unsigned seed=1;seed<=512;seed++){
+  uint64_t context_patches=0;uint32_t kits=0;
+  for(unsigned seed=1;seed<=16384;seed++){
    sr_generate_song(&e,seed,0);
-   for(unsigned t=0;t<7;t++)patches|=1ull<<e.tracks[t].patch;
+   for(unsigned t=0;t<7;t++){patches|=1ull<<e.tracks[t].patch;context_patches|=1ull<<e.tracks[t].patch;}
+   kits|=1u<<e.drum_kit;
    other=e;other.form_key=0;sr_plan_sections(&other);assert(!memcmp(e.form_route,other.form_route,33));
    for(unsigned slot=1;slot<32;slot++)assert(e.form_route[slot]!=e.form_route[slot-1]);
    assert(e.form_route[31]==15&&e.form_route[32]==28);
+   if(seed>=512&&context_patches==((1ull<<SR_PATCHES)-1)&&kits==((1u<<SR_DRUM_KITS)-1))break;
   }
+  assert(context_patches==((1ull<<SR_PATCHES)-1)&&kits==((1u<<SR_DRUM_KITS)-1));
   e.auto_gain=e.auto_level=0;e.drum_density=3;e.drum_level=.41f;e.drum_presence=61;
   sr_set_scene(&e,scene);sr_generate_song(&e,777,1);
   assert(!e.auto_gain&&!e.auto_level&&e.drum_density==3&&e.drum_level==.41f&&e.drum_presence==61);

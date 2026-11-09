@@ -1,8 +1,8 @@
-# AQUORA — priority musical-quality correction after v0.6.10 publication
+# AQUORA 0.7.0 next-build testing queue
 
-- P0 OWNER-REJECTED MUSICAL QUALITY: coherent themes, intention/mode ensembles, warm evolving soundscapes. Corrective candidate and evidence: validation/musical-quality/README.md. Human listening approval REQUIRED; software tests are not aesthetic acceptance. Native/device gates remain open for this candidate. Preserve published0.6.10 and backups.
+Read validation/release-070/RESUME.md and the authoritative requirement matrix. Current build resumes musical correction7395c75; public010 and correction candidate remain unchanged.
 
-- OWNER-AUTHORIZED DEFERRED: #62 UC25HQ80 compatibility; original Puya0x856014 only. #31/performance MIDI USB and BLE remain deferred. AIR required; KIRA-9 untouched.
-- OWNER-UNVERIFIED: physical FM-1 flash/direct-update/rollback, timing/FPS/XRUN/RF/soak, control feel and human musical/visual aesthetics.
-
-Software64–71 and publication COMPLETE. Existing Site version191 and independently verified public evidence: validation/release-0610/PUBLICATION_COMPLETE.json. Completed publication archived in archive/CHANGELOG_0610_PUBLICATION.md. Preserve accepted tests/artifacts/backups; do not reopen or rebuild them without new evidence.
+- New arranger/bass/defaults/48-patch palette/EVOLVE candidate implemented; final source native/repro/single/WASM, targeted gates and remote artifact verification required. No subjective acceptance claimed.
+- Existing Site source opener fails before checkout: "Unable to prepare the Site." One corrected empty-directory attempt also failed. Testing installer publication is BLOCKED; no retries absent a concrete repair.
+- Physical owner acceptance required: flash/rollback, timing/FPS/XRUN/RF/soak, sound and graph aesthetics.
+- Existing owner deferrals: #31 performance MIDI USB/BLE; #62 UC25HQ80. Original Puya0x856014 only. AIR required; Original/Cymatics/Chladni preserved. KIRA-9 untouched.

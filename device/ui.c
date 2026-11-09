@@ -689,7 +689,7 @@ static void evolve_graph(unsigned band){
  for(unsigned i=0;i<108;i++){
   unsigned role,note,velocity;uint32_t frame,duration;
   if(i<96){role=graph_notes[i].role;note=graph_notes[i].note;velocity=graph_notes[i].velocity;frame=graph_notes[i].frame;duration=graph_notes[i].duration;}
-  else {unsigned j=i-96;if(!graph_pending[j].active)continue;role=graph_pending[j].role;note=graph_pending[j].note;velocity=graph_pending[j].velocity;frame=graph_pending[j].due;duration=graph_pending[j].beats*4.f*graph_tick;}
+  else {unsigned j=i-96;if(!graph_pending[j].active)continue;role=graph_pending[j].role;note=graph_pending[j].note;velocity=graph_pending[j].velocity;frame=graph_pending[j].due;duration=graph_pending[j].beats*4.f*graph_tick;if(role==SR_DRUMS){duration=graph_tick/2u;note=note==0?36:note==1?38:42;}}
   if(!duration||role>=SR_TRACKS)continue;
   int32_t age=(int32_t)(graph_frame-frame);
   int x=65-(int)((float)age*11.f/(float)graph_tick);
@@ -705,13 +705,13 @@ static void evolve_graph(unsigned band){
   }
   if(role==selected){
    int pitch=role==SR_DRUMS?note-32:note-36;if(pitch<0)pitch=0;if(pitch>60)pitch=60;
-   int y=185-pitch/2;
-   graph_block(band,x,width,y,4+velocity/48u,ink);
+   int y=186-pitch/3;
+   graph_block(band,x,width,y,4,ink);
    if(glint)graph_block(band,x,4,y,2,skin_text());
   }
  }
- if(band==3){limited_text(6,3,220,&FONT_T,role_names[selected],skin_accent());
-  limited_text(6,35,224,&FONT_T,"SEL: DETAIL ROLE / EDIT: CONTROLS",skin_dim());}
+ if(band==3){limited_text(6,3,100,&FONT_T,role_names[selected],skin_accent());
+  limited_text(110,3,122,&FONT_T,"SEL: DETAIL ROLE",skin_dim());}
  int boundary=65+(int)(graph_boundary*11u)-(int)((float)engine.tick_phase*11.f/(float)graph_tick);
  if(boundary>65&&boundary<233)for(int y=0;y<48;y+=6)cv_line(boundary,y,boundary,y+2,skin_dim());
  cv_line(65,0,65,47,skin_accent());
