@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: Recover source; reuse passed composition and graphics; verify persistence and section-header deltas
+      - name: Recover source; reuse passed composition and graphics; verify persistence, section-header and role-label deltas
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -29,6 +29,8 @@ jobs:
           cd "$RUNNER_TEMP/source"
           cc -O2 tests/arranger_070.c -lm -o "$RUNNER_TEMP/arranger"
           "$RUNNER_TEMP/arranger" | tee "$RUNNER_TEMP/results/arranger.log"
+          cc -O2 -Idevice/dsp tests/bank_070.c -lm -o "$RUNNER_TEMP/bank"
+          "$RUNNER_TEMP/bank" | tee "$RUNNER_TEMP/results/bank.log"
           cc -O2 tests/boundaries_070.c -lm -o "$RUNNER_TEMP/boundaries"
           "$RUNNER_TEMP/boundaries" | tee "$RUNNER_TEMP/results/boundaries.log"
           python3 -m pip install Pillow==11.3.0
@@ -36,6 +38,8 @@ jobs:
           python3 tests/section_header_070.py device/build/host/sound-healing_host "$RUNNER_TEMP/results/section-header" | tee "$RUNNER_TEMP/results/section-header.log"
           mkdir "$RUNNER_TEMP/results/preferences"
           AQUORA_TEST_AUTOSTART=0 device/build/host/sound-healing_host tests/preferences_070.txt "$RUNNER_TEMP/results/preferences" | tee "$RUNNER_TEMP/results/preferences.log"
+          mkdir "$RUNNER_TEMP/results/preferences-play"
+          AQUORA_TEST_AUTOSTART=0 device/build/host/sound-healing_host tests/preferences_play_070.txt "$RUNNER_TEMP/results/preferences-play" | tee "$RUNNER_TEMP/results/preferences-play.log"
       - name: Restore verified compiler
         run: |
           set -euo pipefail

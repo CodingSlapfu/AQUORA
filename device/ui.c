@@ -978,8 +978,13 @@ static int draw(int animate)
    else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
      int x=cv_text(6,0,&FONT_XS,"NOW ",skin_accent());
      limited_text(x,0,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
-     x=cv_text(6,22,&FONT_XS,"NEXT ",skin_dim());
-     limited_text(x,22,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
+     int next_y=page==PAGE_PLAY?16:22;
+     x=cv_text(6,next_y,&FONT_XS,"NEXT ",skin_dim());
+     limited_text(x,next_y,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
+     if(page==PAGE_PLAY){
+       x=cv_text(6,32,&FONT_T,role_names[selected],skin_accent());
+       limited_text(x+8,32,186-x,&FONT_T,patch_name(),skin_text());
+     }
    }else if(band==0){
      cv_text(8,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS&&ui_font_size!=2){
