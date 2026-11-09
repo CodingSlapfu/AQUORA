@@ -1,0 +1,21 @@
+  ok running == 0
+  ok auto_gain == 1
+  ok auto_level == 1
+  ok density == 8
+  ok drum_presence == 100
+  ok auto_gain == 0
+  ok auto_level == 0
+  ok bank_message == 4
+  ok preferences_saved == 1
+  ok auto_gain == 0
+  ok auto_level == 0
+  ok auto_gain == 0
+  ok auto_level == 0
+  ok auto_gain == 1
+  ok auto_level == 1
+  ok preferences_saved == 1
+  ok auto_gain == 1
+  ok auto_level == 1
+  ok bank_migration_matrix == 1
+  ok drops == 0
+host: 3764 ms simulated, 111 blits, render 0.0% of real time (host CPU)

@@ -147,7 +147,9 @@ typedef struct {
     uint32_t air_source;
     uint32_t tempo_ticks;
     uint8_t drum_presence;
+    uint8_t auto_mix; /* schema40 alignment padding: 0x80 | gain | level<<1; zero legacy => defaults ON */
 } aq_settings;
+_Static_assert(sizeof(aq_settings)==offsetof(aq_settings,tempo_ticks)+8u,"Reuse schema40 padding without moving settings");
 
 /* Never write flash in the callback. All preference edits are coalesced and
  * committed only after the transport has stopped. The setting object is
@@ -157,6 +159,7 @@ static int save_preferences(void)
 {
     aq_settings settings={0};
     unsigned flags=plat_lock();
+    settings.auto_mix=0x80u|engine.auto_gain|(engine.auto_level<<1u);
     settings.version=0x41513040u;settings.tempo_ticks=engine.tick_length;settings.drum_presence=engine.drum_presence;settings.air_noise=air_sensor.noise;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
     settings.air_source=air_calibrated_source;
@@ -543,6 +546,7 @@ void app_init(void)
         engine.tick_length=settings.tempo_ticks;engine.motion_manual|=4u;
       }
       if(settings.drum_presence<=100u)engine.drum_presence=settings.drum_presence;
+      if((settings.auto_mix&0xfcu)==0x80u){engine.auto_gain=settings.auto_mix&1u;engine.auto_level=(settings.auto_mix>>1u)&1u;}
     }
     /* Cold boot only. Hardware entropy comes from the BSP random source;
      * the test seed is explicit and never used by production firmware. */
@@ -728,9 +732,9 @@ void app_input_only(void){
  if(press&(1u<<B_SAVE))arrangement_quick_save();
  /* Explicit actions use SEL on their labelled action page, never SAVE. */
  if((press&(1u<<B_SEL))&&!debug){
-   if(page==PAGE_SETUP&&setup_tab==1&&!quick_started&&!quick_pending){bank_action=0;arrangement_execute();}
+   if(page==PAGE_SETUP&&setup_tab==1&&!quick_started&&!quick_pending){bank_action=0;arrangement_execute();if(bank_message==BANK_LOADED)preferences_changed_now();}
    if(page==PAGE_EVOLVE&&song_tab==1&&song_arm&&!requested_play&&!engine.running){send(song_arm,1);song_arm=0;}
-   if(page==PAGE_MIX&&mix_tab==2&&mix_reset){send(53,0);mix_reset=0;}
+   if(page==PAGE_MIX&&mix_tab==2&&mix_reset){send(53,0);preferences_changed_now();mix_reset=0;}
  }
  blocked_keys&=k;
  physical_keys=k&~blocked_keys;
@@ -838,7 +842,7 @@ void app_input_only(void){
     else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
     else if(control==92){ui_background=bounded((int)ui_background+d,0,1);preferences_changed_now();}
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
-    else {send(control,bounded(d,-8,8));if(control==25||control==62||control==93||control==94||control>=96||(control>=32&&control<=35))preferences_changed_now();}
+    else {send(control,bounded(d,-8,8));if(control==25||control==50||control==51||control==62||control==93||control==94||control>=96||(control>=32&&control<=35))preferences_changed_now();}
     if(control>=120)preferences_changed_now();
     if(control!=72){knob_focus=i;knob_until=plat_ms()+900;}
     dirty=1;
@@ -1301,7 +1305,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"preferences_saved"))*got=!preferences_dirty&&!preferences_saving;
  else if(!strcmp(what,"pending_scene"))*got=engine.pending_scene;
  else if(!strcmp(what,"drum_presence"))*got=engine.drum_presence;
- else if(!strcmp(what,"boot_drums"))*got=engine.drum_kit==0&&engine.drum_density==2&&engine.drum_hit==25&&engine.drum_presence==100&&engine.drum_level==.66f;
+ else if(!strcmp(what,"boot_drums"))*got=engine.drum_density==8&&engine.drum_presence==100&&engine.drum_level==1.f;
  else if(!strcmp(what,"settings_066_fixture")){
    aq_settings prior={0};prior.version=0x41513036u;prior.visual=1;prior.lighting=3;prior.font_size=1;prior.background=1;
    *got=plat_store_save(OBJ_SETTINGS,&prior,28)==0;

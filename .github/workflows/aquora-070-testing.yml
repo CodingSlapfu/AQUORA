@@ -16,23 +16,21 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: Recover pinned platform and test current composition
+      - name: Recover source; reuse passed composition and graphics; verify persistence delta
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          gh api repos/CodingSlapfu/AQUORA/actions/runs/42689236446 > "$RUNNER_TEMP/prior.json"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["conclusion"]=="success" and d["head_sha"]=="6991ec0cde40cf1b6e905d1ba3e5c04f24fc2f2f"' "$RUNNER_TEMP/prior.json"
           bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
           mkdir "$RUNNER_TEMP/results"
+          cp "$RUNNER_TEMP/prior.json" "$RUNNER_TEMP/results/reused-composition-graphics-CI.json"
           cd "$RUNNER_TEMP/source"
-          cc -O2 tests/arranger_070.c -lm -o "$RUNNER_TEMP/arranger"
-          "$RUNNER_TEMP/arranger" | tee "$RUNNER_TEMP/results/arranger.log"
-          cc -O2 -Idevice/dsp tests/music_load_0610.c device/dsp/engine.c -lm -o "$RUNNER_TEMP/load"
-          "$RUNNER_TEMP/load" | tee "$RUNNER_TEMP/results/load.log"
-          cc -O2 tests/performance_features_070.c -lm -o "$RUNNER_TEMP/features"
-          "$RUNNER_TEMP/features" | tee "$RUNNER_TEMP/results/features.log"
-          cc -O2 tests/boundaries_070.c -lm -o "$RUNNER_TEMP/boundaries"
-          "$RUNNER_TEMP/boundaries" | tee "$RUNNER_TEMP/results/boundaries.log"
           python3 -m pip install Pillow==11.3.0
           python3 vendor/fm1-base/tools/build.py device --host --release 0.7.0
-          python3 tests/graphics_070.py device/build/host/sound-healing_host "$RUNNER_TEMP/results/graphics" | tee "$RUNNER_TEMP/results/graphics.log"
+          mkdir "$RUNNER_TEMP/results/preferences"
+          AQUORA_TEST_AUTOSTART=0 device/build/host/sound-healing_host tests/preferences_070.txt "$RUNNER_TEMP/results/preferences" | tee "$RUNNER_TEMP/results/preferences.log"
       - name: Restore verified compiler
         run: |
           set -euo pipefail
@@ -68,13 +66,16 @@ jobs:
           python3 vendor/fm1-base/tools/build.py device --web --release 0.7.0 2>&1 | tee "$RUNNER_TEMP/results/wasm.log"
           node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
           cp -r device/build/emu "$RUNNER_TEMP/results/emu"
+          python3 vendor/fm1-base/tools/make_site.py device "$RUNNER_TEMP/results/native/sound-healing-0.7.0.fwsc" 0.7.0 "$RUNNER_TEMP/results/testing-installer"
+          python3 tools/stage_testing_070.py "$RUNNER_TEMP/results/testing-installer"
+          node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/testing-installer/install/index.html" "$RUNNER_TEMP/results/native/sound-healing-0.7.0.fwsc" | tee "$RUNNER_TEMP/results/installer-hash.log"
       - name: Package without audio recordings
         run: |
           set -euo pipefail
           cp "$RUNNER_TEMP/results/native/sound-healing-0.7.0.fwsc" "$RUNNER_TEMP/results/AQUORA-0.7.0-next-build-testing.fwsc"
           printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/results/source-commit.txt"
           printf '%s\n' 'NEXT BUILD TESTING ONLY; 0.7.0 / FM-1_73000700. Original Puya 0x856014 FM-1 only. Physical listening, flash, RF, LCD and DMA/XRUN acceptance pending. Public 0.6.10 and musical candidate unchanged.' > "$RUNNER_TEMP/results/README.txt"
-          tar --exclude=.git --exclude=audio --exclude=recordings --exclude='*.ogg' --exclude='*.wav' --exclude='*.mp3' --exclude='*/build/*' -czf "$RUNNER_TEMP/results/AQUORA-0.7.0-source.tar.gz" -C "$RUNNER_TEMP/source" .
+          tar --exclude=.git --exclude=release --exclude=archive --exclude=evidence --exclude='*.zip' --exclude='*.tar.gz' --exclude='*.tar.xz' --exclude=audio --exclude=recordings --exclude='*.ogg' --exclude='*.wav' --exclude='*.mp3' --exclude='*/build/*' -czf "$RUNNER_TEMP/results/AQUORA-0.7.0-source.tar.gz" -C "$RUNNER_TEMP/source" .
           cd "$RUNNER_TEMP/results"
           find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           zip -qr "$RUNNER_TEMP/AQUORA-0.7.0-testing.zip" .

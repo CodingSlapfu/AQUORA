@@ -1,0 +1,41 @@
+master 2048
+tap HOME
+wait 80
+expect running 0
+expect auto_gain 1
+expect auto_level 1
+expect density 8
+expect drum_presence 100
+turn ALGO 3
+tap EDIT
+spin K3 -1
+spin K4 -1
+wait 100
+expect auto_gain 0
+expect auto_level 0
+tap SAVE
+wait 1200
+expect bank_message 4
+expect preferences_saved 1
+reboot
+expect auto_gain 0
+expect auto_level 0
+tap HOME
+spin K1 1
+wait 100
+expect auto_gain 0
+expect auto_level 0
+turn ALGO 3
+tap EDIT
+tap EDIT
+spin K1 1
+tap SEL
+wait 1200
+expect auto_gain 1
+expect auto_level 1
+expect preferences_saved 1
+reboot
+expect auto_gain 1
+expect auto_level 1
+expect bank_migration_matrix 1
+expect drops 0
