@@ -177,11 +177,13 @@ static void chladni_job(void)
   bass_goal=bass_goal/(.18f+bass_goal);
   plate_bass+=(bass_goal-plate_bass)*(bass_goal>plate_bass?.6f:.12f);
   plate_turn+=(steer_x*.12f-plate_turn)*.22f;
-  if(drive>.00001f)plate_phase+=plate_activity*1.7f;
+  if(drive>.00001f)plate_phase+=plate_activity*2.4f;
   float bass=plate_bass*1.6f;
   float zoom=1.f+.24f*plate_bass;
   float shift_x=steer_x*.055f,shift_y=steer_y*.055f;
-  float rotation=plate_turn;
+  float rotation=plate_turn+plate_activity*visual_sin(plate_phase*.33f)*.10f;
+  shift_x+=plate_role[0]*visual_sin(plate_phase*.73f)*.06f;
+  shift_y+=plate_role[3]*visual_sin(plate_phase*.51f)*.06f;
 
   for(unsigned j=0;j<25;j++)for(unsigned i=0;i<25;i++){
     float px=((int)i-12)/12.f,py=((int)j-12)/12.f;
@@ -208,8 +210,8 @@ static void chladni_job(void)
     float gx=(plate_sample(x+.02f,y)-plate_sample(x-.02f,y))*25.f;
     float gy=(plate_sample(x,y+.02f)-plate_sample(x,y-.02f))*25.f;
     float impulse=hit*.026f*visual_sin(i*17.f+plate_phase);
-    sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-6,6)*plate_activity*.0032f+impulse)*.78f;
-    sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-6,6)*plate_activity*.0032f-impulse)*.78f;
+    sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-6,6)*plate_activity*.0040f+impulse)*.78f;
+    sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-6,6)*plate_activity*.0040f-impulse)*.78f;
     sand_x[i]=fm_clampf(x+sand_vx[i],-.98f,.98f);
     sand_y[i]=fm_clampf(y+sand_vy[i],-.98f,.98f);
     vis_output.sand[i][0]=120+(int)(sand_x[i]*112.f);

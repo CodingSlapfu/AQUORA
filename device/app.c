@@ -145,6 +145,8 @@ typedef struct {
     uint16_t air_far,air_near;
     uint8_t air_noise; /* formerly zero alignment padding, schema39 */
     uint32_t air_source;
+    uint32_t tempo_ticks;
+    uint8_t drum_presence;
 } aq_settings;
 
 /* Never write flash in the callback. All preference edits are coalesced and
@@ -155,7 +157,7 @@ static int save_preferences(void)
 {
     aq_settings settings={0};
     unsigned flags=plat_lock();
-    settings.version=0x41513039u;settings.air_noise=air_sensor.noise;
+    settings.version=0x41513040u;settings.tempo_ticks=engine.tick_length;settings.drum_presence=engine.drum_presence;settings.air_noise=air_sensor.noise;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
     settings.air_source=air_calibrated_source;
 #endif
@@ -488,11 +490,11 @@ void app_init(void)
     midi_load();
     aq_settings settings={0};
     int prefs_size=plat_store_size(OBJ_SETTINGS);
-    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==24||prefs_size==28||prefs_size==40||prefs_size==32||prefs_size==32||prefs_size==(int)sizeof(settings))&&
+    if((prefs_size==(int)sizeof(aq_settings_legacy)||prefs_size==24||prefs_size==28||prefs_size==40||prefs_size==(int)offsetof(aq_settings,tempo_ticks)||prefs_size==32||prefs_size==32||prefs_size==(int)sizeof(settings))&&
        plat_store_load(OBJ_SETTINGS,&settings,sizeof(settings))==prefs_size&&
        (settings.version==0x41513032u||
         (settings.version==0x41513033u&&prefs_size==24)||
-        ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||settings.version==0x41513039u))))&&(prefs_size==28||prefs_size==32||prefs_size==40||prefs_size==(int)sizeof(settings))))){
+        ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u)))))&&(prefs_size==28||prefs_size==32||prefs_size==40||prefs_size==(int)offsetof(aq_settings,tempo_ticks)||prefs_size==(int)sizeof(settings))))){
       for(unsigned i=0;i<2;i++){
         sr_motion m=settings.motion[i];
         if(m.glide_mode<=2&&m.glide_ms>=10&&m.glide_ms<=800&&
@@ -511,15 +513,15 @@ void app_init(void)
         }
       }
     }
-    if((settings.version==0x41513038u||settings.version==0x41513039u)){
+    if((settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u))){
       engine.air_mode=settings.air_mode<=4?settings.air_mode:0;
       air_sensitivity=settings.air_sensitivity>=20&&settings.air_sensitivity<=100?settings.air_sensitivity:70;
       air_invert=!!settings.air_invert;
       air_sensor.reference=settings.air_far;air_sensor.near_reference=settings.air_near;
       air_sensor.calibrated=settings.air_calibrated<=2?settings.air_calibrated:0;
-      air_sensor.noise=settings.version==0x41513039u&&settings.air_noise?settings.air_noise:3;
+      air_sensor.noise=(settings.version==0x41513039u||settings.version==0x41513040u)&&settings.air_noise?settings.air_noise:3;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-      air_calibrated_source=settings.version==0x41513039u?settings.air_source:0;
+      air_calibrated_source=(settings.version==0x41513039u||settings.version==0x41513040u)?settings.air_source:0;
 #endif
     }
     arrangement_init();
@@ -527,15 +529,21 @@ void app_init(void)
     /* arrangement_init resets its bank cursor and visual slot. Restore the
      * saved global visualizer before first intro frame, independent of banks. */
     if((settings.version==0x41513033u&&prefs_size==24)||
-       ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||settings.version==0x41513039u))))&&(prefs_size==28||prefs_size==32||prefs_size==40||prefs_size==(int)sizeof(settings))))
+       ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u)))))&&(prefs_size==28||prefs_size==32||prefs_size==40||prefs_size==(int)offsetof(aq_settings,tempo_ticks)||prefs_size==(int)sizeof(settings))))
       visual_mode=settings.visual<=2?settings.visual:0;
     if(settings.version>=0x41513035u&&settings.active_bank<4)bank_slot=settings.active_bank;
-    if((settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||settings.version==0x41513039u)))){
+    if((settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u))))){
       sr_set_music_mode(&engine,settings.music_mode<SR_MUSIC_MODES?settings.music_mode:0);
       engine.motion_manual=settings.motion_manual&3u;
       for(unsigned t=0;t<2;t++)if(engine.motion_manual&(1u<<t))engine.motion[t]=settings.motion[t];
     }else if(settings.version){engine.motion_manual=sr_legacy_motion_manual(engine.motion,SR_SCENES);for(unsigned t=0;t<2;t++)if(!(engine.motion_manual&(1u<<t)))sr_motion_auto(&engine,t,1); }
-    if((settings.version==0x41513037u||(settings.version==0x41513038u||settings.version==0x41513039u))&&settings.startup_sound<=2)startup_chime=settings.startup_sound;
+    if((settings.version==0x41513037u||(settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u)))&&settings.startup_sound<=2)startup_chime=settings.startup_sound;
+    if(settings.version==0x41513040u&&prefs_size==(int)sizeof(settings)){
+      if(settings.tempo_ticks>=5512u&&settings.tempo_ticks<=22050u&&(settings.motion_manual&4u)){
+        engine.tick_length=settings.tempo_ticks;engine.motion_manual|=4u;
+      }
+      if(settings.drum_presence<=100u)engine.drum_presence=settings.drum_presence;
+    }
     /* Cold boot only. Hardware entropy comes from the BSP random source;
      * the test seed is explicit and never used by production firmware. */
     unsigned boot_seed=song_nonce;
@@ -829,7 +837,7 @@ void app_input_only(void){
     else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
     else if(control==92){ui_background=bounded((int)ui_background+d,0,1);preferences_changed_now();}
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
-    else {send(control,bounded(d,-8,8));if(control==93||control==94||control>=96||(control>=32&&control<=35))preferences_changed_now();}
+    else {send(control,bounded(d,-8,8));if(control==25||control==62||control==93||control==94||control>=96||(control>=32&&control<=35))preferences_changed_now();}
     if(control>=120)preferences_changed_now();
     if(control!=72){knob_focus=i;knob_until=plat_ms()+900;}
     dirty=1;
