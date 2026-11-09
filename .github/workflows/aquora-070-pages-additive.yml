@@ -1,0 +1,54 @@
+name: Add isolated testing installer to existing Pages publishing branch
+on:
+  push:
+    branches: [aquora-070-release-delivery]
+    paths: ['.github/workflows/aquora-070-pages-additive.yml']
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: aquora-pages-additive-delivery
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve unchanged verified installer and prepare hosting-only hardware gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/CodingSlapfu/AQUORA/actions/artifacts/13707509647/zip > artifact.zip
+          echo '44fa3f0471befce7335cb98e8eaa30b8d0995e1a25c5396858712e72fce5f228  artifact.zip' | sha256sum -c --strict
+          unzip -q artifact.zip -d passed
+          python3 tools/prepare_070_delivery_hosting.py
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: published
+      - name: Append testing directory; preserve every pre-existing Pages file
+        run: |
+          set -euo pipefail
+          test ! -e published/testing-070
+          cp -a _site/testing-070 published/testing-070
+          cd published
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          previous=$(git rev-parse HEAD)
+          git add -- testing-070
+          python3 - <<'PY'
+          import subprocess
+          names=subprocess.check_output(['git','diff','--cached','--name-only','-z']).decode().split(chr(0))
+          assert all(n.startswith('testing-070/') for n in names if n)
+          PY
+          git commit -m 'Add AQUORA v0.7.0 TESTING ONLY installer; preserve existing public pages'
+          git diff --name-status "$previous" HEAD
+          git push origin HEAD:gh-pages
+          test "$(git ls-remote origin refs/heads/gh-pages | cut -f1)" = "$(git rev-parse HEAD)"
+          printf 'Pages checkpoint: %s\nPrevious Pages checkpoint: %s\nTesting URL: https://codingslapfu.github.io/AQUORA/testing-070/install/\n' "$(git rev-parse HEAD)" "$previous" > ../PAGES-DELIVERY.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AQUORA-0.7.0-additive-Pages-delivery
+          path: PAGES-DELIVERY.txt
