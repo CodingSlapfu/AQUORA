@@ -16,6 +16,10 @@ int main(void){
    for(unsigned t=0;t<7;t++){patches|=1ull<<e.tracks[t].patch;context_patches|=1ull<<e.tracks[t].patch;}
    kits|=1u<<e.drum_kit;
    other=e;other.form_key=0;sr_plan_sections(&other);assert(!memcmp(e.form_route,other.form_route,33));
+   /* A saved home motif/seed/form position reconstructs the committed route
+    * even when live expressive energy or learned-note capture changes. */
+   other.energy=.01f;other.learned.count=3;other.form_key=0;sr_plan_sections(&other);
+   assert(!memcmp(e.form_route,other.form_route,33));
    for(unsigned slot=1;slot<32;slot++)assert(e.form_route[slot]!=e.form_route[slot-1]);
    assert(e.form_route[31]==15&&e.form_route[32]==28);
    if(seed>=512&&context_patches==((1ull<<SR_PATCHES)-1)&&kits==((1u<<SR_DRUM_KITS)-1))break;

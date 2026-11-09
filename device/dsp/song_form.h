@@ -22,7 +22,9 @@ static const sr_section_spec sr_sections[32]={
 };
 /* Original bounded lookahead planner: all decisions are made before playback
  * of a 32-section arc. No audio random stream or per-sample search is used.
- * Each arc resolves and returns to the motif, then starts another journey. */
+ * Each arc resolves and returns to the motif, then starts another journey.
+ * Planning inputs are persisted song identity/home motif and intention/mode;
+ * transient learning/energy edits cannot change a restored committed route. */
 void sr_plan_sections(sr_engine *e){
  unsigned hold=2u+sr_scenes[e->scene].energy%3u;
  unsigned cycle=e->form_loop/(hold*32u);
@@ -47,10 +49,10 @@ void sr_plan_sections(sr_engine *e){
    if(delta==0u||delta==3u||delta==4u)w*=2u;
    if(e->music_mode==SR_NEOCLASSICAL&&(a->roles&(1u<<SR_PIANO)))w*=2u;
    if(e->music_mode==SR_EXPERIMENTAL&&a->pulse==2u)w*=2u;
-   if(e->energy>.65f&&a->pulse==2u)w*=2u;
+   if(energy>=3u&&a->pulse==2u)w*=2u;
    /* Retain a useful common instrumental voice over the harmonic move. */
    if((a->roles&sr_sections[prev].roles)&(1u<<SR_PIANO))w+=3u;
-   if(e->learned.count&&(a->roles&1u))w+=5u;
+   if(e->motif_home[0]>=0&&a->harmony==(unsigned)e->motif_home[0]%7u)w+=3u;
    w/=1u+used[id]*3u;
    if(id==prev||(slot>1u&&id==e->form_route[slot-2u]))w=0;
    if(slot==30u&&id==15u)w=0;

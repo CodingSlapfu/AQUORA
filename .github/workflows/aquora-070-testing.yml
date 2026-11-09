@@ -27,6 +27,10 @@ jobs:
           mkdir "$RUNNER_TEMP/results"
           cp "$RUNNER_TEMP/prior.json" "$RUNNER_TEMP/results/reused-composition-graphics-CI.json"
           cd "$RUNNER_TEMP/source"
+          cc -O2 tests/arranger_070.c -lm -o "$RUNNER_TEMP/arranger"
+          "$RUNNER_TEMP/arranger" | tee "$RUNNER_TEMP/results/arranger.log"
+          cc -O2 tests/boundaries_070.c -lm -o "$RUNNER_TEMP/boundaries"
+          "$RUNNER_TEMP/boundaries" | tee "$RUNNER_TEMP/results/boundaries.log"
           python3 -m pip install Pillow==11.3.0
           python3 vendor/fm1-base/tools/build.py device --host --release 0.7.0
           mkdir "$RUNNER_TEMP/results/preferences"
