@@ -2,7 +2,7 @@
   "schema": 1,
   "baseline": "c9813170bdc4fab29e46ed6beb23de6c27f879e3",
   "target": "0.6.10",
-  "audit_complete": false,
+  "audit_complete": true,
   "requirements": [
     {
       "id": "ISSUE-01",
@@ -1668,22 +1668,27 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/64",
       "target": "0.6.10",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/dsp/engine.c",
         "device/dsp/song_form.h"
       ],
       "tests": [
-        "tests/composition_0610.c"
+        "tests/composition_0610.c",
+        "tests/preferences_0610.py",
+        "tests/listening_compare_0610.py"
       ],
       "artifacts": [
+        "validation/release-0610/SOFTWARE_GATE.json",
         "validation/release-0610/composition.log",
-        "validation/release-0610/native-development.log"
+        "validation/release-0610/acceptance/preferences.log",
+        "validation/release-0610/acceptance/listening-analysis.json"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
-      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
-      "scope_sha256": "623fb52702691e52073ffb088153140723d8741f82301e36996e7274bfc901e1"
+      "carry_forward": "No software deferral; physical listening, RF, performance and artistic acceptance remain owner-unverified.",
+      "source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+      "scope_sha256": "623fb52702691e52073ffb088153140723d8741f82301e36996e7274bfc901e1",
+      "audit": "Actual source, targeted outputs and preserved baseline acceptance reconciled in release-0610/SOFTWARE_GATE.json; physical/artistic acceptance remains owner-unverified."
     },
     {
       "id": "ISSUE-65",
@@ -1691,22 +1696,27 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/65",
       "target": "0.6.10",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/dsp/engine.c",
         "device/dsp/song_form.h"
       ],
       "tests": [
-        "tests/composition_0610.c"
+        "tests/composition_0610.c",
+        "tests/preferences_0610.py",
+        "tests/listening_compare_0610.py"
       ],
       "artifacts": [
+        "validation/release-0610/SOFTWARE_GATE.json",
         "validation/release-0610/composition.log",
-        "validation/release-0610/native-development.log"
+        "validation/release-0610/acceptance/preferences.log",
+        "validation/release-0610/acceptance/listening-analysis.json"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
-      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
-      "scope_sha256": "ced26bd259e6a97749a52013ad9864e5ce6f5a337e4a9ebd922cd765da0744c0"
+      "carry_forward": "No software deferral; physical listening, RF, performance and artistic acceptance remain owner-unverified.",
+      "source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+      "scope_sha256": "ced26bd259e6a97749a52013ad9864e5ce6f5a337e4a9ebd922cd765da0744c0",
+      "audit": "Actual source, targeted outputs and preserved baseline acceptance reconciled in release-0610/SOFTWARE_GATE.json; physical/artistic acceptance remains owner-unverified."
     },
     {
       "id": "ISSUE-66",
@@ -1714,22 +1724,27 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/66",
       "target": "0.6.10",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/dsp/engine.c",
         "device/dsp/song_form.h"
       ],
       "tests": [
-        "tests/composition_0610.c"
+        "tests/composition_0610.c",
+        "tests/preferences_0610.py",
+        "tests/listening_compare_0610.py"
       ],
       "artifacts": [
+        "validation/release-0610/SOFTWARE_GATE.json",
         "validation/release-0610/composition.log",
-        "validation/release-0610/native-development.log"
+        "validation/release-0610/acceptance/preferences.log",
+        "validation/release-0610/acceptance/listening-analysis.json"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
-      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
-      "scope_sha256": "82c2d6e014d630da56e12ca3e6fde476a9468cdd79ff1a7643249101b04e8255"
+      "carry_forward": "No software deferral; physical listening, RF, performance and artistic acceptance remain owner-unverified.",
+      "source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+      "scope_sha256": "82c2d6e014d630da56e12ca3e6fde476a9468cdd79ff1a7643249101b04e8255",
+      "audit": "Actual source, targeted outputs and preserved baseline acceptance reconciled in release-0610/SOFTWARE_GATE.json; physical/artistic acceptance remains owner-unverified."
     },
     {
       "id": "ISSUE-67",
@@ -1737,21 +1752,22 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/67",
       "target": "0.6.10",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/ui.c"
       ],
       "tests": [
-        "tests/composition_0610.c"
+        "tests/evolve_graph_0610.py"
       ],
       "artifacts": [
-        "validation/release-0610/composition.log",
-        "validation/release-0610/native-development.log"
+        "validation/release-0610/SOFTWARE_GATE.json",
+        "validation/release-0610/acceptance/evolve-final.log"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
-      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
-      "scope_sha256": "7ab112e27221ddb0f5da10872b0f49d46e49a17248d918c0013e96494491d349"
+      "carry_forward": "No software deferral; physical listening, RF, performance and artistic acceptance remain owner-unverified.",
+      "source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+      "scope_sha256": "7ab112e27221ddb0f5da10872b0f49d46e49a17248d918c0013e96494491d349",
+      "audit": "Actual source, targeted outputs and preserved baseline acceptance reconciled in release-0610/SOFTWARE_GATE.json; physical/artistic acceptance remains owner-unverified."
     },
     {
       "id": "ISSUE-68",
@@ -1759,22 +1775,27 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/68",
       "target": "0.6.10",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/dsp/engine.c",
         "device/dsp/song_form.h"
       ],
       "tests": [
-        "tests/composition_0610.c"
+        "tests/composition_0610.c",
+        "tests/preferences_0610.py",
+        "tests/listening_compare_0610.py"
       ],
       "artifacts": [
+        "validation/release-0610/SOFTWARE_GATE.json",
         "validation/release-0610/composition.log",
-        "validation/release-0610/native-development.log"
+        "validation/release-0610/acceptance/preferences.log",
+        "validation/release-0610/acceptance/listening-analysis.json"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
-      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
-      "scope_sha256": "8aea37374cf537a4b666ffb8985bbce4b34a83958217a4b5761203fc259c4c69"
+      "carry_forward": "No software deferral; physical listening, RF, performance and artistic acceptance remain owner-unverified.",
+      "source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+      "scope_sha256": "8aea37374cf537a4b666ffb8985bbce4b34a83958217a4b5761203fc259c4c69",
+      "audit": "Actual source, targeted outputs and preserved baseline acceptance reconciled in release-0610/SOFTWARE_GATE.json; physical/artistic acceptance remains owner-unverified."
     },
     {
       "id": "ISSUE-69",
@@ -1782,22 +1803,27 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/69",
       "target": "0.6.10",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/dsp/engine.c",
         "device/dsp/song_form.h"
       ],
       "tests": [
-        "tests/composition_0610.c"
+        "tests/composition_0610.c",
+        "tests/preferences_0610.py",
+        "tests/listening_compare_0610.py"
       ],
       "artifacts": [
+        "validation/release-0610/SOFTWARE_GATE.json",
         "validation/release-0610/composition.log",
-        "validation/release-0610/native-development.log"
+        "validation/release-0610/acceptance/preferences.log",
+        "validation/release-0610/acceptance/listening-analysis.json"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
-      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
-      "scope_sha256": "dd2c0f43ea2fd529e9f6406a3bcd8fe985bb8b49d16fa723a98adbfb34e183a4"
+      "carry_forward": "No software deferral; physical listening, RF, performance and artistic acceptance remain owner-unverified.",
+      "source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+      "scope_sha256": "dd2c0f43ea2fd529e9f6406a3bcd8fe985bb8b49d16fa723a98adbfb34e183a4",
+      "audit": "Actual source, targeted outputs and preserved baseline acceptance reconciled in release-0610/SOFTWARE_GATE.json; physical/artistic acceptance remains owner-unverified."
     },
     {
       "id": "ISSUE-70",
@@ -1805,22 +1831,27 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/70",
       "target": "0.6.10",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/dsp/engine.c",
         "device/dsp/song_form.h"
       ],
       "tests": [
-        "tests/composition_0610.c"
+        "tests/composition_0610.c",
+        "tests/preferences_0610.py",
+        "tests/listening_compare_0610.py"
       ],
       "artifacts": [
+        "validation/release-0610/SOFTWARE_GATE.json",
         "validation/release-0610/composition.log",
-        "validation/release-0610/native-development.log"
+        "validation/release-0610/acceptance/preferences.log",
+        "validation/release-0610/acceptance/listening-analysis.json"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
-      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
-      "scope_sha256": "1163169a810e813ad4738641b1bb911f217d2bf50ea2da4c8184c3fd60fb172c"
+      "carry_forward": "No software deferral; physical listening, RF, performance and artistic acceptance remain owner-unverified.",
+      "source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+      "scope_sha256": "1163169a810e813ad4738641b1bb911f217d2bf50ea2da4c8184c3fd60fb172c",
+      "audit": "Actual source, targeted outputs and preserved baseline acceptance reconciled in release-0610/SOFTWARE_GATE.json; physical/artistic acceptance remains owner-unverified."
     },
     {
       "id": "ISSUE-71",
@@ -1828,21 +1859,27 @@
       "source": "https://github.com/CodingSlapfu/AQUORA/issues/71",
       "target": "0.6.10",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "COMPLETED SOFTWARE",
       "code": [
         "device/visual_worker.c"
       ],
       "tests": [
-        "tests/visual_0610.py"
+        "tests/visual_0610.py",
+        "tests/visual_motion_0610.py",
+        "tests/original_response_0610.py",
+        "tests/performance_067.py"
       ],
       "artifacts": [
-        "validation/release-0610/composition.log",
-        "validation/release-0610/native-development.log"
+        "validation/release-0610/SOFTWARE_GATE.json",
+        "validation/release-0610/acceptance/visual-motion.json",
+        "validation/release-0610/acceptance/original.json",
+        "validation/release-0610/acceptance/performance.json"
       ],
       "physical_owner": "owner",
-      "carry_forward": "Required in 0.6.10; final software acceptance/publication blocked, no deferral",
-      "source_commit": "36fe47831abd4a25f4ec4407289976b3737c5c6f",
-      "scope_sha256": "e6ce385e07b064eea3b1668e5e1b715229db5366a7ba21a923ffeb5c8cd9f7c1"
+      "carry_forward": "No software deferral; physical listening, RF, performance and artistic acceptance remain owner-unverified.",
+      "source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+      "scope_sha256": "e6ce385e07b064eea3b1668e5e1b715229db5366a7ba21a923ffeb5c8cd9f7c1",
+      "audit": "Actual source, targeted outputs and preserved baseline acceptance reconciled in release-0610/SOFTWARE_GATE.json; physical/artistic acceptance remains owner-unverified."
     },
     {
       "id": "ISSUE-63",
@@ -2026,7 +2063,13 @@
       "audit": "Reconciled previously omitted baseline row against accepted069 source/acceptance/publication evidence; no repeated test or new completion inferred."
     }
   ],
-  "release_evidence": {},
+  "release_evidence": {
+    "final_platform_source_match": true,
+    "native_repro_single_core_wasm": true,
+    "updater_paths": true,
+    "staged_installer": true,
+    "verified_source_backup": true
+  },
   "reviewed_owner_comments": [
     "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700880739",
     "https://github.com/CodingSlapfu/AQUORA/issues/1#issuecomment-6700892234",

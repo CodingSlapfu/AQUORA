@@ -1,0 +1,52 @@
+{
+  "version": "0.6.10",
+  "status": "SOFTWARE_ACCEPTED_PUBLICATION_PENDING",
+  "runtime_source_commit": "654d725ed98361bca3df9f477b9a5989d299d0a4",
+  "compiled_device_source_files_exact": 18,
+  "compiled_vendor_source_files_exact": 257,
+  "native_reproducible": true,
+  "forced_single_core": true,
+  "wasm_valid": true,
+  "updater_prior_and_same_identity_paths": 11,
+  "final_payload_crc_and_corruption_rejection": true,
+  "staged_installer_metadata_hashes_and_hardware_warning": true,
+  "canonical_scope_gate": "PASS release structure,82classified rows, all owner comments reviewed and negative omission/deferral tests",
+  "reused_composition_coverage_grids": 84,
+  "generated_songs_per_grid": 4096,
+  "timeline_steps": 12386304,
+  "drum_pcm_boundary_windows": 2432,
+  "postmix_kit_mode_cases": 76,
+  "kick_kits": 19,
+  "real_AIR_dry_wet_pairs": 25,
+  "manual_preference_and_bank_roundtrips": 1008,
+  "visual_load_worker_cases": 72,
+  "control_latency_cases": 24,
+  "EVOLVE_sparse_dense_wrap_images": 216,
+  "baseline_visual_frame_evidence": 864,
+  "final_changed_V3_frames": 144,
+  "original_source_to_vertex_ratio": 1.0972326103216155,
+  "chladni_identical_pcm_grain_ratios": [
+    2.3254245019460305,
+    2.2478840856282405,
+    2.5298398895805447,
+    2.6803567034925533
+  ],
+  "cymatics_identical_pcm_grain_ratios": [
+    1.22581601979605,
+    2.301864391277357,
+    1.981951333393266,
+    1.492630452278582
+  ],
+  "silence_settles": true,
+  "audio_listening_renders": 12,
+  "audio_seconds_each": 180,
+  "hardware": "owner-unverified; host timing is not physical FM-1 FPS/XRUN/RF/soak evidence",
+  "musical_visual_aesthetic_acceptance": "owner-unverified; no invented listening results",
+  "publisher": "not attempted until software and source/artifact backup pass",
+  "deferred": [
+    "new-hardware62",
+    "performance MIDI-USB",
+    "performance MIDI-BLE"
+  ],
+  "full_16_voice_feature_pressure_modes": 4
+}
