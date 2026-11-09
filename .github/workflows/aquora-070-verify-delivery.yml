@@ -1,0 +1,44 @@
+name: Independently verify uploaded AQUORA testing release assets
+on:
+  push:
+    branches: [aquora-070-release-delivery]
+    paths: ['.github/workflows/aquora-070-verify-delivery.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Download release assets and independently check manifest and hashes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir downloaded
+          gh release download next-testing-0.7.0-1a1b46d --repo CodingSlapfu/AQUORA --dir downloaded
+          cd downloaded
+          sha256sum -c --strict SHA256SUMS.txt | tee ../REMOTE-VERIFICATION.txt
+          python3 - <<'PY'
+          import json,pathlib,hashlib,zipfile
+          r=pathlib.Path('.');m=json.loads((r/'MANIFEST.json').read_text())
+          assert m['source_commit']=='1a1b46da6f375b9046a549a526484b8d7c4f2636' and m['identity']=='FM-1_73000700'
+          for name,v in m['files'].items():
+              p=r/name
+              assert p.stat().st_size==v['bytes'] and hashlib.sha256(p.read_bytes()).hexdigest()==v['sha256']
+          with zipfile.ZipFile(r/'AQUORA-0.7.0-testing.zip') as z:
+              assert z.testzip() is None
+              assert z.read('native/sound-healing-0.7.0.fwsc')==(r/'AQUORA-0.7.0-next-build-testing.fwsc').read_bytes()
+          pathlib.Path('../ROLLBACK-INFORMATION.txt').write_text('AQUORA v0.7.0 TESTING ONLY. Original Puya 0x856014 FM-1 only. Identity FM-1_73000700. Physical acceptance pending. Existing official public firmware and rollback installers remain at https://parallax8-studio.jminie66.chatgpt.site/install/ . The musical-correction testing candidate is preserved. No changes to public Sites assets or rollback binaries were made by this delivery. Do not restore 0.7.0 banks containing new patch IDs into older firmware. This delivery reused passed CI 42694003369 without rebuilding or rerunning successful tests.\n')
+          PY
+      - name: Preserve independent remote verification and rollback information
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload next-testing-0.7.0-1a1b46d REMOTE-VERIFICATION.txt ROLLBACK-INFORMATION.txt --repo CodingSlapfu/AQUORA
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AQUORA-0.7.0-independent-remote-verification
+          path: |
+            REMOTE-VERIFICATION.txt
+            ROLLBACK-INFORMATION.txt
