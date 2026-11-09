@@ -1,0 +1,71 @@
+name: AQUORA package passed musical candidate only
+on:
+  push:
+    branches: [aquora-musical-quality]
+    paths: ['.github/workflows/aquora-musical-package.yml']
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: aquora-musical-package
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 35ca7410f9ac4863a20d711156c13ec03ebdab01
+      - name: Recover and verify passed artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/candidate" "$RUNNER_TEMP/package"
+          gh api repos/CodingSlapfu/AQUORA/actions/runs/42570589489 > "$RUNNER_TEMP/run.json"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["conclusion"]=="success" and d["head_sha"]=="d576ae97525bcf728f0349831a8f2c83aff4849e"' "$RUNNER_TEMP/run.json"
+          gh api repos/CodingSlapfu/AQUORA/actions/artifacts/13653785497/zip > "$RUNNER_TEMP/artifact.zip"
+          echo "b6af560c396d3b4e9ec7d3d83d3f40bdd6f253d3eb00154cb6d28284b00e82fd  $RUNNER_TEMP/artifact.zip" | sha256sum -c --strict
+          unzip -q "$RUNNER_TEMP/artifact.zip" -d "$RUNNER_TEMP/candidate"
+          cd "$RUNNER_TEMP/candidate"
+          sha256sum -c --strict SHA256SUMS.txt
+          test "$(cat source-commit.txt)" = d576ae97525bcf728f0349831a8f2c83aff4849e
+          cmp native/sound-healing-0.6.10.fwsc native-repro/sound-healing-0.6.10.fwsc
+          cp "$RUNNER_TEMP/artifact.zip" "$RUNNER_TEMP/package/AQUORA-musical-candidate-passed-artifacts.zip"
+      - name: Prepare full source and installer candidate without compiling
+        run: |
+          set -euo pipefail
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          python3 - <<'PY'
+          import pathlib,tarfile,os,json
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          def clean(info):
+              p=pathlib.PurePosixPath(info.name)
+              if any(s.lower() in ('audio','recordings','.git') for s in p.parts) or p.suffix.lower() in ('.ogg','.wav','.mp3','.flac','.aiff','.m4a'): return None
+              return info
+          with tarfile.open(root/'package/AQUORA-musical-candidate-full-source.tar.gz','w:gz') as t:
+              t.add(root/'source',arcname='AQUORA-source',filter=clean)
+          manifest={'candidate':'musical-quality-35ca741','source_checkpoint':'35ca7410f9ac4863a20d711156c13ec03ebdab01','build_source':'d576ae97525bcf728f0349831a8f2c83aff4849e','run':42570589489,'artifact':13653785497,'firmware_version':'0.6.10','updater_identity':'FM-1_73000610','status':'draft; physical listening pending','rebuilt':False,'wasm_regenerated':False}
+          (root/'package/MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          PY
+          cp "$RUNNER_TEMP/candidate/native/sound-healing-0.6.10.fwsc" "$RUNNER_TEMP/package/AQUORA-0.6.10-musical-candidate-35ca741.fwsc"
+          cp "$RUNNER_TEMP/candidate/emu/app.wasm" "$RUNNER_TEMP/package/AQUORA-musical-candidate.wasm"
+          cp "$RUNNER_TEMP/candidate/SHA256SUMS.txt" "$RUNNER_TEMP/package/ORIGINAL-SHA256SUMS.txt"
+          printf '%s\n' 'Draft musical correction candidate; existing 0.6.10 / FM-1_73000610 identity retained. No new version was compiled. Use the included complete source installer tooling with the candidate FWSC. Physical FM-1 listening remains owner acceptance. No live installer changes.' > "$RUNNER_TEMP/package/README.txt"
+          cd "$RUNNER_TEMP/package"
+          sha256sum * > SHA256SUMS.txt
+          zip -q AQUORA-musical-candidate-installer-package.zip ./*
+          sha256sum AQUORA-musical-candidate-installer-package.zip > INSTALLER-SHA256SUMS.txt
+      - name: Upload directly to draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create musical-candidate-35ca741 "$RUNNER_TEMP/package/"* --repo CodingSlapfu/AQUORA --target 35ca7410f9ac4863a20d711156c13ec03ebdab01 --draft --prerelease --title "AQUORA musical correction candidate 35ca741" --notes-file "$RUNNER_TEMP/package/README.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-musical-candidate-package
+          path: ${{ runner.temp }}/package/
+          retention-days: 90
