@@ -1,0 +1,43 @@
+name: Verify live AQUORA 0.7.0 testing installer delivery
+on:
+  push:
+    branches: [aquora-070-release-delivery]
+    paths: ['.github/workflows/aquora-070-live-delivery.yml']
+permissions:
+  contents: write
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify live page, firmware hash, identity and hosting gate
+        run: |
+          python3 - <<'PY'
+          import urllib.request,hashlib,json,re,pathlib
+          base='https://codingslapfu.github.io/AQUORA/testing-070/'
+          def get(path):
+              with urllib.request.urlopen(base+path,timeout=45) as r:
+                  assert r.status==200
+                  return r.read()
+          page=get('install/').decode()
+          assert 'AQUORA v0.7.0 — TESTING ONLY' in page
+          assert 'puya-confirm' in page and 'browser cannot automatically read the flash-chip ID' in page
+          assert 'if (!document.getElementById("puya-confirm").checked)' in page
+          m=json.loads(re.search(r'const meta = (.*?);',page).group(1))
+          raw=get('firmware/sound-healing-0.7.0.fwsc')
+          digest=hashlib.sha256(raw).hexdigest()
+          assert digest==m['sha256']=='680b6d61ce251d6fe7f0c92f70047b1b10f45776304a88d3969e952ab3f9ad6b'
+          assert m['product']=='FM-1_73000700' and m['pkg']=='../firmware/sound-healing-0.7.0.fwsc'
+          identity=''.join(chr((raw[i*0x30+0x2f]-i-1)&255) for i in range(20) if raw[i*0x30+0x2f]!=0x7d)
+          assert identity==m['product']
+          assert hashlib.sha256(get('firmware/m-bootloader-1.2.fwsc')).hexdigest()==m['boot']['sha256']
+          assert b'<html' in get('manual/').lower() or b'<!doctype' in get('manual/').lower()
+          report={'live_url':base+'install/','firmware_sha256':digest,'identity':identity,'source_commit':'1a1b46da6f375b9046a549a526484b8d7c4f2636','compatible_hardware':'Original Puya 0x856014 FM-1 only; explicit confirmation required; browser cannot auto-detect flash ID','public_site_preservation':'Only testing-070 paths added on gh-pages; existing public root and rollback files unchanged','physical_flashing_tested':False}
+          pathlib.Path('LIVE-DELIVERY-VERIFICATION.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report,indent=2))
+          PY
+      - name: Back up live verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload next-testing-0.7.0-1a1b46d LIVE-DELIVERY-VERIFICATION.json --repo CodingSlapfu/AQUORA
