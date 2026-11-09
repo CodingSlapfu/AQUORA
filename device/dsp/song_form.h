@@ -20,16 +20,46 @@ static const sr_section_spec sr_sections[32]={
  {"Motif Homecoming",4,0xb3,0,1},{"Quiet Interplay",1,0x9e,3,1},
  {"Rhythmic Weave",2,0xba,4,2},{"Open Continuation",4,0x96,0,1}
 };
-static unsigned form_index(const sr_engine *e,unsigned ahead){
- static const uint8_t forms[SR_MUSIC_MODES][32]={
-  {0,1,2,3,17,4,9,18,5,6,20,11,12,23,16,24,13,25,7,22,26,21,10,27,29,30,14,19,28,15,31,8},
-  {0,6,19,1,2,3,17,5,9,20,11,22,12,23,16,8,21,13,25,4,18,26,27,10,29,24,14,28,15,30,31,7},
-  {0,17,2,3,4,25,9,18,5,13,29,22,12,23,16,8,21,11,1,6,26,20,7,10,27,24,14,28,19,15,30,31},
-  {0,6,1,24,7,18,3,5,8,9,25,13,4,20,30,10,27,11,22,12,26,21,16,29,23,17,14,19,28,15,31,2}
- };
+/* Original bounded lookahead planner: all decisions are made before playback
+ * of a 32-section arc. No audio random stream or per-sample search is used.
+ * Each arc resolves and returns to the motif, then starts another journey. */
+static void plan_form(sr_engine *e){
  unsigned hold=2u+sr_scenes[e->scene].energy%3u;
  unsigned cycle=e->form_loop/(hold*32u);
- unsigned slot=(e->form_loop/hold+ahead)%32u;
- if(cycle&&slot>3u&&slot<28u)slot=4u+(slot-4u+cycle*5u)%24u;
- return forms[e->music_mode][slot];
+ uint32_t key=song_draw(e->song_seed,cycle+701u+e->scene*7u+e->music_mode*149u);
+ if(e->form_key==key&&e->form_route[32]==28u)return;
+ e->form_key=key;
+ unsigned used[32]={0};
+ e->form_route[0]=cycle?28u:0u;used[e->form_route[0]]=1;
+ for(unsigned slot=1;slot<32;slot++){
+  unsigned prev=e->form_route[slot-1u],family=sr_sections[prev].family;
+  unsigned phase=slot%8u,energy=sr_scenes[e->scene].energy;
+  unsigned target=phase<3u?1u:phase<6u?2u:phase==6u?3u:4u;
+  if(energy==1u&&target==2u&&e->music_mode!=SR_EXPERIMENTAL)target=1u;
+  unsigned weights[32],total=0;
+  for(unsigned id=1;id<32;id++){
+   const sr_section_spec *a=&sr_sections[id];
+   unsigned w=a->family==target?20u:3u;
+   /* A reduction needs a prepared re-entry; a crest needs release. */
+   if(family==3u)w=a->family==1u||a->family==4u?24u:1u;
+   if(family==2u&&phase>=5u)w=a->family==3u||a->family==4u?24u:w;
+   unsigned delta=(a->harmony+7u-sr_sections[prev].harmony)%7u;
+   if(delta==0u||delta==3u||delta==4u)w*=2u;
+   if(e->music_mode==SR_NEOCLASSICAL&&(a->roles&(1u<<SR_PIANO)))w*=2u;
+   if(e->music_mode==SR_EXPERIMENTAL&&a->pulse==2u)w*=2u;
+   w/=1u+used[id]*3u;
+   if(id==prev||(slot>1u&&id==e->form_route[slot-2u]))w=0;
+   if(slot==31u)w=id==15u?1u:0u;
+   weights[id]=w;total+=w;
+  }
+  unsigned draw=song_draw(key,slot)%total,id=1;
+  for(;id<31;id++){if(draw<weights[id])break;draw-=weights[id];}
+  e->form_route[slot]=id;used[id]++;
+ }
+ e->form_route[32]=28u; /* committed next arc starts with homecoming */
+}
+static unsigned form_index(const sr_engine *e,unsigned ahead){
+ unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+ unsigned slot=(e->form_loop/hold)%32u;
+ return e->form_route[slot+!!ahead];
 }

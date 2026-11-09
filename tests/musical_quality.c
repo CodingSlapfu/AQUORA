@@ -12,7 +12,7 @@ int main(void){
    for(unsigned i=0;i<16;i++){notes+=e.melody[i]>=0;rests+=e.melody[i]<0;}
    assert(notes>=7&&rests>=7);assert(e.melody[0]==e.melody[8]&&e.melody[2]==e.melody[10]);
    assert(e.melody[12]==2&&e.melody[14]==0);
-   for(unsigned t=0;t<7;t++){assert(e.tracks[t].patch<36);patches|=1ull<<e.tracks[t].patch;}
+   for(unsigned t=0;t<7;t++){assert(e.tracks[t].patch<SR_PATCHES);patches|=1ull<<e.tracks[t].patch;}
    kits|=1u<<e.drum_kit;
    unsigned family=ensemble(&e,seed);
    static const unsigned lead[]={13,14,16,29};anchored+=e.tracks[0].patch==lead[family];
@@ -30,7 +30,7 @@ int main(void){
     assert(d<0||d==(int)c||d==(int)((c+2)%7)||d==(int)((c+4)%7));}
   }
  }
- assert(patches==((1ull<<36)-1)&&kits==((1u<<19)-1));
+ assert(patches==((1ull<<SR_PATCHES)-1)&&kits==((1u<<19)-1));
  assert(anchored>21u*4u*512u/2u);
  printf("PASS phrase breaths/echo/cadence, <=1-note development, 32-section strong-beat harmony, locks/reroll; globally accessible36/19; shared lead anchor %u/43008. Human approval PENDING.\n",anchored);
 }

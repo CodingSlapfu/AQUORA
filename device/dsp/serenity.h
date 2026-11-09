@@ -10,7 +10,7 @@
 #define SR_SOUND_LOCK_MASK 1023u
 #define SR_TRACKS 8
 #define SR_VOICES 16
-#define SR_PATCHES 36
+#define SR_PATCHES 48
 #define SR_SCENES 21
 #define SR_BEDS 12
 #define SR_FREQUENCIES 13
@@ -61,6 +61,9 @@ typedef struct {
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
   uint32_t song_seed, visit_nonce, form_loop;
+  uint32_t form_key; uint8_t form_route[33];
+  uint8_t timeline_enabled,timeline_write;
+  struct {uint32_t frame,duration;uint8_t role,note,velocity,reserved;} timeline[96];
   uint8_t pending_scene, pending_mode, profile_applying;
   uint8_t music_mode, motion_manual, recent_patches[SR_MUSIC_MODES][SR_SCENES][SR_TRACKS];
   uint16_t sound_locks;

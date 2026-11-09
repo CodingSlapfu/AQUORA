@@ -664,9 +664,64 @@ static void battery_glyph(void)
    for(int y=8;y<=12;y++)cv_line(x,y,x+2,y,ink);
  }
 }
+/* Per-frame snapshots keep strip rendering on one musical timebase. */
+static __typeof__(engine.timeline) graph_notes;
+static __typeof__(engine.scheduled) graph_pending;
+static uint32_t graph_frame,graph_tick;
+static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t ink){
+ int top=y-(int)band*48;
+ if(x<35){width-=35-x;x=35;}if(x+width>233)width=233-x;
+ if(top<0){height+=top;top=0;}if(top+height>48)height=48-top;
+ if(width>0&&height>0)cv_rect(x,top,width,height,ink);
+}
+static void evolve_graph(unsigned band){
+ unsigned offset=band*48;
+ for(unsigned t=0;t<SR_TRACKS;t++){
+  int y=50+t*12;
+  if(y>=(int)offset&&y<(int)offset+48){
+   char n[3];num(n,t+1);cv_text(6,y-offset,&FONT_T,n,t==selected?skin_accent():skin_dim());
+   cv_line(35,y+9-offset,232,y+9-offset,skins[ui_theme][ui_background].border);
+  }
+ }
+ /* History uses actual note onset/duration/pitch. Future blocks are only
+  * already committed scheduled notes; no decorative or guessed events. */
+ for(unsigned i=0;i<108;i++){
+  unsigned role,note,velocity;uint32_t frame,duration;
+  if(i<96){role=graph_notes[i].role;note=graph_notes[i].note;velocity=graph_notes[i].velocity;frame=graph_notes[i].frame;duration=graph_notes[i].duration;}
+  else {unsigned j=i-96;if(!graph_pending[j].active)continue;role=graph_pending[j].role;note=graph_pending[j].note;velocity=graph_pending[j].velocity;frame=graph_pending[j].due;duration=graph_pending[j].beats*4.f*graph_tick;}
+  if(!duration||role>=SR_TRACKS)continue;
+  int32_t age=(int32_t)(graph_frame-frame);
+  int x=65-(int)((float)age*11.f/(float)graph_tick);
+  int width=(int)((float)duration*11.f/(float)graph_tick);if(width<4)width=4;
+  if(x>232||x+width<35)continue;
+  uint16_t ink=ui_background?skin_accent():colors[role];
+  int glint=age>=0&&age<(int32_t)(SR_RATE/7u);
+  graph_block(band,x,width,51+role*12,7,ink);
+  if(glint){
+   unsigned core=7u-(unsigned)age/(SR_RATE/49u);if(core>7u)core=7u;
+   graph_block(band,x,core,51+role*12,2,skin_text());
+   graph_block(band,x+1,2,49+role*12,2,skin_accent());
+  }
+  if(role==selected){
+   int pitch=role==SR_DRUMS?note-32:note-36;if(pitch<0)pitch=0;if(pitch>60)pitch=60;
+   int y=185-pitch/2;
+   graph_block(band,x,width,y,4+velocity/48u,ink);
+   if(glint)graph_block(band,x,4,y,2,skin_text());
+  }
+ }
+ if(band==3){limited_text(6,3,220,&FONT_T,role_names[selected],skin_accent());
+  limited_text(6,35,224,&FONT_T,"SEL: DETAIL ROLE / EDIT: CONTROLS",skin_dim());}
+ cv_line(65,0,65,47,skin_accent());
+}
 static int draw(int animate)
 {
  unsigned revision=state_revision;
+ if(page==PAGE_EVOLVE&&!debug&&!intro_active&&!fullscreen){
+  unsigned flags=plat_lock();
+  memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(graph_pending,engine.scheduled,sizeof graph_pending);
+  graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;
+  plat_unlock(flags);
+ }
  unsigned inputs=input_revision, selections=select_revision;
  const unsigned priority=!intro_active&&!fullscreen&&labelled_input!=input_revision;
  static const uint8_t control_first[5]={3,4,0,1,2};
@@ -680,7 +735,7 @@ static int draw(int animate)
    if(input_revision-inputs!=select_revision-selections){dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
-   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
+   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_EVOLVE&&song_tab==0&&band==3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    const int artwork=intro_active||fullscreen;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
@@ -894,6 +949,8 @@ static int draw(int animate)
          limited_text(8,10,224,&FONT_XS,(bank_message==BANK_STOP&&engine.external_audio)?"RELEASE MIDI NOTES":messages[bank_message],skin_accent());
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":setup_tab==0?(display_subtab?"TURN SELECT: LIGHTS":"TURN SELECT: APPEARANCE"):"SEL: LOAD / SAVE: STORE",skin_text());
      }
+   }else if(visual&&page==PAGE_EVOLVE&&song_tab==0){
+     evolve_graph(band);
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==5){
      if(band==1)limited_text(8,2,224,&FONT_B,"LEARN FROM PLAYING",skin_accent());
      if(band==2){label(8,0,"CAPTURED",engine.capture.count);label(127,0,"APPLIED",engine.learned.count);}
@@ -909,32 +966,15 @@ static int draw(int animate)
        limited_text(8,24,224,&FONT_XS,"MANUAL OVERRIDES AUTO DEFAULTS",skin_dim());
      }
    }else if(visual&&page==PAGE_EVOLVE){
-     if(band==1||band==2){
-       unsigned first=band==1?0u:4u;
-       unsigned start=(evolve_step&63u)/32u*32u;
-       for(unsigned row=0;row<4;row++){
-         unsigned t=first+row,y=3u+row*8u;
-         cv_line(8,y+6,232,y+6,skins[ui_theme][ui_background].border);
-         for(unsigned j=0;j<32;j++)if(evolve_history[start+j]&(1u<<t)){
-           uint16_t marker=ui_background?RGB((colors[t]>>11)*4,((colors[t]>>5)&63)*2,(colors[t]&31)*4):colors[t];
-           cv_rect(9+j*7u,y,6,6,marker);
-         }
-       }
-       unsigned cursor=(evolve_step&31u)*7u+9u;
-       cv_line(cursor,1,cursor,35,skin_accent());
-       if(band==1){
-         for(unsigned j=0;j<64;j++)if(evolve_history[j])cv_rect(9+j*3u,39,2,2,skin_dim());
-         cv_line(9+start*3u,43,9+(start+31u)*3u,43,skin_accent());
-       }else {
-         char phrase[12];num(phrase,engine.phrase);
-         int at=cv_text(8,36,&FONT_T,"PHRASE ",skin_dim());
-         at=cv_text(at,36,&FONT_T,phrase,skin_accent());
-         limited_text(at+8,36,224-at,&FONT_T,sr_section_name(&engine,0),skin_dim());
-       }
-     }
+     evolve_graph(band);
    }else if(visual&&page==3&&band<3)mixer_band(band);
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
-   else if(band==0){
+   else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
+     int x=cv_text(6,0,&FONT_XS,"NOW ",skin_accent());
+     limited_text(x,0,210-x,&FONT_XS,sr_section_name(&engine,0),skin_text());
+     x=cv_text(6,22,&FONT_XS,"NEXT ",skin_dim());
+     limited_text(x,22,224-x,&FONT_XS,sr_section_name(&engine,1),skin_text());
+   }else if(band==0){
      cv_text(8,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS&&ui_font_size!=2){
        char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
@@ -983,7 +1023,7 @@ static int draw(int animate)
        if(band==4){label(8,0,"WORKER BUSY",quick_progress[2]);label(127,0,"SUSPENDS",quick_progress[8]);}
      }
    }else{
-     unsigned start=band==3?0:2;
+     unsigned start=band==3||(page==PAGE_EVOLVE&&song_tab==0)?0:2;
      knob_cell(start,8);
      knob_cell(start+1,126);
      if(band==4&&ui_font_size!=2){

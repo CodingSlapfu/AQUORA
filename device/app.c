@@ -455,7 +455,7 @@ static void consume(void){
  case 53:
    engine.solo=SR_TRACKS;
    engine.reverb_amount=.32f;engine.delay_amount=.18f;
-   engine.auto_gain=engine.auto_level=0;
+   engine.auto_gain=engine.auto_level=1;
    for(unsigned i=0;i<SR_TRACKS;i++){
      sr_track *track=&engine.tracks[i];
      track->volume=i==SR_BASS?.88f:i==SR_DRUMS?1.f:.68f;
@@ -692,6 +692,7 @@ void app_input_only(void){
  if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=mix_reset=0;send(44,0);}
  if((press&(1u<<B_SEL))&&page==PAGE_SETUP&&setup_tab==0){display_subtab=!display_subtab;dirty=1;}
  else if((press&(1u<<B_SEL))&&(page==PAGE_PLAY||page==PAGE_SOUND||(page==PAGE_MIX&&mix_tab!=2))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
+ if((press&(1u<<B_SEL))&&page==PAGE_EVOLVE&&song_tab==0){selected=(selected+1u)%SR_TRACKS;dirty=1;}
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
  if(press&(1u<<B_REC))plat_cpu2_set(0);
@@ -977,10 +978,12 @@ void app_frame(void)
     unsigned evolve_visible=page==PAGE_EVOLVE&&!debug&&!intro_active&&!fullscreen;
     if(evolve_visible&&!evolve_was_visible){
       memset(evolve_history,0,sizeof evolve_history);
+      memset(engine.timeline,0,sizeof engine.timeline);
       for(unsigned t=0;t<SR_TRACKS;t++)
         evolve_events[t]=engine.tracks[t].events;
       evolve_step=engine.sequence_step;
     }
+    engine.timeline_enabled=evolve_visible;
     evolve_was_visible=evolve_visible;
     if(evolve_visible){
       unsigned step=engine.sequence_step;
