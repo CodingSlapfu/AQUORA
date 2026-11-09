@@ -11,7 +11,7 @@ for version,host in [('baseline',old),('candidate',new)]:
     for n in range(24):cmd+=['wait 150','expect visual_snapshot 1',f'shot f{n:02}.png']
     cmd+=['tap PLAY','wait 8000','shot stop.png']
     p=d/'panel.txt';p.write_text('\n'.join(cmd)+'\n')
-    r=subprocess.run([host,str(p),str(d)],capture_output=True,text=True,env=dict(os.environ,AQUORA_TEST_SEED='1'))
+    r=subprocess.run([host,str(p),str(d)],capture_output=True,text=True,env=dict(os.environ,AQUORA_TEST_SEED='1',AQUORA_TEST_BOOT_SEED='730610',AQUORA_TEST_AUTOSTART='0'))
     (d/'panel.log').write_text(r.stdout+r.stderr);assert not r.returncode,r.stdout+r.stderr
     frames=[Image.open(d/f'f{n:02}.png').convert('RGB') for n in range(24)]
     for f in frames:assert f.size==(240,240)
