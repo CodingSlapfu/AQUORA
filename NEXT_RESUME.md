@@ -1,3 +1,7 @@
+# PRIORITY next build: musical-quality correction
+
+Read validation/musical-quality/README.md. Candidate development branch aquora-musical-quality; human listening approval PENDING. Preserve published0.6.10 and rollback. Source/host tests/audio comparison are corrective work, not a completed firmware release.
+
 # AQUORA v0.6.10 — LIVE / publication complete
 
 Existing public website https://parallax8-studio.jminie66.chatgpt.site/ and installer /install/ now serve0.6.10. Fresh credential succeeded immediately before source push/package. Saved Site version191, sourcee874c18b67c74e1ecd73f0a03c074b89f35c665e, deployment appgdep_6af15115143c819199e0e9ddc8fba0ef succeeded. Exact public-visitor evidence: validation/release-0610/PUBLICATION_COMPLETE.json.

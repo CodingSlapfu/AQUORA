@@ -8,7 +8,7 @@
 static sr_engine e;
 static int16_t pcm[512];
 int main(void){
- unsigned combinations=0;unsigned long long steps=0;
+ unsigned combinations=0;unsigned long long steps=0;uint64_t all_patches=0;uint32_t all_kits=0;
  for(unsigned scene=0;scene<21;scene++)for(unsigned mode=0;mode<4;mode++){
   sr_init(&e,730610+scene);sr_set_music_mode(&e,mode);sr_set_scene(&e,scene);
   uint64_t patches=0;uint32_t kits=0;unsigned min=200,max=0,tempos[121]={0};
@@ -19,7 +19,8 @@ int main(void){
    for(unsigned t=0;t<7;t++)patches|=1ull<<e.tracks[t].patch;
    kits|=1u<<e.drum_kit;assert(e.drum_presence==100);
   }
-  assert(patches==((1ull<<36)-1)&&kits==((1u<<19)-1));assert(max-min>=35);
+  /* Availability is global; musical contexts do not owe a coverage quota. */
+  all_patches|=patches;all_kits|=kits;assert(max-min>=35);
   unsigned distinct=0;for(unsigned b=0;b<=120;b++)distinct+=!!tempos[b];assert(distinct>=35);
   e.motion_manual|=4;e.tick_length=7000;e.drum_presence=27;
   sr_generate_song(&e,555,0);assert(e.tick_length==7000&&e.drum_presence==27);
@@ -42,8 +43,9 @@ int main(void){
    e.freeze=1;unsigned form=e.form_loop;for(unsigned n=0;n<128;n++)trigger(&e);assert(e.form_loop==form);
    sr_stop(&e);assert(!e.running);e.stop_frames=0;
   }
-  printf("coverage scene%u mode%u patches36 kits19 BPM%u-%u unique%u\n",scene,mode,min,max,distinct);combinations++;
+  printf("coverage scene%u mode%u weighted palette; BPM%u-%u unique%u\n",scene,mode,min,max,distinct);combinations++;
  }
+ assert(all_patches==((1ull<<36)-1)&&all_kits==((1u<<19)-1));
  /* PCM at every section boundary, all kits and modes. Output limiter
   * ceiling, sustained pulse and post-boundary downbeat are measured. */
  double least=1e30;unsigned peak=0;

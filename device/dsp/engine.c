@@ -355,10 +355,19 @@ void sr_motion_auto(sr_engine *e,unsigned role,int automatic)
  * A song chooses one ensemble, then favors compatible substitutions. No
  * coverage quota, no forced rejection of a musically appropriate repeat. */
 static unsigned ensemble(const sr_engine *e,uint32_t seed){
-  static const uint8_t preference[SR_MUSIC_MODES][4]={{0,0,1,3},{1,1,3,0},{2,2,0,1},{3,3,1,0}};
-  unsigned emotion=sr_scenes[e->scene].energy;
-  unsigned pick=(song_draw(seed,211)+emotion+(e->scene%3u))%4u;
-  return preference[e->music_mode][pick];
+  /* wood / air / chamber / velvet: emotional setting before seed choice. */
+  static const uint8_t intention[SR_SCENES][4]={
+    {6,5,2,1},{6,2,3,4},{3,6,2,3},{7,1,4,2},{2,6,3,5},
+    {3,4,6,2},{5,2,5,3},{7,3,4,2},{3,3,4,6},{3,5,5,3},
+    {4,5,3,3},{6,3,5,2},{4,6,3,3},{3,7,3,3},{5,6,4,1},
+    {6,2,5,3},{6,4,3,2},{7,5,2,1},{5,6,3,3},{3,6,3,5},{6,3,4,2}
+  };
+  static const uint8_t mode[SR_MUSIC_MODES][4]={{4,2,2,3},{2,5,2,4},{3,1,7,1},{2,3,1,7}};
+  unsigned total=0,w[4];
+  for(unsigned i=0;i<4;i++){w[i]=intention[e->scene][i]*mode[e->music_mode][i];total+=w[i];}
+  unsigned draw=song_draw(seed,211)%total;
+  for(unsigned i=0;i<4;i++){if(draw<w[i])return i;draw-=w[i];}
+  return 0;
 }
 static unsigned fresh_patch(sr_engine *e,unsigned role,uint32_t seed)
 {
@@ -1099,6 +1108,10 @@ static unsigned transition_fill(sr_engine *e,unsigned step,int gesture)
        34u+i*7u+(preparing?7u:0u),0,(i+1u)*e->tick_length/(count+1u));
  return performed;
 }
+static int phrase_expression(unsigned step){
+  static const int8_t arc[8]={-4,0,4,6,2,0,-3,-7};
+  return arc[(step&15u)/2u];
+}
 static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 {
   const sr_scene *sc=&sr_scenes[e->scene];
@@ -1119,7 +1132,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
     /* Three- and five-step interlocks answer a stable motif. Harmonic
      * notes remain in the intention scale; rests leave space for tails. */
     if(!learned_active(e)&&degree>=0&&(s%3u==0u||(s&15u)==10u))
-      sr_note_on(e,SR_LEAD,tonic+24+scale[degree],64-dynamic,1.8f);
+      sr_note_on(e,SR_LEAD,tonic+24+scale[degree],64-dynamic+phrase_expression(s),1.8f);
     if((s+e->phrase)%5u==0u)
       sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+(s/5u)*2u)%7u],56,2.2f);
     if((s&15u)==6u||((s&15u)==14u&&bar))
@@ -1127,7 +1140,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
     if((s&15u)==12u&&degree>=0)
       sr_note_on(e,SR_HARMONY,tonic+24+scale[(degree+2u)%7u],49,3.6f);
   }else if(e->music_mode==SR_CINEMATIC){
-    if(!learned_active(e)&&(s&7u)==(bar==1u?2u:bar==2u?0u:4u)&&degree>=0)sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic,5.5f);
+    if(!learned_active(e)&&(s&7u)==(bar==1u?2u:bar==2u?0u:4u)&&degree>=0)sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic+phrase_expression(s),5.5f);
     if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+(draw>>8)%3u*2u)%7u],58-dynamic,2.4f);
     if((s&7u)==2)sr_note_on(e,SR_GUITAR,tonic+12+scale[(chord+4u)%7u],54,2.2f);
     if((s&15u)==12)sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+2u)%7u],49,3.f);
@@ -1139,7 +1152,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
     }
     if((s&7u)==2||((s&7u)==6))sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+s/4u)%7u],61-dynamic,1.4f);
     if((s&7u)==4&&degree>=0){
-      if(!learned_active(e))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],65,2.5f);
+      if(!learned_active(e))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],65+phrase_expression(s),2.5f);
       sr_note_on(e,SR_HARMONY,tonic+24+scale[((unsigned)degree+2u)%7u],48,2.1f);
     }
   }
@@ -1282,7 +1295,7 @@ static void trigger(sr_engine *e){
     unsigned lead=evolving||stable?song_draw(phrase_seed,SR_LEAD+(s&15u)*8u):rng(e);
     if((s&3u)==0u||lead%5u<=energy){
       int note=tonic+24+scale_notes[sc->scale][k];
-      ornament(e,2,(uint8_t)note,65+(evolving?(lead>>8)&7u:0),2.3f,s,evolving);
+      ornament(e,2,(uint8_t)note,65+phrase_expression(s)+(evolving?(lead>>8)&7u:0),2.3f,s,evolving);
     }
     unsigned harmony=evolving||stable?song_draw(phrase_seed,SR_HARMONY+(s&15u)*8u):rng(e);
     if(harmony%7u==0){
