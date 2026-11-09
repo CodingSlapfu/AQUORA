@@ -1033,8 +1033,20 @@ static int draw(int animate)
        if(band==3){label(8,0,"REQUESTS",quick_requests);label(127,0,"RETRIES",quick_retries);}
        if(band==4){label(8,0,"WORKER BUSY",quick_progress[2]);label(127,0,"SUSPENDS",quick_progress[8]);}
      }
+   }else if(page==PAGE_EVOLVE&&song_tab==0&&band==4){
+     /* Enlarging the graph must not hide the tempo/loop controls. */
+     static const char *captions[]={"SEL ROLE","K2 FREEZE","K3 BPM","K4 LOOP"};
+     for(unsigned knob=0;knob<4;knob++){
+       char value[16];const char *name;
+       const char *shown=knob?knob_value(control_for(knob),&name,value):role_names[selected];
+       int x=6+(int)knob*58;
+       limited_text(x,0,52,&FONT_T,captions[knob],skin_dim());
+       const felucca_font_t *font=fit_font(shown,52,24);
+       limited_text(x,15,52,font,shown,knob_until&&knob_focus==knob?skin_accent():skin_text());
+       if(knob<3)cv_line(x+54,0,x+54,43,skins[ui_theme][ui_background].border);
+     }
    }else{
-     unsigned start=band==3||(page==PAGE_EVOLVE&&song_tab==0)?0:2;
+     unsigned start=band==3?0:2;
      knob_cell(start,8);
      knob_cell(start+1,126);
      if(band==4&&ui_font_size!=2){

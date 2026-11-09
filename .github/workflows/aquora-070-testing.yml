@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: Recover source; reuse passed composition and graphics; verify persistence, section-header and role-label deltas
+      - name: Recover source; reuse passed composition and graphics; verify persistence, section-header, role-label and compact-control deltas
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -35,6 +35,7 @@ jobs:
           "$RUNNER_TEMP/boundaries" | tee "$RUNNER_TEMP/results/boundaries.log"
           python3 -m pip install Pillow==11.3.0
           python3 vendor/fm1-base/tools/build.py device --host --release 0.7.0
+          python3 tests/graphics_070.py device/build/host/sound-healing_host "$RUNNER_TEMP/results/graphics" | tee "$RUNNER_TEMP/results/graphics.log"
           python3 tests/section_header_070.py device/build/host/sound-healing_host "$RUNNER_TEMP/results/section-header" | tee "$RUNNER_TEMP/results/section-header.log"
           mkdir "$RUNNER_TEMP/results/preferences"
           AQUORA_TEST_AUTOSTART=0 device/build/host/sound-healing_host tests/preferences_070.txt "$RUNNER_TEMP/results/preferences" | tee "$RUNNER_TEMP/results/preferences.log"
