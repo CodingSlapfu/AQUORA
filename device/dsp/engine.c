@@ -520,7 +520,7 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
   }
   apply_sound_profile(e,seed,sounds_only);
   apply_motion_profile(e);
-  plan_form(e);
+  sr_plan_sections(e);
 }
 
 void sr_set_scene(sr_engine *e,uint8_t scene){
@@ -546,7 +546,7 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
   if(changed&&!e->freeze){make_motif(e);memcpy(e->motif_home,e->melody,sizeof e->melody);}
   memset(e->scheduled,0,sizeof e->scheduled);e->air_request=0;
   memset(e->ornaments,0,sizeof e->ornaments);
-  plan_form(e);
+  sr_plan_sections(e);
   retune_keys(e);
 }
 void sr_set_music_mode(sr_engine *e,uint8_t mode)
@@ -686,7 +686,7 @@ void sr_start(sr_engine *e)
     e->sequence_step=0;e->loop_pos=0;e->learn_origin=0;
     e->external_clock_count=255;
     e->tick_phase=e->tick_length;
-    plan_form(e);plan_roles(e);
+    sr_plan_sections(e);plan_roles(e);
 }
 void sr_stop(sr_engine *e)
 {
@@ -906,41 +906,41 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   uint32_t beat=step&15u;
   unsigned bar=e->loop_length>16?step/16u:0;
   if(e->variation>0.f&&e->phrase)bar^=(e->phrase/2u)&3u;
-  unsigned hits=0;
+  unsigned hits=0,parts=0;
   uint32_t stable_draw=song_draw(e->scene+bar*13u,beat);
-  float kick=groove_kick(e,step);if(kick){e->kick_env=kick;hits++;}
+  float kick=groove_kick(e,step);if(kick){e->kick_env=kick;parts|=1u;hits++;}
   if((beat==4||beat==12) && (e->drum_density>=2 || ((e->variation==0?stable_draw:rng(e))&3u)==0)){
-    e->hand_env=bar&&(beat==4?bar&1u:bar&2u)?.78f:1.f;hits++;
+    e->hand_env=bar&&(beat==4?bar&1u:bar&2u)?.78f:1.f;parts|=2u;hits++;
   }
-  if(e->drum_density>=3 && (beat&1u)){e->shaker_env=.72f;hits++;}
-  else if(e->drum_density==2 && (beat&3u)==2){e->shaker_env=.65f;hits++;}
-  else if(e->drum_density==1 && beat==8 && ((e->variation==0?stable_draw:rng(e))&1u)==0){e->shaker_env=.45f;hits++;}
-  if(e->drum_density>=4&&(beat&3u)==2){e->shaker_env=.56f;hits++;}
-  if(e->drum_density>=5&&beat==(bar&1u?10u:6u)){e->hand_env=.48f;hits++;}
-  if(e->drum_density>=7&&(beat==2||beat==14)){e->hand_env=.42f;hits++;}
-  if(e->drum_density>=8&&(beat==3||beat==15)){e->hand_env=bar&1u?.52f:.37f;hits++;}
+  if(e->drum_density>=3 && (beat&1u)){e->shaker_env=.72f;parts|=4u;hits++;}
+  else if(e->drum_density==2 && (beat&3u)==2){e->shaker_env=.65f;parts|=4u;hits++;}
+  else if(e->drum_density==1 && beat==8 && ((e->variation==0?stable_draw:rng(e))&1u)==0){e->shaker_env=.45f;parts|=4u;hits++;}
+  if(e->drum_density>=4&&(beat&3u)==2){e->shaker_env=.56f;parts|=4u;hits++;}
+  if(e->drum_density>=5&&beat==(bar&1u?10u:6u)){e->hand_env=.48f;parts|=2u;hits++;}
+  if(e->drum_density>=7&&(beat==2||beat==14)){e->hand_env=.42f;parts|=2u;hits++;}
+  if(e->drum_density>=8&&(beat==3||beat==15)){e->hand_env=bar&1u?.52f:.37f;parts|=2u;hits++;}
   /* A bloom grows within the musical phrase, without global gain ramps.
    * Longer phrases have more gradual development and a small final answer. */
   if(!e->freeze&&e->fill_character!=3&&song_section(e)==2u&&e->loop_length>16){
     unsigned bar_progress=step/16u;
-    if(bar_progress&&(beat&3u)==2u){e->shaker_env=.25f+.12f*bar_progress;hits++;}
-    if(bar_progress==e->loop_length/16u-1u&&beat==14u){e->hand_env=.43f;hits++;}
+    if(bar_progress&&(beat&3u)==2u){e->shaker_env=.25f+.12f*bar_progress;parts|=4u;hits++;}
+    if(bar_progress==e->loop_length/16u-1u&&beat==14u){e->hand_env=.43f;parts|=2u;hits++;}
   }
   /* Optional rhythm character: the downbeat is always preserved. */
   if(e->rhythm_style==1&&e->drum_density>=2){
-    if(beat==7||beat==14){e->hand_env=.48f;hits++;}
-    if((beat&1u)&&((bar+beat)%3u)){e->shaker_env=.38f+.08f*(bar&1u);hits++;}
+    if(beat==7||beat==14){e->hand_env=.48f;parts|=2u;hits++;}
+    if((beat&1u)&&((bar+beat)%3u)){e->shaker_env=.38f+.08f*(bar&1u);parts|=4u;hits++;}
   }else if(e->rhythm_style==2){
-    if(beat==6||beat==13){e->hand_env=.42f;hits++;}
+    if(beat==6||beat==13){e->hand_env=.42f;parts|=2u;hits++;}
   }
   /* Authored section percussion: current kit, no generator gating at
    * boundaries. Sparse functions keep the downbeat/tonal anchor. */
   if(!e->freeze&&e->variation>0.f){
     unsigned id=form_index(e,0),pulse=sr_sections[id].pulse;
     unsigned character=id%8u;
-    if(pulse&&beat==(3u+character)%16u){e->hand_env=.30f+.04f*(character%3u);hits++;}
-    if(id==20u&&(beat&3u)==3u){e->shaker_env=.26f+.09f*(step/16u);hits++;}
-    if(id==30u&&(beat%3u)==2u){e->shaker_env=.32f;hits++;}
+    if(pulse&&beat==(3u+character)%16u){e->hand_env=.30f+.04f*(character%3u);parts|=2u;hits++;}
+    if(id==20u&&(beat&3u)==3u){e->shaker_env=.26f+.09f*(step/16u);parts|=4u;hits++;}
+    if(id==30u&&(beat%3u)==2u){e->shaker_env=.32f;parts|=4u;hits++;}
   }
   /* One optional strike at most on an otherwise empty, eligible subdivision. */
   unsigned eligible=e->scene==6 ? (beat==3||beat==11) :
@@ -955,17 +955,19 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
     e->drum_rng=e->drum_rng*1664525u+1013904223u;
     unsigned percent=e->drum_hit>SR_HIT_MAX?SR_HIT_MAX:e->drum_hit;
     if(((e->variation==0?stable_draw:e->drum_rng)>>16)%100u<percent){
-      if(beat==11||(bar&&(beat==5||beat==13)))e->hand_env=.55f;
-      else e->shaker_env=.52f;
+      if(beat==11||(bar&&(beat==5||beat==13))){e->hand_env=.55f;parts|=2u;}
+      else {e->shaker_env=.52f;parts|=4u;}
       e->optional_hits++;
       hits++;
     }
   }
   e->tracks[SR_DRUMS].events+=hits;
-  if(hits&&e->timeline_enabled){unsigned n=e->timeline_write++%96u;
+  if(e->timeline_enabled)for(unsigned voice=0;voice<3;voice++)if(parts&(1u<<voice)){
+   unsigned n=e->timeline_write++%96u;
    e->timeline[n].frame=e->frame_count;e->timeline[n].duration=e->tick_length/2u;
-   e->timeline[n].role=SR_DRUMS;e->timeline[n].note=kick?36:42;e->timeline[n].velocity=kick?110:70;}
-
+   e->timeline[n].role=SR_DRUMS;e->timeline[n].note=voice==0?36:voice==1?38:42;
+   e->timeline[n].velocity=voice==0?110:70;
+  }
 }
 void sr_preview_sound(sr_engine *e,unsigned role)
 {
@@ -1270,7 +1272,7 @@ static void trigger(sr_engine *e){
     requested=e->air_request;e->air_request=0;
     if(requested==1)e->evolve_next=1;
   }
-  if(e->loop_pos==0&&e->sequence_step&&!e->freeze){e->form_loop++;plan_form(e);plan_roles(e);}
+  if(e->loop_pos==0&&e->sequence_step&&!e->freeze){e->form_loop++;sr_plan_sections(e);plan_roles(e);}
   if(!e->freeze&&e->variation>0.f&&e->loop_pos%16u==0u){
     unsigned hold=2u+sr_scenes[e->scene].energy%3u;
     if(e->form_loop%hold==hold-1u){

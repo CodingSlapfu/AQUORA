@@ -277,6 +277,7 @@ static void arrangement_apply(const arrangement *record)
     engine.learned.count=0;engine.learn_strength=2;engine.form_loop=0;
     if(record->version==AQ_BANK_VERSION){engine.learned=record->learned;engine.learn_strength=record->learn_strength;engine.form_loop=record->form_loop;}
     memset(engine.scheduled,0,sizeof engine.scheduled);engine.air_request=engine.rhythm_pending=0;
+    sr_plan_sections(&engine);
     engine.restart=0;
     qread=qwrite;
     state_revision++;

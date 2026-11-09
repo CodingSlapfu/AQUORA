@@ -109,6 +109,7 @@ extern const sr_scene sr_scenes[SR_SCENES];
 extern const sr_frequency sr_frequencies[SR_FREQUENCIES];
 extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
+void sr_plan_sections(sr_engine *e);
 const char *sr_section_name(const sr_engine *e,unsigned next);
 void sr_learn_event(sr_engine *e,unsigned key,unsigned down,uint32_t ms);
 void sr_learn_action(sr_engine *e,unsigned action);

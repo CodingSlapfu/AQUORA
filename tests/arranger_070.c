@@ -13,7 +13,7 @@ int main(void){
   for(unsigned seed=1;seed<=512;seed++){
    sr_generate_song(&e,seed,0);
    for(unsigned t=0;t<7;t++)patches|=1ull<<e.tracks[t].patch;
-   other=e;other.form_key=0;plan_form(&other);assert(!memcmp(e.form_route,other.form_route,33));
+   other=e;other.form_key=0;sr_plan_sections(&other);assert(!memcmp(e.form_route,other.form_route,33));
    for(unsigned slot=1;slot<32;slot++)assert(e.form_route[slot]!=e.form_route[slot-1]);
    assert(e.form_route[31]==15&&e.form_route[32]==28);
   }

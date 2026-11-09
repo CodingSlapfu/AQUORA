@@ -667,7 +667,8 @@ static void battery_glyph(void)
 /* Per-frame snapshots keep strip rendering on one musical timebase. */
 static __typeof__(engine.timeline) graph_notes;
 static __typeof__(engine.scheduled) graph_pending;
-static uint32_t graph_frame,graph_tick;
+static uint32_t graph_frame,graph_tick,graph_boundary;
+static const char *graph_now,*graph_next;
 static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t ink){
  int top=y-(int)band*48;
  if(x<35){width-=35-x;x=35;}if(x+width>233)width=233-x;
@@ -711,15 +712,20 @@ static void evolve_graph(unsigned band){
  }
  if(band==3){limited_text(6,3,220,&FONT_T,role_names[selected],skin_accent());
   limited_text(6,35,224,&FONT_T,"SEL: DETAIL ROLE / EDIT: CONTROLS",skin_dim());}
+ int boundary=65+(int)(graph_boundary*11u)-(int)((float)engine.tick_phase*11.f/(float)graph_tick);
+ if(boundary>65&&boundary<233)for(int y=0;y<48;y+=6)cv_line(boundary,y,boundary,y+2,skin_dim());
  cv_line(65,0,65,47,skin_accent());
 }
 static int draw(int animate)
 {
  unsigned revision=state_revision;
- if(page==PAGE_EVOLVE&&!debug&&!intro_active&&!fullscreen){
+ if((page==PAGE_EVOLVE||page==PAGE_PLAY)&&!debug&&!intro_active&&!fullscreen){
   unsigned flags=plat_lock();
-  memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(graph_pending,engine.scheduled,sizeof graph_pending);
+  if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(graph_pending,engine.scheduled,sizeof graph_pending);}
   graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;
+  graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
+  unsigned hold=2u+sr_scenes[engine.scene].energy%3u;
+  graph_boundary=(hold-1u-engine.form_loop%hold)*engine.loop_length+engine.loop_length-engine.loop_pos;
   plat_unlock(flags);
  }
  unsigned inputs=input_revision, selections=select_revision;
@@ -971,9 +977,9 @@ static int draw(int animate)
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
    else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
      int x=cv_text(6,0,&FONT_XS,"NOW ",skin_accent());
-     limited_text(x,0,210-x,&FONT_XS,sr_section_name(&engine,0),skin_text());
+     limited_text(x,0,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
      x=cv_text(6,22,&FONT_XS,"NEXT ",skin_dim());
-     limited_text(x,22,224-x,&FONT_XS,sr_section_name(&engine,1),skin_text());
+     limited_text(x,22,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
    }else if(band==0){
      cv_text(8,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS&&ui_font_size!=2){
