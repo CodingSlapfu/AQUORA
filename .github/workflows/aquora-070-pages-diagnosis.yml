@@ -1,0 +1,23 @@
+name: Diagnose testing Pages deployment prerequisite
+on:
+  push:
+    branches: [aquora-070-release-delivery]
+    paths: ['.github/workflows/aquora-070-pages-diagnosis.yml']
+permissions:
+  actions: read
+  contents: read
+  checks: read
+  pages: read
+jobs:
+  diagnosis:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Read failed hosting annotations and Pages configuration
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/CodingSlapfu/AQUORA/check-suites/115649039883/check-runs --jq '.check_runs[] | {id,name,output}' || true
+          gh api repos/CodingSlapfu/AQUORA/check-suites/115649039883/check-runs --jq '.check_runs[].id' | while read check_id; do
+            gh api "repos/CodingSlapfu/AQUORA/check-runs/$check_id/annotations" || true
+          done
+          gh api repos/CodingSlapfu/AQUORA/pages || true
