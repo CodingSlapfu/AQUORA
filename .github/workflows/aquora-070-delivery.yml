@@ -1,0 +1,94 @@
+name: Preserve passed AQUORA 0.7.0 testing binaries without rebuilding
+on:
+  push:
+    branches: [aquora-070-release-delivery]
+    paths: ['.github/workflows/aquora-070-delivery.yml']
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: aquora-070-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 1a1b46da6f375b9046a549a526484b8d7c4f2636
+      - name: Retrieve passed exact-source artifact and verify every checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/passed" "$RUNNER_TEMP/upload"
+          gh api repos/CodingSlapfu/AQUORA/actions/runs/42694003369 > "$RUNNER_TEMP/run.json"
+          gh api repos/CodingSlapfu/AQUORA/actions/runs/42694003369/artifacts > "$RUNNER_TEMP/artifacts.json"
+          python3 - <<'PY'
+          import json,pathlib,os
+          r=pathlib.Path(os.environ['RUNNER_TEMP']);run=json.loads((r/'run.json').read_text())
+          assert run['conclusion']=='success' and run['head_sha']=='1a1b46da6f375b9046a549a526484b8d7c4f2636'
+          a=[x for x in json.loads((r/'artifacts.json').read_text())['artifacts'] if x['name']=='AQUORA-0.7.0-next-build-testing' and not x['expired']]
+          assert len(a)==1
+          (r/'artifact.json').write_text(json.dumps(a[0]))
+          (r/'artifact-id.txt').write_text(str(a[0]['id']))
+          PY
+          artifact_id=$(cat "$RUNNER_TEMP/artifact-id.txt")
+          gh api "repos/CodingSlapfu/AQUORA/actions/artifacts/$artifact_id/zip" > "$RUNNER_TEMP/artifact.zip"
+          python3 - <<'PY'
+          import pathlib,os,json,hashlib
+          r=pathlib.Path(os.environ['RUNNER_TEMP']);a=json.loads((r/'artifact.json').read_text())
+          assert 'sha256:'+hashlib.sha256((r/'artifact.zip').read_bytes()).hexdigest()==a['digest']
+          PY
+          unzip -q "$RUNNER_TEMP/artifact.zip" -d "$RUNNER_TEMP/passed"
+          cd "$RUNNER_TEMP/passed"
+          python3 - <<'PYVERIFY'
+          import pathlib,hashlib,json
+          root=pathlib.Path('.'); verified=[];omitted=[]
+          for line in (root/'SHA256SUMS.txt').read_text().splitlines():
+              digest,name=line.split(None,1);p=root/name.lstrip('*')
+              if not p.exists():
+                  assert name=='./testing-installer/.nojekyll' and digest==hashlib.sha256(b'').hexdigest()
+                  omitted.append(name);continue
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==digest,name
+              verified.append(name)
+          assert len(verified)==230
+          report={'verified_files':len(verified),'artifact_upload_omitted_empty_hosting_marker':omitted,'firmware_unchanged':True}
+          import os
+          (pathlib.Path(os.environ['RUNNER_TEMP'])/'upload'/'VERIFICATION.txt').write_text(json.dumps(report,indent=2)+'\n')
+          PYVERIFY
+          test "$(cat source-commit.txt)" = 1a1b46da6f375b9046a549a526484b8d7c4f2636
+          cmp native/sound-healing-0.7.0.fwsc native-repro/sound-healing-0.7.0.fwsc
+      - name: Preserve verified binaries, source and original archive
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/passed/native/sound-healing-0.7.0.fwsc" "$RUNNER_TEMP/upload/AQUORA-0.7.0-next-build-testing.fwsc"
+          cp "$RUNNER_TEMP/passed/emu/app.wasm" "$RUNNER_TEMP/upload/AQUORA-0.7.0-browser.wasm"
+          cp "$RUNNER_TEMP/passed/AQUORA-0.7.0-source.tar.gz" "$RUNNER_TEMP/upload/"
+          cp "$RUNNER_TEMP/passed/AQUORA-0.7.0-testing.zip" "$RUNNER_TEMP/upload/"
+          cp "$RUNNER_TEMP/passed/SHA256SUMS.txt" "$RUNNER_TEMP/upload/ORIGINAL-SHA256SUMS.txt"
+          python3 - <<'PY'
+          import pathlib,json,hashlib,os
+          r=pathlib.Path(os.environ['RUNNER_TEMP']);out=r/'upload'
+          fw=(out/'AQUORA-0.7.0-next-build-testing.fwsc').read_bytes()
+          identity=''.join(chr((fw[i*0x30+0x2f]-i-1)&255) for i in range(20) if fw[i*0x30+0x2f]!=0x7d)
+          assert identity=='FM-1_73000700'
+          manifest={'version':'0.7.0','identity':identity,'source_commit':'1a1b46da6f375b9046a549a526484b8d7c4f2636','ci_run':42694003369,'ci_conclusion':'success','artifact':json.loads((r/'artifact.json').read_text()),'publication':'testing prerelease only; owner physical acceptance pending; public0.6.10 unchanged','compatibility':'Original Puya0x856014 FM-1 only; UC25HQ80 owner-deferred','rebuilt':False,'audio_recordings_generated':False,'files':{p.name:{'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(out.iterdir()) if p.is_file()}}
+          (out/'MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (out/'README.txt').write_text('NEXT BUILD TESTING ONLY — AQUORA0.7.0 / FM-1_73000700. Original Puya0x856014 FM-1 only. This is a testing prerelease backup of passed CI binaries, not promotion to official public release. Physical flash/rollback, timing/FPS/XRUN/RF, music and visual acceptance remain owner-pending. Existing public0.6.10, musical correction candidate and rollback installers are unchanged. Existing Site source opening is blocked; no new hosted installer is claimed. No compilation, test reruns or audio recording generation in this backup workflow.\n')
+          (out/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()) if p.is_file() and p.name!='SHA256SUMS.txt'))
+          PY
+      - name: Back up to a testing prerelease without official publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create next-testing-0.7.0-1a1b46d "$RUNNER_TEMP/upload/"* --repo CodingSlapfu/AQUORA --target 1a1b46da6f375b9046a549a526484b8d7c4f2636 --prerelease --latest=false --title "AQUORA v0.7.0 — TESTING ONLY" --notes-file "$RUNNER_TEMP/upload/README.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AQUORA-0.7.0-verified-release-backup
+          path: ${{ runner.temp }}/upload/
+          retention-days: 90
+
