@@ -1239,8 +1239,8 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
       unsigned d=(chord+arp*2u)%7u;
       sr_note_on(e,SR_PIANO,tonic+24+scale[d],78-dynamic+(s%8u==0?8:0),1.15f);
     }
-    if((s&7u)==2||((s&7u)==6))sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+s/4u)%7u],61-dynamic,1.4f);
-    if((s&7u)==4&&degree>=0){
+    if((s&7u)==6)sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+s/4u)%7u],61-dynamic,1.4f);
+    if((s&7u)==2&&degree>=0){
       if(!learned_active(e))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],65+phrase_expression(s),2.5f);
       sr_note_on(e,SR_HARMONY,tonic+24+scale[((unsigned)degree+2u)%7u],48,2.1f);
     }

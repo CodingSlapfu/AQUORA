@@ -6,6 +6,16 @@
 #include "../device/dsp/engine.c"
 static sr_engine e;
 static int16_t pcm[512];
+static void finish_score_step(void){
+ /* Drain the control-rate offbeat queue without rendering sound files. */
+ for(unsigned slot=0;slot<4;slot++)if(e.ornaments[slot].phase){
+  sr_note_on(&e,ornament_track[slot],e.ornaments[slot].midi,e.ornaments[slot].velocity,ornament_gate[slot]);e.ornaments[slot].phase=0;
+ }
+ for(unsigned i=0;i<12;i++)if(e.scheduled[i].active){
+  if(e.scheduled[i].role<SR_DRUMS)sr_note_on(&e,e.scheduled[i].role,e.scheduled[i].note,e.scheduled[i].velocity,e.scheduled[i].beats);
+  e.scheduled[i].active=0;
+ }
+}
 int main(void){
  unsigned cases=0,bass=0,anchors=0,pickups=0,weak_rests=0,sections=0;
  unsigned mode_lead[4]={0},mode_piano[4]={0};
@@ -17,7 +27,7 @@ int main(void){
   unsigned first_lead=e.tracks[0].events,first_piano=e.tracks[4].events;
   for(unsigned n=0;n<8192;n++){
    unsigned next=form_index(&e,1),prior=form_index(&e,0);
-   trigger(&e);
+   trigger(&e);finish_score_step();
    unsigned now=form_index(&e,0);
    if(now!=prior){assert(now==next);sections++;}
    assert(!memcmp(home,e.motif_home,16));
@@ -51,10 +61,10 @@ int main(void){
  assert(mode_piano[SR_NEOCLASSICAL]>mode_piano[SR_CINEMATIC]*2u);
  /* Theme rhythm must survive the second bar of a 32-step phrase. */
  for(unsigned seed=1;seed<=24;seed++){
-  sr_init(&e,seed);e.loop_length=32;e.freeze=1;e.variation=0;sr_start(&e);
+  sr_init(&e,seed);e.loop_length=32;e.freeze=1;e.variation=0;sr_start(&e);e.role_gain[0]=e.role_target[0]=1;
   unsigned a=0,b=0;
   for(unsigned n=0;n<32;n++){
-   unsigned prior=e.tracks[0].events;trigger(&e);
+   unsigned prior=e.tracks[0].events;trigger(&e);finish_score_step();
    if(n<16)a+=e.tracks[0].events-prior;else b+=e.tracks[0].events-prior;
    memset(e.scheduled,0,sizeof e.scheduled);
   }

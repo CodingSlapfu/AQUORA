@@ -1,0 +1,23 @@
+{
+  "version": "0.7.1",
+  "identity": "FM-1_73000701",
+  "files": {
+    "device/dsp/engine.c": "8f4374772b46743d60bf0a505cc49220bf8d749f74e1a5ddbb4adfba1d60dfa6",
+    "device/dsp/serenity.h": "26c69f18ecedba9d032c3edebcaa33f4c69dee0fa79f2cce527faeb53ae95e62",
+    "device/dsp/song_form.h": "a48725cdeadff405f17aed72a7711322e3ca08b9651d1d5807fb10bcf9d91ab4",
+    "device/ui.c": "3de474031eaef98e7110d8b948069bf92b7ad99cbfc469518372b774e10abf74",
+    "tests/composition_071.c": "6e4859132aa8edff9f966f90e7d3c7e95368451a35571e71e28076b209f70717",
+    "tests/frequencies_071.c": "d3def5be29b06187a399d642ccad4b394f9f0a2e0b6d58ab1e800dd9522f697f",
+    "validation/release-071/composition.log": "8702711b46492c1c0cec9b16f99c6b8ef8a7589ef5177ae93549729f14c1a105",
+    "validation/release-071/frequencies.log": "d303e795cf6633ebc69b5d2def0a772a9e434c7033a6d7426d0b0c800d63bf3a",
+    "validation/release-071/graphics071-final.log": "ae8780295276c1ffcfe00d40e10e5dfccf3dc22bbd8f5c55a0d97dc62c264f0d",
+    "validation/release-071/bank.log": "2f6c59f7c07288749ed5b85083b7f83a0029f34dfb25c07e5f83b973e1ceaaeb"
+  },
+  "passed_logs": [
+    "validation/release-071/composition.log",
+    "validation/release-071/frequencies.log",
+    "validation/release-071/graphics071-final.log",
+    "validation/release-071/bank.log"
+  ],
+  "physical_timing": "unverified; host timings only"
+}

@@ -1,0 +1,98 @@
+name: AQUORA 0.7.1 official software gates and release
+on:
+  push:
+    branches: [aquora-0.7.1-official]
+    paths: ['.github/workflows/aquora-071-official.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: aquora-071-official
+  cancel-in-progress: false
+jobs:
+  testing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover exact source and reuse verified local targeted gates
+        run: |
+          set -euo pipefail
+          python3 - <<'PYVERIFY'
+          import json,hashlib
+          from pathlib import Path
+          m=json.loads(Path('validation/release-071/LOCAL_ACCEPTANCE.json').read_text())
+          for p,h in m['files'].items():
+              assert hashlib.sha256(Path(p).read_bytes()).hexdigest()==h,p
+          for p in m['passed_logs']:
+              assert 'PASS' in Path(p).read_text(),p
+          PYVERIFY
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          mkdir "$RUNNER_TEMP/results"
+          cp -r validation/release-071 "$RUNNER_TEMP/results/acceptance"
+      - name: Restore verified compiler
+        run: |
+          set -euo pipefail
+          curl --fail --location --max-time 180 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
+          echo "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd  $RUNNER_TEMP/jieli.tar.xz" | sha256sum -c --strict
+          mkdir "$RUNNER_TEMP/jieli"
+          tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
+          echo "JIELI_TOOLCHAIN=$RUNNER_TEMP/jieli/jieli-linux-toolchains-20260730.1" >> "$GITHUB_ENV"
+      - name: Native, reproducible native, single-core, updater
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          export AC79_SDK="$PWD/vendor/ac79-package-files"
+          for kind in native native-repro single-core; do
+            mkdir "$RUNNER_TEMP/results/$kind"
+            if [ "$kind" = single-core ]; then export FM1B_CPU2=0; else unset FM1B_CPU2; fi
+            python3 vendor/fm1-base/tools/build.py device --release 0.7.1 2>&1 | tee "$RUNNER_TEMP/results/$kind/build.log"
+            cp device/build/*.fwsc device/build/*.elf "$RUNNER_TEMP/results/$kind/"
+            rm -rf device/build
+          done
+          cmp "$RUNNER_TEMP/results/native/sound-healing-0.7.1.fwsc" "$RUNNER_TEMP/results/native-repro/sound-healing-0.7.1.fwsc"
+          python3 tests/direct_update_071.py "$RUNNER_TEMP/results/native/sound-healing-0.7.1.fwsc" | tee "$RUNNER_TEMP/results/updater.log"
+      - name: Current WASM
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+          source ./emsdk_env.sh
+          unset FM1B_CPU2
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --web --release 0.7.1 2>&1 | tee "$RUNNER_TEMP/results/wasm.log"
+          node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
+          cp -r device/build/emu "$RUNNER_TEMP/results/emu"
+          python3 vendor/fm1-base/tools/make_site.py device "$RUNNER_TEMP/results/native/sound-healing-0.7.1.fwsc" 0.7.1 "$RUNNER_TEMP/results/official-installer"
+          python3 tools/stage_official_071.py "$RUNNER_TEMP/results/official-installer"
+          node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/official-installer/install/index.html" "$RUNNER_TEMP/results/native/sound-healing-0.7.1.fwsc" | tee "$RUNNER_TEMP/results/installer-hash.log"
+      - name: Package without audio recordings
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/results/native/sound-healing-0.7.1.fwsc" "$RUNNER_TEMP/results/AQUORA-0.7.1.fwsc"
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/results/source-commit.txt"
+          printf '%s\n' 'OFFICIAL RELEASE 0.7.1 / FM-1_73000701. Original Puya 0x856014 FM-1 only; UC25HQ80 unsupported. Software verified; physical RF/LCD/DMA timing and subjective listening remain hardware observations. Previous firmware preserved.' > "$RUNNER_TEMP/results/README.txt"
+          tar --exclude=.git --exclude=release --exclude=archive --exclude=evidence --exclude='*.zip' --exclude='*.tar.gz' --exclude='*.tar.xz' --exclude=audio --exclude=recordings --exclude='*.ogg' --exclude='*.wav' --exclude='*.mp3' --exclude='*/build/*' -czf "$RUNNER_TEMP/results/AQUORA-0.7.1-source.tar.gz" -C "$RUNNER_TEMP/source" .
+          cd "$RUNNER_TEMP/results"
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          zip -qr "$RUNNER_TEMP/AQUORA-0.7.1-official.zip" .
+          cp "$RUNNER_TEMP/AQUORA-0.7.1-official.zip" .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AQUORA-0.7.1-official
+          path: ${{ runner.temp }}/results/
+          retention-days: 90
+      - name: Publish official GitHub release with exact verified assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/results"
+          sha256sum -c --strict SHA256SUMS.txt
+          tar -czf AQUORA-0.7.1-installer.tar.gz -C official-installer .
+          sha256sum AQUORA-0.7.1.fwsc AQUORA-0.7.1-source.tar.gz AQUORA-0.7.1-installer.tar.gz AQUORA-0.7.1-official.zip > RELEASE-SHA256SUMS.txt
+          gh release create v0.7.1 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest --title 'AQUORA 0.7.1 — themes, groove and precise intentions' --notes-file "$GITHUB_WORKSPACE/device/docs/RELEASE_071.md" AQUORA-0.7.1.fwsc AQUORA-0.7.1-source.tar.gz AQUORA-0.7.1-installer.tar.gz AQUORA-0.7.1-official.zip RELEASE-SHA256SUMS.txt

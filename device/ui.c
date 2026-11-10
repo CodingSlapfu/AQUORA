@@ -35,6 +35,9 @@ static int ui_text(int x,int y,const felucca_font_t *font,const char *text,uint1
  }
  return cv_text(x,y,font,text,color);
 }
+/* Graph lane labels cross DMA bands; keep their exact baseline and clip
+ * glyphs on both bands rather than applying large-control row snapping. */
+static int graph_text(int x,int y,const char *text,uint16_t color){return cv_text(x,y,&FONT_T,text,color);}
 #define cv_text ui_text
 static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?(intro_active?&FONT_S:&FONT_T):&FONT_XS;}
 static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_L:&FONT_B;}
@@ -679,8 +682,8 @@ static void evolve_graph(unsigned band){
  unsigned offset=band*48;
  for(unsigned t=0;t<SR_TRACKS;t++){
   int y=49+t*13;
-  if(y>=(int)offset&&y<(int)offset+48){
-   char n[3];num(n,t+1);cv_text(6,y-offset,&FONT_T,n,t==selected?skin_accent():skin_dim());
+  if(y+12>(int)offset&&y<(int)offset+48){
+   char n[3];num(n,t+1);graph_text(6,y-offset,n,t==selected?skin_accent():skin_dim());
    cv_line(35,y+9-offset,232,y+9-offset,skins[ui_theme][ui_background].border);
   }
  }
@@ -697,7 +700,11 @@ static void evolve_graph(unsigned band){
   if(x>232||x+width<35)continue;
   uint16_t ink=ui_background?skin_accent():colors[role];
   int glint=age>=0&&age<(int32_t)(SR_RATE/7u);
-  graph_block(band,x,width,50+role*13,9,ink);
+  /* Full true duration is a thin sustain rail. Separate substantial attack
+   * blocks keep successive onsets legible even when releases overlap. */
+  graph_block(band,x,width,53+role*13,2,ink);
+  graph_block(band,x,6,50+role*13,9,ink);
+  graph_block(band,x+width-1,1,52+role*13,4,ink);
   if(glint){
    unsigned core=7u-(unsigned)age/(SR_RATE/49u);if(core>7u)core=7u;
    graph_block(band,x,core,50+role*13,3,skin_text());
@@ -706,7 +713,8 @@ static void evolve_graph(unsigned band){
   if(role==selected){
    int pitch=role==SR_DRUMS?note-32:note-36;if(pitch<0)pitch=0;if(pitch>60)pitch=60;
    int y=201-pitch/2;
-   graph_block(band,x,width,y,6,ink);
+   graph_block(band,x,width,y+2,2,ink);
+   graph_block(band,x,6,y,6,ink);
    if(glint)graph_block(band,x,5,y,3,skin_text());
   }
  }
