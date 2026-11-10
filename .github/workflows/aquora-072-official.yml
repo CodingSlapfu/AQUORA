@@ -35,6 +35,16 @@ jobs:
           bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
           mkdir "$RUNNER_TEMP/results"
           cp -r validation/release-072 "$RUNNER_TEMP/results/acceptance"
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42749118309
+          name: AQUORA-0.7.2-official
+          path: ${{ runner.temp }}/inherited
+      - name: Preserve successful native and single-core binaries
+        run: |
+          cp -r "$RUNNER_TEMP/inherited/native" "$RUNNER_TEMP/inherited/single-core" "$RUNNER_TEMP/results/"
+          echo "08ec871de8286b2ed7d4e8d60088a597a0c9ccc6f9aa14542d6d0ab1c7ec77fb  $RUNNER_TEMP/results/native/sound-healing-0.7.2.fwsc" | sha256sum -c --strict
       - name: Install font generator dependency
         run: python3 -m pip install Pillow==11.3.0
       - name: Restore verified compiler
@@ -50,14 +60,14 @@ jobs:
           set -euo pipefail
           cd "$RUNNER_TEMP/source"
           export AC79_SDK="$PWD/vendor/ac79-package-files"
-          for kind in native single-core; do
+          for kind in native-repro; do
             mkdir "$RUNNER_TEMP/results/$kind"
             if [ "$kind" = single-core ]; then export FM1B_CPU2=0; else unset FM1B_CPU2; fi
             python3 vendor/fm1-base/tools/build.py device --release 0.7.2 2>&1 | tee "$RUNNER_TEMP/results/$kind/build.log"
             cp device/build/*.fwsc device/build/*.elf "$RUNNER_TEMP/results/$kind/"
             rm -rf device/build
           done
-          echo "8422810a4e37e559b414dbd2d0bfc2ef70c0190409ce043514d6c1f20febe030  $RUNNER_TEMP/results/native/sound-healing-0.7.2.fwsc" | sha256sum -c --strict
+          cmp "$RUNNER_TEMP/results/native/sound-healing-0.7.2.fwsc" "$RUNNER_TEMP/results/native-repro/sound-healing-0.7.2.fwsc"
           python3 tests/direct_update_072.py "$RUNNER_TEMP/results/native/sound-healing-0.7.2.fwsc" | tee "$RUNNER_TEMP/results/updater.log"
       - name: Current WASM
         run: |
@@ -75,6 +85,11 @@ jobs:
           python3 vendor/fm1-base/tools/make_site.py device "$RUNNER_TEMP/results/native/sound-healing-0.7.2.fwsc" 0.7.2 "$RUNNER_TEMP/results/official-installer"
           python3 tools/stage_official_072.py "$RUNNER_TEMP/results/official-installer"
           node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/official-installer/install/index.html" "$RUNNER_TEMP/results/native/sound-healing-0.7.2.fwsc" | tee "$RUNNER_TEMP/results/installer-hash.log"
+      - name: Matching pinned-font host screen captures without audio files
+        run: |
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.2
+          python3 tools/capture_ui_072.py device/build/host/sound-healing_host "$RUNNER_TEMP/results/screens"
       - name: Package without audio recordings
         run: |
           set -euo pipefail
@@ -102,4 +117,3 @@ jobs:
           tar -czf AQUORA-0.7.2-installer.tar.gz -C official-installer .
           sha256sum AQUORA-0.7.2.fwsc AQUORA-0.7.2-source.tar.gz AQUORA-0.7.2-installer.tar.gz AQUORA-0.7.2-official.zip > RELEASE-SHA256SUMS.txt
           gh release create v0.7.2 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest --title 'AQUORA 0.7.2 — ARRANGE, two-bar score and luminous phrases' --notes-file "$GITHUB_WORKSPACE/device/docs/RELEASE_072.md" AQUORA-0.7.2.fwsc AQUORA-0.7.2-source.tar.gz AQUORA-0.7.2-installer.tar.gz AQUORA-0.7.2-official.zip RELEASE-SHA256SUMS.txt
-
