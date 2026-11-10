@@ -1,0 +1,2 @@
+PASS 84 current bank snapshots restore exact committed routes, new patch47, explicit OFF auto mixing, learned phrase and form position after reinitialization
+PASS four bank V7 queue and active-section roundtrips; V6 byte-size migration resets new fields

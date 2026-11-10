@@ -1,0 +1,35 @@
+{
+  "files": {
+    "NEXT_BUILD_ACTIVE.md": "ea1252cdadb42eeab17fea149fc99db4347f0756851184c6b54a617d67338bcc",
+    "device/app.c": "01c64a89d2d2400efb3aff60c0ddae965573e013ff40d7bba5a0519252ae3fb6",
+    "device/arrangement.c": "b5aab665d2afb8c25718726f745e1bd0b97423ebcbe2960d75b5910137aea8a5",
+    "device/docs/MANUAL.md": "30c5fb5362feb3b4d6709b88d19e06b0b8f969cdf1b9db8442f2057d4fe49615",
+    "device/dsp/engine.c": "bdd4c74c02399912085d7439f81cc8e393390ac842d6e7a93bf731261397bf32",
+    "device/dsp/serenity.h": "a2ff153b38dcc3719e7b88b3f4cef0dbd9b7383cef708e843adf8394ac4d410d",
+    "device/dsp/song_form.h": "4781642484a311ff624b1197ca8e5d274e119b07b5da1fa88050c3a458eadea4",
+    "device/parameters.def": "fb7e1657b31e4b003452c902f91d851275c9305891ffc9aade7b132452930ca3",
+    "device/ui.c": "10a621ec34dc39d415b5f095e9f351ccff904bd8273363b9daacff30e11c981b",
+    "tests/preview_072.c": "a126cb4f42df9c59c45cdb1c36c11d9084989e40a2fffefb59ac5656aafbeebf",
+    "tests/arrange_072.c": "81c19f8eada14b6733b9a88a603092ebb8d204a94e9106679ffefb924b1de133",
+    "tests/arrange_banks_072.c": "6998e21c2f69aca4b7c99cddbe94e919af5d63d059d11e0d985c4d0b96e36fde",
+    "tests/palettes_072.c": "fb767ca32d730dcc1561c05ad9f07e34c5e6ab8ff58c149c2ad3f62fa46a4e26",
+    "tests/graph_regions_072.py": "5e3b6b43bf1a2758adbb09c323314c79134615158a96aa46fcbe549ff28c81cd",
+    "tests/direct_update_072.py": "7fd481aecd799682c559f648454f213d4838dbc519f9cec9cc5e58bab983eb17",
+    "tools/stage_official_072.py": "95b4b924507f9e9b4132365081fd8f1a211530d1d2ffc23a3109fb69d0633ac1",
+    "research/RECOGNIZED_WORKS_072.md": "ee9046983f457ad480fe671c143b8687e746c36143bdef3008915bf6a0b4a4af",
+    "device/docs/RELEASE_072.md": "7876cceacf8e104fd375d6973f541483c2cc1224e26242518eb6f47477395446"
+  },
+  "passed_logs": [
+    "validation/release-072/composition.log",
+    "validation/release-072/regions.log",
+    "validation/release-072/arrange.log",
+    "validation/release-072/longform.log",
+    "validation/release-072/graphics.log",
+    "validation/release-072/load.log",
+    "validation/release-072/banks.log",
+    "validation/release-072/preview.log",
+    "validation/release-072/palettes.csv"
+  ],
+  "physical_hardware": "unverified",
+  "native_sha256": "8422810a4e37e559b414dbd2d0bfc2ef70c0190409ce043514d6c1f20febe030"
+}

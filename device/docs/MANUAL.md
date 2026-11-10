@@ -1,10 +1,10 @@
-# AQUORA 0.6.5 — FM-1 guide
+# AQUORA 0.7.2 — FM-1 guide
 
 Generative Sound Sanctuary · Sound • Water • Resonance
 
 Turn the master down before installation. The original eight-second FM
 introduction follows the master. Deliberate key, button, encoder or master
-movement skips it; the skip input is consumed. Playback starts on PLAY.
+movement skips it; the skip input is consumed. A fresh generated song starts automatically after the introduction; PLAY stops or resumes it.
 PLAY stops new notes and fades to digital silence; press again to resume.
 The eight roles are Lead, Bass, Pads, Harmony, Piano, Plucks, Choir and Drums.
 
@@ -28,12 +28,11 @@ parameter IDs and setters. MIX owns channel level/pan/send/mute/solo; SOUND
 MIX SHORTCUT and PLAY level shortcuts edit those same values. Bus shortcuts
 edit the same Nature/frequency/binaural controls, without independent state.
 
-**EVOLVE:** EDIT cycles Loop, New Song, Groove, Development, Music Mode. New Song and
+**EVOLVE:** EDIT cycles Loop, New Song, Groove, Development, Music Mode, Learn, ARRANGE. New Song and
 Reroll require STOP; turn the action knob to arm and press SEL to execute.
 Reroll keeps motif identity and locked sounds. Freeze holds phrase evolution.
 Development is Stable / Subtle / Flowing / Adventurous with selectable pace;
-Next requests a boundary evolution. The event graph shows observed events,
-not predicted notes. Returning motif memory runs every fourth evolution.
+Next requests a boundary evolution. The event graph shows actual history and a deterministic two-bar future score. Notes travel from the right towards the fixed playhead and glint at onset. The selected role has enlarged pitch/duration detail; graph drawing is clipped above the compact controls. Returning motif memory runs every fourth evolution.
 
 **DRUMS:** ARP or OCT+ opens drums. EDIT cycles Pattern, Sound/Mix,
 Mute/Solo. Pattern K1 enables, K2 density 0–8, K3 HIT 0–100%, K4 level.
@@ -301,3 +300,16 @@ under pressure, and recovers without a permanent freeze. Grid17×17, separable
 standing modes, cap256 contours, band-clipped lines and reduced Original geometry
 bound fallback cost. Host software acceptance cannot prove actual FM-1 FPS,
 callback deadlines/XRUNs, RF response, flash latency or listening quality.
+
+
+## ARRANGE — inspect and queue the journey
+
+ALGORITHM → EVOLVE, then EDIT to the clearly labeled ARRANGE view (six presses from the graph). The table shows NOW, NEXT and four confirmed following sections; the number at right is duration in bars. K1 browses farther ahead. At an uncommitted later arc the table says Planning.
+
+K2 chooses a section and queues it as NEXT. K3 changes that queued section's length in loops (1–16); bars = loops × the chosen loop length / 16. K4 left queues the browsed section; K4 right cancels the pending override and returns to AUTO. The queued section starts at the current section boundary, preserving the motif, tempo and sounding tails. Freeze holds section progress. After a queued section's chosen duration the automatic journey continues. NOW/NEXT on HOME and EVOLVE use this same plan.
+
+SAVE includes queued overrides and an active manual section/duration. Bank V7 reads V1–V6; older rollback firmware can reject V7 banks, so keep earlier bank backups. Four original modes are Standard (uplifting melodic ambient electronica), Cinematic (heavenly orchestral/choir ambient), Neoclassical (expressive piano, harp and strings), Experimental Ambient (ethereal intricate melodic IDM).
+
+Automatic ensembles, all 48 patches and 19 kits use both intention and mode with recent-choice suppression and different FX profiles. Sound locks and explicit manual controls remain authoritative; Reroll keeps motif and locks. Default drum level/density/presence remain maximum; Auto Gain/Auto Level default ON while deliberate overrides remain respected. Original, Cymatics, Chladni and AIR remain.
+
+Install only on original Puya 0x856014 FM-1 hardware. UC25HQ80 0xB36014 and performance USB/BLE MIDI remain deferred. Exact intention Hz references are unchanged from 0.7.1. Numerical host tests do not measure physical LCD/DMA/RF behavior or establish musical beauty.
