@@ -1,0 +1,28 @@
+name: Verify live AQUORA 0.7.1 and preserve current website
+on:
+  push:
+    branches: [aquora-0.7.1-official]
+    paths: ['.github/workflows/aquora-071-website-backup.yml']
+permissions:
+  contents: write
+jobs:
+  verify-published-site:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Independently verify exact live HTTPS bytes and package current site
+        run: python3 tools/backup_site_071.py "$RUNNER_TEMP/website"
+      - name: Preserve verified website assets and report on official release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload v0.7.1 --repo "$GITHUB_REPOSITORY" "$RUNNER_TEMP/AQUORA-0.7.1-website.zip" "$RUNNER_TEMP/WEBSITE-SHA256SUMS.txt" validation/release-071/LIVE_PUBLICATION.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AQUORA-0.7.1-website-verification
+          path: |
+            ${{ runner.temp }}/AQUORA-0.7.1-website.zip
+            ${{ runner.temp }}/WEBSITE-SHA256SUMS.txt
+            validation/release-071/LIVE_PUBLICATION.json
