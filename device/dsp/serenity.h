@@ -33,6 +33,7 @@ typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, 
 typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; uint8_t last_note; } sr_track;
 typedef struct { uint8_t active, track, gate, midi, key, external, channel; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
+typedef struct {uint32_t frame,duration;uint8_t role,note,velocity,reserved;} sr_event;
 typedef struct {uint8_t count;uint8_t note[16],step[16],length[16];} sr_learn_phrase;
 typedef struct {
   sr_learn_phrase learned,capture;
@@ -62,8 +63,9 @@ typedef struct {
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
   uint32_t song_seed, visit_nonce, form_loop;
   uint32_t form_key; uint8_t form_route[33];
+  uint8_t arrange_next,arrange_length,arrange_active,arrange_elapsed;
   uint8_t timeline_enabled,timeline_write;
-  struct {uint32_t frame,duration;uint8_t role,note,velocity,reserved;} timeline[96];
+  sr_event timeline[96];
   uint8_t pending_scene, pending_mode, profile_applying;
   uint8_t music_mode, motion_manual, recent_patches[SR_MUSIC_MODES][SR_SCENES][SR_TRACKS];
   uint16_t sound_locks;
@@ -109,7 +111,13 @@ extern const sr_scene sr_scenes[SR_SCENES];
 extern const sr_frequency sr_frequencies[SR_FREQUENCIES];
 extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
+unsigned sr_score_preview(const sr_engine *snapshot,sr_event *events,unsigned capacity,unsigned ticks);
 void sr_plan_sections(sr_engine *e);
+unsigned sr_section_remaining(const sr_engine *e);
+unsigned sr_arrange_section(const sr_engine *e,unsigned ahead);
+const char *sr_arrange_name(const sr_engine *e,unsigned ahead);
+void sr_arrange_queue(sr_engine *e,unsigned section,unsigned loops);
+void sr_arrange_auto(sr_engine *e);
 const char *sr_section_name(const sr_engine *e,unsigned next);
 void sr_learn_event(sr_engine *e,unsigned key,unsigned down,uint32_t ms);
 void sr_learn_action(sr_engine *e,unsigned action);

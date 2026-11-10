@@ -9,7 +9,8 @@
 #define AQ_BANK_V3 0x41514203u
 #define AQ_BANK_V4 0x41514204u
 #define AQ_BANK_V5 0x41514205u
-#define AQ_BANK_VERSION 0x41514206u
+#define AQ_BANK_V6 0x41514206u
+#define AQ_BANK_VERSION 0x41514207u
 _Static_assert(AQ_BANK_BASE >= 0x97000u && AQ_BANK_BASE + AQ_BANKS * AQ_BANK_STRIDE <= 0xA0000u,
                "Bank sector pairs must stay in the documented data region");
 
@@ -56,6 +57,8 @@ typedef struct {
     uint8_t learn_strength;
     uint16_t reserved6;
     uint32_t form_loop,crc6;
+    uint8_t arrange_next,arrange_length,arrange_active,arrange_elapsed,arrange_current;
+    uint32_t crc7;
 } arrangement;
 _Static_assert(sizeof(arrangement)<512,"Arrangement record budget");
 
@@ -70,7 +73,7 @@ static uint32_t arrangement_crc(const arrangement *record)
     uint32_t crc=0xffffffffu;
     size_t end=record->version==AQ_BANK_LEGACY?offsetof(arrangement,legacy_crc):
         record->version==AQ_BANK_V2?offsetof(arrangement,v2_crc):
-        record->version==AQ_BANK_V3?offsetof(arrangement,crc):record->version==AQ_BANK_V4?offsetof(arrangement,crc4):record->version==AQ_BANK_V5?offsetof(arrangement,crc5):offsetof(arrangement,crc6);
+        record->version==AQ_BANK_V3?offsetof(arrangement,crc):record->version==AQ_BANK_V4?offsetof(arrangement,crc4):record->version==AQ_BANK_V5?offsetof(arrangement,crc5):record->version==AQ_BANK_V6?offsetof(arrangement,crc6):offsetof(arrangement,crc7);
     for(size_t i=0;i<end;i++){
         crc^=bytes[i];
         for(unsigned j=0;j<8;j++)crc=(crc>>1)^((0u-(crc&1u))&0xedb88320u);
@@ -86,13 +89,14 @@ static int range(float value,float lo,float hi)
 static int arrangement_valid(const arrangement *r)
 {
     int legacy=r->version==AQ_BANK_LEGACY;
-    if(r->version==AQ_BANK_VERSION){
+    if(r->version>=AQ_BANK_V6){
       if(r->learned.count>16||r->learn_strength>3)return 0;
       for(unsigned n=0;n<r->learned.count;n++)if(r->learned.note[n]>127||r->learned.step[n]>63||!r->learned.length[n]||r->learned.length[n]>63||(n&&r->learned.step[n]<r->learned.step[n-1]))return 0;
     }
     if(r->version>=AQ_BANK_V5&&(r->chord_mode>3||r->chord_gap<80||r->chord_gap>140||r->chord_inversion>3||r->chord_direction>3||r->rhythm_style>2||r->fill_character>3||r->air_mode>4||r->air_fx>4||r->air_depth>100||r->air_track>8))return 0;
-    if((!legacy&&r->version!=AQ_BANK_V2&&r->version!=AQ_BANK_V3&&r->version!=AQ_BANK_V4&&r->version!=AQ_BANK_V5&&r->version!=AQ_BANK_VERSION)||
-       (legacy?r->legacy_crc:r->version==AQ_BANK_V2?r->v2_crc:r->version==AQ_BANK_V3?r->crc:r->version==AQ_BANK_V4?r->crc4:r->version==AQ_BANK_V5?r->crc5:r->crc6)!=arrangement_crc(r)||
+    if(r->version==AQ_BANK_VERSION&&(r->arrange_next>32||r->arrange_length>16||r->arrange_active>16||r->arrange_elapsed>= (r->arrange_active?r->arrange_active:1)||r->arrange_current>32))return 0;
+    if((!legacy&&r->version!=AQ_BANK_V2&&r->version!=AQ_BANK_V3&&r->version!=AQ_BANK_V4&&r->version!=AQ_BANK_V5&&r->version!=AQ_BANK_V6&&r->version!=AQ_BANK_VERSION)||
+       (legacy?r->legacy_crc:r->version==AQ_BANK_V2?r->v2_crc:r->version==AQ_BANK_V3?r->crc:r->version==AQ_BANK_V4?r->crc4:r->version==AQ_BANK_V5?r->crc5:r->version==AQ_BANK_V6?r->crc6:r->crc7)!=arrangement_crc(r)||
        (!legacy&&((r->loop_length!=16&&r->loop_length!=32&&r->loop_length!=64)||
         (r->pending_length&&r->pending_length!=16&&r->pending_length!=32&&r->pending_length!=64)||
         r->keyboard_mode>1||r->pending_key>12||r->frequency_lock>1||r->auto_gain>1||r->auto_level>1||
@@ -194,7 +198,11 @@ static void arrangement_snapshot(arrangement *record)
     if(engine.rhythm_pending)record->rhythm_style=engine.rhythm_pending-1u;
     record->version=AQ_BANK_V5;record->crc5=arrangement_crc(record);
     record->learned=engine.learned;record->learn_strength=engine.learn_strength;record->form_loop=engine.form_loop;
-    record->version=AQ_BANK_VERSION;record->crc6=arrangement_crc(record);
+    record->version=AQ_BANK_V6;record->crc6=arrangement_crc(record);
+    record->arrange_next=engine.arrange_next;record->arrange_length=engine.arrange_length;
+    record->arrange_active=engine.arrange_active;record->arrange_elapsed=engine.arrange_elapsed;
+    record->arrange_current=engine.arrange_active?sr_arrange_section(&engine,0)+1u:0;
+    record->version=AQ_BANK_VERSION;record->crc7=arrangement_crc(record);
 }
 
 static void arrangement_apply(const arrangement *record)
@@ -275,9 +283,15 @@ static void arrangement_apply(const arrangement *record)
     }
     engine.learn_mode=engine.capture.count=engine.learn_pending=0;
     engine.learned.count=0;engine.learn_strength=2;engine.form_loop=0;
-    if(record->version==AQ_BANK_VERSION){engine.learned=record->learned;engine.learn_strength=record->learn_strength;engine.form_loop=record->form_loop;}
+    if(record->version>=AQ_BANK_V6){engine.learned=record->learned;engine.learn_strength=record->learn_strength;engine.form_loop=record->form_loop;}
     memset(engine.scheduled,0,sizeof engine.scheduled);engine.air_request=engine.rhythm_pending=0;
+    engine.form_key=0;engine.arrange_next=engine.arrange_length=engine.arrange_active=engine.arrange_elapsed=0;
     sr_plan_sections(&engine);
+    if(record->version==AQ_BANK_VERSION){
+      engine.arrange_next=record->arrange_next;engine.arrange_length=record->arrange_length;
+      engine.arrange_active=record->arrange_active;engine.arrange_elapsed=record->arrange_elapsed;
+      if(record->arrange_current)engine.form_route[engine.form_loop/(2u+sr_scenes[engine.scene].energy%3u)%32u]=record->arrange_current-1u;
+    }
     engine.restart=0;
     qread=qwrite;
     state_revision++;

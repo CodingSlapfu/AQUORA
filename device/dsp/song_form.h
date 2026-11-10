@@ -80,5 +80,42 @@ void sr_plan_sections(sr_engine *e){
 static unsigned form_index(const sr_engine *e,unsigned ahead){
  unsigned hold=2u+sr_scenes[e->scene].energy%3u;
  unsigned slot=(e->form_loop/hold)%32u;
+ if(ahead&&e->arrange_next)return e->arrange_next-1u;
  return e->form_route[slot+!!ahead];
+}
+
+unsigned sr_section_remaining(const sr_engine *e){
+ if(e->arrange_active)return e->arrange_active-e->arrange_elapsed;
+ unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+ return hold-e->form_loop%hold;
+}
+unsigned sr_arrange_section(const sr_engine *e,unsigned ahead){
+ unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+ unsigned slot=e->form_loop/hold%32u;
+ if(ahead==1&&e->arrange_next)return e->arrange_next-1u;
+ if(slot+ahead>32u)return 32u; /* future arc not yet committed */
+ return e->form_route[slot+ahead];
+}
+const char *sr_arrange_name(const sr_engine *e,unsigned ahead){
+ unsigned id=sr_arrange_section(e,ahead);
+ return id<32u?sr_sections[id].name:"Planning";
+}
+void sr_arrange_queue(sr_engine *e,unsigned section,unsigned loops){
+ if(section>=32u||!loops||loops>16u)return;
+ e->arrange_next=section+1u;e->arrange_length=loops;
+}
+void sr_arrange_auto(sr_engine *e){e->arrange_next=0;e->arrange_length=0;}
+static void arrange_advance(sr_engine *e){
+ unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+ if(e->arrange_active){
+  if(++e->arrange_elapsed<e->arrange_active)return;
+  e->arrange_active=e->arrange_elapsed=0;
+  e->form_loop+=hold;
+ }else e->form_loop++;
+ sr_plan_sections(e);
+ if(e->form_loop%hold==0u&&e->arrange_next){
+  e->form_route[e->form_loop/hold%32u]=e->arrange_next-1u;
+  e->arrange_active=e->arrange_length;e->arrange_elapsed=0;
+  e->arrange_next=e->arrange_length=0;
+ }
 }

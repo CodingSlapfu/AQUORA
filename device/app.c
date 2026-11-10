@@ -35,7 +35,7 @@ static unsigned window_ms;
 static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
-static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm;
+static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm,arrange_browse;
 static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, last_control_ms;
 static unsigned preferences_saving, preferences_generation, preferences_saved_ms;
 #ifndef PLAT_HOST
@@ -261,7 +261,7 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
-   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0},{132,133,134,135}};
+   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0},{132,133,134,135},{137,138,139,140}};
    return ids[song_tab-1][knob];
  }
  if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
@@ -332,6 +332,10 @@ static void consume(void){
   engine.external_clock_count=255;break;
  case 108:if(!midi_panic_pending)midi_panic_channel=midi.settings.tx_channel;midi_panic_pending=1;midi_panic();sr_midi_panic(&engine);break;
  case 110:midi.settings.controls_out=switched(midi.settings.controls_out,d);midi_cc_program=midi_cc_volume=midi_cc_pan=midi_cc_send=midi_cc_bend=-1;break;
+ case 137:arrange_browse=bounded((int)arrange_browse+d,0,7);break;
+ case 138:{unsigned id=engine.arrange_next?engine.arrange_next-1u:sr_arrange_section(&engine,1);sr_arrange_queue(&engine,bounded((int)id+d,0,31),engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u);break;}
+ case 139:{unsigned len=engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u;sr_arrange_queue(&engine,engine.arrange_next?engine.arrange_next-1u:sr_arrange_section(&engine,1),bounded((int)len+d,1,16));break;}
+ case 140:if(d>0)sr_arrange_auto(&engine);else if(d<0){unsigned id=sr_arrange_section(&engine,arrange_browse);if(id<32)sr_arrange_queue(&engine,id,2u+sr_scenes[engine.scene].energy%3u);}break;
  case 136:sr_learn_event(&engine,d&31u,!(d&32u),c.captured_ms);break;
  case 132:engine.learn_mode=bounded((int)engine.learn_mode+d,0,2);break;
  case 133:engine.learn_strength=bounded((int)engine.learn_strength+d,0,3);break;
@@ -711,7 +715,7 @@ void app_input_only(void){
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
-   if(!debug&&page==2)song_tab=(song_tab+1)%6;
+   if(!debug&&page==2)song_tab=(song_tab+1)%7;
    if(page==PAGE_SOUND){
      unsigned index=0;
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
@@ -1262,7 +1266,7 @@ int app_expect(const char *what,int *got){
    *got=1;debug=0;mix_focus=0;
    for(unsigned p=PAGE_SOUND;p<=PAGE_AIR;p++){
      unsigned seen[128]={0};page=p;
-     unsigned count=p==PAGE_SOUND?sizeof(sound_groups):p==PAGE_EVOLVE?5:p==PAGE_MIX?6:p==PAGE_DRUMS?3:p==PAGE_SETUP?6:2;
+     unsigned count=p==PAGE_SOUND?sizeof(sound_groups):p==PAGE_EVOLVE?7:p==PAGE_MIX?6:p==PAGE_DRUMS?3:p==PAGE_SETUP?6:2;
      for(unsigned tab=0;tab<count;tab++){
        if(p==PAGE_SOUND)group=sound_groups[tab];
        if(p==PAGE_EVOLVE)song_tab=tab;

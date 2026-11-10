@@ -280,6 +280,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 130:{static const char *v[]={"Auto","Gentle","Experimental","Off"};*name="TRANSITIONS";return v[engine.fill_character];}
  case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo","Tone Sweep","Soft Pulse"};*name="AIR FX";return effects[engine.air_fx];}
  case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
+ case 137:*name="BROWSE PLAN";num(buffer,arrange_browse);return buffer;
+ case 138:*name="QUEUE NEXT";return sr_arrange_name(&engine,1);
+ case 139:*name="LENGTH LOOPS";num(buffer,engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u);return buffer;
+ case 140:*name="QUEUE / AUTO";return engine.arrange_next?"Left queue / Right auto":"AUTO";
  case 132:{static const char *m[]={"Off","Play Alone","Alone + Along"};*name="LEARN CAPTURE";return m[engine.learn_mode];}
  case 133:{static const char *m[]={"Original","Subtle","Balanced","Strong"};*name="LEARN STRENGTH";return m[engine.learn_strength];}
  case 134:*name="APPLY TO SONG";return engine.learn_pending?"Queued / next loop":engine.capture.count>=3?"Right: Apply":"Play 3+ notes";
@@ -669,10 +673,13 @@ static void battery_glyph(void)
 }
 /* Per-frame snapshots keep strip rendering on one musical timebase. */
 static __typeof__(engine.timeline) graph_notes;
-static __typeof__(engine.scheduled) graph_pending;
+static sr_engine graph_snapshot PLAT_POOL;
+static sr_event graph_future[384] PLAT_POOL;
+static unsigned graph_future_count;
 static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
 static const char *graph_now,*graph_next;
 static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t ink){
+ if(y<48){height-=48-y;y=48;}if(y+height>208)height=208-y;
  int top=y-(int)band*48;
  if(x<35){width-=35-x;x=35;}if(x+width>233)width=233-x;
  if(top<0){height+=top;top=0;}if(top+height>48)height=48-top;
@@ -689,14 +696,14 @@ static void evolve_graph(unsigned band){
  }
  /* History uses actual note onset/duration/pitch. Future blocks are only
   * already committed scheduled notes; no decorative or guessed events. */
- for(unsigned i=0;i<108;i++){
+ for(unsigned i=0;i<96u+graph_future_count;i++){
   unsigned role,note,velocity;uint32_t frame,duration;
   if(i<96){role=graph_notes[i].role;note=graph_notes[i].note;velocity=graph_notes[i].velocity;frame=graph_notes[i].frame;duration=graph_notes[i].duration;}
-  else {unsigned j=i-96;if(!graph_pending[j].active)continue;role=graph_pending[j].role;note=graph_pending[j].note;velocity=graph_pending[j].velocity;frame=graph_pending[j].due;duration=graph_pending[j].beats*4.f*graph_tick;if(role==SR_DRUMS){duration=graph_tick/2u;note=note==0?36:note==1?38:42;}}
+  else {unsigned j=i-96;role=graph_future[j].role;note=graph_future[j].note;velocity=graph_future[j].velocity;frame=graph_future[j].frame;duration=graph_future[j].duration;}
   if(!duration||role>=SR_TRACKS)continue;
   int32_t age=(int32_t)(graph_frame-frame);
-  int x=78-(int)((float)age*14.f/(float)graph_tick);
-  int width=(int)((float)duration*14.f/(float)graph_tick);if(width<5)width=5;
+  int x=78-(int)((float)age*4.8f/(float)graph_tick);
+  int width=(int)((float)duration*4.8f/(float)graph_tick);if(width<5)width=5;
   if(x>232||x+width<35)continue;
   uint16_t ink=ui_background?skin_accent():colors[role];
   int glint=age>=0&&age<(int32_t)(SR_RATE/7u);
@@ -720,7 +727,7 @@ static void evolve_graph(unsigned band){
  }
  if(band==3){limited_text(6,13,100,&FONT_T,role_names[selected],skin_accent());
   limited_text(110,13,122,&FONT_T,"SEL: DETAIL",skin_dim());}
- int boundary=78+(int)(graph_boundary*14u)-(int)((float)graph_phase*14.f/(float)graph_tick);
+ int boundary=78+(int)(graph_boundary*24u/5u)-(int)((float)graph_phase*4.8f/(float)graph_tick);
  int bottom=band==4?15:47;
  if(boundary>78&&boundary<233)for(int y=0;y<bottom-2;y+=6)cv_line(boundary,y,boundary,y+2,skin_dim());
  cv_line(78,0,78,bottom,skin_accent());
@@ -741,12 +748,13 @@ static int draw(int animate)
  unsigned revision=state_revision;
  if((page==PAGE_EVOLVE||page==PAGE_PLAY)&&!debug&&!intro_active&&!fullscreen){
   unsigned flags=plat_lock();
-  if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(graph_pending,engine.scheduled,sizeof graph_pending);}
+  if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(&graph_snapshot,&engine,offsetof(sr_engine,reverb));memcpy(&graph_snapshot.loop_length,&engine.loop_length,sizeof engine-offsetof(sr_engine,loop_length));}
   graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;graph_phase=engine.tick_phase;
   graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
   unsigned hold=2u+sr_scenes[engine.scene].energy%3u;
-  graph_boundary=(hold-1u-engine.form_loop%hold)*engine.loop_length+engine.loop_length-engine.loop_pos;
+  graph_boundary=(sr_section_remaining(&engine)-1u)*engine.loop_length+engine.loop_length-engine.loop_pos;
   plat_unlock(flags);
+  if(page==PAGE_EVOLVE&&song_tab==0)graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);
  }
  unsigned inputs=input_revision, selections=select_revision;
  const unsigned priority=!intro_active&&!fullscreen&&labelled_input!=input_revision;
@@ -780,7 +788,7 @@ static int draw(int animate)
      const uint16_t panel=skins[ui_theme][ui_background].panel;
      const uint16_t edge=skins[ui_theme][ui_background].border;
      if(band==0){cv_line(8,47,231,47,edge);}
-     else if(band>=3&&page!=PAGE_MIX){
+     else if(band>=3&&page!=PAGE_MIX&&!(page==PAGE_EVOLVE&&song_tab==0)){
        cv_rect(6,2,110,42,panel);cv_rect(124,2,110,42,panel);
        if(ui_theme==2||ui_theme==4){
          cv_line(6,2,115,2,edge);cv_line(124,2,233,2,edge);
@@ -977,6 +985,17 @@ static int draw(int animate)
      }
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==0){
      evolve_graph(band);
+   }else if(visual&&page==PAGE_EVOLVE&&song_tab==6){
+     if(band==1||band==2){
+       for(unsigned row=0;row<3;row++){
+        unsigned ahead=(band-1u)*3u+row+arrange_browse;
+        char text[12];num(text,ahead);
+        int y=row*16;cv_text(6,y,&FONT_T,ahead==0?"NOW":ahead==1?"NEXT":text,ahead==1?skin_accent():skin_dim());
+        limited_text(38,y,150,&FONT_T,sr_arrange_name(&engine,ahead),skin_text());
+        unsigned loops=ahead==0?sr_section_remaining(&engine):ahead==1&&engine.arrange_next?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u;
+        num(text,loops*engine.loop_length/16u);cv_text(195,y,&FONT_T,text,skin_accent());cv_text(218,y,&FONT_T,"b",skin_dim());
+       }
+     }
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==5){
      if(band==1)limited_text(8,2,224,&FONT_B,"LEARN FROM PLAYING",skin_accent());
      if(band==2){label(8,0,"CAPTURED",engine.capture.count);label(127,0,"APPLIED",engine.learned.count);}
@@ -997,7 +1016,7 @@ static int draw(int animate)
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
    else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
      int now_y=page==PAGE_EVOLVE?14:0;
-     if(page==PAGE_EVOLVE)cv_text(6,0,&FONT_T,"EVOLVE",skin_accent());
+     if(page==PAGE_EVOLVE)cv_text(6,0,&FONT_T,song_tab==6?"EVOLVE / ARRANGE":"EVOLVE",skin_accent());
      int x=cv_text(6,now_y,&FONT_XS,"NOW ",skin_accent());
      limited_text(x,now_y,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
      int next_y=page==PAGE_PLAY?16:30;
@@ -1015,7 +1034,7 @@ static int draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==6?"ARRANGE / EDIT":song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(page==PAGE_SOUND||page==PAGE_PLAY){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
@@ -1031,7 +1050,7 @@ static int draw(int animate)
        limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
      else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?6:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:4;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?7:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:4;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
