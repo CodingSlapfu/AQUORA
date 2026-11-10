@@ -53,9 +53,21 @@ void sr_plan_sections(sr_engine *e){
    /* Retain a useful common instrumental voice over the harmonic move. */
    if((a->roles&sr_sections[prev].roles)&(1u<<SR_PIANO))w+=3u;
    if(e->motif_home[0]>=0&&a->harmony==(unsigned)e->motif_home[0]%7u)w+=3u;
-   w/=1u+used[id]*3u;
+   /* Prepared rise promises a crest, held breath promises a theme. These
+    * are musical contracts, not weighted chances to abandon the build. */
+   if(prev==20u&&id!=12u&&id!=26u)w=0;
+   if(prev==21u&&id!=28u&&id!=2u&&id!=12u)w=0;
+   if(family==3u&&a->family==3u)w=0;
+   /* Score the cadence of this song's actual stored theme. Its final
+    * voiced scale degree biases the destination without re-rolling notes. */
+   int cadence=0;
+   for(unsigned n=0;n<16;n++)if(e->motif_home[n]>=0)cadence=e->motif_home[n];
+   unsigned distance=(a->harmony+7u-(unsigned)cadence)%7u;
+   if(distance==0u||distance==3u||distance==4u)w*=2u;
+   unsigned penalty=1u+used[id]*3u;
+   w=(w+penalty-1u)/penalty;
    if(id==prev||(slot>1u&&id==e->form_route[slot-2u]))w=0;
-   if(slot==30u&&id==15u)w=0;
+   if(slot==30u&&(id==15u||id==20u||id==21u))w=0;
    if(slot==31u)w=id==15u?1u:0u;
    weights[id]=w;total+=w;
   }

@@ -195,7 +195,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
    return scene>=13?short_name[scene-13]:sr_scenes[scene].name;
  }
  case 2:*name=selected==SR_DRUMS?"KIT":"PATCH";return patch_name();
- case 4:*name="FIXED Hz";return sr_frequencies[engine.frequency].name;
+ case 4:*name=engine.frequency_lock?"LOCK Hz":engine.frequency_auto?"AUTO Hz":"MANUAL Hz";return sr_frequencies[engine.frequency].name;
  case 5:*name="NATURE %";number=engine.bed_level*100;break;
  case 6:*name="BINAURAL";return onoff(engine.binaural_enabled);
  case 7:*name="BEAT Hz";return tenth(buffer,engine.binaural_rate*10+.5f);
@@ -667,7 +667,7 @@ static void battery_glyph(void)
 /* Per-frame snapshots keep strip rendering on one musical timebase. */
 static __typeof__(engine.timeline) graph_notes;
 static __typeof__(engine.scheduled) graph_pending;
-static uint32_t graph_frame,graph_tick,graph_boundary;
+static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
 static const char *graph_now,*graph_next;
 static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t ink){
  int top=y-(int)band*48;
@@ -678,7 +678,7 @@ static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t 
 static void evolve_graph(unsigned band){
  unsigned offset=band*48;
  for(unsigned t=0;t<SR_TRACKS;t++){
-  int y=50+t*12;
+  int y=49+t*13;
   if(y>=(int)offset&&y<(int)offset+48){
    char n[3];num(n,t+1);cv_text(6,y-offset,&FONT_T,n,t==selected?skin_accent():skin_dim());
    cv_line(35,y+9-offset,232,y+9-offset,skins[ui_theme][ui_background].border);
@@ -692,29 +692,41 @@ static void evolve_graph(unsigned band){
   else {unsigned j=i-96;if(!graph_pending[j].active)continue;role=graph_pending[j].role;note=graph_pending[j].note;velocity=graph_pending[j].velocity;frame=graph_pending[j].due;duration=graph_pending[j].beats*4.f*graph_tick;if(role==SR_DRUMS){duration=graph_tick/2u;note=note==0?36:note==1?38:42;}}
   if(!duration||role>=SR_TRACKS)continue;
   int32_t age=(int32_t)(graph_frame-frame);
-  int x=65-(int)((float)age*11.f/(float)graph_tick);
-  int width=(int)((float)duration*11.f/(float)graph_tick);if(width<4)width=4;
+  int x=78-(int)((float)age*14.f/(float)graph_tick);
+  int width=(int)((float)duration*14.f/(float)graph_tick);if(width<5)width=5;
   if(x>232||x+width<35)continue;
   uint16_t ink=ui_background?skin_accent():colors[role];
   int glint=age>=0&&age<(int32_t)(SR_RATE/7u);
-  graph_block(band,x,width,51+role*12,7,ink);
+  graph_block(band,x,width,50+role*13,9,ink);
   if(glint){
    unsigned core=7u-(unsigned)age/(SR_RATE/49u);if(core>7u)core=7u;
-   graph_block(band,x,core,51+role*12,2,skin_text());
-   graph_block(band,x+1,2,49+role*12,2,skin_accent());
+   graph_block(band,x,core,50+role*13,3,skin_text());
+   graph_block(band,x+1,2,48+role*13,2,skin_accent());
   }
   if(role==selected){
    int pitch=role==SR_DRUMS?note-32:note-36;if(pitch<0)pitch=0;if(pitch>60)pitch=60;
-   int y=186-pitch/3;
-   graph_block(band,x,width,y,4,ink);
-   if(glint)graph_block(band,x,4,y,2,skin_text());
+   int y=201-pitch/2;
+   graph_block(band,x,width,y,6,ink);
+   if(glint)graph_block(band,x,5,y,3,skin_text());
   }
  }
- if(band==3){limited_text(6,3,100,&FONT_T,role_names[selected],skin_accent());
-  limited_text(110,3,122,&FONT_T,"SEL: DETAIL ROLE",skin_dim());}
- int boundary=65+(int)(graph_boundary*11u)-(int)((float)engine.tick_phase*11.f/(float)graph_tick);
- if(boundary>65&&boundary<233)for(int y=0;y<48;y+=6)cv_line(boundary,y,boundary,y+2,skin_dim());
- cv_line(65,0,65,47,skin_accent());
+ if(band==3){limited_text(6,13,100,&FONT_T,role_names[selected],skin_accent());
+  limited_text(110,13,122,&FONT_T,"SEL: DETAIL",skin_dim());}
+ int boundary=78+(int)(graph_boundary*14u)-(int)((float)graph_phase*14.f/(float)graph_tick);
+ int bottom=band==4?15:47;
+ if(boundary>78&&boundary<233)for(int y=0;y<bottom-2;y+=6)cv_line(boundary,y,boundary,y+2,skin_dim());
+ cv_line(78,0,78,bottom,skin_accent());
+ if(band==4){
+  cv_rect(0,16,240,32,skins[ui_theme][ui_background].canvas);
+  static const char *captions[]={"SEL ROLE","K2 HOLD","K3 BPM","K4 LOOP"};
+  for(unsigned knob=0;knob<4;knob++){
+   char value[16];const char *name;
+   const char *shown=knob?knob_value(control_for(knob),&name,value):role_names[selected];
+   int x=6+(int)knob*58;
+   limited_text(x,17,52,&FONT_T,captions[knob],skin_dim());
+   limited_text(x,30,52,&FONT_T,shown,knob_until&&knob_focus==knob?skin_accent():skin_text());
+  }
+ }
 }
 static int draw(int animate)
 {
@@ -722,7 +734,7 @@ static int draw(int animate)
  if((page==PAGE_EVOLVE||page==PAGE_PLAY)&&!debug&&!intro_active&&!fullscreen){
   unsigned flags=plat_lock();
   if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(graph_pending,engine.scheduled,sizeof graph_pending);}
-  graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;
+  graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;graph_phase=engine.tick_phase;
   graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
   unsigned hold=2u+sr_scenes[engine.scene].energy%3u;
   graph_boundary=(hold-1u-engine.form_loop%hold)*engine.loop_length+engine.loop_length-engine.loop_pos;
@@ -741,7 +753,7 @@ static int draw(int animate)
    if(input_revision-inputs!=select_revision-selections){dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
-   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_EVOLVE&&song_tab==0&&band==3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
+   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    const int artwork=intro_active||fullscreen;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
@@ -976,9 +988,11 @@ static int draw(int animate)
    }else if(visual&&page==3&&band<3)mixer_band(band);
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
    else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
-     int x=cv_text(6,0,&FONT_XS,"NOW ",skin_accent());
-     limited_text(x,0,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
-     int next_y=page==PAGE_PLAY?16:22;
+     int now_y=page==PAGE_EVOLVE?14:0;
+     if(page==PAGE_EVOLVE)cv_text(6,0,&FONT_T,"EVOLVE",skin_accent());
+     int x=cv_text(6,now_y,&FONT_XS,"NOW ",skin_accent());
+     limited_text(x,now_y,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
+     int next_y=page==PAGE_PLAY?16:30;
      x=cv_text(6,next_y,&FONT_XS,"NEXT ",skin_dim());
      limited_text(x,next_y,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
      if(page==PAGE_PLAY){

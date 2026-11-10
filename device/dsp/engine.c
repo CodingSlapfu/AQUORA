@@ -114,20 +114,22 @@ const sr_scene sr_scenes[] = {
   {"Radiance",68,0,3,3,45,8}, {"Grounding",48,2,2,4,41,2},
   {"Dreaming",52,3,2,5,45,6}, {"Ceremony",61,4,3,1,48,5},
   {"Anti-Curse",51,2,2,4,43,7}, {"Positive Healing",63,4,2,2,48,4},
-  {"Creativity",66,1,3,7,46,3}, {"Inspiration",55,4,2,6,50,6},
+  {"Creativity",66,1,3,7,46,13}, {"Inspiration",55,4,2,6,50,14},
   {"Luck",71,0,3,3,43,11}, {"Abundance",49,3,1,5,41,12},
-  {"Attract Positivity",64,4,3,2,48,8},
-  {"Miracles",57,3,2,6,48,8}, {"Blessing",46,4,1,2,43,5},
-  {"Negative Energy Cleanse",54,2,2,4,41,6}, {"Cell Regeneration",50,0,1,3,45,1},
-  {"Anxiety Release",42,3,1,5,41,0}, {"Bliss",60,0,2,6,48,5},
-  {"Raise Positive Vibrations",69,4,3,7,46,8}, {"Neuro-Freq Detox",47,1,1,4,43,2}
+  {"Attract Positivity",64,4,3,2,48,15},
+  {"Miracles",57,3,2,6,48,16}, {"Blessing",46,4,1,2,43,17},
+  {"Negative Energy Cleanse",54,2,2,4,41,18}, {"Cell Regeneration",50,0,1,3,45,1},
+  {"Anxiety Release",42,3,1,5,41,10}, {"Bliss",60,0,2,6,48,9},
+  {"Raise Positive Vibrations",69,4,3,7,46,19}, {"Neuro-Freq Detox",47,1,1,4,43,20}
 };
 _Static_assert(sizeof sr_scenes/sizeof *sr_scenes==SR_SCENES,"Complete scene metadata");
 const sr_frequency sr_frequencies[SR_FREQUENCIES] = {
   {"174 Hz",174.f}, {"285 Hz",285.f}, {"396 Hz",396.f},
   {"417 Hz",417.f}, {"528 Hz",528.f}, {"639 Hz",639.f},
   {"741 Hz",741.f}, {"852 Hz",852.f}, {"963 Hz",963.f},
-  {"111 Hz",111.f}, {"136.1 Hz",136.1f}, {"777 Hz",777.f}, {"888 Hz",888.f}
+  {"111 Hz",111.f}, {"136.1 Hz",136.1f}, {"777 Hz",777.f}, {"888 Hz",888.f},
+  {"444 Hz",444.f}, {"480 Hz",480.f}, {"432 Hz",432.f}, {"999 Hz",999.f},
+  {"672 Hz",672.f}, {"384 Hz",384.f}, {"1024 Hz",1024.f}, {"256 Hz",256.f}
 };
 const sr_drum_kit sr_drum_kits[SR_DRUM_KITS] = {
   {"River Hands", .75f,.42f,.23f,49,175,.99948f,.13f},
@@ -225,15 +227,18 @@ float sr_patch_envelope(const sr_track *track,float seconds,int releasing)
 /* One sung gesture, its echo, then an answering cadence. Randomness chooses
  * the gesture once; rhythm and contour belong to the whole phrase. */
 static void make_motif(sr_engine *e){
-  static const int8_t gestures[][4]={{0,1,2,4},{2,3,4,2},{4,3,2,1},{0,2,1,2},{2,1,0,2},{0,1,4,3}};
-  const int8_t *g=gestures[rng(e)%6u];
+  static const int8_t gestures[][4]={{0,1,2,4},{2,3,4,2},{4,3,2,1},{0,2,1,2},{2,1,0,2},{0,1,4,3},
+    {0,2,4,3},{4,2,1,0},{2,4,5,4},{0,4,3,2},{2,1,3,2},{4,5,3,1}};
+  static const uint8_t rhythms[4][6]={{0,3,6,8,11,14},{0,2,6,8,10,14},{0,4,7,8,12,14},{0,3,7,10,12,15}};
+  unsigned identity=rng(e),rhythm=(identity>>8)%4u;
+  const int8_t *g=gestures[identity%12u];
+  if(e->music_mode==SR_CINEMATIC)rhythm=2;
+  if(e->music_mode==SR_NEOCLASSICAL)rhythm=1;
   for(unsigned i=0;i<16;i++)e->melody[i]=-1;
-  for(unsigned i=0;i<4;i++)e->melody[i*2u]=g[i];
-  e->melody[8]=g[0];e->melody[10]=g[1];
-  e->melody[12]=2;e->melody[14]=0;
+  for(unsigned i=0;i<4;i++)e->melody[rhythms[rhythm][i]]=g[i];
+  e->melody[rhythms[rhythm][4]]=g[1];e->melody[rhythms[rhythm][5]]=0;
   /* A breath before the cadence, with an occasional gentle pickup. */
-  if(e->music_mode==SR_CINEMATIC)e->melody[6]=-1;
-  else if((rng(e)&3u)==0)e->melody[7]=g[3];
+  if(e->music_mode==SR_CINEMATIC)e->melody[7]=-1;
 }
 static void develop_motif(sr_engine *e){
   memcpy(e->melody,e->motif_home,sizeof e->melody);
@@ -252,13 +257,18 @@ uint8_t sr_tonic(const sr_engine *e)
  * No additional bank schema, allocation or per-sample composition work. */
 static unsigned phrase_chord(const sr_engine *e,unsigned bar)
 {
-  static const uint8_t harmony[SR_MUSIC_MODES][4]={{0,4,2,0},{0,5,3,0},{0,3,4,0},{0,2,5,4}};
-  return harmony[e->music_mode][bar&3u];
+  static const uint8_t harmony[SR_MUSIC_MODES][8]={
+    {0,0,5,3,0,4,3,0},{0,0,5,5,3,3,4,0},
+    {0,3,5,4,0,3,4,0},{0,2,2,5,0,5,4,0}};
+  /* A short 16-step loop still develops over eight bars. Loop size changes
+   * the editor window, never resets the harmonic conversation every bar. */
+  unsigned global_bar=e->form_loop*(e->loop_length/16u)+bar;
+  return harmony[e->music_mode][global_bar&7u];
 }
 #include "learn.h"
 static int motif_degree_base(const sr_engine *e,unsigned step)
 {
-  unsigned bar=(step% e->loop_length)/16u, pos=step&15u;
+  unsigned bar=(e->form_loop*(e->loop_length/16u)+step/16u)&3u, pos=step&15u;
   if(!bar)return e->melody[pos];
   int degree=e->melody[pos];
   if(degree<0)return degree;
@@ -594,7 +604,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   e->chord_gap=100; e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
   e->learn_strength=2;e->drums_enabled=1;e->drum_level=1.f;e->drum_presence=100;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=SR_DENSITY_MAX;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
-  e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
+  e->binaural_level=.035f;e->tone_level=.025f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
     e->gain_trim[t]=e->role_gain[t]=e->role_target[t]=1.f;
     e->tracks[t].patch=default_patches[t];e->tracks[t].volume=t==SR_BASS?.88f:t==SR_DRUMS?1.f:.68f; e->tracks[t].send=1.f;
@@ -904,16 +914,20 @@ static void bass_groove(sr_engine *e,unsigned step){
  unsigned motif=song_draw(e->song_seed,SR_BASS+400u)%3u;
  unsigned pickup=(beat==7u||beat==15u)&&e->energy>.55f&&
                   (step/16u+motif)%2u==1u;
+ /* Firm anchors, deliberately un-doubled weak kicks and a recognizable
+  * answer/pickup. The bass is a phrase partner, not a kick MIDI duplicate. */
+ if(kick>0.f&&kick<.9f&&((motif+step/16u)&1u)==0u&&!pickup)return;
  if(!kick&&!pickup&&(e->drums_enabled||(beat&7u)))return;
  unsigned degree=chord;
  if(beat&&kick<.9f)degree=(chord+(motif==1u?2u:4u))%7u;
- if(pickup)degree=(chord+6u)%7u;
+ if(pickup)degree=(composition_chord(e,(step+1u)%e->loop_length)+6u)%7u;
  int note=sr_tonic(e)+scale_notes[sr_scenes[e->scene].scale][degree];
  int prior=e->tracks[SR_BASS].last_note;
  if(beat&&prior){while(note-prior>7)note-=12;while(prior-note>7)note+=12;}
  while(note<33)note+=12;while(note>60)note-=12;
  unsigned gap=1;while(gap<8u&&!groove_kick(e,(step+gap)%e->loop_length))gap++;
- float length=(float)gap*(e->music_mode==SR_CINEMATIC?.24f:.19f);
+ float length=(float)gap*(e->music_mode==SR_CINEMATIC?.22f:e->music_mode==SR_EXPERIMENTAL?.12f:.16f);
+ if(pickup)length=.16f;
  sr_note_on(e,SR_BASS,note,pickup?76:kick>.9f?108:91,length);
 }
 static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
@@ -954,7 +968,7 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if(!e->freeze&&e->variation>0.f){
     unsigned id=form_index(e,0),pulse=sr_sections[id].pulse;
     unsigned character=id%8u;
-    if(pulse&&beat==(3u+character)%16u){e->hand_env=.30f+.04f*(character%3u);parts|=2u;hits++;}
+    if(pulse&&bar%2u&&beat==(character&1u?14u:6u)){e->hand_env=.28f+.03f*(character%3u);parts|=2u;hits++;}
     if(id==20u&&(beat&3u)==3u){e->shaker_env=.26f+.09f*(step/16u);parts|=4u;hits++;}
     if(id==30u&&(beat%3u)==2u){e->shaker_env=.32f;parts|=4u;hits++;}
   }
@@ -970,7 +984,8 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if(!hits&&eligible){
     e->drum_rng=e->drum_rng*1664525u+1013904223u;
     unsigned percent=e->drum_hit>SR_HIT_MAX?SR_HIT_MAX:e->drum_hit;
-    if(((e->variation==0?stable_draw:e->drum_rng)>>16)%100u<percent){
+    unsigned allowance=e->music_mode==SR_CINEMATIC?22u:e->music_mode==SR_NEOCLASSICAL?34u:55u;
+    if((stable_draw>>16)%100u<percent*allowance/100u){
       if(beat==11||(bar&&(beat==5||beat==13))){e->hand_env=.55f;parts|=2u;}
       else {e->shaker_env=.52f;parts|=4u;}
       e->optional_hits++;
@@ -1193,7 +1208,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   unsigned chord=(phrase_chord(e,bar)+sr_sections[form_index(e,0)].harmony)%7u;
   int tonic=sr_tonic(e),degree=motif_degree(e,s);
   unsigned draw=song_draw(seed,s&63u);
-  unsigned dynamic=6u+(draw&7u);
+  unsigned dynamic=6u+((draw>>4)&3u);
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
   if((s&15u)==0){
@@ -1213,13 +1228,14 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
     if((s&15u)==12u&&degree>=0)
       sr_note_on(e,SR_HARMONY,tonic+24+scale[(degree+2u)%7u],49,3.6f);
   }else if(e->music_mode==SR_CINEMATIC){
-    if(!learned_active(e)&&(s&7u)==(bar==1u?2u:bar==2u?0u:4u)&&degree>=0)sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic+phrase_expression(s),5.5f);
-    if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+(draw>>8)%3u*2u)%7u],58-dynamic,2.4f);
+    if(!learned_active(e)&&degree>=0&&((s&15u)<8u||(s&15u)>=14u))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic+phrase_expression(s),3.5f);
+    if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+2u*(bar&1u))%7u],58-dynamic,2.4f);
     if((s&7u)==2)sr_note_on(e,SR_GUITAR,tonic+12+scale[(chord+4u)%7u],54,2.2f);
     if((s&15u)==12)sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+2u)%7u],49,3.f);
   }else{
     if((s&1u)==(bar==1u?1u:0u)){
-      unsigned arp=(s/2u+(draw>>12)%2u)%4u;
+      static const uint8_t arpeggio[8]={0,2,1,2,0,1,2,1};
+      unsigned arp=arpeggio[(s/2u)&7u];
       unsigned d=(chord+arp*2u)%7u;
       sr_note_on(e,SR_PIANO,tonic+24+scale[d],78-dynamic+(s%8u==0?8:0),1.15f);
     }
@@ -1360,9 +1376,9 @@ static void trigger(sr_engine *e){
       ornament(e,0,(uint8_t)note,e->scene==7?91:e->scene==6?61:80,1.45f,s,evolving);
     }
   }
-  if(!learned_active(e)&&k>=0 && (s%2u)==(bar==1u?1u:0u)){
+  if(!learned_active(e)&&k>=0){
     unsigned lead=evolving||stable?song_draw(phrase_seed,SR_LEAD+(s&15u)*8u):rng(e);
-    if((s&3u)==0u||lead%5u<=energy){
+    if((s&7u)==0u||lead%5u<=energy+1u){
       int note=tonic+24+scale_notes[sc->scale][k];
       ornament(e,2,(uint8_t)note,65+phrase_expression(s)+(evolving?(lead>>8)&7u:0),2.3f,s,evolving);
     }
@@ -1765,7 +1781,15 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     }
     sacred*=full?left[SR_BASS]+right[SR_BASS]:
       (e->tracks[SR_BASS].mute||(e->solo<SR_TRACKS&&e->solo!=SR_BASS)?0:e->tracks[SR_BASS].volume);
-    float reference=e->tone_level>0&&e->solo==SR_TRACKS?advance(&e->tone_phase,sr_frequencies[e->frequency].hz)*e->tone_level*e->transport_env:0;
+    /* Phase-continuous, 28ms reference glide and gain ramp. A separate exact
+     * reference oscillator; sacred bass remains explicitly octave-folded. */
+    float target_hz=sr_frequencies[e->frequency].hz;
+    if(e->reference_hz_now<=0.f)e->reference_hz_now=target_hz;
+    e->reference_hz_now+=(target_hz-e->reference_hz_now)*.0008f;
+    if(fabsf(target_hz-e->reference_hz_now)<.08f)e->reference_hz_now=target_hz;
+    float target_gain=e->solo==SR_TRACKS?e->tone_level*e->transport_env:0.f;
+    e->reference_gain_now+=(target_gain-e->reference_gain_now)*.001f;
+    float reference=advance(&e->tone_phase,e->reference_hz_now)*e->reference_gain_now;
     if(full||source==SR_ISOLATE_FIXED){l+=reference;r+=reference;if(!(i&7u))bus_meter(e,SR_BUS_REFERENCE,reference);}
     if(full||source==SR_ISOLATE_SACRED){l+=sacred*.6f;r+=sacred*.6f;if(!(i&7u))bus_meter(e,SR_BUS_SACRED,sacred*.6f);}
     dry[3*i]=l; dry[3*i+1]=r; dry[3*i+2]=mix;
