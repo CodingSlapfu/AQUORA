@@ -1,0 +1,8 @@
+{
+  "version": "0.7.3",
+  "identity": "FM-1_73000703",
+  "firmware_sha256": "4c76cc91eb3622de1cb94b4e21e9b1ea9fca6b9cb551370b8e385d886130302e",
+  "firmware_bytes": 611496,
+  "installer_sha256": "6abcd4e70e2aa32fd033098b771d217452ea7ba3e1da126ace30dd928ff06e04",
+  "publication": "Official release artifact; website deployment verified separately"
+}

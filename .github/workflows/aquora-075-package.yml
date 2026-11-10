@@ -1,0 +1,75 @@
+name: AQUORA 0.7.3 reuse accepted builds and finish package
+on:
+  push:
+    branches: [aquora-issue75-4442987c7bab]
+    paths: ['.github/workflows/aquora-075-package.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: aquora-075-candidate
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42877909424
+          name: AQUORA-0.7.3-candidate
+          path: ${{ runner.temp }}/results
+      - name: Reuse exact accepted native, reproduction, single-core, WASM and tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/CodingSlapfu/AQUORA/actions/runs/42877909424/jobs > "$RUNNER_TEMP/jobs.json"
+          python3 - <<'PYVERIFY'
+          import json,os
+          j=json.load(open(os.environ['RUNNER_TEMP']+'/jobs.json'))['jobs'][0]
+          for name in ['Native reproduction and single-core safety','Current musical and persistence gates','Actual host LCD, LEDs, input and startup']:
+              assert next(s for s in j['steps'] if s['name']==name)['conclusion']=='success',name
+          PYVERIFY
+          git diff --exit-code d5d5ef71182a6ba556556b676929b98c4cd1057a HEAD -- device vendor/patches tools/prepare_next_source.sh
+          cd "$RUNNER_TEMP/results"
+          echo '4c76cc91eb3622de1cb94b4e21e9b1ea9fca6b9cb551370b8e385d886130302e  native/sound-healing-0.7.3.fwsc' | sha256sum -c --strict
+          echo '6bc34108e5b9c4ab5f7a318a07f8d3064a80d316f3de356b0b84f11314dd84a5  single-core/sound-healing-0.7.3.fwsc' | sha256sum -c --strict
+          echo '624673963aa219ac48d150638dc5abd375644174c3367a137ddde39f6a6c8175  emu/app.wasm' | sha256sum -c --strict
+          cmp native/sound-healing-0.7.3.fwsc repro/sound-healing-0.7.3.fwsc
+          node -e 'new WebAssembly.Module(require("fs").readFileSync("emu/app.wasm"))'
+      - name: Restore omitted installer hash guard and verify tamper rejection
+        run: |
+          set -euo pipefail
+          python3 tools/stage_official_075.py "$RUNNER_TEMP/results/installer"
+          node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/installer/install/index.html" "$RUNNER_TEMP/results/native/sound-healing-0.7.3.fwsc" > "$RUNNER_TEMP/results/qa/installer.log"
+      - name: Complete immutable source, rollback and install package
+        run: |
+          set -euo pipefail
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          cd "$RUNNER_TEMP/results"
+          mkdir -p rollback
+          curl --fail --location --max-time 120 -o rollback/AQUORA-0.7.2.fwsc https://github.com/CodingSlapfu/AQUORA/releases/download/v0.7.2/AQUORA-0.7.2.fwsc
+          echo '08ec871de8286b2ed7d4e8d60088a597a0c9ccc6f9aa14542d6d0ab1c7ec77fb  rollback/AQUORA-0.7.2.fwsc' | sha256sum -c --strict
+          cp native/sound-healing-0.7.3.fwsc AQUORA-0.7.3.fwsc
+          cp "$RUNNER_TEMP/source/validation/issue75/USER_GUIDE.md" README.md
+          cp "$RUNNER_TEMP/source/validation/issue75/RELEASE_NOTES.md" RELEASE_NOTES.md
+          printf '%s\n' d5d5ef71182a6ba556556b676929b98c4cd1057a > SOURCE-COMMIT.txt
+          printf '%s\n' "$GITHUB_SHA" > PACKAGING-COMMIT.txt
+          cp "$RUNNER_TEMP/source/validation/issue75/longform.log" "$RUNNER_TEMP/source/validation/issue75/performance.log" "$RUNNER_TEMP/source/validation/issue75/palettes.log" qa/
+          tar --exclude=.git --exclude=release --exclude=archive --exclude=evidence --exclude='*.zip' --exclude='*.tar.gz' --exclude='*.tar.xz' --exclude=audio --exclude='*/build/*' --exclude='*.pcm' --exclude='*.wav' --exclude='*.ogg' -czf AQUORA-0.7.3-source.tar.gz -C "$RUNNER_TEMP/source" .
+          tar -czf AQUORA-0.7.3-installer.tar.gz installer
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          zip -q -r AQUORA-0.7.3-candidate.zip AQUORA-0.7.3.fwsc native single-core rollback emu installer qa README.md RELEASE_NOTES.md SOURCE-COMMIT.txt PACKAGING-COMMIT.txt SHA256SUMS.txt
+          sha256sum AQUORA-0.7.3-candidate.zip AQUORA-0.7.3-source.tar.gz AQUORA-0.7.3-installer.tar.gz AQUORA-0.7.3.fwsc > RELEASE-SHA256SUMS.txt
+          sha256sum -c --strict RELEASE-SHA256SUMS.txt
+          unzip -tq AQUORA-0.7.3-candidate.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AQUORA-0.7.3-accepted-package
+          path: ${{ runner.temp }}/results
+          retention-days: 90

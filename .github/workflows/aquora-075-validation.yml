@@ -2,7 +2,7 @@ name: AQUORA Issue75 independent candidate gates
 on:
   push:
     branches: [aquora-issue75-4442987c7bab]
-    paths: ['.github/workflows/aquora-075-validation.yml']
+    paths: ['device/**', 'validation/issue75/RUN_FULL_GATES']
   workflow_dispatch:
 permissions:
   contents: read
@@ -71,6 +71,7 @@ jobs:
           node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
           cp -r device/build/emu "$RUNNER_TEMP/results/emu"
           python3 vendor/fm1-base/tools/make_site.py device "$RUNNER_TEMP/results/native/sound-healing-0.7.3.fwsc" 0.7.3 "$RUNNER_TEMP/results/installer"
+          python3 tools/stage_official_075.py "$RUNNER_TEMP/results/installer"
           node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/installer/install/index.html" "$RUNNER_TEMP/results/native/sound-healing-0.7.3.fwsc" > "$RUNNER_TEMP/results/qa/installer.log"
       - name: Preserve exact prior rollback and traceable package
         run: |
