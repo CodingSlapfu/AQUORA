@@ -31,6 +31,8 @@ jobs:
           bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
           mkdir "$RUNNER_TEMP/results"
           cp -r validation/release-071 "$RUNNER_TEMP/results/acceptance"
+      - name: Install font generator dependency
+        run: python3 -m pip install Pillow==11.3.0
       - name: Restore verified compiler
         run: |
           set -euo pipefail
