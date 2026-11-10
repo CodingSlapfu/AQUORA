@@ -41,7 +41,7 @@ static unsigned preferences_saving, preferences_generation, preferences_saved_ms
 #ifndef PLAT_HOST
 static unsigned preferences_snapshot_generation;
 #endif
-static unsigned ui_theme, ui_font_size=1, ui_background, preferences_dirty, preferences_changed;
+static unsigned ui_theme, ui_font_size=2, ui_background, preferences_dirty, preferences_changed;
 enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
 static unsigned air_on, air_hold, air_poll, air_tab;
 static aq_air_sensor air_sensor;
@@ -263,7 +263,7 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
-   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0},{132,133,134,135},{144,0,0,0},{137,138,139,140}};
+   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0},{132,133,134,135},{137,138,139,140},{144,0,0,0}};
    return ids[song_tab-1][knob];
  }
  if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
@@ -373,7 +373,7 @@ static void consume(void){
  case 15:t->mute=!t->mute;break;
  case 17:sr_set_drum_level(&engine,engine.drum_level+d*.02f);break;
  case 18:engine.energy=adjust(engine.energy,d,.05f,1);break;
- case 144:engine.response_enabled=switched(engine.response_enabled,d);break;
+ case 144:engine.response_enabled=switched(engine.response_enabled,d);if(!engine.response_enabled){engine.response_pending=0;if(!engine.learn_mode)engine.capture.count=0;}break;
  case 82:{
    static const float levels[]={0,.25f,.55f,.85f};
    int level=engine.variation==0?0:engine.variation<.4f?1:engine.variation<.7f?2:3;
@@ -883,7 +883,7 @@ void app_input_only(void){
    if(!audible){led_until[t]=0;continue;}
    if(track->meter>energy[t==SR_DRUMS])energy[t==SR_DRUMS]=track->meter;
    if((int32_t)(led_until[t]-led_now)>0){
-     if(t==SR_DRUMS)drums=1;else tonal|=led_note[t];
+     if(t==SR_DRUMS){drums=1;if(notes_lights)for(unsigned key=0;key<NKEYS;key++)if(aq_black_key(key))generated|=1u<<key;}else tonal|=led_note[t];
      if(notes_lights&&t<SR_DRUMS)generated|=led_note[t];
    }
  }
@@ -942,10 +942,11 @@ void app_input_only(void){
 #ifndef PLAT_HOST
  plat_aquora_key_duty(black_duty,white_duty);
 #else
- test_led_black=black_duty;test_led_white=white_duty;test_led_bright=lights;
+ test_led_black=test_led_white=0;test_led_bright=lights;
+ for(unsigned key=0;key<NKEYS;key++)if((lights|dance_mid|dim_keys)&(1u<<key)){if(aq_black_key(key))test_led_black|=1u<<key;else test_led_white|=1u<<key;}
  /* Binary host/browser LED previews show the idle groups at mid level;
   * exact 70/50 scan duty is validated separately against the native path. */
- plat_lights_mid(0,black_duty|white_duty);
+
 #endif
  static unsigned old_b=~0u,old_k=~0u,old_db=~0u,old_dk=~0u;
  if(buttons!=old_b||lights!=old_k||dim_buttons!=old_db||dim_keys!=old_dk){
@@ -1165,6 +1166,11 @@ int app_expect(const char *what,int *got){
  }
  if(!strcmp(what,"mix_focus")){*got=mix_focus;return 1;}
  if(!strcmp(what,"boot_starts")){*got=boot_starts;return 1;}
+ if(!strcmp(what,"intensity")){*got=engine.energy*100.f+.5f;return 1;}
+ if(!strcmp(what,"response_enabled")){*got=engine.response_enabled;return 1;}
+ if(!strcmp(what,"keys_baseline")){*got=keys_baseline;return 1;}
+ if(!strcmp(what,"notes_lights")){*got=notes_lights;return 1;}
+ if(!strcmp(what,"dance_lights")){*got=dance_lights;return 1;}
  if(!strcmp(what,"learn_count")){*got=engine.capture.count;return 1;}
  if(!strcmp(what,"learn_applied")){*got=engine.learned.count;return 1;}
  if(!strcmp(what,"learn_bank_saved")){
@@ -1175,11 +1181,11 @@ int app_expect(const char *what,int *got){
  }
  if(!strcmp(what,"bank_migration_matrix")){
   *got=1;arrangement record,loaded;arrangement_snapshot(&record);
-  for(unsigned version=1;version<=7;version++){
+  for(unsigned version=1;version<=8;version++){
    record.version=0x41514200u+version;
-   size_t size=version==1?offsetof(arrangement,loop_length):version==2?offsetof(arrangement,motif_home):version==3?offsetof(arrangement,song_seed):version==4?offsetof(arrangement,chord_mode):version==5?offsetof(arrangement,learned):version==6?offsetof(arrangement,arrange_next):sizeof(record);
+   size_t size=version==1?offsetof(arrangement,loop_length):version==2?offsetof(arrangement,motif_home):version==3?offsetof(arrangement,song_seed):version==4?offsetof(arrangement,chord_mode):version==5?offsetof(arrangement,learned):version==6?offsetof(arrangement,arrange_next):version==7?offsetof(arrangement,motif_memory):sizeof(record);
    uint32_t crc=arrangement_crc(&record);
-   if(version==1)record.legacy_crc=crc;else if(version==2)record.v2_crc=crc;else if(version==3)record.crc=crc;else if(version==4)record.crc4=crc;else if(version==5)record.crc5=crc;else if(version==6)record.crc6=crc;else record.crc7=crc;
+   if(version==1)record.legacy_crc=crc;else if(version==2)record.v2_crc=crc;else if(version==3)record.crc=crc;else if(version==4)record.crc4=crc;else if(version==5)record.crc5=crc;else if(version==6)record.crc6=crc;else if(version==7)record.crc7=crc;else record.crc8=crc;
    for(unsigned slot=0;slot<4;slot++){
     if(plat_store_save(OBJ_BANK1+slot,&record,size)||!arrangement_read(slot,&loaded)){*got=0;return 1;}
     arrangement_apply(&loaded);
@@ -1433,7 +1439,7 @@ int app_expect(const char *what,int *got){
  arrangement_snapshot(&bad);
  bad.melody[0]^=1;
  int corrupt=!arrangement_valid(&bad);
- bad.scene=255;bad.crc=arrangement_crc(&bad);
+ bad.scene=255;bad.crc8=arrangement_crc(&bad);
  *got=corrupt&&!arrangement_valid(&bad);
  }else if(!strcmp(what,"bank_mask")){*got=0;for(unsigned i=0;i<AQ_BANKS;i++)*got|=(bank_status[i]==1)<<i;}else if(!strcmp(what,"worker"))*got=plat_cpu2_on();else if(!strcmp(what,"fallbacks"))*got=worker_fallbacks;else if(!strcmp(what,"drops"))*got=dropped;else return 0;return 1;}
 #endif

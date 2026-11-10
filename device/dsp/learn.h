@@ -57,7 +57,7 @@ static void remember_motif(sr_engine *e){
  }
  if(previous==0||previous==2||previous==4)score+=4;
  if(notes<3||score<6)return;
- for(unsigned i=0;i<e->motif_count;i++)if(!memcmp(e->motif_memory[i],e->melody,16))return;
+ for(unsigned i=0;i<e->motif_count;i++){unsigned same=1;for(unsigned n=0;n<16;n++)if(e->motif_memory[i][n]!=e->melody[n])same=0;if(same)return;}
  unsigned slot=e->motif_count<4?e->motif_count++:e->motif_cursor++%4;
  memcpy(e->motif_memory[slot],e->melody,16);e->motif_scores[slot]=score;
 }
@@ -65,6 +65,7 @@ static void response_tick(sr_engine *e){
  if(!e->response_enabled||!e->response_pending||e->freeze||!e->running)return;
  for(unsigned n=0;n<e->capture.count;n++)if(e->capture_down[n]!=0xffffffffu)return;
  if(e->capture.count<3)return;
+ if(!e->tracks[SR_HARMONY].mute&&e->tracks[SR_HARMONY].volume>0)e->role_target[SR_HARMONY]=.65f;
  if(e->response_wait<4){e->response_wait++;return;}
  if(!e->response_index){e->response=e->capture;}
  unsigned n=e->response_index,base=e->response.step[0];

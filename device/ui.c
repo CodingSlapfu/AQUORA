@@ -729,11 +729,11 @@ static void evolve_graph(unsigned band){
    unsigned sustain=age<(int32_t)duration;
    if(burst||sustain){
      unsigned life=release>=0?(unsigned)release:(unsigned)age;
-     unsigned phase=life/(SR_RATE/20u),count=burst?6u:2u;
+     unsigned phase=life/(SR_RATE/20u),count=burst?3u+velocity/32u:2u;
      for(unsigned q=0;q<count&&sprites<64u;q++,sprites++){
        unsigned hash=(frame/64u+role*131u+note*17u+q*71u);
        int dx=(int)(hash%13u)-6,dy=(int)((hash/13u)%11u)-5;
-       int center=sustain?78-(int)(life*4.8f/graph_tick):x+width;
+       int center=sustain?(burst?78:x+(int)((hash+graph_frame/(SR_RATE/12u))%(unsigned)width)):x+width;
        if(burst){dx=dx*(int)(phase+1u)/3;dy=dy*(int)(phase+1u)/3;}
        else {dx=(int)((hash+graph_frame/(SR_RATE/12u))%9u)-4;}
        graph_block(band,center+dx,burst?2:1,53+role*13+dy,2,phase<2u?skin_text():ink);
@@ -1034,6 +1034,9 @@ static int draw(int animate)
         num(text,loops*engine.loop_length/16u);cv_text(195,y,&FONT_T,text,skin_accent());cv_text(218,y,&FONT_T,"b",skin_dim());
        }
      }
+   }else if(visual&&page==PAGE_EVOLVE&&song_tab==7){
+     if(band==1)limited_text(8,0,224,&FONT_B,"MUSICAL RESPONSE",skin_text());
+     else if(band==2)limited_text(8,0,224,&FONT_XS,"PLAY A PHRASE, THEN REST",skin_accent());
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==5){
      if(band==1)limited_text(8,2,224,&FONT_B,"LEARN FROM PLAYING",skin_accent());
      if(band==2){label(8,0,"CAPTURED",engine.capture.count);label(127,0,"APPLIED",engine.learned.count);}
@@ -1053,12 +1056,12 @@ static int draw(int animate)
    }else if(visual&&page==3&&band<3)mixer_band(band);
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
    else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
-     int now_y=page==PAGE_EVOLVE?23:0;
+     int now_y=page==PAGE_EVOLVE?21:0;
      if(page==PAGE_EVOLVE)cv_text(6,0,ui_font_size==2?&FONT_M:&FONT_B,"EVOLVE",skin_accent());
-     int x=cv_text(6,now_y,&FONT_XS,"NOW ",skin_accent());
+     int x=cv_text(6,now_y,&FONT_T,"NOW ",skin_accent());
      limited_text(x,now_y,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
      int next_y=page==PAGE_PLAY?16:35;
-     x=cv_text(6,next_y,&FONT_XS,"NEXT ",skin_dim());
+     x=cv_text(6,next_y,&FONT_T,"NEXT ",skin_dim());
      limited_text(x,next_y,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
      if(page==PAGE_PLAY){
        x=cv_text(6,32,&FONT_T,role_names[selected],skin_accent());

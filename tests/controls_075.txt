@@ -1,0 +1,53 @@
+master 2048
+tap HOME
+wait 80
+turn ALGO 5
+spin K1 -3
+spin K2 -3
+spin K3 -1
+spin K4 -1
+expect lighting 0
+expect keys_baseline 0
+expect notes_lights 0
+expect dance_lights 0
+spin K2 1
+expect lighting 1
+expect keys_baseline 1
+spin K2 2
+spin K3 1
+spin K4 1
+wait 1600
+expect preferences_saved 1
+reboot
+expect lighting 1
+expect keys_baseline 3
+expect notes_lights 1
+expect dance_lights 1
+expect ui_background 0
+tap HOME
+turn K1 -24
+expect intensity 0
+turn K1 24
+expect intensity 100
+spin K2 1
+expect fullscreen 1
+turn K1 -10
+expect fullscreen 1
+expect intensity 50
+spin PRESET 1
+expect fullscreen 1
+tap HOME
+expect fullscreen 0
+turn ALGO 2
+tap EDIT
+tap EDIT
+tap EDIT
+tap EDIT
+tap EDIT
+tap EDIT
+tap EDIT
+spin K1 1
+wait 20
+expect response_enabled 1
+expect directory_ok 1
+expect drops 0

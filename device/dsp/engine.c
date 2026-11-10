@@ -716,7 +716,7 @@ void sr_stop(sr_engine *e)
 {
     if(e->running)e->stop_frames=256;
     e->restart=0;
-    e->running=0;
+    e->running=0;e->response_pending=0;
     memset(e->scheduled,0,sizeof e->scheduled);e->air_request=0;
     if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
     if(e->pending_mode){e->music_mode=e->pending_mode-1u;e->pending_mode=0;sr_set_scene(e,e->pending_scene?e->pending_scene-1u:e->scene);}

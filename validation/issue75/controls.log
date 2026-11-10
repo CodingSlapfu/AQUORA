@@ -1,0 +1,23 @@
+  ok lighting == 0
+  ok keys_baseline == 0
+  ok notes_lights == 0
+  ok dance_lights == 0
+  ok lighting == 1
+  ok keys_baseline == 1
+  ok preferences_saved == 1
+  ok lighting == 1
+  ok keys_baseline == 3
+  ok notes_lights == 1
+  ok dance_lights == 1
+  ok ui_background == 0
+  ok intensity == 0
+  ok intensity == 100
+  ok fullscreen == 1
+  ok fullscreen == 1
+  ok intensity == 50
+  ok fullscreen == 1
+  ok fullscreen == 0
+  ok response_enabled == 1
+  ok directory_ok == 1
+  ok drops == 0
+host: 7751 ms simulated, 475 blits, render 1.3% of real time (host CPU)
