@@ -121,5 +121,110 @@
     "assets/screens-071/air.png": "8311f78dc5946d3546dc64b1a570c50fbd5eec24474821dac61737373a04c91a",
     "emu/o2/dsp_engine.o": "1c53d163cf7a71d0c3905e82978b7e8adbb6ef7a44f5f7b4a8ff1fa74e0e7cbb"
   },
-  "historical_assets": "Existing listening archives and older bulk source-download packages remain unchanged in the Site source repository and published website; not duplicated in this current-site backup."
+  "historical_assets": "Existing listening archives and older bulk source-download packages remain unchanged in the Site source repository and published website; not duplicated in this current-site backup.",
+  "html_expectations": {
+    "index.html": {
+      "title": "Generative Sound Sanctuary \u00b7 AQUORA v0.7.1",
+      "markers": [
+        "0.7.1"
+      ]
+    },
+    "studio/index.html": {
+      "title": "AQUORA Studio \u2014 Play & Edit the FM-1",
+      "markers": [
+        "0.7.1"
+      ]
+    },
+    "manual/index.html": {
+      "title": "User guide \u00b7 AQUORA v0.7.1",
+      "markers": [
+        "0.7.1"
+      ]
+    },
+    "release/index.html": {
+      "title": "Release notes \u00b7 AQUORA v0.7.1",
+      "markers": [
+        "0.7.1"
+      ]
+    },
+    "install/index.html": {
+      "title": "Install \u00b7 AQUORA",
+      "markers": [
+        "FM-1_73000701",
+        "0.7.1"
+      ]
+    },
+    "backup/index.html": {
+      "title": "Save banks & backup \u00b7 AQUORA v0.7.1",
+      "markers": [
+        "0.7.1"
+      ]
+    },
+    "downloads/index.html": {
+      "title": "Downloads & rollback \u00b7 AQUORA v0.7.1",
+      "markers": [
+        "0.7.1"
+      ]
+    },
+    "emu/index.html": {
+      "title": "AQUORA 0.7.1 \u2014 FM-1 Browser Emulator",
+      "markers": [
+        "0.7.1"
+      ]
+    },
+    "screens/index.html": {
+      "title": "Firmware screens \u00b7 AQUORA v0.7.1",
+      "markers": [
+        "0.7.1"
+      ]
+    },
+    "testing/musical-35ca741/index.html": {
+      "title": "Test musical correction 35ca741 \u00b7 AQUORA",
+      "markers": [
+        "FM-1_73000610"
+      ]
+    },
+    "rollback/0.7.0/index.html": {
+      "title": "sound-healing \u00b7 Generative Sound Sanctuary",
+      "markers": []
+    },
+    "rollback/0.6.7/install/index.html": {
+      "title": "Install \u00b7 AQUORA",
+      "markers": [
+        "FM-1_73000607"
+      ]
+    },
+    "rollback/0.6.10/install/index.html": {
+      "title": "Install \u00b7 AQUORA",
+      "markers": [
+        "FM-1_73000610"
+      ]
+    },
+    "rollback/0.6.9/install/index.html": {
+      "title": "Install \u00b7 AQUORA",
+      "markers": [
+        "FM-1_73000609"
+      ]
+    },
+    "rollback/0.6.8/install/index.html": {
+      "title": "Install \u00b7 AQUORA",
+      "markers": [
+        "FM-1_73000608"
+      ]
+    },
+    "rollback/0.7.0/manual/index.html": {
+      "title": "sound-healing: AQUORA 0.6.5 \u2014 FM-1 guide",
+      "markers": []
+    },
+    "rollback/0.7.0/install/index.html": {
+      "title": "Install \u00b7 sound-healing",
+      "markers": [
+        "FM-1_73000700"
+      ]
+    },
+    "rollback/0.7.0/emu/index.html": {
+      "title": "sound-healing in the browser",
+      "markers": []
+    }
+  }
 }

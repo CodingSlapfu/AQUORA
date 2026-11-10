@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Independently verify exact live HTTPS bytes and package current site
+      - name: Verify live binary hashes and hosting-rewritten HTML identities and package current site
         run: python3 tools/backup_site_071.py "$RUNNER_TEMP/website"
       - name: Preserve verified website assets and report on official release
         env:
