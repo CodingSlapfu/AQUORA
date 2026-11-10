@@ -119,6 +119,7 @@ static unsigned lighting=2, keys_baseline=3, notes_lights=1, dance_lights=1;
 static unsigned fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
+static unsigned page_animation_ms;
 enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=16 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
@@ -1133,7 +1134,7 @@ void app_frame(void)
     int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
     int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
     int live_air=page==PAGE_AIR&&(air_on||engine.air_target>.0001f||engine.air_wet>.0001f);
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air)&&elapsed>=visual_interval;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||now-page_animation_ms<220u)&&elapsed>=visual_interval;
     if(animate&&page==0){
       missed+=elapsed/FRAME_MIN_MS-1u;
 
@@ -1265,6 +1266,7 @@ int app_expect(const char *what,int *got){
    }
    page=PAGE_PLAY;song_tab=debug=selected=0;dirty=1;
  }
+ else if(!strcmp(what,"led_masks")){printf("LEDS %u %u\n",test_led_black,test_led_white);*got=1;}
  else if(!strcmp(what,"led_black_mask"))*got=test_led_black;
  else if(!strcmp(what,"led_white_mask"))*got=test_led_white;
  else if(!strcmp(what,"led_bright_mask"))*got=test_led_bright;

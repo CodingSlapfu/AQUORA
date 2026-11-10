@@ -1,0 +1,5 @@
+mode 0 lead 333978 piano 141794
+mode 1 lead 193536 piano 141452
+mode 2 lead 129024 piano 608953
+mode 3 lead 188032 piano 103961
+PASS 504 intention/mode/loop/seed scores; 51528 transitions; bass 934 anchors 512 pickups 256 weak-kick rests 218; PCM peak 8545; theme/return/payoff contracts

@@ -1,0 +1,95 @@
+name: AQUORA Issue75 independent candidate gates
+on:
+  push:
+    branches: [aquora-issue75-4442987c7bab]
+    paths: ['.github/workflows/aquora-075-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: aquora-075-candidate
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          mkdir -p "$RUNNER_TEMP/results/native" "$RUNNER_TEMP/results/repro" "$RUNNER_TEMP/results/single-core" "$RUNNER_TEMP/results/qa"
+          python3 -m pip install Pillow==11.3.0
+          curl --fail --location --max-time 180 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
+          echo "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd  $RUNNER_TEMP/jieli.tar.xz" | sha256sum -c --strict
+          mkdir "$RUNNER_TEMP/jieli"
+          tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
+          echo "JIELI_TOOLCHAIN=$RUNNER_TEMP/jieli/jieli-linux-toolchains-20260730.1" >> "$GITHUB_ENV"
+      - name: Native reproduction and single-core safety
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          export AC79_SDK="$PWD/vendor/ac79-package-files"
+          for kind in native repro single-core; do
+            if [ "$kind" = single-core ]; then export FM1B_CPU2=0; else unset FM1B_CPU2; fi
+            python3 vendor/fm1-base/tools/build.py device --release 0.7.3 > "$RUNNER_TEMP/results/$kind/build.log" 2>&1
+            cp device/build/*.fwsc device/build/*.elf "$RUNNER_TEMP/results/$kind/"
+          done
+          cmp "$RUNNER_TEMP/results/native/sound-healing-0.7.3.fwsc" "$RUNNER_TEMP/results/repro/sound-healing-0.7.3.fwsc"
+          python3 tests/direct_update_075.py "$RUNNER_TEMP/results/native/sound-healing-0.7.3.fwsc" > "$RUNNER_TEMP/results/qa/updater.log"
+      - name: Current musical and persistence gates
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          for gate in intelligence_075 banks_075 transitions_075 preview_072 composition_071; do
+            cc -O2 "tests/$gate.c" -lm -o "$RUNNER_TEMP/$gate"
+            "$RUNNER_TEMP/$gate" > "$RUNNER_TEMP/results/qa/$gate.log"
+          done
+          cc -O2 -Idevice/dsp tests/music_load_0610.c device/dsp/engine.c -lm -o "$RUNNER_TEMP/load"
+          "$RUNNER_TEMP/load" > "$RUNNER_TEMP/results/qa/load.log"
+          python3 tests/ownership_lease_075.py > "$RUNNER_TEMP/results/qa/ownership.log"
+      - name: Actual host LCD, LEDs, input and startup
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.3 > "$RUNNER_TEMP/results/qa/host-build.log" 2>&1
+          host="$PWD/device/build/host/sound-healing_host"
+          "$host" tests/controls_075.txt "$RUNNER_TEMP/results/qa" > "$RUNNER_TEMP/results/qa/controls.log"
+          for gate in lcd lighting latency startup; do
+            python3 "tests/${gate}_075.py" "$host" "$RUNNER_TEMP/results/qa/$gate" > "$RUNNER_TEMP/results/qa/$gate.log"
+          done
+      - name: Matching browser firmware
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+          source ./emsdk_env.sh
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --web --release 0.7.3 > "$RUNNER_TEMP/results/qa/wasm-build.log" 2>&1
+          node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
+          cp -r device/build/emu "$RUNNER_TEMP/results/emu"
+          python3 vendor/fm1-base/tools/make_site.py device "$RUNNER_TEMP/results/native/sound-healing-0.7.3.fwsc" 0.7.3 "$RUNNER_TEMP/results/installer"
+          node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/installer/install/index.html" "$RUNNER_TEMP/results/native/sound-healing-0.7.3.fwsc" > "$RUNNER_TEMP/results/qa/installer.log"
+      - name: Preserve exact prior rollback and traceable package
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/results"
+          mkdir rollback
+          curl --fail --location --max-time 120 -o rollback/AQUORA-0.7.2.fwsc https://github.com/CodingSlapfu/AQUORA/releases/download/v0.7.2/AQUORA-0.7.2.fwsc
+          echo '08ec871de8286b2ed7d4e8d60088a597a0c9ccc6f9aa14542d6d0ab1c7ec77fb  rollback/AQUORA-0.7.2.fwsc' | sha256sum -c --strict
+          cp native/sound-healing-0.7.3.fwsc AQUORA-0.7.3.fwsc
+          cp "$RUNNER_TEMP/source/validation/issue75/USER_GUIDE.md" README.md
+          printf '%s\n' "$GITHUB_SHA" > SOURCE-COMMIT.txt
+          tar --exclude=.git --exclude=release --exclude=archive --exclude=evidence --exclude='*.zip' --exclude='*.tar.gz' --exclude='*.tar.xz' --exclude=audio --exclude='*/build/*' --exclude='*.pcm' --exclude='*.wav' --exclude='*.ogg' -czf AQUORA-0.7.3-source.tar.gz -C "$RUNNER_TEMP/source" .
+          tar -czf AQUORA-0.7.3-installer.tar.gz installer
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          zip -q -r AQUORA-0.7.3-candidate.zip AQUORA-0.7.3.fwsc native single-core rollback emu installer qa README.md SOURCE-COMMIT.txt SHA256SUMS.txt
+          sha256sum AQUORA-0.7.3-candidate.zip AQUORA-0.7.3-source.tar.gz AQUORA-0.7.3-installer.tar.gz AQUORA-0.7.3.fwsc > RELEASE-SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AQUORA-0.7.3-candidate
+          path: ${{ runner.temp }}/results
+          retention-days: 90

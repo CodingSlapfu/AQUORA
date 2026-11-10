@@ -769,6 +769,11 @@ static void evolve_graph(unsigned band){
 static int draw(int animate)
 {
  unsigned revision=state_revision;
+ static unsigned prior_page=~0u;
+ if(page!=prior_page){prior_page=page;page_animation_ms=plat_ms();}
+ unsigned entry_age=plat_ms()-page_animation_ms;
+ int entry_x=entry_age<220u?(int)((220u-entry_age)*(220u-entry_age)/1600u):0;
+ if(entry_age<220u)dirty=1;
  if((page==PAGE_EVOLVE||page==PAGE_PLAY||fullscreen)&&!debug&&!intro_active){
   unsigned flags=plat_lock();
   if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(&graph_snapshot,&engine,offsetof(sr_engine,reverb));memcpy(&graph_snapshot.loop_length,&engine.loop_length,sizeof engine-offsetof(sr_engine,loop_length));}
@@ -1057,7 +1062,7 @@ static int draw(int animate)
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
    else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
      int now_y=page==PAGE_EVOLVE?21:0;
-     if(page==PAGE_EVOLVE)cv_text(6,0,ui_font_size==2?&FONT_M:&FONT_B,"EVOLVE",skin_accent());
+     if(page==PAGE_EVOLVE)cv_text(6+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,"EVOLVE",skin_accent());
      int x=cv_text(6,now_y,&FONT_T,"NOW ",skin_accent());
      limited_text(x,now_y,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
      int next_y=page==PAGE_PLAY?16:35;
@@ -1068,7 +1073,7 @@ static int draw(int animate)
        limited_text(x+8,32,186-x,&FONT_T,patch_name(),skin_text());
      }
    }else if(band==0){
-     cv_text(8,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
+     cv_text(8+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS&&ui_font_size!=2){
        char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
        int x=cv_text(104,2,&FONT_XS,"PULSE ",skin_text());

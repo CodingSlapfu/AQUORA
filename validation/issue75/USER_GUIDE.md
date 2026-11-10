@@ -1,0 +1,15 @@
+# AQUORA 0.7.3 candidate — FM-1_73000703
+
+Original Puya JEDEC0x856014 M-VAVE FM-1 only. UC25HQ80 remains unsupported. This package is a development candidate until the official release gate says otherwise. Preserve your existing firmware and bank backup before flashing. Hardware flash/recovery, listening, RF, physical LED polarity/brightness, LCD/DMA timing, CPU load and XRUN acceptance require the actual FM-1; host tests do not establish them.
+
+PRESETS always changes intentions, from every page and Performance. PLAY K1 controls INTENSITY: sparse/long-held through richer phrasing/orchestration and FX depth. It changes musical expression, not the master volume, key or reference frequency. Structural changes ramp on the musical grid; manual sound/FX/tempo locks remain. K2 enters Performance; HOME returns, K1 remains intensity, PRESETS remains intention, PLAY remains transport, keys and AIR remain available. The HUD shows intention/key/BPM and committed NOW/NEXT sections.
+
+SETUP lighting: K1 LIGHTS OFF/LOW/MID/HIGH; K2 KEYS OFF/C KEYS/WHITE KEYS/ALL KEYS; K3 NOTES; K4 DANCE. Requesting a keyboard baseline with LIGHTS OFF selects LOW. NOTES follows real notes, including short-note holds. DANCE uses independent drum and tonal activity: black keys follow drums, white keys follow tonal instruments. Muted stems and STOP do not generate dance activity; held keys and state controls take priority. Preferences coalesce and save asynchronously, including edits while PLAY is running.
+
+SETUP SELECT opens appearance: font size, visualizer, startup sound and visual frame policy. Background/theme selection is removed; all surfaces are black. Original, Cymatics and Chladni remain available.
+
+EVOLVE EDIT cycles Graph, New Song, Groove, Development, Music Mode, Learn, Arrange, Musical Response. Response K1 enables ANSWER MY PLAYING. Play at least three physical notes, release them and leave about one beat: the engine offers a scale/chord-compatible rhythmic answer. It does not learn its own generated notes. Learning mode remains separate; Alone+Along permits incorporation into later phrases. Disable Response to stop automatic answers. Fixed digital keyboard keys do not supply velocity sensing.
+
+The compact motif memory scores closure, stepwise movement and recognizable repetition. Up to four themes return every fourth evolution with existing development/harmony. New Song clears this memory; Reroll preserves it. Memory is per song and saved in V8 banks with the intensity ramp and response setting. V1–V7 banks migrate on load. Older firmware cannot read V8 banks: when downgrading to0.7.2, restore your pre-upgrade bank backup. The exact previous firmware is in rollback/; older public releases remain unchanged.
+
+STRUM manual spacing now covers120–220ms; default170ms. Automatic Standard and Cinematic tempo ranges are mellower (36–72 and30–64BPM respectively); explicit saved/manual tempo choices remain. Musical and visual acceptance remains personal: software structural checks do not claim the music has passed your listening test.

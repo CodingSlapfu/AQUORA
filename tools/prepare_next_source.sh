@@ -10,7 +10,7 @@ output_dir=$(cd "$output_dir" && pwd)
 tar --no-same-owner -xzf "$repo_root/evidence/0.6.0/editor/AQUORA-0.6.0-editor-source.tar.gz" -C "$output_dir"
 git -C "$repo_root" archive HEAD | tar --no-same-owner -xf - -C "$output_dir"
 cd "$output_dir"
-for patch_file in aquora-passive-air.patch aquora-led-duty.patch aquora-canvas-pipeline.patch aquora-host-midi-packets.patch aquora-air-source069.patch; do
+for patch_file in aquora-passive-air.patch aquora-led-duty.patch aquora-canvas-pipeline.patch aquora-host-midi-packets.patch aquora-air-source069.patch aquora-host-version075.patch; do
   patch --batch --forward -p1 < "vendor/patches/$patch_file"
 done
 printf 'Recovered source: %s\n' "$output_dir"
