@@ -1,0 +1,69 @@
+name: AQUORA 0.7.3 fenced official publication
+on:
+  push:
+    branches: [aquora-issue75-4442987c7bab]
+    paths: ['.github/workflows/aquora-075-publish.yml']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: aquora-official-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42879997993
+          name: AQUORA-0.7.3-accepted-package
+          path: ${{ runner.temp }}/verified
+      - name: Verify immutable accepted source, artifacts and quiescent legacy publishers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/CodingSlapfu/AQUORA/actions/runs/42879997993 --jq .conclusion)" = success
+          test "$(gh api repos/CodingSlapfu/AQUORA/actions/runs/42879997993 --jq .head_sha)" = 0e0313cae6edfa5171efd9b21955cd0cc4398c34
+          test "$(cat "$RUNNER_TEMP/verified/SOURCE-COMMIT.txt")" = d5d5ef71182a6ba556556b676929b98c4cd1057a
+          for state in queued in_progress; do
+            other=$(gh api "repos/CodingSlapfu/AQUORA/actions/runs?status=$state&per_page=100" --jq "[.workflow_runs[] | select(.id != $GITHUB_RUN_ID)] | length")
+            test "$other" = 0 || { echo 'Another workflow is active; shared publication stopped'; exit 1; }
+          done
+          cd "$RUNNER_TEMP/verified"
+          sha256sum -c --strict RELEASE-SHA256SUMS.txt
+          sha256sum -c --strict SHA256SUMS.txt
+          unzip -tq AQUORA-0.7.3-candidate.zip
+      - name: Acquire expiring publication lease and publish exact accepted bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name CodingSlapfu
+          git config user.email 141080780+CodingSlapfu@users.noreply.github.com
+          owner="ci-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          python3 tools/ownership_lease.py acquire --resource aquora-publication --owner "$owner" --ttl 600 > "$RUNNER_TEMP/publication-lease.json"
+          token=$(python3 -c 'import json,os;print(json.load(open(os.environ["RUNNER_TEMP"]+"/publication-lease.json"))["token"])')
+          python3 tools/ownership_lease.py run --resource aquora-publication --owner "$owner" --token "$token" --ttl 600 --checkpoint "$RUNNER_TEMP/publication-lease.json" --command bash -ceu '
+            if gh release view v0.7.3 --repo CodingSlapfu/AQUORA >/dev/null 2>&1; then echo "Version already exists; refusing replacement"; exit 1; fi
+            cd "$RUNNER_TEMP/verified"
+            cp "$GITHUB_WORKSPACE/validation/issue75/RELEASE_NOTES.md" RELEASE_NOTES.md
+            find native single-core rollback emu installer qa -type f -print0 | sort -z | xargs -0 sha256sum > BUNDLE-SHA256SUMS.txt
+            sha256sum AQUORA-0.7.3.fwsc README.md RELEASE_NOTES.md SOURCE-COMMIT.txt PACKAGING-COMMIT.txt >> BUNDLE-SHA256SUMS.txt
+            zip -q -r AQUORA-0.7.3-official.zip AQUORA-0.7.3.fwsc native single-core rollback emu installer qa README.md RELEASE_NOTES.md SOURCE-COMMIT.txt PACKAGING-COMMIT.txt BUNDLE-SHA256SUMS.txt
+            mkdir "$RUNNER_TEMP/bundle-check"
+            unzip -q AQUORA-0.7.3-official.zip -d "$RUNNER_TEMP/bundle-check"
+            (cd "$RUNNER_TEMP/bundle-check" && sha256sum -c --strict BUNDLE-SHA256SUMS.txt)
+            sha256sum AQUORA-0.7.3-official.zip AQUORA-0.7.3.fwsc AQUORA-0.7.3-source.tar.gz AQUORA-0.7.3-installer.tar.gz > OFFICIAL-SHA256SUMS.txt
+            gh release create v0.7.3 AQUORA-0.7.3-official.zip AQUORA-0.7.3.fwsc AQUORA-0.7.3-source.tar.gz AQUORA-0.7.3-installer.tar.gz OFFICIAL-SHA256SUMS.txt --repo CodingSlapfu/AQUORA --target d5d5ef71182a6ba556556b676929b98c4cd1057a --title "AQUORA 0.7.3 — expression, musical response and Performance" --notes-file "$GITHUB_WORKSPACE/validation/issue75/RELEASE_NOTES.md" --latest
+          '
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AQUORA-0.7.3-publication-receipt
+          path: |
+            ${{ runner.temp }}/publication-lease.json
+            ${{ runner.temp }}/verified/OFFICIAL-SHA256SUMS.txt

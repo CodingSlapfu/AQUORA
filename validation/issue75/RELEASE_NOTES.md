@@ -11,7 +11,7 @@ Original Puya0x856014 FM-1 only; UC25HQ80 remains unsupported. Performance USB/B
 
 Software evidence: independent native reproduction, single-core and WASM compilation;15 updater source/target paths;84 score/audio timestamp/pitch/duration comparisons;504 composition contexts;7,272 additional boundary/FX-ring continuity checks; V8 bank/old-size migration;300 actual LED output snapshots; exact240px all-font/page/intention captures and fixed EVOLVE footer;24 input/worker/pressure cases; centered intro entry/hold/exit and numerical16-voice load. Full evidence and screenshots are inside the official ZIP. Host performance is not FM-1 DMA timing, and structural tests do not establish subjective musical quality.
 
-Back up banks before upgrading. V8 banks are not readable by older firmware; restore the pre-upgrade bank backup when downgrading. Exact0.7.2 firmware is included under rollback/. This release is the accepted unchanged candidate bytes; wording in its README about a candidate applies until this official gate passes.
+Back up banks before upgrading. V8 banks are not readable by older firmware; restore the pre-upgrade bank backup when downgrading. Exact0.7.2 firmware is included under rollback/. This release uses the accepted unchanged native/WASM bytes; final bundle metadata is assembled and verified after those gates. Wording in its README about a candidate applies until this official gate passes.
 
 Physical acceptance remains: flash/rollback on the actual device, speaker/headphone listening, physical key/knob feel, LED scan/polarity/power, RF/AIR, sustained CPU/XRUN/FPS/LCD/DMA behavior and long hardware soak. No software result is represented as physical proof.
 
