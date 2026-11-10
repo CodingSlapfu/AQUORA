@@ -7,7 +7,9 @@
 #define AQ_BANK_LEGACY 0x41514201u
 #define AQ_BANK_V2 0x41514202u
 #define AQ_BANK_V3 0x41514203u
-#define AQ_BANK_VERSION 0x41514204u
+#define AQ_BANK_V4 0x41514204u
+#define AQ_BANK_V5 0x41514205u
+#define AQ_BANK_VERSION 0x41514206u
 _Static_assert(AQ_BANK_BASE >= 0x97000u && AQ_BANK_BASE + AQ_BANKS * AQ_BANK_STRIDE <= 0xA0000u,
                "Bank sector pairs must stay in the documented data region");
 
@@ -47,6 +49,13 @@ typedef struct {
     uint8_t music_mode, motion_manual;
     uint16_t reserved;
     uint32_t crc4;
+    uint8_t chord_mode,chord_gap,chord_inversion,chord_direction,rhythm_style,fill_character,air_mode,air_fx,air_depth,air_track;
+    uint16_t future;
+    uint32_t crc5;
+    sr_learn_phrase learned;
+    uint8_t learn_strength;
+    uint16_t reserved6;
+    uint32_t form_loop,crc6;
 } arrangement;
 _Static_assert(sizeof(arrangement)<512,"Arrangement record budget");
 
@@ -61,7 +70,7 @@ static uint32_t arrangement_crc(const arrangement *record)
     uint32_t crc=0xffffffffu;
     size_t end=record->version==AQ_BANK_LEGACY?offsetof(arrangement,legacy_crc):
         record->version==AQ_BANK_V2?offsetof(arrangement,v2_crc):
-        record->version==AQ_BANK_V3?offsetof(arrangement,crc):offsetof(arrangement,crc4);
+        record->version==AQ_BANK_V3?offsetof(arrangement,crc):record->version==AQ_BANK_V4?offsetof(arrangement,crc4):record->version==AQ_BANK_V5?offsetof(arrangement,crc5):offsetof(arrangement,crc6);
     for(size_t i=0;i<end;i++){
         crc^=bytes[i];
         for(unsigned j=0;j<8;j++)crc=(crc>>1)^((0u-(crc&1u))&0xedb88320u);
@@ -77,16 +86,21 @@ static int range(float value,float lo,float hi)
 static int arrangement_valid(const arrangement *r)
 {
     int legacy=r->version==AQ_BANK_LEGACY;
-    if((!legacy&&r->version!=AQ_BANK_V2&&r->version!=AQ_BANK_V3&&r->version!=AQ_BANK_VERSION)||
-       (legacy?r->legacy_crc:r->version==AQ_BANK_V2?r->v2_crc:r->version==AQ_BANK_V3?r->crc:r->crc4)!=arrangement_crc(r)||
+    if(r->version==AQ_BANK_VERSION){
+      if(r->learned.count>16||r->learn_strength>3)return 0;
+      for(unsigned n=0;n<r->learned.count;n++)if(r->learned.note[n]>127||r->learned.step[n]>63||!r->learned.length[n]||r->learned.length[n]>63||(n&&r->learned.step[n]<r->learned.step[n-1]))return 0;
+    }
+    if(r->version>=AQ_BANK_V5&&(r->chord_mode>3||r->chord_gap<80||r->chord_gap>140||r->chord_inversion>3||r->chord_direction>3||r->rhythm_style>2||r->fill_character>3||r->air_mode>4||r->air_fx>4||r->air_depth>100||r->air_track>8))return 0;
+    if((!legacy&&r->version!=AQ_BANK_V2&&r->version!=AQ_BANK_V3&&r->version!=AQ_BANK_V4&&r->version!=AQ_BANK_V5&&r->version!=AQ_BANK_VERSION)||
+       (legacy?r->legacy_crc:r->version==AQ_BANK_V2?r->v2_crc:r->version==AQ_BANK_V3?r->crc:r->version==AQ_BANK_V4?r->crc4:r->version==AQ_BANK_V5?r->crc5:r->crc6)!=arrangement_crc(r)||
        (!legacy&&((r->loop_length!=16&&r->loop_length!=32&&r->loop_length!=64)||
         (r->pending_length&&r->pending_length!=16&&r->pending_length!=32&&r->pending_length!=64)||
         r->keyboard_mode>1||r->pending_key>12||r->frequency_lock>1||r->auto_gain>1||r->auto_level>1||
         (r->tonic_override&&(r->tonic_override<36||r->tonic_override>47))))||
-       (r->version==AQ_BANK_VERSION&&(r->music_mode>=SR_MUSIC_MODES||r->motion_manual>3))||
+       (r->version>=AQ_BANK_V4&&(r->music_mode>=SR_MUSIC_MODES||r->motion_manual>7))||
        r->scene>=SR_SCENES||r->frequency>=SR_FREQUENCIES||r->bed_type>=SR_BEDS||
        r->drum_kit>=SR_DRUM_KITS||r->drum_density>SR_DENSITY_MAX||r->solo>SR_TRACKS||
-       r->frequency_auto>1||r->lock_textures>1||r->sacred_mode>2||r->visual>1||r->tick_length<5512||r->tick_length>22050||
+       r->frequency_auto>1||r->lock_textures>1||r->sacred_mode>2||r->visual>2||r->tick_length<5512||r->tick_length>22050||
        r->tuning_432>1||r->drums_enabled>1||r->binaural_enabled>1||
        r->freeze>1||r->perfect_key>1)return 0;
     if(!range(r->reverb_amount,0,.8f)||!range(r->delay_amount,0,.7f)||
@@ -117,10 +131,10 @@ static int arrangement_read(unsigned slot,arrangement *record)
 {
     memset(record,0,sizeof(*record));
     int size=plat_store_size(OBJ_BANK1+slot);
-    if(size!=(int)sizeof(*record)&&size!=(int)offsetof(arrangement,song_seed)&&size!=(int)offsetof(arrangement,motif_home)
+    if(size!=(int)sizeof(*record)&&size!=(int)offsetof(arrangement,learned)&&size!=(int)offsetof(arrangement,chord_mode)&&size!=(int)offsetof(arrangement,song_seed)&&size!=(int)offsetof(arrangement,motif_home)
         &&size!=(int)offsetof(arrangement,loop_length))return 0;
     if(plat_store_load(OBJ_BANK1+slot,record,sizeof(*record))!=size)return 0;
-    unsigned version=size==(int)sizeof(*record)?AQ_BANK_VERSION:
+    unsigned version=size==(int)sizeof(*record)?AQ_BANK_VERSION:size==(int)offsetof(arrangement,learned)?AQ_BANK_V5:size==(int)offsetof(arrangement,chord_mode)?AQ_BANK_V4:
         size==(int)offsetof(arrangement,song_seed)?AQ_BANK_V3:size==(int)offsetof(arrangement,motif_home)?AQ_BANK_V2:AQ_BANK_LEGACY;
     if(record->version!=version)return 0;
     return arrangement_valid(record);
@@ -172,7 +186,15 @@ static void arrangement_snapshot(arrangement *record)
     plat_unlock(irq);
     record->song_seed=engine.song_seed;record->music_mode=engine.music_mode;record->motion_manual=engine.motion_manual;
     record->version=AQ_BANK_V3;record->crc=arrangement_crc(record);
-    record->version=AQ_BANK_VERSION;record->crc4=arrangement_crc(record);
+    record->version=AQ_BANK_V4;record->crc4=arrangement_crc(record);
+#define SAVE_OPTION(x) record->x=engine.x;
+    SAVE_OPTION(chord_mode) SAVE_OPTION(chord_gap) SAVE_OPTION(chord_inversion) SAVE_OPTION(chord_direction)
+    SAVE_OPTION(rhythm_style) SAVE_OPTION(fill_character) SAVE_OPTION(air_mode) SAVE_OPTION(air_fx) SAVE_OPTION(air_depth) SAVE_OPTION(air_track)
+#undef SAVE_OPTION
+    if(engine.rhythm_pending)record->rhythm_style=engine.rhythm_pending-1u;
+    record->version=AQ_BANK_V5;record->crc5=arrangement_crc(record);
+    record->learned=engine.learned;record->learn_strength=engine.learn_strength;record->form_loop=engine.form_loop;
+    record->version=AQ_BANK_VERSION;record->crc6=arrangement_crc(record);
 }
 
 static void arrangement_apply(const arrangement *record)
@@ -219,7 +241,7 @@ static void arrangement_apply(const arrangement *record)
     engine.auto_level=record->auto_level;
     if(engine.frequency_auto)engine.frequency=sr_scenes[engine.scene].frequency;
     engine.drum_hit=engine.drum_hit>SR_HIT_MAX?SR_HIT_MAX:engine.drum_hit;
-    visual_mode=record->visual;
+    /* Global display preference takes precedence over historical bank artwork. */
     memcpy(engine.melody,record->melody,sizeof(engine.melody));
     memcpy(engine.motif_home,record->version>=AQ_BANK_V3?record->motif_home:record->melody,
            sizeof(engine.motif_home));
@@ -237,9 +259,25 @@ static void arrangement_apply(const arrangement *record)
         engine.tracks[i].attack=attack<8?attack:attack-16;
         engine.tracks[i].release=release<8?release:release-16;
     }
-    engine.song_seed=record->version==AQ_BANK_VERSION?record->song_seed:record->rng;
-    engine.music_mode=record->version==AQ_BANK_VERSION?record->music_mode:SR_STANDARD;
-    engine.motion_manual=record->version==AQ_BANK_VERSION?record->motion_manual:sr_legacy_motion_manual(record->motion,record->scene);
+    engine.song_seed=record->version>=AQ_BANK_V4?record->song_seed:record->rng;
+    engine.music_mode=record->version>=AQ_BANK_V4?record->music_mode:SR_STANDARD;
+    engine.motion_manual=record->version>=AQ_BANK_V4?record->motion_manual:sr_legacy_motion_manual(record->motion,record->scene);
+    for(unsigned role=0;role<2;role++)
+        if(!(engine.motion_manual&(1u<<role)))sr_motion_auto(&engine,role,1);
+    if(record->version>=AQ_BANK_V5){
+#define LOAD_OPTION(x) engine.x=record->x;
+      LOAD_OPTION(chord_mode) LOAD_OPTION(chord_gap) LOAD_OPTION(chord_inversion) LOAD_OPTION(chord_direction)
+      LOAD_OPTION(rhythm_style) LOAD_OPTION(fill_character) LOAD_OPTION(air_mode) LOAD_OPTION(air_fx) LOAD_OPTION(air_depth) LOAD_OPTION(air_track)
+#undef LOAD_OPTION
+    }else{
+      engine.chord_mode=engine.chord_inversion=engine.chord_direction=0;engine.chord_gap=100;
+      engine.rhythm_style=engine.fill_character=engine.air_mode=0;
+    }
+    engine.learn_mode=engine.capture.count=engine.learn_pending=0;
+    engine.learned.count=0;engine.learn_strength=2;engine.form_loop=0;
+    if(record->version==AQ_BANK_VERSION){engine.learned=record->learned;engine.learn_strength=record->learn_strength;engine.form_loop=record->form_loop;}
+    memset(engine.scheduled,0,sizeof engine.scheduled);engine.air_request=engine.rhythm_pending=0;
+    sr_plan_sections(&engine);
     engine.restart=0;
     qread=qwrite;
     state_revision++;
@@ -248,7 +286,7 @@ static void arrangement_apply(const arrangement *record)
 
 static void arrangement_execute(void)
 {
-    if(requested_play||engine.running||engine.stop_frames||qread!=qwrite){
+    if(requested_play||engine.running||engine.stop_frames||engine.external_audio||qread!=qwrite){
         bank_message=BANK_STOP;
         return;
     }

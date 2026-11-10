@@ -1,0 +1,73 @@
+name: AQUORA musical correction remaining software gates
+on:
+  push:
+    branches: [aquora-musical-quality]
+    paths: ['.github/workflows/aquora-musical-platform.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: aquora-musical-platform
+  cancel-in-progress: false
+jobs:
+  platform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore pinned full source
+        run: |
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          mkdir -p "$RUNNER_TEMP/results"
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install Pillow==11.3.0
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+      - name: Restore verified native toolchain
+        run: |
+          curl --fail --location --max-time 180 --retry 2 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
+          echo "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd  $RUNNER_TEMP/jieli.tar.xz" | sha256sum -c --strict
+          mkdir "$RUNNER_TEMP/jieli"
+          tar -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
+          compiler=$(find "$RUNNER_TEMP/jieli" -type d -name pi32v2)
+          echo "JIELI_TOOLCHAIN=$(dirname "$compiler")" >> "$GITHUB_ENV"
+      - name: Current native, reproducibility and forced single-core
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          export AC79_SDK="$PWD/vendor/ac79-package-files"
+          for kind in native native-repro single-core; do
+            mkdir "$RUNNER_TEMP/results/$kind"
+            if [ "$kind" = single-core ]; then export FM1B_CPU2=0; else unset FM1B_CPU2; fi
+            python3 vendor/fm1-base/tools/build.py device --release 0.6.10 2>&1 | tee "$RUNNER_TEMP/results/$kind/build.log"
+            cp device/build/*.fwsc device/build/*.elf "$RUNNER_TEMP/results/$kind/"
+            rm -rf device/build
+          done
+          cmp "$RUNNER_TEMP/results/native/sound-healing-0.6.10.fwsc" "$RUNNER_TEMP/results/native-repro/sound-healing-0.6.10.fwsc"
+          python3 tests/direct_update_0610.py "$RUNNER_TEMP/results/native/sound-healing-0.6.10.fwsc" | tee "$RUNNER_TEMP/results/updater.log"
+      - name: Emscripten and current-source WASM
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+          source ./emsdk_env.sh
+          unset FM1B_CPU2
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --web --release 0.6.10 2>&1 | tee "$RUNNER_TEMP/results/wasm.log"
+          node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
+          cp -r device/build/emu "$RUNNER_TEMP/results/emu"
+      - name: Back up exact full source and artifacts
+        if: always()
+        run: |
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/results/source-commit.txt"
+          cd "$RUNNER_TEMP/results"
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-musical-platform
+          path: ${{ runner.temp }}/results/
+          retention-days: 90
+

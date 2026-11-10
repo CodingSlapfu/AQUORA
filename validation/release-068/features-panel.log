@@ -1,0 +1,13 @@
+  ok chord_mode == 2
+  ok chord_gap == 110
+  ok rhythm_style == 1
+  ok fill_character == 2
+  ok bank_message == 4
+  ok bank_new_roundtrip == 1
+  ok bank_migration_matrix == 1
+  ok directory_ok == 1
+  ok drops == 0
+  ok air_mode == 1
+  ok air_request == 1
+  ok air_request == 0
+host: 2216 ms simulated, 140 blits, render 0.1% of real time (host CPU)

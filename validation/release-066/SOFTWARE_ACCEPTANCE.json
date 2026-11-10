@@ -1,0 +1,20 @@
+{
+  "version": "0.6.6",
+  "source_backup_authorization": "Explicit owner authorization for public CodingSlapfu/AQUORA source/tests/config/build scripts/validation/recovery uploads; credentials/private keys/private personal data and unlicensed proprietary material excluded.",
+  "platform_run": 42353932681,
+  "platform_source": "97f285c6f785e34eedc499b975677a77af96e356",
+  "native_source": "c6df8d527d69ad9e0f3a8dce19d440b679bf5337",
+  "native_byte_reproducible": true,
+  "single_core_verified": true,
+  "wasm_verified": true,
+  "seven_updater_paths_run": 42353129424,
+  "platform_artifact_sha256": "a035921fa6bea632d31a1101474fee2fb2a4a498a80110c516abd30320f5e744",
+  "file_sha256": {
+    "native/sound-healing-0.6.6.fwsc": "cee194ac9e05674dd59a0101f61972db18a719bd2778658c0d4a4baf5573fb3c",
+    "single-core/sound-healing-0.6.6.fwsc": "0994b2bb94f88c80482ed1661b1d5faa0cf23c2753104a466d62769be9b2fdf8",
+    "emu/app.wasm": "33670dcdb0e8aee7e7b63479877bfec2d760eb2df5af5cdf15b5748f9734b039"
+  },
+  "physical_acceptance": "OWNER-UNVERIFIED",
+  "midi": "USB and BLE owner-authorized deferred",
+  "kira9": "Untouched"
+}

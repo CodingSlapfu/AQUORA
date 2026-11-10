@@ -1,0 +1,42 @@
+[
+  {
+    "stem": "interlocking-lights-067-bass.pcm",
+    "max_bass_only_quiet_seconds": 0.0,
+    "note": "Bass-only silence is not evidence of whole-music silence; other roles may carry the arrangement."
+  },
+  {
+    "stem": "interlocking-lights-068-bass.pcm",
+    "max_bass_only_quiet_seconds": 0.0,
+    "note": "Bass-only silence is not evidence of whole-music silence; other roles may carry the arrangement."
+  },
+  {
+    "stem": "quiet-broken-orbit-067-bass.pcm",
+    "max_bass_only_quiet_seconds": 0.0,
+    "note": "Bass-only silence is not evidence of whole-music silence; other roles may carry the arrangement."
+  },
+  {
+    "stem": "quiet-broken-orbit-068-bass.pcm",
+    "max_bass_only_quiet_seconds": 0.0,
+    "note": "Bass-only silence is not evidence of whole-music silence; other roles may carry the arrangement."
+  },
+  {
+    "stem": "slow-drift-067-bass.pcm",
+    "max_bass_only_quiet_seconds": 0.0,
+    "note": "Bass-only silence is not evidence of whole-music silence; other roles may carry the arrangement."
+  },
+  {
+    "stem": "slow-drift-068-bass.pcm",
+    "max_bass_only_quiet_seconds": 0.0,
+    "note": "Bass-only silence is not evidence of whole-music silence; other roles may carry the arrangement."
+  },
+  {
+    "stem": "warm-pulse-067-bass.pcm",
+    "max_bass_only_quiet_seconds": 10.24907029478458,
+    "note": "Bass-only silence is not evidence of whole-music silence; other roles may carry the arrangement."
+  },
+  {
+    "stem": "warm-pulse-068-bass.pcm",
+    "max_bass_only_quiet_seconds": 0.0,
+    "note": "Bass-only silence is not evidence of whole-music silence; other roles may carry the arrangement."
+  }
+]

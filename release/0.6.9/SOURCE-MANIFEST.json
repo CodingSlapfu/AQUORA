@@ -1,0 +1,22 @@
+{
+  "source_commit": "dc3db77347bdf9abfad1045c5d9b562b99fd1abf",
+  "archive_sha256": "adf7f01e9eddefb5d33512f02e925323354abc0bd49ff6304b70d465ffc727cc",
+  "restore": "Concatenate parts in listed order, verify SHA256, then extract tar.gz.",
+  "parts": [
+    {
+      "file": "AQUORA-0.6.9-source.tar.gz.part000",
+      "bytes": 25165824,
+      "sha256": "30acadf371880f3a0f63ca88fe0810defb82749be4c79212db6b207f50be4af2"
+    },
+    {
+      "file": "AQUORA-0.6.9-source.tar.gz.part001",
+      "bytes": 25165824,
+      "sha256": "94ed25182aa69cc431a1031acbf9d738f79b88c86ff8170e494867fa220b1bea"
+    },
+    {
+      "file": "AQUORA-0.6.9-source.tar.gz.part002",
+      "bytes": 9175040,
+      "sha256": "c83d66040248a8cc55e3371d3fa0256bf66870850c45e08400e3f6c39d465b61"
+    }
+  ]
+}

@@ -1,13 +1,51 @@
 _Static_assert(AQUORA_FONT_FAMILY==0x41515335u,"AQUORA Sans atlas required");
 static const char aquora_font_provenance[]="AQUORA Sans:" AQUORA_FONT_ATLAS_SHA256;
 /* SPDX-License-Identifier: MPL-2.0 */
-static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?&FONT_S:&FONT_XS;}
-static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_M:&FONT_B;}
+/* The bare-metal runtime deliberately has no general strcmp/strcpy ABI. */
+static unsigned ui_len(const char *s){unsigned n=0;while(n<80u&&s[n])n++;return n;}
+static int ui_equal(const char *a,const char *b){for(unsigned n=0;n<80u;n++){if(a[n]!=b[n])return 0;if(!a[n])return 1;}return 0;}
+static void ui_copy(char *to,const char *from){unsigned n=0;while(n<79u&&from[n]){to[n]=from[n];n++;}to[n]=0;}
+static const felucca_font_t *const fit_fonts[]={&FONT_L,&FONT_M,&FONT_B,&FONT_XS,&FONT_T};
+static int fit_width(const felucca_font_t *f,const char *text){int width=0;for(;*text;text++)width+=f->adv[glyph(f,(uint8_t)*text)];return width;}
+static const felucca_font_t *fit_font(const char *text,int width,int height){
+ /* Main-loop only: bounded cache of actual glyph advances and font heights. */
+ static struct {char text[80];int width,height;const felucca_font_t *font;} cache[32] PLAT_POOL;
+ static unsigned next,initialized;
+ if(!initialized){memset(cache,0,sizeof cache);initialized=1;}
+ for(unsigned i=0;i<32;i++)if(cache[i].font&&cache[i].width==width&&cache[i].height==height&&ui_equal(cache[i].text,text))return cache[i].font;
+ const felucca_font_t *result=fit_fonts[4];
+ for(unsigned i=0;i<5;i++)if(fit_fonts[i]->h<=height&&fit_width(fit_fonts[i],text)<=width){result=fit_fonts[i];break;}
+ if(ui_len(text)<sizeof cache[0].text){unsigned i=next++&31u;ui_copy(cache[i].text,text);cache[i].width=width;cache[i].height=height;cache[i].font=result;}
+ return result;
+}
+static int text_room(int y){return y<8?24:47-y;}
+#ifdef PLAT_HOST
+static unsigned large_text_overflow,large_font_mask;
+#endif
+static int ui_text(int x,int y,const felucca_font_t *font,const char *text,uint16_t color){
+ if(ui_font_size==2&&!intro_active){
+  if(y>35)y=35;
+  int room=text_room(y);if(room>font->h)room=font->h;
+  if(ui_equal(text,"SEL MUTE / LFO SOLO"))text="SEL:M LFO:S";
+  font=fit_font(text,236-x,room);
+#ifdef PLAT_HOST
+  if(fit_width(font,text)>236-x||font->h>47-y)large_text_overflow++;
+  for(unsigned i=0;i<5;i++)if(font==fit_fonts[i])large_font_mask|=1u<<i;
+#endif
+ }
+ return cv_text(x,y,font,text,color);
+}
+/* Graph lane labels cross DMA bands; keep their exact baseline and clip
+ * glyphs on both bands rather than applying large-control row snapping. */
+static int graph_text(int x,int y,const char *text,uint16_t color){return cv_text(x,y,&FONT_T,text,color);}
+#define cv_text ui_text
+static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_T:ui_font_size==2?(intro_active?&FONT_S:&FONT_T):&FONT_XS;}
+static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_L:&FONT_B;}
 #define FONT_XS (*ui_caption_font())
 #define FONT_B (*ui_value_font())
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain"};
-static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character"};
+static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum"};
 /* Static panel palettes. Canvas is independently exact black or white. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
  {{RGB(5,17,22),RGB(10,32,38),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
@@ -27,10 +65,10 @@ static uint16_t skin_accent(void){return skins[ui_theme][ui_background].accent;}
 static void num(char *s,int v){char t[12];int n=0;unsigned u=v<0?-v:v;if(v<0)*s++='-';do{t[n++]=(char)('0'+u%10);u/=10;}while(u);while(n)*s++=t[--n];*s=0;}
 static void limited_text(int x,int y,int width,const felucca_font_t *font,const char *s,uint16_t color);
 static void label(int x,int y,const char *name,int value){
- char v[12];num(v,value);if(ui_font_size==2&&y>6)y=6;
+ char v[12];num(v,value);
  int width=x==86?70:x==87?72:x==166?66:x>=125?232-x:72;
  limited_text(x,y,width,&FONT_XS,name,skin_dim());
- limited_text(x,y+(ui_font_size==2?18:15),width,&FONT_B,v,skin_text());
+ limited_text(x,y+(ui_font_size==2?12:15),width,&FONT_B,v,skin_text());
 }
 static const char *role_names[SR_TRACKS]={
  "Lead","Bass","Pads","Harmony","Piano","Plucks","Choir","Drums"
@@ -51,7 +89,39 @@ static void band_line(int x0,int y0,int x1,int y1,uint16_t color)
 }
 static void geometry(int offset)
 {
- if(vis_input.water){
+ if(vis_input.water==2){
+   uint16_t ink=ui_background?RGB(27,66,123):RGB(80,212,235);
+   uint16_t grain=ui_background?RGB(107,55,17):RGB(255,218,139);
+   for(unsigned i=0;i<vis_output.node_count;i++){
+     const int16_t *p=vis_output.nodes[i];
+     band_line(p[0],p[1]-offset,p[2],p[3]-offset,ink);
+   }
+   for(unsigned i=0;i<512;i++){
+     int x=vis_output.sand[i][0],y=vis_output.sand[i][1]-offset;
+     if(y>=0&&y<48)cv_line(x,y,x+1,y,grain);
+   }
+   return;
+ }
+ if(vis_input.water==1){
+   static const uint16_t water[16]={RGB(0,0,0),RGB(3,18,31),RGB(4,24,38),RGB(5,31,46),
+     RGB(7,39,55),RGB(9,49,66),RGB(12,61,78),RGB(16,74,91),
+     RGB(23,89,105),RGB(33,106,121),RGB(48,126,137),RGB(67,147,155),
+     RGB(91,171,175),RGB(121,194,195),RGB(158,217,213),RGB(207,242,230)};
+   int top=vis_input.full?0:52, bottom=vis_input.full?240:140;
+   for(unsigned row=0;row<30;row++){
+     int start=top+(int)row*(bottom-top)/30-offset;
+     int end=top+(int)(row+1)*(bottom-top)/30-offset;
+     if(start<0)start=0;if(end>48)end=48;
+     if(end<=start)continue;
+          if(offset+start==0)start++;
+     if(offset+end>=240)end=239-offset;
+     if(end<=start)continue;
+     for(unsigned x=0;x<30;x++){
+       unsigned light=vis_output.water_light[row][x];
+       uint16_t color=ui_background?(light?RGB(255-light*5,255-light*2,255-light):RGB(255,255,255)):water[light];
+       cv_rect(x*8+(x==0),start,8-(x==0)-(x==29),end-start,color);
+     }
+   }
    unsigned shade=nodal_level>.65f?3:nodal_level>.3f?2:1;
    static const uint16_t ink[2][4]={{RGB(9,24,31),RGB(27,84,108),RGB(48,156,184),RGB(127,245,224)},
       {RGB(240,248,250),RGB(142,180,185),RGB(34,103,125),RGB(8,59,84)}};
@@ -60,11 +130,15 @@ static void geometry(int offset)
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
      band_line(p[0],y0,p[2],y1,ink[ui_background][shade]);
    }
+   for(unsigned i=0;i<512;i++){
+     int x=vis_output.sand[i][0],y=vis_output.sand[i][1]-offset;
+     if(y>=0&&y<48)cv_line(x,y,x+1,y,ui_background?RGB(117,79,25):i%3?RGB(229,196,126):RGB(255,235,187));
+   }
    return;
  }
  for(int t=0;t<SR_TRACKS;t++){
    int quiet=engine.tracks[t].mute||(engine.solo<SR_TRACKS&&engine.solo!=t);
-   uint16_t c=quiet?RGB(25,45,49):colors[t];
+   uint16_t c=ui_background?(quiet?RGB(145,157,160):RGB((colors[t]>>11)*4,((colors[t]>>5)&63)*2,(colors[t]&31)*4)):quiet?RGB(25,45,49):colors[t];
    for(unsigned j=1;j<vis_output.count[t];j++){
      int y0=vis_output.xy[t][j-1][1]-offset,y1=vis_output.xy[t][j][1]-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
@@ -74,8 +148,8 @@ static void geometry(int offset)
 }
 
 static const char *onoff(int enabled){return enabled?"ON":"OFF";}
-static const char *music_modes[]={"Standard","Cinematic","Neoclassical"};
-static const char *visual_name(void){return visual_mode?"Resonance Plate":"Original";}
+static const char *music_modes[]={"Standard","Cinematic","Neoclassical","Experimental Ambient"};
+static const char *visual_name(void){static const char *n[]={"Original","Cymatics","Chladni"};return n[visual_mode];}
 static const char *patch_name(void)
 {
  return selected==SR_DRUMS?sr_drum_kits[engine.drum_kit].name:
@@ -92,7 +166,8 @@ static const char *drum_status(void)
 }
 static void limited_text(int x,int y,int width,const felucca_font_t *font,const char *s,uint16_t color)
 {
- char text[36];
+ if(ui_font_size==2){int height=text_room(y);if(height>font->h)height=font->h;font=fit_font(s,width,height);}
+ char text[80];
  unsigned length=0;
  int used=0;
  while(s[length]&&length+1<sizeof(text)){
@@ -117,9 +192,13 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  sr_motion *motion=&engine.motion[selected<=SR_BASS?selected:0];
  int number=0;
  switch(id){
- case 1:*name="SCENE";return sr_scenes[engine.scene].name;
+ case 1:*name=engine.pending_scene?"NEXT INTENTION":"INTENTION";{
+   static const char *short_name[]={"Miracles","Blessing","Energy Cleanse","Cell Renewal","Anxiety Release","Bliss","Positive Vibrations","Neuro-Freq Detox"};
+   unsigned scene=engine.pending_scene?engine.pending_scene-1u:engine.scene;
+   return scene>=13?short_name[scene-13]:sr_scenes[scene].name;
+ }
  case 2:*name=selected==SR_DRUMS?"KIT":"PATCH";return patch_name();
- case 4:*name="FIXED Hz";return sr_frequencies[engine.frequency].name;
+ case 4:*name=engine.frequency_lock?"LOCK Hz":engine.frequency_auto?"AUTO Hz":"MANUAL Hz";return sr_frequencies[engine.frequency].name;
  case 5:*name="NATURE %";number=engine.bed_level*100;break;
  case 6:*name="BINAURAL";return onoff(engine.binaural_enabled);
  case 7:*name="BEAT Hz";return tenth(buffer,engine.binaural_rate*10+.5f);
@@ -147,7 +226,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 29:*name="FX SEND %";number=track->send*100;break;
  case 30:*name="SACRED LEVEL %";number=engine.sacred_level*100;break;
  case 31:*name="SACRED SOURCE";return engine.sacred_mode==0?"Off":engine.sacred_mode==1?"Musical":"Reference";
- case 32:*name="GLIDE MODE";return selected>SR_BASS?"Use SELECT knob":motion->glide_mode==0?"Off":motion->glide_mode==1?"Legato":"Always";
+ case 32:*name="GLIDE MODE";return selected>SR_BASS?"Select Lead / Bass":motion->glide_mode==0?"Off":motion->glide_mode==1?"Legato":"Always";
  case 33:*name="GLIDE ms";if(selected>SR_BASS)return "-";number=motion->glide_ms;break;
  case 34:*name="VIBRATO Hz";if(selected>SR_BASS)return "-";return tenth(buffer,motion->vibrato_rate);
  case 35:*name="VIBRATO cents";if(selected>SR_BASS)return "-";number=motion->vibrato_depth;break;
@@ -165,12 +244,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 65:*name="STRENGTH %";number=engine.groove_strength;break;
  case 66:*name="AIR RADIO";
    if(!FM1B_BLE_CENTRAL)return "Unavailable";
-   if(!air_on)return "Off";
-   if(aq_air_live(&air_sensor,plat_ms()))return "Receiving";
-   return air_sensor.calibrated?"Signal lost":"Listening / no broadcaster";
- case 67:*name="AIR TARGET";return engine.air_track<SR_TRACKS?role_names[engine.air_track]:"All tracks";
- case 68:*name="CALIBRATE";return !air_sensor.calibrated?"Turn right":
-   aq_air_live(&air_sensor,plat_ms())?"Calibrated / live":"Calibrated / waiting";
+   return aq_air_state(&air_sensor,air_on,plat_ble_state(),plat_ms());
+ case 67:*name="AIR FX FOCUS";return engine.air_track<SR_TRACKS?role_names[engine.air_track]:"All tracks";
+ case 68:*name="CALIBRATE";return !air_sensor.calibrated?"Right: Far":air_sensor.calibrated==1?"Right: Near":"Left: Reset";
+
  case 71:
    *name="QUICK FIND";
    if(quick_item<QUICK_CATEGORIES)return quick_names[quick_item];
@@ -189,11 +266,25 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 63:{static const char *grid[]={"Live","1/16","1/32","Auto","1/8"};*name="PLAY GRID";return grid[engine.play_grid];}
  case 62:*name="PRESENCE %";number=engine.drum_presence;break;
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
- case 56:{static const char *modes[]={"On","Keys","Off","Dance"};*name="LIGHTS";return modes[lighting];}
+ case 56:{static const char *modes[]={"On 70/50%","Keys 100%","Off","Dance"};*name="LIGHTS";return modes[lighting];}
  case 90:{static const char *themes[]={"AQUORA Legacy","Aurora","Neon Lagoon","Solar Bloom","Midnight Prism"};*name="PANEL SKIN";return themes[ui_theme];}
- case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo"};*name="AIR FX";return effects[engine.air_fx];}
+ case 120:{static const char *v[]={"Auto","Together","Strum","Off"};*name="CHORDS";return v[engine.chord_mode];}
+ case 121:*name="STRUM GAP ms";if(engine.chord_mode!=2)return "STRUM only";number=engine.chord_gap;break;
+ case 122:{static const char *v[]={"Auto","Root","First","Second"};*name="INVERSION";return v[engine.chord_inversion];}
+ case 123:{static const char *v[]={"Down / Auto","Down","Up","Alternate"};*name="DIRECTION";return v[engine.chord_direction];}
+ case 124:{static const char *v[]={"FX","Next Evolution","Drum Fill","Harmony","Energy Swell"};*name="AIR ACTION";return v[engine.air_mode];}
+ case 125:*name="SENSITIVITY %";number=air_sensitivity;break;
+ case 126:*name="INVERT AIR";return onoff(air_invert);
+ case 128:*name="MUSIC REQUEST";return !engine.running?"PLAY required":engine.air_request?"Queued / phrase":engine.air_result>=128?"Blocked / locks":engine.air_result?"Applied":"Right: trigger";
+ case 129:{static const char *v[]={"Intention / Auto","Experimental IDM","Ambient Broken"};*name=engine.rhythm_pending?"NEXT RHYTHM":"RHYTHM STYLE";return v[engine.rhythm_pending?engine.rhythm_pending-1u:engine.rhythm_style];}
+ case 130:{static const char *v[]={"Auto","Gentle","Experimental","Off"};*name="TRANSITIONS";return v[engine.fill_character];}
+ case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo","Tone Sweep","Soft Pulse"};*name="AIR FX";return effects[engine.air_fx];}
  case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
- case 96:*name="MUSIC MODE";return music_modes[engine.music_mode];
+ case 132:{static const char *m[]={"Off","Play Alone","Alone + Along"};*name="LEARN CAPTURE";return m[engine.learn_mode];}
+ case 133:{static const char *m[]={"Original","Subtle","Balanced","Strong"};*name="LEARN STRENGTH";return m[engine.learn_strength];}
+ case 134:*name="APPLY TO SONG";return engine.learn_pending?"Queued / next loop":engine.capture.count>=3?"Right: Apply":"Play 3+ notes";
+ case 135:*name="DISCARD / CLEAR";return "Left / Right";
+ case 96:*name=engine.pending_mode?"NEXT BEAT MODE":"MUSIC MODE";return music_modes[engine.pending_mode?engine.pending_mode-1u:engine.music_mode];
  case 97:*name="LEAD MOTION";return engine.motion_manual&1u?"MANUAL":"AUTO";
  case 98:*name="BASS MOTION";return engine.motion_manual&2u?"MANUAL":"AUTO";
  case 95:*name="MANUAL AIR %";number=engine.air_target*100;break;
@@ -212,6 +303,17 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 51:*name="AUTO LEVEL";return onoff(engine.auto_level);
  case 99:*name="OPEN BUS HOME";return "Turn right";
  case 100:*name="OPEN CHANNEL";return "Turn / FX";
+ case 101:{static const char *m[]={"Off","Master","USB Slave"};*name="MIDI SYNC";return m[midi.settings.sync];}
+ case 102:{static const char *m[]={"Off","Playing","Always"};*name="CLOCK OUT";return m[midi.settings.clock_out];}
+ case 103:*name="MIDI ROLE";return role_names[midi.settings.source];
+ case 104:*name="TX CHANNEL";number=midi.settings.tx_channel+1;break;
+ case 105:*name="RX CHANNEL";if(!midi.settings.rx_channel)return "Omni";number=midi.settings.rx_channel;break;
+ case 106:*name="USB MIDI IN";return onoff(midi.settings.usb_in);
+ case 107:*name="USB MIDI OUT";return onoff(midi.settings.usb_out);
+ case 108:*name="MIDI PANIC";return midi_panic_pending?"Flushing":"Turn right";
+ case 110:*name="MIDI CONTROLS";return onoff(midi.settings.controls_out);
+ case 109:{static const char *m[]={"Off","Quiet","Normal"};*name="STARTUP SOUND";return m[startup_chime];}
+
  case 52:*name="RESET MIX";return mix_reset?"SEL RESET":"Turn to arm";
  case 48:*name="PITCH MODE";return engine.pending_lock?"Frequency Lock":"Reference Layer";
  case 47:*name="KEYBOARD";return engine.keyboard_mode?"Change Key":"Play Along";
@@ -243,17 +345,34 @@ static void knob_cell(unsigned knob,int x)
  const char *name;
  const char *shown=knob_value(control_for(knob),&name,value);
  tag[1]=(char)('1'+knob);
- const felucca_font_t *caption=ui_font_size==2?&FONT_S:&FONT_XS;
+ const felucca_font_t *caption=ui_font_size==2?&FONT_T:&FONT_XS;
  int label_x=cv_text(x,0,caption,tag,skin_accent());
  limited_text(label_x,0,108-(label_x-x),caption,name,skin_dim());
  int focus=knob_until&&knob_focus==knob;
- const felucca_font_t *font=ui_font_size==2?&FONT_M:ui_font_size==0?&FONT_S:&FONT_B;
  if(ui_font_size==2){
-    for(const char *q=shown;*q;q++)if(*q>='a'&&*q<='z'){font=&FONT_B;break;}
+   const felucca_font_t *font=fit_font(shown,106,34);
+   if(font->h<17){
+     char first[80],second[80];unsigned split=0,length=(unsigned)ui_len(shown);
+     for(unsigned j=1;j<length;j++)if(shown[j]==' '){
+       unsigned before=j>length/2?j-length/2:length/2-j;
+       unsigned best=split>length/2?split-length/2:length/2-split;
+       if(!split||before<best)split=j;
+     }
+     if(split&&length<sizeof first){
+       memcpy(first,shown,split);first[split]=0;ui_copy(second,shown+split+1);
+       const felucca_font_t *a=fit_font(first,106,17),*b=fit_font(second,106,17);
+       if(fit_width(a,first)<=106&&fit_width(b,second)<=106){
+         limited_text(x,12,106,a,first,focus?skin_accent():skin_text());
+         limited_text(x,30,106,b,second,focus?skin_accent():skin_text());return;
+       }
+     }
+   }
+   limited_text(x,12,106,font,shown,focus?skin_accent():skin_text());return;
  }
+ const felucca_font_t *font=ui_font_size==0?&FONT_S:&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_XS;
- limited_text(x,ui_font_size==2?18:14,108,font,shown,focus?skin_accent():skin_text());
+ limited_text(x,14,108,font,shown,focus?skin_accent():skin_text());
 }
 static void voice_diagnostics(int band)
 {
@@ -302,10 +421,13 @@ static void performance(int band)
    }
    if(band==1){label(8,0,"CALLBACK MEAN us",callback_stats.mean);label(127,0,"CALLBACK PEAK us",callback_stats.peak);}
    if(band==2){label(8,0,"CALLBACK P95 us",callback_stats.p95);label(127,0,"CALLBACK P99 us",callback_stats.p99);}
-   if(band==3){label(8,0,"GEOMETRY us",graphics_us);label(127,0,"UI DRAW us",frame_us);}
+   if(band==3){timing_summary play_draw=summarize(&display_timing[PAGE_PLAY]);label(8,0,"PLAY DRAW P95 us",play_draw.p95*10u);label(127,0,"PLAY DRAW P99 us",play_draw.p99*10u);}
    if(band==4){
      int voices=0;for(int i=0;i<SR_VOICES;i++)voices+=!!engine.voices[i].active;
      label(8,0,"ACTIVE VOICES",voices);label(127,0,"INPUT DROPS",dropped);
+     timing snapshot;unsigned flags=plat_lock();snapshot=control_queue_timing[!!engine.running];plat_unlock(flags);
+     timing_summary q=summarize(&snapshot);
+     if(ui_font_size!=2){char v[12];cv_text(8,31,&FONT_XS,"ACK-DSP ms P95",skin_dim());num(v,q.p95/100u);cv_text(106,31,&FONT_XS,v,skin_text());cv_text(132,31,&FONT_XS,"P99",skin_dim());num(v,q.p99/100u);cv_text(166,31,&FONT_XS,v,skin_text());}
    }
    return;
  }
@@ -358,7 +480,7 @@ static void mixer_overview(int band)
    limited_text(x+2,2,width-3,&FONT_XS,names[channel],ui_background?skin_text():color);
    float magnitude=bus?engine.bus_meter[id]:track->meter;
    int meter=(int)(fm_sqrtf(fm_sqrtf(fm_clampf(magnitude,0,1)))*26.f);
-   for(int w=0;w<5;w++)cv_line(x+3+w,45-meter,x+3+w,45,color);
+   if(meter)cv_rect(x+3,45-meter,width-7,meter+1,ui_background?skin_accent():color);
    if(!bus){
      int fader=45-(int)(track->volume*26.f);
      cv_line(x+11,19,x+11,45,RGB(75,90,112));
@@ -402,7 +524,7 @@ static void mixer_console(int band)
      int hi=bottom-meter;
      if(hi<offset)hi=offset;
      int lo=bottom;if(lo>offset+47)lo=offset+47;
-     if(meter&&lo>=hi)cv_rect(x+5,hi-offset,7,lo-hi+1,c);
+     if(meter&&lo>=hi)cv_rect(x+5,hi-offset,15,lo-hi+1,c);
      int fy=bottom-(int)(tr->volume*77.f);
      if(fy>=offset&&fy<offset+48)cv_line(x+12,fy-offset,x+21,fy-offset,chosen?skin_accent():skin_text());
    }
@@ -480,7 +602,7 @@ static void mixer_band(int band)
      float mag=fm_clampf(engine.bus_meter[b],0,1);
      int meter=(int)(fm_sqrtf(fm_sqrtf(mag))*58.f);
      cv_line(x+5,29-offset,x+5,87-offset,RGB(75,90,112));
-     if(meter)for(int w=0;w<6;w++)cv_line(x+8+w,87-meter-offset,x+8+w,87-offset,color);
+     if(meter)cv_rect(x+8,87-meter-offset,32,meter+1,ui_background?skin_accent():color);
    }
    return;
  }
@@ -545,13 +667,101 @@ static void battery_glyph(void)
    for(int y=8;y<=12;y++)cv_line(x,y,x+2,y,ink);
  }
 }
-static void draw(int animate)
+/* Per-frame snapshots keep strip rendering on one musical timebase. */
+static __typeof__(engine.timeline) graph_notes;
+static __typeof__(engine.scheduled) graph_pending;
+static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
+static const char *graph_now,*graph_next;
+static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t ink){
+ int top=y-(int)band*48;
+ if(x<35){width-=35-x;x=35;}if(x+width>233)width=233-x;
+ if(top<0){height+=top;top=0;}if(top+height>48)height=48-top;
+ if(width>0&&height>0)cv_rect(x,top,width,height,ink);
+}
+static void evolve_graph(unsigned band){
+ unsigned offset=band*48;
+ for(unsigned t=0;t<SR_TRACKS;t++){
+  int y=49+t*13;
+  if(y+12>(int)offset&&y<(int)offset+48){
+   char n[3];num(n,t+1);graph_text(6,y-offset,n,t==selected?skin_accent():skin_dim());
+   cv_line(35,y+9-offset,232,y+9-offset,skins[ui_theme][ui_background].border);
+  }
+ }
+ /* History uses actual note onset/duration/pitch. Future blocks are only
+  * already committed scheduled notes; no decorative or guessed events. */
+ for(unsigned i=0;i<108;i++){
+  unsigned role,note,velocity;uint32_t frame,duration;
+  if(i<96){role=graph_notes[i].role;note=graph_notes[i].note;velocity=graph_notes[i].velocity;frame=graph_notes[i].frame;duration=graph_notes[i].duration;}
+  else {unsigned j=i-96;if(!graph_pending[j].active)continue;role=graph_pending[j].role;note=graph_pending[j].note;velocity=graph_pending[j].velocity;frame=graph_pending[j].due;duration=graph_pending[j].beats*4.f*graph_tick;if(role==SR_DRUMS){duration=graph_tick/2u;note=note==0?36:note==1?38:42;}}
+  if(!duration||role>=SR_TRACKS)continue;
+  int32_t age=(int32_t)(graph_frame-frame);
+  int x=78-(int)((float)age*14.f/(float)graph_tick);
+  int width=(int)((float)duration*14.f/(float)graph_tick);if(width<5)width=5;
+  if(x>232||x+width<35)continue;
+  uint16_t ink=ui_background?skin_accent():colors[role];
+  int glint=age>=0&&age<(int32_t)(SR_RATE/7u);
+  /* Full true duration is a thin sustain rail. Separate substantial attack
+   * blocks keep successive onsets legible even when releases overlap. */
+  graph_block(band,x,width,53+role*13,2,ink);
+  graph_block(band,x,6,50+role*13,9,ink);
+  graph_block(band,x+width-1,1,52+role*13,4,ink);
+  if(glint){
+   unsigned core=7u-(unsigned)age/(SR_RATE/49u);if(core>7u)core=7u;
+   graph_block(band,x,core,50+role*13,3,skin_text());
+   graph_block(band,x+1,2,48+role*13,2,skin_accent());
+  }
+  if(role==selected){
+   int pitch=role==SR_DRUMS?note-32:note-36;if(pitch<0)pitch=0;if(pitch>60)pitch=60;
+   int y=201-pitch/2;
+   graph_block(band,x,width,y+2,2,ink);
+   graph_block(band,x,6,y,6,ink);
+   if(glint)graph_block(band,x,5,y,3,skin_text());
+  }
+ }
+ if(band==3){limited_text(6,13,100,&FONT_T,role_names[selected],skin_accent());
+  limited_text(110,13,122,&FONT_T,"SEL: DETAIL",skin_dim());}
+ int boundary=78+(int)(graph_boundary*14u)-(int)((float)graph_phase*14.f/(float)graph_tick);
+ int bottom=band==4?15:47;
+ if(boundary>78&&boundary<233)for(int y=0;y<bottom-2;y+=6)cv_line(boundary,y,boundary,y+2,skin_dim());
+ cv_line(78,0,78,bottom,skin_accent());
+ if(band==4){
+  cv_rect(0,16,240,32,skins[ui_theme][ui_background].canvas);
+  static const char *captions[]={"SEL ROLE","K2 HOLD","K3 BPM","K4 LOOP"};
+  for(unsigned knob=0;knob<4;knob++){
+   char value[16];const char *name;
+   const char *shown=knob?knob_value(control_for(knob),&name,value):role_names[selected];
+   int x=6+(int)knob*58;
+   limited_text(x,17,52,&FONT_T,captions[knob],skin_dim());
+   limited_text(x,30,52,&FONT_T,shown,knob_until&&knob_focus==knob?skin_accent():skin_text());
+  }
+ }
+}
+static int draw(int animate)
 {
  unsigned revision=state_revision;
- for(int band=0;band<5;band++){
+ if((page==PAGE_EVOLVE||page==PAGE_PLAY)&&!debug&&!intro_active&&!fullscreen){
+  unsigned flags=plat_lock();
+  if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(graph_pending,engine.scheduled,sizeof graph_pending);}
+  graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;graph_phase=engine.tick_phase;
+  graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
+  unsigned hold=2u+sr_scenes[engine.scene].energy%3u;
+  graph_boundary=(hold-1u-engine.form_loop%hold)*engine.loop_length+engine.loop_length-engine.loop_pos;
+  plat_unlock(flags);
+ }
+ unsigned inputs=input_revision, selections=select_revision;
+ const unsigned priority=!intro_active&&!fullscreen&&labelled_input!=input_revision;
+ static const uint8_t control_first[5]={3,4,0,1,2};
+ for(int strip=0;strip<5;strip++){
+   int band=priority?control_first[strip]:strip;
+   /* Input dispatch must not wait for a complete animated LCD frame. Poll
+    * only between bands, never while the canvas/snapshot is being drawn.
+    * Navigation can change every page-local selector: abandon this frame
+    * rather than mixing snapshots or clearing the new dirty notification. */
+   app_input_only();
+   if(input_revision-inputs!=select_revision-selections){dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
-   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
+   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    const int artwork=intro_active||fullscreen;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
@@ -599,8 +809,13 @@ static void draw(int animate)
        }
      }
      if(band==0){
-       cv_text(54,0,&FONT_L,"AQUORA",RGB(5,24,39));
-       cv_text(96,34,&FONT_T,APP_VERSION,RGB(5,24,39));
+       /* The same generated AQUORA Sans glyphs as the firmware, revealed
+        * after the spiral forms. Preserve full-word placement as it unfolds. */
+       unsigned letters=elapsed<2400u?0u:1u+(elapsed-2400u)/260u;
+       if(letters>6u)letters=6u;
+       char title[7]="AQUORA";title[letters]=0;
+       if(letters)cv_text(54,0,&FONT_L,title,RGB(5,24,39));
+       if(elapsed>=4100u)cv_text(96,34,&FONT_T,APP_VERSION,RGB(5,24,39));
      }
      if(band==4){
        /* Progress fills gently across the intro; never touches audio logic. */
@@ -619,10 +834,11 @@ static void draw(int animate)
      unsigned now=plat_ms();
      unsigned live=air_on&&aq_air_live(&air_sensor,now);
      if(band==1){
-       limited_text(8,0,226,&FONT_B,air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
-       const char *state=!air_on?"RADIO OFF":live?(air_sensor.calibrated?"SIGNAL LIVE / CALIBRATED":"RECEIVING / CALIBRATE FAR"):
-                    air_sensor.calibrated?"CALIBRATED / SIGNAL LOST":"NO BROADCASTER";
+       limited_text(8,0,226,&FONT_B,air_tab==3?"AIR / DIAGNOSTICS":air_tab==2?"AIR / MUSIC GESTURES":air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
+       const char *state=aq_air_state(&air_sensor,air_on,plat_ble_state(),now);
        limited_text(8,24,226,&FONT_XS,state,live?skin_accent():skin_dim());
+     }else if(air_tab==3&&band==3){label(8,0,"IDLE NOISE",air_sensor.noise);label(87,0,"SPAN",aq_air_span(&air_sensor));label(183,0,"CONF",air_sensor.confidence);
+     }else if(air_tab==3&&band==4){label(8,0,"AGE ms",now-air_sensor.last_signal);label(87,0,"REJECTED",air_sensor.rejected);label(183,0,"STABLE %",air_sensor.last_value);
      }else if(band==2){
        unsigned value=(unsigned)(engine.air_wet*100.f+.5f);
        if(value>100)value=100;
@@ -635,21 +851,26 @@ static void draw(int animate)
        tag="  PKT/s ";while(*tag)line[pos++]=*tag++;
        num(numtext,air_packet_rate);for(const char*q=numtext;*q;q++)line[pos++]=*q;
        line[pos]=0;limited_text(8,0,224,&FONT_XS,line,skin_dim());
-       cv_text(8,20,&FONT_XS,"OUT %",skin_dim());num(numtext,value);
+       cv_text(8,20,&FONT_XS,"AIR %",skin_dim());num(numtext,value);
        cv_text(52,20,&FONT_XS,numtext,skin_accent());
-       static const char *effects[]={"REVERB","ECHO","BLOOM + ECHO"};
-       limited_text(86,20,146,&FONT_XS,effects[engine.air_fx],skin_text());
+       char wet[32],v[12];unsigned at=0;
+       const char *wet_tag=engine.air_fx>=3?"APPLIED ":engine.air_fx==1?"ECHO ":"REV ";while(*wet_tag)wet[at++]=*wet_tag++;
+       num(v,(int)(engine.air_fx>=3?engine.air_wet*engine.air_depth:(engine.air_fx==1?engine.delay_wet:engine.reverb_wet)*100.f));
+       for(const char *q=v;*q;q++)wet[at++]=*q;wet[at++]='%';
+       if(engine.air_fx==2){wet[at++]=' ';wet[at++]='D';wet[at++]=' ';
+        num(v,(int)(engine.delay_wet*100.f));for(const char*q=v;*q;q++)wet[at++]=*q;wet[at++]='%';}
+       wet[at]=0;limited_text(86,20,146,&FONT_XS,wet,skin_text());
        cv_line(7,43,230,43,skin_dim());
        if(value)cv_rect(8,39,(int)(value*222u/100u),4,skin_accent());
      }else{
        label(8,0,"RAW RSSI",air_sensor.raw);
        label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
        label(183,0,"LAST PKTS",air_packets);
-       limited_text(8,33,226,&FONT_XS,air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"EDIT: FX + DEPTH / K3: FAR",skin_text());
+       limited_text(8,33,226,&FONT_XS,air_tab==2?(engine.air_request?"WAVE QUEUED / NEXT PHRASE":engine.air_result>=128?"BLOCKED / MUTE, OFF OR VOICES":engine.air_result?"MUSICAL ACTION APPLIED":air_gesture.stage==2?"DETECTED / RELEASE HAND":"NEAR THEN FAR / RIGHT: TEST"):air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
-       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO"};
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS"};
        cv_text(8,0,&FONT_B,tabs[drum_tab],ui_background?skin_text():colors[SR_DRUMS]);
        limited_text(8,25,225,&FONT_XS,sr_drum_kits[engine.drum_kit].name,skin_text());
      }else{
@@ -741,50 +962,52 @@ static void draw(int animate)
      }
    }else if(visual&&page==PAGE_SETUP){
      if(band==1&&setup_tab==2){limited_text(8,1,224,&FONT_B,"AQUORA SANS / ABOUT",skin_text());limited_text(8,28,224,&FONT_T,aquora_font_provenance,skin_dim());}
-     else if(band==1)cv_text(8,3,&FONT_B,setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
+     else if(band==1)cv_text(8,3,&FONT_B,setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
      if(band==2){
-       if(setup_tab==2){
+       if(setup_tab>=4){
+         limited_text(8,0,224,&FONT_XS,"K1: OFF / QUIET / NORMAL",skin_text());
+         limited_text(8,32,224,&FONT_T,preferences_dirty?"STOP SAVES STARTUP SETTING":"PERFORMANCE MIDI NOT ENABLED",skin_dim());
+       }else if(setup_tab==2){
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,skin_text());
          limited_text(8,26,224,&FONT_XS,save_info==0?"SELECT: SAVE SUMMARY 1/3":save_info==1?"SELECT: FLASH TIMES 2/3":"SELECT: COUNTERS 3/3",skin_text());
        }else if(setup_tab==1&&ui_font_size==2){
          static const char *messages[]={"SEL: LOAD / SAVE: STORE","STOP FIRST","EMPTY BANK","K3: ARM OVERWRITE","SAVED","LOADED","BANK ERROR","SAVING..."};
-         limited_text(8,10,224,&FONT_XS,messages[bank_message],skin_accent());
+         limited_text(8,10,224,&FONT_XS,(bank_message==BANK_STOP&&engine.external_audio)?"RELEASE MIDI NOTES":messages[bank_message],skin_accent());
        }else cv_text(8,10,&FONT_XS,setup_tab==3?"K1: DESTINATION   K2: OPEN":setup_tab==0?(display_subtab?"TURN SELECT: LIGHTS":"TURN SELECT: APPEARANCE"):"SEL: LOAD / SAVE: STORE",skin_text());
      }
+   }else if(visual&&page==PAGE_EVOLVE&&song_tab==0){
+     evolve_graph(band);
+   }else if(visual&&page==PAGE_EVOLVE&&song_tab==5){
+     if(band==1)limited_text(8,2,224,&FONT_B,"LEARN FROM PLAYING",skin_accent());
+     if(band==2){label(8,0,"CAPTURED",engine.capture.count);label(127,0,"APPLIED",engine.learned.count);}
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==1){
      if(band==1){limited_text(8,1,224,&FONT_B,"NEW SONG / REROLL",skin_accent());
        limited_text(8,27,224,&FONT_XS,engine.running?"STOP TO GENERATE":song_arm==58?"NEW SONG ARMED":song_arm==59?"REROLL ARMED":"TURN K1 / K2 TO ARM",skin_text());}
      if(band==2){limited_text(8,1,224,&FONT_XS,"SEL: CONFIRM / SAVE: BANK",skin_text());limited_text(8,27,224,&FONT_XS,"REROLL KEEPS MOTIF / LOCKS",skin_dim());}
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==4){
      if(band==1){limited_text(8,1,224,&FONT_B,music_modes[engine.music_mode],skin_accent());
-       limited_text(8,27,224,&FONT_I,engine.music_mode==0?"Ambient balance":engine.music_mode==1?"Spacious expression":"Chamber movement",skin_text());}
+       limited_text(8,27,224,&FONT_I,engine.music_mode==0?"Ambient balance":engine.music_mode==1?"Spacious expression":engine.music_mode==2?"Chamber movement":"Evolving pulse / textures",skin_text());}
      if(band==2){
        limited_text(8,0,224,&FONT_XS,"SCENE x MODE / MOTION PROFILE",skin_text());
        limited_text(8,24,224,&FONT_XS,"MANUAL OVERRIDES AUTO DEFAULTS",skin_dim());
      }
    }else if(visual&&page==PAGE_EVOLVE){
-     if(band==1){
-       label(8,0,"STEP",engine.loop_pos+1);
-       label(86,0,engine.freeze?"FROZEN":engine.evolve_next?"NEXT QUEUED":"PHRASE",engine.phrase);
-       static const char *sections[]={"Opening","Build","Resolve","Rest","Return"};
-       cv_text(162,0,&FONT_XS,"SECTION",skin_dim());
-       limited_text(162,15,72,&FONT_B,sections[engine.phrase/4u%5u],skin_text());
-     }else{
-       for(unsigned t=0;t<SR_TRACKS;t++){
-         unsigned y=t*5u+3u;
-         for(unsigned j=0;j<64;j++){
-           unsigned index=(evolve_step+1u+j)&63u;
-           if(evolve_history[index]&(1u<<t)){
-             unsigned x=9+j*222u/64u;
-             cv_line(x,y,x+2,y,colors[t]);
-           }
-         }
-       }
-       cv_line(232,2,232,42,RGB(87,135,140));
-     }
+     evolve_graph(band);
    }else if(visual&&page==3&&band<3)mixer_band(band);
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
-   else if(band==0){
+   else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
+     int now_y=page==PAGE_EVOLVE?14:0;
+     if(page==PAGE_EVOLVE)cv_text(6,0,&FONT_T,"EVOLVE",skin_accent());
+     int x=cv_text(6,now_y,&FONT_XS,"NOW ",skin_accent());
+     limited_text(x,now_y,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
+     int next_y=page==PAGE_PLAY?16:30;
+     x=cv_text(6,next_y,&FONT_XS,"NEXT ",skin_dim());
+     limited_text(x,next_y,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
+     if(page==PAGE_PLAY){
+       x=cv_text(6,32,&FONT_T,role_names[selected],skin_accent());
+       limited_text(x+8,32,186-x,&FONT_T,patch_name(),skin_text());
+     }
+   }else if(band==0){
      cv_text(8,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS&&ui_font_size!=2){
        char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
@@ -792,32 +1015,31 @@ static void draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
-     if(0){
+     if(page==PAGE_SOUND||page==PAGE_PLAY){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
      cv_text(30,25,&FONT_XS,track,skin_text());
-     limited_text(44,25,55,&FONT_XS,role_names[selected],skin_text());
+     limited_text(44,25,63,&FONT_XS,role_names[selected],skin_accent());
+     limited_text(109,25,90,&FONT_T,page==PAGE_PLAY?patch_name():"TURN TRACK / EDIT PAGE",skin_text());
      }
      if(0){
        cv_text(101,25,&FONT_XS,"PRE",skin_dim());
        limited_text(127,25,105,&FONT_XS,patch_name(),skin_text());
      }
-     if(page!=0){
+     if(preferences_saved_ms&&plat_ms()-preferences_saved_ms<1800u&&page==PAGE_SETUP)
+       limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
+     else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE||page==PAGE_MIX?5:page==PAGE_DRUMS?3:page==PAGE_SETUP?4:2;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?6:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:4;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
        limited_text(x+3,25,232-x,&FONT_XS,page==PAGE_MIX&&mix_tab==5?"SEL MUTE / LFO SOLO":"NEXT SECTION",skin_text());
      }
-     if(page==0){
-       cv_text(8,25,&FONT_XS,engine.keyboard_mode?"EDIT: Key Change":"EDIT: Play Along",skin_accent());
-       limited_text(155,25,43,&FONT_XS,engine.music_mode==0?"STD":engine.music_mode==1?"CINE":"NEO",skin_dim());
-       const char *mode=engine.frequency_lock?"LOCK":engine.tone_level>0?"REF ON":"REF OFF";
-       int x=cv_text(107,2,&FONT_XS,mode,skin_accent());
-       cv_text(x+4,2,&FONT_XS,sr_frequencies[engine.frequency].name,skin_text());
-     }
+     if(page==PAGE_PLAY&&(engine.pending_scene||engine.pending_mode))
+       limited_text(107,2,125,&FONT_T,"NEXT BEAT",skin_accent());
+
    }else if(page==PAGE_SETUP&&setup_tab==2){
      if(save_info==0){
        if(band==3){label(8,0,"SNAPSHOT ms",quick_snapshot_ms>=quick_request_ms?quick_snapshot_ms-quick_request_ms:0);label(127,0,"FLASH ms",quick_flash_ms);}
@@ -832,6 +1054,18 @@ static void draw(int animate)
      }else{
        if(band==3){label(8,0,"REQUESTS",quick_requests);label(127,0,"RETRIES",quick_retries);}
        if(band==4){label(8,0,"WORKER BUSY",quick_progress[2]);label(127,0,"SUSPENDS",quick_progress[8]);}
+     }
+   }else if(page==PAGE_EVOLVE&&song_tab==0&&band==4){
+     /* Enlarging the graph must not hide the tempo/loop controls. */
+     static const char *captions[]={"SEL ROLE","K2 FREEZE","K3 BPM","K4 LOOP"};
+     for(unsigned knob=0;knob<4;knob++){
+       char value[16];const char *name;
+       const char *shown=knob?knob_value(control_for(knob),&name,value):role_names[selected];
+       int x=6+(int)knob*58;
+       limited_text(x,0,52,&FONT_T,captions[knob],skin_dim());
+       const felucca_font_t *font=fit_font(shown,52,24);
+       limited_text(x,15,52,font,shown,knob_until&&knob_focus==knob?skin_accent():skin_text());
+       if(knob<3)cv_line(x+54,0,x+54,43,skins[ui_theme][ui_background].border);
      }
    }else{
      unsigned start=band==3?0:2;
@@ -870,7 +1104,7 @@ static void draw(int animate)
          static const char *messages[]={"SEL LOAD / SAVE STORE","STOP FIRST","EMPTY BANK",
            "K3 ARM OVERWRITE","ARRANGEMENT SAVED","ARRANGEMENT LOADED","BANK READ / WRITE FAILED","SAVING..."};
          cv_text(8,33,&FONT_XS,bank_status[bank_slot]==1?"SAVED":bank_status[bank_slot]==2?"INVALID":"EMPTY",skin_accent());
-         limited_text(62,33,170,&FONT_XS,messages[bank_message],skin_text());
+         limited_text(62,33,170,&FONT_XS,(bank_message==BANK_STOP&&engine.external_audio)?"RELEASE MIDI NOTES":messages[bank_message],skin_text());
        }else{
          const char *status=engine.running?"PLAYING":"STOPPED";
          if(page==1&&group==6)status=saved_status==1?"MOTION SAVED":saved_status==2?"SAVE FAILED":"STOP THEN SAVE MOTION";
@@ -907,8 +1141,19 @@ static void draw(int animate)
    }
    if(band==0&&!intro_active)battery_glyph();
    cv_blit(0,band*48);AQ_VIS_COUNT(ui_blits);
+   /* Acknowledge the submitted control band, rather than charging later
+    * optional graphics to label feedback. Physical DMA completion is a
+    * separate device measurement, not represented by this counter. */
+   unsigned feedback_band=knob_until?(knob_focus<2?3u:4u):0u;
+   if((unsigned)band==feedback_band&&revision==state_revision&&qread==qwrite&&labelled_input!=input_revision){
+     measure(&control_label_timing[!!engine.running],(plat_ms()-input_changed_ms)*100u);
+     labelled_input=input_revision;
+   }
  }
- dirty=0;
+ dirty=input_revision!=inputs;
  battery_dirty=0;
  displayed_revision=revision;
+ return 1;
 }
+
+#undef cv_text

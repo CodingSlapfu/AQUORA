@@ -1,0 +1,31 @@
+--- a/vendor/fm1-base/device/bt_own_central.c
++++ b/vendor/fm1-base/device/bt_own_central.c
+@@ -8,6 +8,10 @@
+ static struct ble_scan_tab own_scan;
+ static uint32_t own_scan_aged;
+ static uint32_t air_count, air_sum;
++#include "aquora_air_source.h"
++static aq_air_source air_source;
++unsigned plat_air_source_id(void){return air_source.hash;}
++unsigned plat_air_source_rejected(void){return air_source.rejected;}
+ 
+ unsigned plat_air_sample(unsigned *packets)
+ {
+@@ -22,7 +26,7 @@
+ {
+     if(!on)plat_ble_enable(0);
+     air_passive=on!=0;
+-    air_count=air_sum=0;
++    air_count=air_sum=0;air_source=(aq_air_source){0};
+     if(on)plat_ble_enable(1);
+ }
+ 
+@@ -40,7 +44,7 @@
+     uint8_t n;
+     while ((n = ble_ll_scan_take(pdu, &rssi)) != 0) {
+         if(air_passive){
+-            if(rssi&&air_count<1024u){air_sum+=ble_scan_strength(rssi);air_count++;}
++            if(rssi&&air_count<1024u&&aq_air_source_take(&air_source,pdu,n,shim_ms())){air_sum+=ble_scan_strength(rssi);air_count++;}
+         }else ble_scan_add(&own_scan, pdu, n, rssi, shim_ms());
+     }
+     if(air_passive)return;

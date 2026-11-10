@@ -1,0 +1,11 @@
+{
+  "version": "0.6.7",
+  "site_version": 185,
+  "site_source": "023b77ea6bc5a5ed20bc58b926f89974ad000ebd",
+  "deployment": "appgdep_6aef916a8230819181c97067e1e4bddf",
+  "url": "https://parallax8-studio.jminie66.chatgpt.site/install/",
+  "https_installer_enabled": true,
+  "wasm_runtime_started": true,
+  "studio_online_ack": "SOUND page selected",
+  "site_manifest_sha256": "23416545b0ba63c7f3a24441034fcd261bfcbfc3ab2575ad5bae4a714d209bcb"
+}

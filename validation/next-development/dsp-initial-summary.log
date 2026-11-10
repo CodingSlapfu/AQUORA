@@ -1,0 +1,18 @@
+PASS patch_shape_060
+PASS groove_air_060
+PASS motif_memory_060
+PASS play_grid_060
+PASS arrangement_roles_060
+PASS next_acceptance
+PASS dsp_acceptance
+PASS stereo
+PASS transport_hit
+run-next-dsp.sh: line 5:    87 Aborted                 ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 "/tmp/aquora-next-$name" >> "validation/next-development/dsp/$name.log" 2>&1
+FAIL corrective_061
+PASS air_status_062
+PASS binaural_062
+PASS binaural_stereo_062
+PASS air_mapping_062
+PASS music_modes_064
+PASS music_load_064
+PASS bass_library_065

@@ -1,0 +1,19 @@
+  ok led_bright_mask == 0
+  ok led_black_mask == 38970666
+  ok led_white_mask == 95247061
+  ok led_black_mask == 0
+  ok led_white_mask == 0
+  ok led_bright_mask == 2
+  ok led_bright_mask == 0
+  ok lighting == 0
+  ok led_black_mask == 38970666
+  ok led_white_mask == 95247061
+PAGE_DRAW 0 1 mean40 p951000 p991000 max40 us
+PAGE_DRAW 1 1 mean100 p951000 p991000 max100 us
+PAGE_DRAW 2 1 mean70 p951000 p991000 max70 us
+PAGE_DRAW 3 1 mean60 p951000 p991000 max60 us
+PAGE_DRAW 4 1 mean70 p951000 p991000 max70 us
+PAGE_DRAW 5 4 mean60 p951000 p991000 max70 us
+PAGE_DRAW 6 0 mean0 p950 p990 max0 us
+  ok page_draw_stats == 1
+host: 2286 ms simulated, 52 blits, render 0.0% of real time (host CPU)

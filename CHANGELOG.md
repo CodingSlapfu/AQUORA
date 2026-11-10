@@ -1,5 +1,11 @@
 # AQUORA changelog
 
+## 0.6.6 — 2026-11-07
+
+- Completed non-MIDI software scope: accurate physical LED duty and internal-tempo PLAY pulse, AQUORA Sans cinematic intro and original FM signature, full Original geometry, moving/settling Cymatics sand/water, audible-pitch response, musical role entrances/exits and fades, AIR states and page-specific performance telemetry.
+- Reconciled 45 requirements and 74 owner comments. USB/BLE performance MIDI explicitly deferred and disabled; AIR and update SysEx preserved. Physical/aesthetic/listening checks remain owner-unverified.
+- Software acceptance run 42353932681 passed, reusing exact native/repro/single-core and updater proofs. Published release v0.6.6 at 295c1d1; verified all 11 public assets, inner/outer hashes and independent archive. Live Site v184 and exact gh-pages mirror deployed. Evidence: validation/release-066/. Prior releases/backups preserved; KIRA-9 untouched.
+
 ## 0.3.0
 
 - Guarded held-key lifetime, suppressed held-key restart triggers, linked musical Sacred Bass to the active bass gate and added Voice Inspector. Evidence: transport_hit.log and UI STOP/restart tests.

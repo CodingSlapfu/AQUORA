@@ -14,6 +14,22 @@ extern void *memcpy(void *, const void *, size_t);
 #include <string.h>
 #endif
 
+static inline __attribute__((always_inline)) void midi_push(sr_engine *e,unsigned role,unsigned note,unsigned velocity)
+{
+ if(!e->midi_enabled)return;
+ unsigned next=(e->midi_write+1u)&63u;
+ if(next==e->midi_read){e->midi_event_lost++;return;}
+ e->midi_events[e->midi_write]=(role<<16)|(note<<8)|velocity;
+ e->midi_write=(uint8_t)next;
+}
+static inline __attribute__((always_inline)) void release_voice(sr_engine *e,sr_voice *v)
+{
+ if(v->gate){
+  e->note_offs++;
+  if(!v->external)midi_push(e,v->track,v->midi,0);
+ }
+ v->gate=0;
+}
 #define PI 3.14159265358979323846f
 #define LUT 1024
 #define LUT_MASK (LUT-1)
@@ -60,7 +76,19 @@ const sr_patch sr_patches[SR_PATCHES] = {
   {"Wood Resonance FM",SR_SINE,.012f,.85f,.47f,.29f},
   {"Harmonic Root FM",SR_SINE,.045f,1.4f,.55f,.27f},
   {"Plucked Earth FM",SR_PLUCK,.004f,.46f,.58f,.30f},
-  {"Cinema Depth FM",SR_SINE,.32f,2.6f,.36f,.28f}
+  {"Cinema Depth FM",SR_SINE,.32f,2.6f,.36f,.28f},
+  {"Nylon Resonance FM",SR_PLUCK,.006f,.78f,.34f,.24f},
+  {"Steel String FM",SR_PLUCK,.003f,1.25f,.64f,.20f},
+  {"Palm Mute FM",SR_PLUCK,.002f,.23f,.38f,.26f},
+  {"Chorus Guitar FM",SR_SINE,.018f,1.35f,.46f,.21f},
+  {"Dusk Harp FM",SR_PLUCK,.005f,1.65f,.31f,.24f},
+  {"Sunlit Harp FM",SR_PLUCK,.003f,2.05f,.69f,.18f},
+  {"Ripple Harp FM",SR_PLUCK,.008f,.91f,.51f,.21f},
+  {"Air Flute FM",SR_SINE,.14f,.65f,.22f,.24f},
+  {"Bamboo Legato FM",SR_SINE,.075f,.92f,.30f,.23f},
+  {"Alto Reed FM",SR_SINE,.06f,.72f,.48f,.22f},
+  {"Tenor Velvet FM",SR_SINE,.095f,.88f,.36f,.24f},
+  {"Breathy Sax FM",SR_SINE,.13f,1.15f,.55f,.20f}
 };
 #define SR_FIRST_FM_PATCH 24u
 static const struct {
@@ -71,24 +99,37 @@ static const struct {
   {1.f,.12f,.38f,.000f}, {3.f,.18f,.46f,.002f},
   {1.f,.035f,.90f,0.f},{1.001f,.12f,.50f,0.f},
   {2.f,.26f,.85f,.002f},{3.f,.29f,.35f,0.f},
-  {2.5f,.40f,.97f,0.f},{.5f,.22f,.18f,.001f}
+  {2.5f,.40f,.97f,0.f},{.5f,.22f,.18f,.001f},
+  {1.f,.32f,.96f,0.f},{3.f,.47f,.98f,.001f},
+  {2.f,.25f,.995f,0.f},{1.002f,.19f,.60f,.003f},
+  {2.f,.23f,.94f,0.f},{3.f,.42f,.97f,0.f},
+  {2.5f,.31f,.985f,.001f},{1.f,.055f,.30f,.001f},
+  {2.f,.09f,.40f,0.f},{1.f,.40f,.54f,.001f},
+  {1.f,.28f,.42f,0.f},{3.f,.32f,.38f,.002f}
 };
 _Static_assert(sizeof fm_operators / sizeof *fm_operators == SR_PATCHES-SR_FIRST_FM_PATCH,
                "Every FM patch needs an operator profile");
-const sr_scene sr_scenes[SR_SCENES] = {
+const sr_scene sr_scenes[] = {
   {"Stillness",43,0,1,1,45,0}, {"Flow State",58,1,2,2,45,3},
   {"Radiance",68,0,3,3,45,8}, {"Grounding",48,2,2,4,41,2},
   {"Dreaming",52,3,2,5,45,6}, {"Ceremony",61,4,3,1,48,5},
   {"Anti-Curse",51,2,2,4,43,7}, {"Positive Healing",63,4,2,2,48,4},
-  {"Creativity",66,1,3,7,46,3}, {"Inspiration",55,4,2,6,50,6},
+  {"Creativity",66,1,3,7,46,13}, {"Inspiration",55,4,2,6,50,14},
   {"Luck",71,0,3,3,43,11}, {"Abundance",49,3,1,5,41,12},
-  {"Attract Positivity",64,4,3,2,48,8}
+  {"Attract Positivity",64,4,3,2,48,15},
+  {"Miracles",57,3,2,6,48,16}, {"Blessing",46,4,1,2,43,17},
+  {"Negative Energy Cleanse",54,2,2,4,41,18}, {"Cell Regeneration",50,0,1,3,45,1},
+  {"Anxiety Release",42,3,1,5,41,10}, {"Bliss",60,0,2,6,48,9},
+  {"Raise Positive Vibrations",69,4,3,7,46,19}, {"Neuro-Freq Detox",47,1,1,4,43,20}
 };
+_Static_assert(sizeof sr_scenes/sizeof *sr_scenes==SR_SCENES,"Complete scene metadata");
 const sr_frequency sr_frequencies[SR_FREQUENCIES] = {
   {"174 Hz",174.f}, {"285 Hz",285.f}, {"396 Hz",396.f},
   {"417 Hz",417.f}, {"528 Hz",528.f}, {"639 Hz",639.f},
   {"741 Hz",741.f}, {"852 Hz",852.f}, {"963 Hz",963.f},
-  {"111 Hz",111.f}, {"136.1 Hz",136.1f}, {"777 Hz",777.f}, {"888 Hz",888.f}
+  {"111 Hz",111.f}, {"136.1 Hz",136.1f}, {"777 Hz",777.f}, {"888 Hz",888.f},
+  {"444 Hz",444.f}, {"480 Hz",480.f}, {"432 Hz",432.f}, {"999 Hz",999.f},
+  {"672 Hz",672.f}, {"384 Hz",384.f}, {"1024 Hz",1024.f}, {"256 Hz",256.f}
 };
 const sr_drum_kit sr_drum_kits[SR_DRUM_KITS] = {
   {"River Hands", .75f,.42f,.23f,49,175,.99948f,.13f},
@@ -183,24 +224,76 @@ float sr_patch_envelope(const sr_track *track,float seconds,int releasing)
   float decay=expf(-seconds/time);
   return releasing?decay:1.f-decay;
 }
+/* One sung gesture, its echo, then an answering cadence. Randomness chooses
+ * the gesture once; rhythm and contour belong to the whole phrase. */
 static void make_motif(sr_engine *e){
-  for(int i=0;i<16;i++){
-    if((i%4)==0) e->melody[i]=(int8_t)(rng(e)%5);
-    else if((rng(e)&7u)==0) e->melody[i]=-1;
-    else e->melody[i]=(int8_t)(rng(e)%7);
-  }
+  static const int8_t gestures[][4]={{0,1,2,4},{2,3,4,2},{4,3,2,1},{0,2,1,2},{2,1,0,2},{0,1,4,3},
+    {0,2,4,3},{4,2,1,0},{2,4,5,4},{0,4,3,2},{2,1,3,2},{4,5,3,1}};
+  static const uint8_t rhythms[4][6]={{0,3,6,8,11,14},{0,2,6,8,10,14},{0,4,7,8,12,14},{0,3,7,10,12,15}};
+  unsigned identity=rng(e),rhythm=(identity>>8)%4u;
+  const int8_t *g=gestures[identity%12u];
+  if(e->music_mode==SR_CINEMATIC)rhythm=2;
+  if(e->music_mode==SR_NEOCLASSICAL)rhythm=1;
+  for(unsigned i=0;i<16;i++)e->melody[i]=-1;
+  for(unsigned i=0;i<4;i++)e->melody[rhythms[rhythm][i]]=g[i];
+  e->melody[rhythms[rhythm][4]]=g[1];e->melody[rhythms[rhythm][5]]=0;
+  /* A breath before the cadence, with an occasional gentle pickup. */
+  if(e->music_mode==SR_CINEMATIC)e->melody[7]=-1;
+}
+static void develop_motif(sr_engine *e){
+  memcpy(e->melody,e->motif_home,sizeof e->melody);
+  if((e->phrase&3u)==0u)return;
+  /* Keep the opening and cadence intact. Change just one answering note. */
+  unsigned at=(e->phrase&1u)?10u:6u;
+  int d=e->melody[at];
+  if(d>=0){d+=(e->phrase&2u)?-1:1;e->melody[at]=(int8_t)(d<0?0:d>6?6:d);}
 }
 uint8_t sr_tonic(const sr_engine *e)
 {
   return e->tonic_override?e->tonic_override:sr_scenes[e->scene].tonic;
 }
-static int motif_degree(const sr_engine *e,unsigned step)
+/* Compact seed-stable bar form, derived from the saved 16-step home motif.
+ * Answer reverses contour/rhythm; bridge contrasts; cadence resolves home.
+ * No additional bank schema, allocation or per-sample composition work. */
+static unsigned phrase_chord(const sr_engine *e,unsigned bar)
 {
-  int degree=e->melody[step&15u];
-  unsigned bar=step/16u;
-  if(!bar||degree<0)return degree;
-  if((step&7u)==0)return (int)(bar+e->scene)%5;
-  return (degree+(int)bar*2)%7;
+  static const uint8_t harmony[SR_MUSIC_MODES][8]={
+    {0,0,5,3,0,4,3,0},{0,0,5,5,3,3,4,0},
+    {0,3,5,4,0,3,4,0},{0,2,2,5,0,5,4,0}};
+  /* A short 16-step loop still develops over eight bars. Loop size changes
+   * the editor window, never resets the harmonic conversation every bar. */
+  unsigned global_bar=e->form_loop*(e->loop_length/16u)+bar;
+  return harmony[e->music_mode][global_bar&7u];
+}
+#include "learn.h"
+static int motif_degree_base(const sr_engine *e,unsigned step)
+{
+  unsigned bar=(e->form_loop*(e->loop_length/16u)+step/16u)&3u, pos=step&15u;
+  if(!bar)return e->melody[pos];
+  int degree=e->melody[pos];
+  if(degree<0)return degree;
+  /* Echo the opening literally; a small lift answers without reversing it. */
+  if(bar==1u&&pos>=8u&&pos<12u)return degree<5?degree+1:degree;
+  if(bar==2u&&pos>=4u&&pos<12u)return degree<4?degree+2:degree;
+  return degree;
+}
+/* Strong beats settle on the current triad; intervening scale notes carry
+ * tension. Choose the nearest degree instead of wrapping a transposition. */
+static int fit_degree(int degree,unsigned chord){
+  if(degree<0)return degree;
+  int best=degree,dist=99;
+  for(unsigned i=0;i<3;i++){
+    int d=(int)((chord+2u*i)%7u),delta=d-degree;if(delta<0)delta=-delta;
+    if(delta<dist){dist=delta;best=d;}
+  }
+  return best;
+}
+static unsigned composition_chord(const sr_engine *e,unsigned step);
+static int motif_degree(const sr_engine *e,unsigned step){
+  int d=motif_degree_base(e,step);
+  unsigned chord=composition_chord(e,step);
+  if((step&3u)==0u||(step&15u)==14u)d=fit_degree(d,chord);
+  return learned_degree(e,step,d);
 }
 void sr_set_loop_length(sr_engine *e,uint8_t length)
 {
@@ -229,30 +322,42 @@ static uint32_t song_draw(uint32_t seed,uint32_t stream)
   x=(x^(x>>15))*0x846ca68bu;
   return x^(x>>16);
 }
+#include "song_form.h"
 /* Control-rate profiles: mode is independent of Nature style/evolution. */
-  static const sr_motion intention_motion[SR_SCENES][2]={
+  static const sr_motion intention_motion[][2]={
     {{120,0,0,45},{90,0,0,32}}, {{105,1,5,44},{125,1,0,31}},
     {{70,1,4,49},{75,0,0,33}}, {{135,1,3,39},{165,1,0,29}},
     {{185,1,8,36},{175,1,2,28}}, {{150,1,6,41},{135,1,1,30}},
     {{100,1,3,46},{135,1,0,32}}, {{120,1,5,43},{125,1,0,32}},
     {{75,1,7,48},{90,0,0,34}}, {{145,1,7,40},{130,1,1,30}},
     {{65,1,4,51},{70,0,0,35}}, {{170,1,6,38},{165,1,1,29}},
-    {{95,1,6,46},{110,1,0,32}}
+    {{95,1,6,46},{110,1,0,32}},
+    {{160,1,7,39},{140,1,1,29}}, {{190,1,3,35},{180,1,0,26}},
+    {{110,1,4,42},{155,1,0,30}}, {{145,1,3,41},{150,1,0,28}},
+    {{220,1,2,31},{210,1,0,25}}, {{130,1,6,43},{120,1,1,30}},
+    {{80,1,5,49},{95,0,0,34}}, {{175,1,3,37},{185,1,0,27}}
   };
+_Static_assert(sizeof intention_motion/sizeof *intention_motion==SR_SCENES,"Complete motion profiles");
 static void apply_motion_profile(sr_engine *e)
 {
   for(unsigned t=0;t<2;t++)if(!(e->motion_manual&(1u<<t))){
     sr_motion m=intention_motion[e->scene][t];
     if(e->music_mode==SR_CINEMATIC){
-      m.glide_ms+=t?55:95;
+      m.glide_ms=(uint16_t)(m.glide_ms*6u/5u);
       m.glide_mode=e->scene==0?0:1;
-      m.vibrato_depth=e->scene==0?0:(t?2:8+e->scene%5);
+      m.vibrato_depth=e->scene==0?0:(t?0:3+e->scene%3);
       m.vibrato_rate=t?28:34+e->scene%8;
     }else if(e->music_mode==SR_NEOCLASSICAL){
       m.glide_mode=0;m.glide_ms=t?45:55;
       m.vibrato_depth=t?0:(e->scene%3==0?0:2+e->scene%3);
       m.vibrato_rate=t?30:46;
     }
+    /* AUTO is an expressive ceiling, not an instruction to slide every note.
+     * Keep the saved MANUAL path unchanged, including explicit OFF. */
+    m.glide_ms=(uint16_t)(m.glide_ms*(t?28u:35u)/100u);
+    if(m.glide_ms<18u)m.glide_ms=18u;
+    if(m.glide_ms>80u)m.glide_ms=80u;
+    m.vibrato_depth=(uint8_t)((m.vibrato_depth+1u)/2u);
     e->motion[t]=m;
   }
 }
@@ -275,32 +380,64 @@ void sr_motion_auto(sr_engine *e,unsigned role,int automatic)
   if(automatic){e->motion_manual&=~(1u<<role);apply_motion_profile(e);}
   else e->motion_manual|=1u<<role;
 }
+/* Shared ensembles: intimate wood, luminous air, chamber, velvet FM.
+ * A song chooses one ensemble, then favors compatible substitutions. No
+ * coverage quota, no forced rejection of a musically appropriate repeat. */
+static unsigned ensemble(const sr_engine *e,uint32_t seed){
+  /* wood / air / chamber / velvet: emotional setting before seed choice. */
+  static const uint8_t intention[SR_SCENES][4]={
+    {6,5,2,1},{6,2,3,4},{3,6,2,3},{7,1,4,2},{2,6,3,5},
+    {3,4,6,2},{5,2,5,3},{7,3,4,2},{3,3,4,6},{3,5,5,3},
+    {4,5,3,3},{6,3,5,2},{4,6,3,3},{3,7,3,3},{5,6,4,1},
+    {6,2,5,3},{6,4,3,2},{7,5,2,1},{5,6,3,3},{3,6,3,5},{6,3,4,2}
+  };
+  static const uint8_t mode[SR_MUSIC_MODES][4]={{4,2,2,3},{2,5,2,4},{3,1,7,1},{2,3,1,7}};
+  unsigned total=0,w[4];
+  for(unsigned i=0;i<4;i++){w[i]=intention[e->scene][i]*mode[e->music_mode][i];total+=w[i];}
+  unsigned draw=song_draw(seed,211)%total;
+  for(unsigned i=0;i<4;i++){if(draw<w[i])return i;draw-=w[i];}
+  return 0;
+}
 static unsigned fresh_patch(sr_engine *e,unsigned role,uint32_t seed)
 {
-  static const uint8_t pools[3][7][6]={
-   {{12,13,14,16,29,12},{0,30,31,32,33,34},{3,4,5,23,26,4},{15,16,20,21,29,20},{6,7,8,24,7,6},{9,10,11,17,27,10},{19,23,4,20,25,19}},
-   {{14,15,29,12,16,14},{2,28,30,31,33,35},{3,5,23,26,4,26},{20,21,15,29,16,20},{7,24,8,6,24,7},{10,17,27,9,11,10},{19,25,23,20,4,25}},
-   {{12,13,15,16,29,13},{0,1,30,31,32,34},{20,21,23,4,26,20},{20,21,15,16,29,21},{6,7,24,8,7,6},{9,10,11,27,10,9},{20,21,19,25,23,20}}
-  };
-  const uint8_t *pool=pools[e->music_mode][role];
-  unsigned at=(song_draw(seed,role)+e->scene*3u+e->nature_style)%6u;
-  unsigned previous=e->recent_patches[e->music_mode][e->scene][role];
-  for(unsigned i=0;i<6;i++){
-    unsigned patch=pool[(at+i)%6u];
-    if(patch!=e->tracks[role].patch&&patch+1u!=previous){
-      e->recent_patches[e->music_mode][e->scene][role]=patch+1u;return patch;
+  static const uint8_t home[SR_PATCHES]={1,1,1,2,2,2,4,4,4,5,5,5,0,0,0,0,0,5,5,6,3,3,2,2,4,6,2,5,1,0,1,1,1,1,1,1,5,5,5,5,5,5,5,0,0,0,0,0};
+  static const uint8_t voices[4][7]={{13,1,23,21,6,9,19},{14,0,5,20,24,27,25},{16,31,23,20,7,10,19},{29,30,26,21,24,27,25}};
+  unsigned family=ensemble(e,seed),previous=e->recent_patches[e->music_mode][e->scene][role];
+  unsigned anchor=voices[family][role],weights[SR_PATCHES],total=0;
+  /* Respect an explicitly locked foreground when balancing the ensemble. */
+  unsigned lead=(e->sound_locks&1u)?e->tracks[SR_LEAD].patch:voices[family][SR_LEAD];
+  for(unsigned p=0;p<SR_PATCHES;p++){
+    unsigned valid=home[p]==role || (role==SR_HARMONY&&home[p]==SR_LEAD) ||
+      (role==SR_CHOIR&&(home[p]==SR_DRONE||home[p]==SR_HARMONY));
+    unsigned w=0;
+    if(valid){
+      float distance=fabsf(sr_patches[p].brightness-sr_patches[anchor].brightness);
+      w=distance<.12f?12u:distance<.25f?4u:1u;
+      if(p==anchor)w+=64u;
+      if(role!=SR_LEAD&&sr_patches[lead].brightness>.45f&&sr_patches[p].brightness>.6f)w=1;
+      if(role==SR_GUITAR&&sr_patches[p].release>3.f&&family!=1u)w=1;
+      if(p+1u==previous&&p!=anchor)w=(w+1u)/2u;
     }
+    weights[p]=w;total+=w;
   }
-  return pool[at];
+  if(!total)return e->tracks[role].patch;
+  unsigned draw=song_draw(seed,role)%total;
+  for(unsigned p=0;p<SR_PATCHES;p++)if(draw<weights[p]){
+    e->recent_patches[e->music_mode][e->scene][role]=p+1u;return p;
+  }else draw-=weights[p];
+  return anchor;
 }
 void sr_select_nature(sr_engine *e,uint32_t seed)
 {
   if(e->sound_locks&SR_SOUND_NATURE)return;
-  static const uint8_t palette[SR_SCENES][4]={
+  static const uint8_t palette[][4]={
     {1,4,8,7},{2,10,5,11},{3,9,6,10},{4,8,7,1},
     {5,8,11,2},{1,4,7,11},{4,8,11,1},{2,10,9,5},
-    {7,9,3,10},{6,9,4,2},{3,6,9,10},{5,4,8,1},{2,9,6,10}
+    {7,9,3,10},{6,9,4,2},{3,6,9,10},{5,4,8,1},{2,9,6,10},
+    {9,10,2,6},{1,7,4,9},{8,11,5,4},{2,10,7,1},
+    {5,2,8,11},{6,9,2,10},{3,6,10,9},{4,8,7,5}
   };
+  _Static_assert(sizeof palette/sizeof *palette==SR_SCENES,"Complete nature profiles");
   unsigned style=(e->nature_style+e->music_mode)%4u;
   unsigned draw=song_draw(seed,8)%8u;
   unsigned accent=e->energy>.55f||e->tracks[SR_PIANO].patch==24||
@@ -312,32 +449,42 @@ static void apply_sound_profile(sr_engine *e,uint32_t seed,int sounds_only)
 {
   static const struct {
     uint8_t flavor,kits[3],density,hit,space;
-  } palette[SR_SCENES]={
+  } palette[]={
     {2,{0,1,2},2,18,3}, {0,{0,3,7},3,35,2},
     {1,{7,8,10},4,42,3}, {0,{2,5,13},2,24,1},
     {2,{3,8,12},2,21,4}, {3,{4,10,13},3,35,4},
     {0,{13,2,14},2,20,2}, {1,{3,4,11},3,30,3},
     {3,{8,10,11},4,48,2}, {2,{4,8,12},3,32,4},
     {1,{6,7,12},4,45,2}, {0,{2,5,14},2,25,3},
-    {3,{3,10,14},3,39,3}
+    {3,{3,10,14},3,39,3},
+    {2,{7,10,18},3,29,4}, {0,{1,4,16},1,17,4},
+    {3,{5,13,14},3,33,2}, {1,{0,3,15},2,22,3},
+    {2,{1,3,12},1,13,4}, {1,{7,8,16},3,31,4},
+    {3,{6,10,18},4,44,2}, {0,{2,9,17},2,19,2}
   };
+  _Static_assert(sizeof palette/sizeof *palette==SR_SCENES,"Complete sound profiles");
   unsigned scene=e->scene;
   for(unsigned t=0;t<SR_DRUMS;t++)if(!(e->sound_locks&(1u<<t)))
     e->tracks[t].patch=fresh_patch(e,t,seed);
   if(!(e->sound_locks&(1u<<SR_DRUMS))){
-    unsigned k=song_draw(seed,7)%5u;
-    unsigned pick=k<3?0:k-2u;
-    if(palette[scene].kits[pick]==e->drum_kit&&(song_draw(seed,31)&3u))pick=(pick+1u)%3u;
-    unsigned kit=song_draw(seed,48)%5u==0?15u+(palette[scene].flavor+pick+e->nature_style)%4u:palette[scene].kits[pick];
+    unsigned weights[SR_DRUM_KITS],total=0;
     unsigned previous=e->recent_patches[e->music_mode][scene][SR_DRUMS];
-    for(unsigned i=0;i<3&&(kit==e->drum_kit||kit+1u==previous);i++)kit=palette[scene].kits[(pick+i+1u)%3u];
-    if(kit==e->drum_kit||kit+1u==previous)kit=15u+(pick+e->music_mode)%4u;
+    for(unsigned k=0;k<SR_DRUM_KITS;k++){
+      unsigned w=1u;
+      for(unsigned j=0;j<3;j++)if(k==palette[scene].kits[j])w+=j?18u:40u;
+      if(k+1u==previous)w=(w+1u)/2u;
+      weights[k]=w;total+=w;
+    }
+    unsigned draw=song_draw(seed,7)%total,kit=0;
+    for(;kit<SR_DRUM_KITS-1u;kit++){if(draw<weights[kit])break;draw-=weights[kit];}
     e->drum_kit=kit;e->recent_patches[e->music_mode][scene][SR_DRUMS]=kit+1u;
     if(!sounds_only){
-      e->drum_density=palette[scene].density+song_draw(seed,16)%2u;
-      e->drum_hit=palette[scene].hit+song_draw(seed,17)%11u;
-      if(e->music_mode==SR_CINEMATIC)e->drum_density=2u+(scene%2u);
-      if(e->music_mode==SR_NEOCLASSICAL){e->drum_density=1u+(scene%3u);e->drum_hit=14u+(scene%4u)*4u;}
+      /* Presence is user-owned; composition only controls rhythmic density. */
+      /* User-owned level/density stay stable through automatic arranging. */
+      e->tracks[SR_DRUMS].pan=((int)(scene%5u)-2)*.035f;
+      e->tracks[SR_DRUMS].send=.08f+.035f*palette[scene].space+(e->music_mode==SR_CINEMATIC?.06f:0.f);
+      e->groove_mode=0;e->groove_strength=65u+palette[scene].hit/2u;
+
     }
   }
   sr_select_nature(e,seed);
@@ -350,11 +497,28 @@ static void apply_sound_profile(sr_engine *e,uint32_t seed,int sounds_only)
     if(e->music_mode==SR_NEOCLASSICAL){e->reverb_amount*=.68f;e->delay_amount*=.45f;}
   }
 }
+/* Real sixteenth-note clock, shared by LEDs, FX, fills and quantization.
+ * Bit 2 of the persisted manual mask locks an explicitly edited tempo. */
+static void song_tempo(sr_engine *e,uint32_t seed)
+{
+  if(e->motion_manual&4u)return;
+  static const uint8_t ranges[SR_MUSIC_MODES][3][2]={
+    {{48,64},{65,88},{89,116}},{{36,55},{56,76},{77,98}},
+    {{52,68},{69,92},{93,118}},{{42,64},{65,94},{95,120}}
+  };
+  unsigned group=song_draw(seed,201)%10u;
+  group=group<(e->music_mode==SR_CINEMATIC?5u:2u)?0u:group<8u?1u:2u;
+  unsigned lo=ranges[e->music_mode][group][0],hi=ranges[e->music_mode][group][1];
+  unsigned bpm=lo+(song_draw(seed,202)+sr_scenes[e->scene].energy*3u)%(hi-lo+1u);
+  e->tick_length=(SR_RATE*15u+bpm/2u)/bpm;
+}
 void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
 {
   if(e->running||e->stop_frames)return;
   if(!sounds_only){
+    e->learned.count=e->capture.count=e->learn_pending=0;e->form_loop=0;
     e->song_seed=song_draw(seed,100u+e->music_mode);
+    song_tempo(e,e->song_seed);
     e->rng=song_draw(seed,12);
     e->drum_rng=song_draw(seed,13);
     e->nature_rng=song_draw(seed,90);
@@ -366,33 +530,41 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
   }
   apply_sound_profile(e,seed,sounds_only);
   apply_motion_profile(e);
+  sr_plan_sections(e);
 }
 
 void sr_set_scene(sr_engine *e,uint8_t scene){
   if(scene>=SR_SCENES)return;
-  unsigned changed=scene!=e->scene||!e->song_seed;
-  if(changed)e->play_queued=0;
+  if(e->running&&!e->profile_applying){e->pending_scene=scene+1u;return;}
+  e->pending_scene=0;
+  unsigned changed=1; /* This API is an explicit owner selection, including reselect. */
+  if(changed){e->play_queued=0;memset(e->scheduled,0,sizeof e->scheduled);e->air_request=0;}
   if(e->running&&changed)for(int i=0;i<SR_VOICES;i++){
     sr_voice *v=&e->voices[i];
-    if(!v->key){e->note_offs+=v->gate!=0;v->gate=0;v->remain=0;v->release_coef=.0012f;}
+    if(!v->key){release_voice(e,v);v->remain=0;v->release_coef=.0012f;}
   }
-  e->scene=scene; e->tick_length=(uint32_t)((float)SR_RATE*60.f/(float)sr_scenes[scene].bpm/4.f);
+  e->scene=scene;
   if(e->frequency_auto)e->frequency=sr_scenes[scene].frequency;
   apply_motion_profile(e);
   if(changed){
     e->energy=.12f+.17f*sr_scenes[scene].energy;
     e->song_seed=song_draw(e->song_seed^e->rng,++e->visit_nonce+100u+e->music_mode*31u);
     e->rng=song_draw(e->song_seed,12);e->drum_rng=song_draw(e->song_seed,13);
+    song_tempo(e,e->song_seed);
     apply_sound_profile(e,e->song_seed,0);
   }else sr_select_nature(e,e->rng);
   if(changed&&!e->freeze){make_motif(e);memcpy(e->motif_home,e->melody,sizeof e->melody);}
+  memset(e->scheduled,0,sizeof e->scheduled);e->air_request=0;
   memset(e->ornaments,0,sizeof e->ornaments);
+  sr_plan_sections(e);
   retune_keys(e);
 }
 void sr_set_music_mode(sr_engine *e,uint8_t mode)
 {
-  if(mode>=SR_MUSIC_MODES||mode==e->music_mode)return;
-  e->music_mode=mode;
+  if(mode>=SR_MUSIC_MODES)return;
+  if(mode==e->music_mode){e->pending_mode=0;return;}
+  if(e->running&&!e->profile_applying){e->pending_mode=mode+1u;return;}
+  e->pending_mode=0;e->music_mode=mode;
   /* Force one realization through the same safe scene-transition path. */
   e->song_seed=0;
   sr_set_scene(e,e->scene);
@@ -428,14 +600,15 @@ void sr_init(sr_engine *e,uint32_t seed){
     float base=wave_reference((sr_wave)w,phase,0);
     wave_base[w][i]=base;wave_color[w][i]=wave_reference((sr_wave)w,phase,1)-base;
   }lut_ready=1;}
-  e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
-  e->drums_enabled=1;e->drum_level=.66f;e->drum_presence=50;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=2;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
+  e->auto_gain=e->auto_level=1;
+  e->chord_gap=100; e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
+  e->learn_strength=2;e->drums_enabled=1;e->drum_level=1.f;e->drum_presence=100;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=SR_DENSITY_MAX;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
-  e->binaural_level=.035f;e->tone_level=0.f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
+  e->binaural_level=.035f;e->tone_level=.025f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
-    e->gain_trim[t]=1.f;
+    e->gain_trim[t]=e->role_gain[t]=e->role_target[t]=1.f;
     e->tracks[t].patch=default_patches[t];e->tracks[t].volume=t==SR_BASS?.88f:t==SR_DRUMS?1.f:.68f; e->tracks[t].send=1.f;
-    e->tracks[t].pan=(float)(t%4-1)*.13f;
+    e->tracks[t].pan=((int)(t%4)-1)*.13f;
   }
   e->perfect_key=1; e->solo=SR_TRACKS; e->sacred_level=.08f; e->sacred_mode=1; e->sacred_harmonics=.32f;
   e->motion[0]=(sr_motion){120,0,0,45}; e->motion[1]=(sr_motion){90,0,0,32};
@@ -453,10 +626,11 @@ void sr_init(sr_engine *e,uint32_t seed){
  * generating a fresh downbeat, even when STOP and PLAY share a block. */
 static void clear_transport(sr_engine *e)
 {
+    e->external_audio=0;
     e->play_queued=0;
     e->play_released=0;
     memset(e->ornaments,0,sizeof e->ornaments);
-    for(unsigned i=0;i<SR_VOICES;i++)e->note_offs+=e->voices[i].gate!=0;
+    for(unsigned i=0;i<SR_VOICES;i++)release_voice(e,&e->voices[i]);
     memset(e->voices,0,sizeof(e->voices));
     memset(e->rev_pos,0,sizeof(e->rev_pos));
     e->delay_pos=0;
@@ -476,37 +650,98 @@ static void clear_transport(sr_engine *e)
     e->pitch_last[0]=e->pitch_last[1]=e->sacred_hz_now=0;
     for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter=0;
 }
+/* Section instrumentation is a seeded musical choice, not an eight-role
+ * quota. Bass anchors most passages; support colours depend on intention,
+ * energy, music mode and current harmony. No audio RNG is consumed. */
+/* A shared form holds orchestration for multiple phrases. Role choices use
+ * section identity, never independent per-phrase drum coin tosses. */
+static unsigned composition_chord(const sr_engine *e,unsigned step){
+ return (phrase_chord(e,step/16u)+sr_sections[form_index(e,0)].harmony)%7u;
+}
+
+const char *sr_section_name(const sr_engine *e,unsigned next){return sr_sections[form_index(e,!!next)].name;}
+static unsigned song_section(const sr_engine *e){return sr_sections[form_index(e,0)].family;}
+static void plan_roles(sr_engine *e)
+{
+    if(e->variation<=0.f){
+      for(unsigned t=0;t<SR_TRACKS;t++)e->role_target[t]=1.f;
+      return;
+    }
+    unsigned section=song_section(e);
+    static const uint8_t weight[SR_MUSIC_MODES][SR_TRACKS]={
+      {52,87,70,30,53,46,48,57}, {43,90,85,42,38,26,72,40}, {39,84,37,49,90,64,30,24}, {64,91,88,65,47,83,59,70}
+    };
+    uint32_t seed=e->song_seed+section*0x9e3779b9u+e->scene*65537u;
+    for(unsigned t=0;t<SR_TRACKS;t++){
+      unsigned probability=weight[e->music_mode][t]+sr_scenes[e->scene].energy*7u;
+      if(section==0u&&t!=SR_BASS&&t!=SR_DRONE)probability/=2u;
+      if(section==2u)probability+=20u;
+      if(section==3u&&t!=SR_DRONE&&t!=SR_CHOIR)probability/=3u;
+      unsigned mask=sr_sections[form_index(e,0)].roles;
+      e->role_target[t]=(mask&(1u<<t))&&song_draw(seed,100u+t)%100u<probability?1.f:0.f;
+    }
+    /* The hush retains a quiet tonal through-line. Explicit mute/solo
+     * still wins downstream; Nature is never substituted for an arranger. */
+    if(learned_active(e)&&section!=3u)e->role_target[SR_LEAD]=.85f;
+    e->role_target[SR_BASS]=section==3u?.55f:1.f;
+    if(section==3u)e->role_target[SR_DRONE]=1.f;
+    /* Groove remains present throughout unfold/bloom/return; rests are form decisions. */
+    e->role_target[SR_DRUMS]=sr_sections[form_index(e,0)].pulse?1.f:.38f;
+}
 void sr_start(sr_engine *e)
 {
     if(e->stop_frames){e->restart=1;return;}
     clear_transport(e);
     e->running=1;
-    e->sequence_step=0;e->loop_pos=0;
+    e->sequence_step=0;e->loop_pos=0;e->learn_origin=0;
+    e->external_clock_count=255;
     e->tick_phase=e->tick_length;
+    sr_plan_sections(e);plan_roles(e);
 }
 void sr_stop(sr_engine *e)
 {
     if(e->running)e->stop_frames=256;
     e->restart=0;
     e->running=0;
+    memset(e->scheduled,0,sizeof e->scheduled);e->air_request=0;
+    if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
+    if(e->pending_mode){e->music_mode=e->pending_mode-1u;e->pending_mode=0;sr_set_scene(e,e->pending_scene?e->pending_scene-1u:e->scene);}
+    else if(e->pending_scene)sr_set_scene(e,e->pending_scene-1u);
 }
 static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats){
-  if((!e->running&&!e->preview_frames)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
+  if((!e->running&&!e->preview_frames&&!e->midi_suppress)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
   int slot=-1;float quiet=1.e9f;
   for(int i=0;i<SR_VOICES;i++){
     if(!e->voices[i].active){slot=i;break;}
     float score=e->voices[i].env+(e->voices[i].track==SR_BASS?.35f:e->voices[i].key&&e->voices[i].gate?.25f:0);
     if(score<quiet){quiet=score;slot=i;}
   }
-  sr_voice *v=&e->voices[slot];e->note_offs+=v->gate!=0;e->note_ons++;float tail=v->active?v->filter*v->env*sr_patches[e->tracks[v->track].patch].gain:0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;
+  sr_voice *v=&e->voices[slot];release_voice(e,v);e->note_ons++;float tail=v->active?v->filter*v->env*sr_patches[e->tracks[v->track].patch].gain:0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;
   const sr_patch *p=&sr_patches[e->tracks[track].patch];
+  e->tracks[track].last_note=midi;
   v->born=e->frame_count;v->freq=sr_note_frequency(e,midi);v->pitch=v->freq;v->midi=midi;
   if(track<=SR_BASS){
     sr_motion *m=&e->motion[track];
     int held=0;
     for(int j=0;j<SR_VOICES;j++)if(&e->voices[j]!=v && e->voices[j].active &&
         e->voices[j].gate && e->voices[j].track==track)held=1;
-    if((m->glide_mode==2||(m->glide_mode==1&&held))&&e->pitch_last[track]>0)
+    int expression=1;
+    if(!(e->motion_manual&(1u<<track))){
+      /* Connected neighboring tones at a phrase answer/bloom; detached
+       * starts, large leaps and grounding bass pulses stay straight. */
+      int neighboring=0;
+      for(unsigned j=0;j<SR_VOICES;j++){
+        const sr_voice *prior=&e->voices[j];
+        int interval=(int)prior->midi-(int)midi;
+        if(prior!=v&&prior->active&&prior->gate&&prior->track==track&&
+           interval&&interval>=-5&&interval<=5)neighboring=1;
+      }
+      unsigned position=e->sequence_step&15u;
+      expression=neighboring&&beats>=1.5f&&position!=0&&
+          (position==6u||(song_section(e)==2u&&position==10u));
+      if(track==SR_BASS)expression=expression&&beats>=3.f&&sr_scenes[e->scene].energy==0;
+    }
+    if(expression&&(m->glide_mode==2||(m->glide_mode==1&&held))&&e->pitch_last[track]>0)
         v->pitch=e->pitch_last[track];
     e->pitch_last[track]=v->freq;
   }
@@ -516,10 +751,51 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   v->attack_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->attack,e->tracks[track].attack),.001f)*SR_RATE));
   v->release_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->release,e->tracks[track].release),.04f)*SR_RATE));
   v->remain=(uint32_t)clampf(beats*4.f*(float)e->tick_length,1.f,9.e6f);
+  if(e->timeline_enabled){
+    unsigned n=e->timeline_write++%96u;
+    e->timeline[n].frame=e->frame_count;e->timeline[n].duration=v->remain;
+    e->timeline[n].role=track;e->timeline[n].note=midi;e->timeline[n].velocity=velocity;
+  }
+  if(!e->midi_suppress)midi_push(e,track,midi,velocity);
   return v;
 }
+int sr_midi_event_pop(sr_engine *e,uint32_t *event)
+{
+ if(e->midi_read==e->midi_write)return 0;
+ *event=e->midi_events[e->midi_read];e->midi_read=(e->midi_read+1u)&63u;return 1;
+}
+void sr_midi_note(sr_engine *e,unsigned role,unsigned channel,unsigned note,unsigned velocity)
+{
+ if(role>=SR_DRUMS||channel>15||note>127||velocity>127)return;
+ if(!velocity){
+  for(unsigned i=0;i<SR_VOICES;i++)if(e->voices[i].external&&e->voices[i].channel==channel&&e->voices[i].midi==note)
+   release_voice(e,&e->voices[i]);
+  return;
+ }
+ e->midi_suppress=1;
+ sr_voice *v=note_on(e,(uint8_t)role,(uint8_t)note,(uint8_t)velocity,1.f);
+ e->midi_suppress=0;
+ if(v){v->external=1;v->channel=(uint8_t)channel;v->remain=0xffffffffu;e->external_audio=1;}
+}
+void sr_midi_panic(sr_engine *e)
+{
+ for(unsigned i=0;i<SR_VOICES;i++)if(e->voices[i].external){
+  release_voice(e,&e->voices[i]);e->voices[i].release_coef=.003f;
+ }
+}
+void sr_midi_bend(sr_engine *e,unsigned channel,int value)
+{
+ float ratio=expf((float)value*(.11552453f/8192.f));
+ for(unsigned i=0;i<SR_VOICES;i++)if(e->voices[i].external&&e->voices[i].channel==channel){
+  sr_voice *v=&e->voices[i];v->freq=sr_note_frequency(e,v->midi)*ratio;
+  v->pitch=v->freq;v->increment=v->freq*(1.f/SR_RATE);
+ }
+}
+
 void sr_note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats)
 {
+    if(track<SR_TRACKS&&e->running&&!e->preview_frames&&e->solo>=SR_TRACKS&&
+       e->role_target[track]==0.f&&e->role_gain[track]<.001f)return;
     (void)note_on(e,track,midi,velocity,beats);
 }
 uint8_t sr_key_note(const sr_engine *e,unsigned key)
@@ -540,6 +816,7 @@ static void play_key(sr_engine *e,uint8_t track,unsigned key,unsigned tap)
     if(!e->perfect_key)sr_set_perfect_key(e,1);
     if(track==SR_DRUMS){
       if(!e->drums_enabled)return;
+      e->role_target[SR_DRUMS]=1.f;
       if(key%3==0)e->kick_env=1;
       else if(key%3==1)e->hand_env=1;
       else e->shaker_env=1;
@@ -553,7 +830,8 @@ static void play_key(sr_engine *e,uint8_t track,unsigned key,unsigned tap)
       voice->remain=tap?(e->tick_length/4u+1u):SR_RATE*8u;
     }
 }
-static const uint8_t intention_feel[SR_SCENES]={0,5,3,2,7,4,2,4,6,7,4,3,5};
+static const uint8_t intention_feel[]={0,5,3,2,7,4,2,4,6,7,4,3,5,6,3,4,3,2,5,6,3};
+_Static_assert(sizeof intention_feel/sizeof *intention_feel==SR_SCENES,"Complete feel profiles");
 
 static uint32_t play_delay(const sr_engine *e,unsigned track)
 {
@@ -577,7 +855,8 @@ static uint32_t play_delay(const sr_engine *e,unsigned track)
 
 void sr_key_down(sr_engine *e,uint8_t track,unsigned key)
 {
-    if(!e->running||key>=27||track>=SR_TRACKS)return;
+    if(key>=27||track>=SR_TRACKS)return;
+    if(!e->running){e->preview_role=track;e->preview_frames=SR_RATE*10u;play_key(e,track,key,0);return;}
     if(e->keyboard_mode){
       e->pending_key=(uint8_t)((53u+key)%12u+1u);
       e->pending_physical_key=(uint8_t)(key+1u);
@@ -595,60 +874,141 @@ void sr_key_up(sr_engine *e,unsigned key)
     if(key>=27)return;
     e->play_released|=e->play_queued&(1u<<key);
     for(int j=0;j<SR_VOICES;j++)if(e->voices[j].key==key+1){
-      e->note_offs+=e->voices[j].gate!=0;
-      e->voices[j].gate=0;
+      release_voice(e,&e->voices[j]);
 
     }
 }
+/* Compose underneath the owner's density cap. A breakdown thins prepared
+ * subdivisions while retaining its kick/bass thread and displayed defaults. */
+static unsigned groove_density(const sr_engine *e,unsigned step){
+ unsigned cap=e->drum_density;if(!cap||e->variation<=0.f)return cap;
+ unsigned current=form_index(e,0),next=form_index(e,1);
+ unsigned level[3]={2,5,8};
+ unsigned density=level[sr_sections[current].pulse];
+ unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+ if(e->form_loop%hold==hold-1u&&!e->freeze){
+  unsigned target=level[sr_sections[next].pulse];
+  density=(density*(e->loop_length-step)+target*step)/e->loop_length;
+ }
+ return density<cap?density:cap;
+}
+static float groove_kick(const sr_engine *e,unsigned step){
+ if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return 0;
+ unsigned density=groove_density(e,step);
+ unsigned beat=step&15u,bar=e->loop_length>16?step/16u:0;
+ if(e->variation>0.f&&e->phrase)bar^=(e->phrase/2u)&3u;
+ if(!beat||(beat==8u&&density>=2u))return 1.f;
+ if(density>=6u&&beat==(bar&1u?6u:10u))return .54f;
+ if(e->rhythm_style==1u&&density>=2u&&(beat==3u||beat==11u))return .65f;
+ if(e->rhythm_style==2u&&beat==10u)return .68f;
+ if(!e->freeze&&e->variation>0.f){
+  unsigned id=form_index(e,0);
+  if(sr_sections[id].pulse==2u&&beat==((id&1u)?10u:6u))return .5f;
+  if(id==24u&&(beat==7u||beat==15u))return .46f;
+ }
+ return 0;
+}
+static void bass_groove(sr_engine *e,unsigned step){
+ unsigned beat=step&15u,chord=composition_chord(e,step);
+ float kick=groove_kick(e,step);
+ unsigned motif=song_draw(e->song_seed,SR_BASS+400u)%3u;
+ unsigned pickup=(beat==7u||beat==15u)&&e->energy>.55f&&
+                  (step/16u+motif)%2u==1u;
+ /* Firm anchors, deliberately un-doubled weak kicks and a recognizable
+  * answer/pickup. The bass is a phrase partner, not a kick MIDI duplicate. */
+ if(kick>0.f&&kick<.9f&&((motif+step/16u)&1u)==0u&&!pickup)return;
+ if(!kick&&!pickup&&(e->drums_enabled||(beat&7u)))return;
+ unsigned degree=chord;
+ if(beat&&kick<.9f)degree=(chord+(motif==1u?2u:4u))%7u;
+ if(pickup)degree=(composition_chord(e,(step+1u)%e->loop_length)+6u)%7u;
+ int note=sr_tonic(e)+scale_notes[sr_scenes[e->scene].scale][degree];
+ int prior=e->tracks[SR_BASS].last_note;
+ if(beat&&prior){while(note-prior>7)note-=12;while(prior-note>7)note+=12;}
+ while(note<33)note+=12;while(note>60)note-=12;
+ unsigned gap=1;while(gap<8u&&!groove_kick(e,(step+gap)%e->loop_length))gap++;
+ float length=(float)gap*(e->music_mode==SR_CINEMATIC?.22f:e->music_mode==SR_EXPERIMENTAL?.12f:.16f);
+ if(pickup)length=.16f;
+ sr_note_on(e,SR_BASS,note,pickup?76:kick>.9f?108:91,length);
+}
 static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return;
+  unsigned density=groove_density(e,step);
   uint32_t beat=step&15u;
   unsigned bar=e->loop_length>16?step/16u:0;
   if(e->variation>0.f&&e->phrase)bar^=(e->phrase/2u)&3u;
-  unsigned hits=0;
+  unsigned hits=0,parts=0;
   uint32_t stable_draw=song_draw(e->scene+bar*13u,beat);
-  if(beat==0 || (beat==8 && e->drum_density>=2)){e->kick_env=1.f;hits++;}
-  if((beat==4||beat==12) && (e->drum_density>=2 || ((e->variation==0?stable_draw:rng(e))&3u)==0)){
-    e->hand_env=bar&&(beat==4?bar&1u:bar&2u)?.78f:1.f;hits++;
+  float kick=groove_kick(e,step);if(kick){e->kick_env=kick;parts|=1u;hits++;}
+  if((beat==4||beat==12) && (density>=2 || ((e->variation==0?stable_draw:rng(e))&3u)==0)){
+    e->hand_env=bar&&(beat==4?bar&1u:bar&2u)?.78f:1.f;parts|=2u;hits++;
   }
-  if(e->drum_density>=3 && (beat&1u)){e->shaker_env=.72f;hits++;}
-  else if(e->drum_density==2 && (beat&3u)==2){e->shaker_env=.65f;hits++;}
-  else if(e->drum_density==1 && beat==8 && ((e->variation==0?stable_draw:rng(e))&1u)==0){e->shaker_env=.45f;hits++;}
-  if(e->drum_density>=4&&(beat&3u)==2){e->shaker_env=.56f;hits++;}
-  if(e->drum_density>=5&&beat==(bar&1u?10u:6u)){e->hand_env=.48f;hits++;}
-  if(e->drum_density>=6&&beat==(bar&1u?6u:10u)){e->kick_env=.54f;hits++;}
-  if(e->drum_density>=7&&(beat==2||beat==14)){e->hand_env=.42f;hits++;}
-  if(e->drum_density>=8&&(beat==3||beat==15)){e->hand_env=bar&1u?.52f:.37f;hits++;}
+  if(density>=3 && (beat&1u)){e->shaker_env=.72f;parts|=4u;hits++;}
+  else if(density==2 && (beat&3u)==2){e->shaker_env=.65f;parts|=4u;hits++;}
+  else if(density==1 && beat==8 && ((e->variation==0?stable_draw:rng(e))&1u)==0){e->shaker_env=.45f;parts|=4u;hits++;}
+  if(density>=4&&(beat&3u)==2){e->shaker_env=.56f;parts|=4u;hits++;}
+  if(density>=5&&beat==(bar&1u?10u:6u)){e->hand_env=.48f;parts|=2u;hits++;}
+  if(density>=7&&(beat==2||beat==14)){e->hand_env=.42f;parts|=2u;hits++;}
+  if(density>=8&&(beat==3||beat==15)){e->hand_env=bar&1u?.52f:.37f;parts|=2u;hits++;}
+  /* A bloom grows within the musical phrase, without global gain ramps.
+   * Longer phrases have more gradual development and a small final answer. */
+  if(!e->freeze&&e->fill_character!=3&&song_section(e)==2u&&e->loop_length>16){
+    unsigned bar_progress=step/16u;
+    if(bar_progress&&(beat&3u)==2u){e->shaker_env=.25f+.12f*bar_progress;parts|=4u;hits++;}
+    if(bar_progress==e->loop_length/16u-1u&&beat==14u){e->hand_env=.43f;parts|=2u;hits++;}
+  }
+  /* Optional rhythm character: the downbeat is always preserved. */
+  if(e->rhythm_style==1&&density>=2){
+    if(beat==7||beat==14){e->hand_env=.48f;parts|=2u;hits++;}
+    if((beat&1u)&&((bar+beat)%3u)){e->shaker_env=.38f+.08f*(bar&1u);parts|=4u;hits++;}
+  }else if(e->rhythm_style==2){
+    if(beat==6||beat==13){e->hand_env=.42f;parts|=2u;hits++;}
+  }
+  /* Authored section percussion: current kit, no generator gating at
+   * boundaries. Sparse functions keep the downbeat/tonal anchor. */
+  if(!e->freeze&&e->variation>0.f){
+    unsigned id=form_index(e,0),pulse=sr_sections[id].pulse;
+    unsigned character=id%8u;
+    if(pulse&&bar%2u&&beat==(character&1u?14u:6u)){e->hand_env=.28f+.03f*(character%3u);parts|=2u;hits++;}
+    if(id==20u&&(beat&3u)==3u){e->shaker_env=.26f+.09f*(step/16u);parts|=4u;hits++;}
+    if(id==30u&&(beat%3u)==2u){e->shaker_env=.32f;parts|=4u;hits++;}
+  }
   /* One optional strike at most on an otherwise empty, eligible subdivision. */
   unsigned eligible=e->scene==6 ? (beat==3||beat==11) :
                     energy>=2 ? (beat==3||beat==7||beat==11||beat==15) :
                     (beat==7||beat==15);
   /* Answer bars add off-beat pickups, with a two-hit closing fill at full HIT. */
-  if(bar&&e->drum_density>=2){
+  if(bar&&density>=2){
     if(bar&1u)eligible|=beat==5||beat==13;
     if(bar&2u)eligible|=beat==1||beat==9;
   }
   if(!hits&&eligible){
     e->drum_rng=e->drum_rng*1664525u+1013904223u;
     unsigned percent=e->drum_hit>SR_HIT_MAX?SR_HIT_MAX:e->drum_hit;
-    if(((e->variation==0?stable_draw:e->drum_rng)>>16)%100u<percent){
-      if(beat==11||(bar&&(beat==5||beat==13)))e->hand_env=.55f;
-      else e->shaker_env=.52f;
+    unsigned allowance=e->music_mode==SR_CINEMATIC?22u:e->music_mode==SR_NEOCLASSICAL?34u:55u;
+    if((stable_draw>>16)%100u<percent*allowance/100u){
+      if(beat==11||(bar&&(beat==5||beat==13))){e->hand_env=.55f;parts|=2u;}
+      else {e->shaker_env=.52f;parts|=4u;}
       e->optional_hits++;
       hits++;
     }
   }
   e->tracks[SR_DRUMS].events+=hits;
+  if(e->timeline_enabled)for(unsigned voice=0;voice<3;voice++)if(parts&(1u<<voice)){
+   unsigned n=e->timeline_write++%96u;
+   e->timeline[n].frame=e->frame_count;e->timeline[n].duration=e->tick_length/2u;
+   e->timeline[n].role=SR_DRUMS;e->timeline[n].note=voice==0?36:voice==1?38:42;
+   e->timeline[n].velocity=voice==0?110:70;
+  }
 }
 void sr_preview_sound(sr_engine *e,unsigned role)
 {
-  if(e->running||e->stop_frames||e->frequency_lock||role>=SR_TRACKS)return;
+  if(e->running||e->stop_frames||e->external_audio||e->frequency_lock||role>=SR_TRACKS)return;
   if(!e->preview_frames)clear_transport(e);
   e->nature_audition=0;
   e->preview_role=role;
   e->preview_frames=SR_RATE;
   for(unsigned i=0;i<SR_VOICES;i++){
-    e->voices[i].gate=0;
+    release_voice(e,&e->voices[i]);
     e->voices[i].release_coef=.002f;
   }
   if(role==SR_DRUMS){
@@ -660,7 +1020,7 @@ static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
   /* Silence is a common path in the default generator. Skip all oscillators,
    * noise and kit inspection when no percussion envelope is active. */
   if(e->kick_env<=.0003f&&e->hand_env<=.0003f&&e->shaker_env<=.0003f){
-    e->kick_env=e->hand_env=e->shaker_env=0.f;
+    e->kick_env=e->kick_previous=e->kick_attack=e->hand_env=e->shaker_env=0.f;
     return 0.f;
   }
   const sr_drum_kit *kit=&sr_drum_kits[e->drum_kit];
@@ -673,14 +1033,16 @@ static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
                   sine(e->kick_phase)*.82f+sine(e->kick_phase*2.f)*.18f;
     /* Short, brightness-aware noise attack: makes soft 50-70Hz kicks
      * perceptible on the FM-1 speaker without boosting the whole mix. */
-    float transient=0.f;
-    if(e->kick_env>.91f){
-      float edge=(e->kick_env-.91f)*(1.f/.09f);
-      transient=(rnd(e)*2.f-1.f)*edge*(.12f+kit->skin*.00014f);
-    }
-    sound+=(tone*.45f+transient*.42f)*e->kick_env*kit->kick;
+    /* Each triggered hit gets an attack, including quiet velocity hits.
+     * The previous >.91 envelope threshold skipped almost every generated
+     * kick, whose initial envelope is usually much smaller than .91. */
+    if(e->kick_env>e->kick_previous+.003f)e->kick_attack=e->kick_env;
+    float transient=(rnd(e)*2.f-1.f)*e->kick_attack*(.055f+kit->skin*.000045f);
+    e->kick_attack*=.982f;
+    sound+=(tone*.43f+sine(e->kick_phase*3.f)*.035f)*e->kick_env*kit->kick+transient*kit->kick;
     e->kick_env*=kit->decay;
   }else e->kick_env=0.f;
+  e->kick_previous=e->kick_env;
   if(e->hand_env>.0003f){
     float noise=rnd(e)*2.f-1.f;
     e->hand_noise_lp+=(noise-e->hand_noise_lp)*kit->brush;
@@ -773,61 +1135,193 @@ static void ornament(sr_engine *e,unsigned slot,uint8_t midi,uint8_t velocity,fl
     e->ornaments[slot].velocity=velocity;
   }else sr_note_on(e,ornament_track[slot],midi,velocity,beats);
 }
+/* Fixed-capacity control-rate event queue. Overflow drops optional detail.
+ * Bass, direct keys and base drum pulse never use this queue. */
+static unsigned schedule(sr_engine *e,unsigned role,unsigned note,unsigned velocity,float beats,unsigned delay)
+{
+ for(unsigned i=0;i<12;i++)if(!e->scheduled[i].active){
+  e->scheduled[i].due=e->frame_count+delay;e->scheduled[i].role=role;
+  e->scheduled[i].note=note;e->scheduled[i].velocity=velocity;
+  e->scheduled[i].beats=beats;e->scheduled[i].active=1;return 1;
+ }
+ e->scheduled_overflows++;return 0;
+}
+static unsigned chord_voice(sr_engine *e,unsigned step,unsigned flourish)
+{
+ if(e->chord_mode==3||e->frequency_lock)return 0;
+ unsigned role=e->music_mode==SR_NEOCLASSICAL?SR_PIANO:SR_GUITAR;
+ if(e->tracks[role].mute||(e->solo<SR_TRACKS&&e->solo!=role)||e->role_target[role]<.01f||e->tracks[role].volume<=0)return 0;
+ unsigned active=0;for(unsigned i=0;i<SR_VOICES;i++)active+=e->voices[i].active;
+ unsigned count=active>12?2:3;if(active>14)return 0;
+ unsigned degree=(phrase_chord(e,step/16u)+sr_sections[form_index(e,0)].harmony)%7u,inversion=e->chord_inversion;
+ if(!inversion)inversion=1u+song_draw(e->song_seed,e->phrase+step/16u)%3u;
+ int notes[3];const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+ for(unsigned i=0;i<count;i++){
+  unsigned d=degree+i*2u+(flourish?2u:0u);notes[i]=sr_tonic(e)+12+scale[d%7u]+12*(d/7u);
+  if(i<inversion-1u)notes[i]+=12;
+  if(e->chord_previous[i]){
+   while(notes[i]-e->chord_previous[i]>7)notes[i]-=12;
+   while(e->chord_previous[i]-notes[i]>7)notes[i]+=12;
+  }
+ }
+ for(unsigned i=0;i<count;i++)for(unsigned j=i+1;j<count;j++)if(notes[j]<notes[i]){int n=notes[i];notes[i]=notes[j];notes[j]=n;}
+ const sr_patch *patch=&sr_patches[e->tracks[role].patch];
+ unsigned strum=e->chord_mode==2||(e->chord_mode==0&&!e->freeze&&
+   e->music_mode!=SR_NEOCLASSICAL&&patch->attack<.2f&&song_section(e)==2u&&(step&31u)==16u);
+ unsigned reverse=e->chord_direction==2||(e->chord_direction==3&&(e->chord_alternate++&1u));
+ unsigned performed=0;
+ for(unsigned i=0;i<count;i++){
+  unsigned index=reverse?count-1u-i:i;
+  e->chord_previous[index]=notes[index];
+  if(strum&&i)performed+=schedule(e,role,notes[index],58-i*4,2.8f,(i*e->chord_gap*SR_RATE+500u)/1000u);
+  else {unsigned before=e->tracks[role].events;sr_note_on(e,role,notes[index],62-i*4,2.8f);performed+=e->tracks[role].events!=before;}
+ }
+ return performed;
+}
+static unsigned chord_phrase(sr_engine *e,unsigned step){return chord_voice(e,step,0);}
+static unsigned transition_fill(sr_engine *e,unsigned step,int gesture)
+{
+ if(e->freeze||!e->drums_enabled||!e->drum_density||e->fill_character==3||
+    e->tracks[SR_DRUMS].mute||(e->solo<SR_TRACKS&&e->solo!=SR_DRUMS)||e->tracks[SR_DRUMS].volume<=0||e->drum_level<=0||e->role_target[SR_DRUMS]<.1f)return 0;
+ unsigned current=form_index(e,0),next=form_index(e,1);
+ unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+ unsigned preparing=(e->form_loop%hold==hold-1u)&&current!=next;
+ unsigned beat=step&15u,style=current%5u;
+ unsigned cadence=(step+1u==e->loop_length);
+ if(!gesture&&(!cadence||(!preparing&&(e->phrase+style)%5u!=4u)))return 0;
+ unsigned count=gesture?3u:preparing?2u+sr_sections[next].pulse:2u;
+ if(e->music_mode==SR_NEOCLASSICAL&&count>2u)count=2u;
+ unsigned performed=0;for(unsigned i=0;i<count;i++)
+   performed+=schedule(e,SR_DRUMS,((i+style)%3u)?1:2,
+       34u+i*7u+(preparing?7u:0u),0,(i+1u)*e->tick_length/(count+1u));
+ return performed;
+}
+static int phrase_expression(unsigned step){
+  static const int8_t arc[8]={-4,0,4,6,2,0,-3,-7};
+  return arc[(step&15u)/2u];
+}
 static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 {
   const sr_scene *sc=&sr_scenes[e->scene];
   const int8_t *scale=scale_notes[sc->scale];
-  unsigned bar=(s/16u+e->phrase+song_draw(seed,70)%4u)%4u;
-  static const uint8_t progression[2][4]={{0,5,3,4},{0,3,4,1}};
-  unsigned chord=progression[e->music_mode-1][bar];
+  unsigned bar=s/16u;
+  unsigned chord=(phrase_chord(e,bar)+sr_sections[form_index(e,0)].harmony)%7u;
   int tonic=sr_tonic(e),degree=motif_degree(e,s);
   unsigned draw=song_draw(seed,s&63u);
-  unsigned dynamic=6u+(draw&7u);
+  unsigned dynamic=6u+((draw>>4)&3u);
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
-  if((s&7u)==0)sr_note_on(e,SR_BASS,tonic+scale[chord],100-dynamic,e->music_mode==SR_CINEMATIC?3.5f:1.7f);
+  bass_groove(e,s);
   if((s&15u)==0){
     sr_note_on(e,SR_DRONE,tonic+12+scale[chord],61, e->music_mode==SR_CINEMATIC?12.f:6.f);
     sr_note_on(e,SR_CHOIR,tonic+24+scale[(chord+2u)%7u],56,7.f);
     sr_note_on(e,SR_HARMONY,tonic+24+scale[(chord+4u)%7u],52,4.f);
   }
-  if(e->music_mode==SR_CINEMATIC){
-    if((s&7u)==4&&degree>=0)sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic,5.5f);
-    if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+(draw>>8)%3u*2u)%7u],58-dynamic,2.4f);
+  if(e->music_mode==SR_EXPERIMENTAL){
+    /* Three- and five-step interlocks answer a stable motif. Harmonic
+     * notes remain in the intention scale; rests leave space for tails. */
+    if(!learned_active(e)&&degree>=0&&(s%3u==0u||(s&15u)==10u))
+      sr_note_on(e,SR_LEAD,tonic+24+scale[degree],64-dynamic+phrase_expression(s),1.8f);
+    if((s+e->phrase)%5u==0u)
+      sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+(s/5u)*2u)%7u],56,2.2f);
+    if((s&15u)==6u||((s&15u)==14u&&bar))
+      sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+4u)%7u],62-dynamic,2.8f);
+    if((s&15u)==12u&&degree>=0)
+      sr_note_on(e,SR_HARMONY,tonic+24+scale[(degree+2u)%7u],49,3.6f);
+  }else if(e->music_mode==SR_CINEMATIC){
+    if(!learned_active(e)&&degree>=0&&((s&15u)<8u||(s&15u)>=14u))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic+phrase_expression(s),3.5f);
+    if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+2u*(bar&1u))%7u],58-dynamic,2.4f);
     if((s&7u)==2)sr_note_on(e,SR_GUITAR,tonic+12+scale[(chord+4u)%7u],54,2.2f);
     if((s&15u)==12)sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+2u)%7u],49,3.f);
   }else{
-    if((s&1u)==0){
-      unsigned arp=(s/2u+(draw>>12)%2u)%4u;
+    if((s&1u)==(bar==1u?1u:0u)){
+      static const uint8_t arpeggio[8]={0,2,1,2,0,1,2,1};
+      unsigned arp=arpeggio[(s/2u)&7u];
       unsigned d=(chord+arp*2u)%7u;
       sr_note_on(e,SR_PIANO,tonic+24+scale[d],78-dynamic+(s%8u==0?8:0),1.15f);
     }
-    if((s&7u)==2||((s&7u)==6))sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+s/4u)%7u],61-dynamic,1.4f);
-    if((s&7u)==4&&degree>=0){
-      sr_note_on(e,SR_LEAD,tonic+24+scale[degree],65,2.5f);
-      sr_note_on(e,SR_HARMONY,tonic+24+scale[(6u-(unsigned)degree)%7u],48,2.1f);
+    if((s&7u)==6)sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+s/4u)%7u],61-dynamic,1.4f);
+    if((s&7u)==2&&degree>=0){
+      if(!learned_active(e))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],65+phrase_expression(s),2.5f);
+      sr_note_on(e,SR_HARMONY,tonic+24+scale[((unsigned)degree+2u)%7u],48,2.1f);
     }
   }
 }
+static void musical_detail(sr_engine *e,unsigned step)
+{
+  if(e->freeze||e->variation<=0.f)return;
+  unsigned id=form_index(e,0),family=sr_sections[id].family;
+  unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+  unsigned preparing=e->form_loop%hold==hold-1u;
+  int tonic=sr_tonic(e);const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+  /* Home motif is the anchor across sections, while the lead develops.
+   * Learned phrases already own the theme and never get doubled here. */
+  if(!learned_active(e)&&family!=3u&&(step&3u)==2u){
+    int degree=motif_degree(e,step);
+    if(degree>=0)sr_note_on(e,SR_GUITAR,tonic+24+scale[degree],45, .7f);
+  }
+  /* A sparse answer in the final bar, coordinated with prepared arrival. */
+  if(step+3u==e->loop_length&&(e->form_loop+id)%3u==1u){
+    unsigned chord=phrase_chord(e,step/16u)%7u;
+    sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+4u)%7u],42,1.3f);
+    schedule(e,SR_PIANO,tonic+36+scale[(chord+2u)%7u],37,1.f,e->tick_length/2u);
+  }
+  /* Suspended response resolves into the next crest, with low velocity
+   * and current sounds/tails, never a reference-tone or key change. */
+  if(preparing&&step+4u==e->loop_length&&sr_sections[form_index(e,1)].family==2u){
+    unsigned chord=phrase_chord(e,step/16u)%7u;
+    sr_note_on(e,SR_CHOIR,tonic+24+scale[(chord+3u)%7u],48,2.5f);
+  }
+}
 static void trigger(sr_engine *e){
+  unsigned requested=0;
+  /* Scene/mode changes commit on the next quarter beat, independent of
+   * loop length. Latest encoder target replaces the previous target. */
+  if((e->sequence_step&3u)==0u){
+    if(e->pending_scene||e->pending_mode){
+      e->profile_applying=1;
+      unsigned scene=e->pending_scene?e->pending_scene-1u:e->scene;
+      if(e->pending_mode)e->music_mode=e->pending_mode-1u;
+      e->pending_scene=e->pending_mode=0;
+      sr_set_scene(e,scene);plan_roles(e);
+      e->profile_applying=0;
+    }
+  }
   if(!e->loop_pos){
+    if(e->learn_pending&&!e->freeze){e->learned=e->capture;e->capture.count=0;e->learn_pending=0;e->learn_origin=e->sequence_step;}
+    if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
     if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;e->play_queued=0;}
     if(e->pending_key){
+      memset(e->scheduled,0,sizeof e->scheduled);
       e->tonic_override=36+e->pending_key-1;
       e->pending_key=e->pending_physical_key=0;
       for(unsigned i=0;i<SR_VOICES;i++){
         sr_voice *v=&e->voices[i];
-        e->note_offs+=v->gate!=0;
-        v->gate=0;v->remain=0;v->release_coef=.002f;
+        release_voice(e,v);v->remain=0;v->release_coef=.002f;
       }
     }
   }
+  if(!e->loop_pos&&e->air_request&&!e->freeze&&e->sequence_step){
+    requested=e->air_request;e->air_request=0;
+    if(requested==1)e->evolve_next=1;
+  }
+  if(e->loop_pos==0&&e->sequence_step&&!e->freeze){e->form_loop++;sr_plan_sections(e);plan_roles(e);}
+  if(!e->freeze&&e->variation>0.f&&e->loop_pos%16u==0u){
+    unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+    if(e->form_loop%hold==hold-1u){
+      float blend=.25f*(1.f+(float)e->loop_pos/(float)e->loop_length);
+      unsigned next=sr_sections[form_index(e,1)].roles;
+      for(unsigned t=0;t<SR_DRUMS;t++)if(t!=SR_BASS)
+        e->role_target[t]+=( ((next&(1u<<t))?1.f:0.f)-e->role_target[t])*blend;
+    }
+  }
   uint32_t absolute=e->sequence_step++;
-  uint32_t s=absolute;
+  uint32_t s=e->loop_pos;
   unsigned idx=e->loop_pos++;
   if(e->loop_pos>=e->loop_length)e->loop_pos=0;
-  if(e->loop_length!=16)s=idx;
+  s=idx;
   const sr_scene *sc=&sr_scenes[e->scene];
   int tonic=sr_tonic(e);
+  unsigned chord=(phrase_chord(e,idx/16u)+sr_sections[form_index(e,0)].harmony)%7u;
   uint8_t energy=(uint8_t)(1.f+e->energy*2.99f);
   /* The absolute counter survives phrase wrap; idx is only the loop position. */
   unsigned pace=e->evolve_pace?1u<<e->evolve_pace:(e->loop_length==16?2u:1u);
@@ -836,13 +1330,14 @@ static void trigger(sr_engine *e){
     e->evolve_next=0;
     e->phrase++;
     if(e->phrase%4u==0)memcpy(e->melody,e->motif_home,sizeof e->melody);
-    else make_motif(e);
+    else develop_motif(e);
+    plan_roles(e);
   }
   int k=motif_degree(e,idx);
   /* At zero variation or before the first evolution, retain the original
    * voicings. Role decisions are otherwise independent of the audio RNG. */
   unsigned evolving=e->variation>0.f&&e->phrase!=0;
-  unsigned section=(e->phrase/4u)%5u;
+  unsigned section=song_section(e);
   unsigned bar=idx/16u;
   uint32_t phrase_seed=e->song_seed+e->phrase*0x9e3779b9u+e->scene*31u+bar;
   unsigned contour=section==4?0u:section+1u;
@@ -851,24 +1346,24 @@ static void trigger(sr_engine *e){
     if((section==2||section==3)&&energy>1)energy--;
     if(section==1&&energy<3)energy++;
   }
+  if(requested){
+    unsigned performed=requested==1?1:requested==2?transition_fill(e,s,1):chord_voice(e,s,1);
+    e->air_result=(uint8_t)(performed?requested:128u+requested);
+    if(performed)e->air_actions++;
+  }
+  if((s&15u)==0&&requested!=3)chord_phrase(e,s);
+  transition_fill(e,s,0);
+  int learned=learned_index(e,s);
+  if(learned>=0&&k>=0)sr_note_on(e,SR_LEAD,tonic+24+scale_notes[sc->scale][k],74,e->learned.length[learned]*.25f);
+  musical_detail(e,s);
   if(e->music_mode){mode_phrase(e,s,phrase_seed);return;}
   drum_trigger(e,s,energy);
   if(evolving&&(s&15u)==0&&e->drums_enabled&&e->drum_density)
     e->kick_env*=.83f+.04f*(song_draw(phrase_seed,SR_DRUMS)&3u);
+  bass_groove(e,s);
   if((s&7u)==0){
-    int bass_note=tonic;
-    if(e->scene>=6){
-      static const uint8_t degrees[][4]={
-        {0,2,4,1},{0,4,5,3},{0,5,3,1},{0,2,5,4},{0,4,1,5},{0,3,0,4},{0,4,5,2}
-      };
-      bass_note+=scale_notes[sc->scale][degrees[e->scene-6][(s/8u)&3u]];
-    }
-    unsigned bass_draw=evolving?song_draw(phrase_seed,SR_BASS):0;
-    if(evolving&&contour&&(s&8u))
-      bass_note=tonic+scale_notes[sc->scale][1u+bass_draw%4u];
-    sr_note_on(e,SR_BASS,(uint8_t)bass_note,112-(bass_draw&7u),2.3f);
     if((s&15u)==0){
-      unsigned pad=evolving&&contour?song_draw(phrase_seed,SR_DRONE)%3u:0;
+      unsigned pad=chord;
       sr_note_on(e,SR_DRONE,(uint8_t)(tonic+12+scale_notes[sc->scale][pad]),
                  e->scene==6?86:76,8.f);
     }
@@ -876,16 +1371,16 @@ static void trigger(sr_engine *e){
   if((s&3u)==0){
     unsigned draw=evolving||stable?song_draw(phrase_seed,SR_PIANO+(s&15u)*8u):rng(e);
     if(draw%4u<energy){
-      unsigned degree=(evolving||stable?draw>>8:rng(e))%5u;
+      unsigned degree=(chord+2u*((s/4u)%3u))%7u;
       int note=tonic+24+scale_notes[sc->scale][degree];
       ornament(e,0,(uint8_t)note,e->scene==7?91:e->scene==6?61:80,1.45f,s,evolving);
     }
   }
-  if(k>=0 && (s%2u)==0){
+  if(!learned_active(e)&&k>=0){
     unsigned lead=evolving||stable?song_draw(phrase_seed,SR_LEAD+(s&15u)*8u):rng(e);
-    if(lead%5u<=energy){
+    if((s&7u)==0u||lead%5u<=energy+1u){
       int note=tonic+24+scale_notes[sc->scale][k];
-      ornament(e,2,(uint8_t)note,65+(evolving?(lead>>8)&7u:0),2.3f,s,evolving);
+      ornament(e,2,(uint8_t)note,65+phrase_expression(s)+(evolving?(lead>>8)&7u:0),2.3f,s,evolving);
     }
     unsigned harmony=evolving||stable?song_draw(phrase_seed,SR_HARMONY+(s&15u)*8u):rng(e);
     if(harmony%7u==0){
@@ -897,18 +1392,18 @@ static void trigger(sr_engine *e){
   if((s&7u)==4){
     unsigned draw=evolving||stable?song_draw(phrase_seed,SR_GUITAR+(s&15u)*8u):rng(e);
     if(draw%4u<energy&&!(evolving&&section==3&&(bar&1u))){
-      unsigned degree=evolving?(draw>>8)%5u:(s/4u)%5u;
+      unsigned degree=(chord+2u*((s/4u)%3u))%7u;
       int note=tonic+12+scale_notes[sc->scale][degree];
       ornament(e,1,(uint8_t)note,71,1.7f,s,evolving);
     }
   }
   if((s&15u)==0){
-    unsigned degree=evolving&&contour?song_draw(phrase_seed,SR_CHOIR)%5u:(s/16u)%5u;
+    unsigned degree=chord;
     int note=tonic+12+scale_notes[sc->scale][degree];
     sr_note_on(e,SR_CHOIR,(uint8_t)note,e->scene==6?80:65,7.f);
     sr_note_on(e,SR_HARMONY,(uint8_t)(note+12),52,3.8f);
     if(e->scene>=6){
-      int third=scale_notes[sc->scale][e->scene==6?1:2];
+      int third=scale_notes[sc->scale][(chord+2u)%7u];
       sr_note_on(e,SR_HARMONY,(uint8_t)(tonic+24+third),44,3.4f);
     }
   }
@@ -1063,6 +1558,14 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int t=0;t<SR_TRACKS;t++){
     sr_track *track=&e->tracks[t];
     float level=(track->mute||(e->solo<SR_TRACKS&&e->solo!=t))?0:track->volume;
+    /* At most 64 samples per chunk: a bounded ~1.5ms control ramp with
+     * <=0.001 gain steps and a two-beat transition, preserving FX tails. */
+    float fade_frames=(float)e->tick_length*32.f;
+    if(fade_frames<SR_RATE)fade_frames=SR_RATE;
+    float delta=(float)frames/fade_frames;
+    float remaining=e->role_target[t]-e->role_gain[t];
+    e->role_gain[t]+=clampf(remaining,-delta,delta);
+    if(t==SR_DRUMS&&!preview&&e->solo>=SR_TRACKS)level*=e->role_gain[t];
     if(!locked){
       float peak=e->input_peak[t];
       float target=e->auto_gain&&peak>.015f?clampf(.12f/peak,.72f,1.28f):1.f;
@@ -1076,8 +1579,10 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     e->input_peak[t]*=1.f-(float)frames*.0005f;
     if(t==SR_DRUMS)level*=1.f+((int)e->drum_presence-50)*.006f;
     float send_level=track->send;
-    if(e->air_track==SR_TRACKS||e->air_track==t)
+    if(e->air_track==SR_TRACKS)
       send_level+=(1.f-send_level)*e->air_wet*(e->air_depth*.01f);
+    else if(e->air_track==t)
+      send_level+=.5f*e->air_wet*(e->air_depth*.01f); /* shared FX bus: audible role focus */
     send[t]=level*send_level;
     if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
     left[t]=level*(.5f-.31f*track->pan);
@@ -1086,9 +1591,8 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int j=0;j<SR_VOICES;j++){
     sr_voice *v=&e->voices[j];
     if(!v->active)continue;
-    if(e->frame_count-v->born>SR_RATE*30u&&v->release_coef<.003f){
-      e->note_offs+=v->gate!=0;
-      v->gate=0;v->remain=0;v->release_coef=.003f;e->watchdogs++;
+    if(!v->external&&e->frame_count-v->born>SR_RATE*30u&&v->release_coef<.003f){
+      release_voice(e,v);v->remain=0;v->release_coef=.003f;e->watchdogs++;
     }
     if(v->track==SR_BASS&&v->gate){
       bass_envelope=fmaxf(bass_envelope,v->env);
@@ -1113,16 +1617,32 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       config->fm_envelope=fm_operators[op].envelope;
     }
     config->cutoff=.028f+brightness*.24f;
+    float air_focus=(e->air_track>=SR_TRACKS||e->air_track==v->track)?e->air_wet*e->air_depth*.01f:0;
+    if(e->air_fx==3)config->cutoff*=1.f-.88f*air_focus;
     config->gain=patch->gain;
-    config->left=left[v->track];
-    config->right=right[v->track];
-    config->send=send[v->track]*.5f;
+    float role_level=v->key||v->external||preview||e->solo<SR_TRACKS?1.f:e->role_gain[v->track];
+    config->left=left[v->track]*role_level;
+    config->right=right[v->track]*role_level;
+    if(e->air_mode==4){float swell=1.f+.12f*air_focus;config->left*=swell;config->right*=swell;}
+    if(e->air_fx==4){
+      float pulse=1.f-air_focus*(.22f+.22f*sine((e->frame_count%(SR_RATE/4u))*(4.f/SR_RATE)));
+      config->left*=pulse;config->right*=pulse;
+    }
+    config->send=send[v->track]*.5f*role_level;
     float modulation=0;
     if(v->track<=SR_BASS){
       sr_motion *m=&e->motion[v->track];
       float amount=m->glide_mode&&m->glide_ms?clampf((float)frames*(1000.f/SR_RATE)/m->glide_ms,0,1):1;
       v->pitch+=(v->freq-v->pitch)*amount;
       modulation=vibrato[v->track];
+      if(!(e->motion_manual&(1u<<v->track))){
+        unsigned age=e->frame_count-v->born;
+        /* Delayed, shallow expression only in sustained phrase answers;
+         * no per-sample policy work or modulation on reference-locked audio. */
+        if(v->track==SR_BASS||age<SR_RATE/2u||age+v->remain<SR_RATE||
+           patch->attack<.03f||((v->born/e->tick_length)&7u)<4u||e->frequency_lock)
+          modulation=0;
+      }
     }
     config->step=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
   }
@@ -1149,7 +1669,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       sr_voice *v=config->voice;
       if(!v->active)continue;
       if(v->remain>0&&--v->remain==0&&v->gate){
-        v->gate=0;e->note_offs++;
+        release_voice(e,v);
         if(v->key){v->release_coef=.002f;e->watchdogs++;}
       }
       if(v->gate)v->env+=(v->peak-v->env)*v->attack_coef;
@@ -1204,6 +1724,12 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       continue;
     }
     float drums=drum_sample(e);
+    if(e->air_track>=SR_TRACKS||e->air_track==SR_DRUMS){
+      float focus=e->air_wet*e->air_depth*.01f;
+      if(e->air_fx==3){e->drum_air_lp+=(drums-e->drum_air_lp)*.12f;drums+=(e->drum_air_lp-drums)*focus;}
+      if(e->air_fx==4)drums*=1.f-.35f*focus*e->kick_env;
+      if(e->air_mode==4)drums*=1.f+.08f*focus;
+    }
     if(capture){
       if(scope_track==SR_DRUMS)scope=drums*(left[SR_DRUMS]+right[SR_DRUMS]);
       e->scope[e->scope_write]=sampleout(scope);
@@ -1216,7 +1742,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     l+=drums*left[SR_DRUMS];r+=drums*right[SR_DRUMS];
     mix+=drums*send[SR_DRUMS]*.5f;
     e->tracks[SR_DRUMS].meter=e->drum_meter*e->drum_level*(left[SR_DRUMS]+right[SR_DRUMS]);
-    e->transport_env+=((e->running||audition?1.f:0.f)-e->transport_env)*.0008f;
+    e->transport_env+=((e->running||audition||e->external_audio?1.f:0.f)-e->transport_env)*.0008f;
     float bed_gain=audition?e->bed_level*clampf(((float)e->nature_audition-i)*(1.f/1102.5f),0,1):e->bed_level;
     float nature=0, nature_side=0;
     if(!preview&&(audition||e->solo==SR_TRACKS)&&bed_gain>0&&
@@ -1255,7 +1781,15 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     }
     sacred*=full?left[SR_BASS]+right[SR_BASS]:
       (e->tracks[SR_BASS].mute||(e->solo<SR_TRACKS&&e->solo!=SR_BASS)?0:e->tracks[SR_BASS].volume);
-    float reference=e->tone_level>0&&e->solo==SR_TRACKS?advance(&e->tone_phase,sr_frequencies[e->frequency].hz)*e->tone_level*e->transport_env:0;
+    /* Phase-continuous, 28ms reference glide and gain ramp. A separate exact
+     * reference oscillator; sacred bass remains explicitly octave-folded. */
+    float target_hz=sr_frequencies[e->frequency].hz;
+    if(e->reference_hz_now<=0.f)e->reference_hz_now=target_hz;
+    e->reference_hz_now+=(target_hz-e->reference_hz_now)*.0008f;
+    if(fabsf(target_hz-e->reference_hz_now)<.08f)e->reference_hz_now=target_hz;
+    float target_gain=e->solo==SR_TRACKS?e->tone_level*e->transport_env:0.f;
+    e->reference_gain_now+=(target_gain-e->reference_gain_now)*.001f;
+    float reference=advance(&e->tone_phase,e->reference_hz_now)*e->reference_gain_now;
     if(full||source==SR_ISOLATE_FIXED){l+=reference;r+=reference;if(!(i&7u))bus_meter(e,SR_BUS_REFERENCE,reference);}
     if(full||source==SR_ISOLATE_SACRED){l+=sacred*.6f;r+=sacred*.6f;if(!(i&7u))bus_meter(e,SR_BUS_SACRED,sacred*.6f);}
     dry[3*i]=l; dry[3*i+1]=r; dry[3*i+2]=mix;
@@ -1331,12 +1865,33 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
  float dry[64*3];
  e->fx_ticks=0;
  while(frames){
-  if(!e->running&&!e->stop_frames&&!e->nature_audition&&!e->preview_frames){
+  if(e->external_audio){
+   e->external_audio=0;
+   for(unsigned v=0;v<SR_VOICES;v++)if(e->voices[v].active&&e->voices[v].external)e->external_audio=1;
+  }
+  if(!e->external_audio&&!e->running&&!e->stop_frames&&!e->nature_audition&&!e->preview_frames){
     memset(out,0,frames*2*sizeof(*out));
     return;
   }
   if(e->running&&e->tick_phase>=e->tick_length){e->tick_phase=0;memset(e->ornaments,0,sizeof e->ornaments);trigger(e);}
   size_t n=frames>64?64:frames;
+  if(e->running)for(unsigned i=0;i<12;i++)if(e->scheduled[i].active){
+    int32_t due=(int32_t)(e->scheduled[i].due-e->frame_count);
+    if(due<=0){
+      unsigned role=e->scheduled[i].role;e->scheduled[i].active=0;
+      if(role==SR_DRUMS){
+        if(!e->drums_enabled||e->freeze||e->tracks[role].mute)continue;
+        float velocity=e->scheduled[i].velocity*(1.f/127.f);
+        if(e->timeline_enabled){unsigned j=e->timeline_write++%96u;
+          e->timeline[j].frame=e->frame_count;e->timeline[j].duration=e->tick_length/2u;
+          e->timeline[j].role=SR_DRUMS;e->timeline[j].note=e->scheduled[i].note==0?36:e->scheduled[i].note==1?38:42;
+          e->timeline[j].velocity=e->scheduled[i].velocity;}
+        if(e->scheduled[i].note==0)e->kick_env=velocity;
+        else if(e->scheduled[i].note==1)e->hand_env=velocity;else e->shaker_env=velocity;
+        e->tracks[role].events++;
+      }else sr_note_on(e,role,e->scheduled[i].note,e->scheduled[i].velocity,e->scheduled[i].beats);
+    }else if(n>(unsigned)due)n=(unsigned)due;
+  }
   if(e->running&&(e->ornaments[0].phase||e->ornaments[1].phase||
                  e->ornaments[2].phase||e->ornaments[3].phase)){
     for(unsigned slot=0;slot<sizeof ornament_track;slot++){
@@ -1363,7 +1918,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     }
   }
 
-  if(e->running&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;
+  if(e->running&&!e->external_sync&&n>e->tick_length-e->tick_phase)n=e->tick_length-e->tick_phase;
   if(e->stop_frames&&n>e->stop_frames)n=e->stop_frames;
   if(e->nature_audition&&n>e->nature_audition)n=e->nature_audition;
   if(e->preview_frames&&n>e->preview_frames)n=e->preview_frames;
@@ -1392,9 +1947,12 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
     clear_transport(e);
     e->restart=0;
     e->frequency_lock=e->pending_lock;
-    if(restart){e->running=1;e->sequence_step=0;e->loop_pos=0;e->tick_phase=e->tick_length;}
+    if(restart){e->running=1;e->sequence_step=0;e->loop_pos=0;e->tick_phase=e->tick_length;e->external_clock_count=255;}
   }
-  if(e->running&&!fading)e->tick_phase+=(uint32_t)n;
+  if(e->running&&!fading){
+    e->tick_phase+=(uint32_t)n;
+    if(e->external_sync&&e->tick_phase>=e->tick_length)e->tick_phase=e->tick_length-1u;
+  }
   out+=n*2;frames-=n;
  }
 }

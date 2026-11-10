@@ -1,0 +1,1 @@
+9826fb853523590ea0699792cae03cdb4c770041f548e11fde767ef5bf01eed3  AQUORA-0.6.6-package.tar.gz

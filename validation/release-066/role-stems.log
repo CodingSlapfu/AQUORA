@@ -1,0 +1,225 @@
+STEM 0 0 phrase1 target1.00 gain0.0003 meter0.000000 events1
+STEM 0 0 phrase2 target0.00 gain0.9995 meter0.018829 events3
+STEM 0 0 phrase3 target0.00 gain0.0000 meter0.000000 events5
+STEM 0 0 phrase4 target1.00 gain0.0010 meter0.000000 events6
+STEM 0 0 phrase5 target0.00 gain0.9987 meter0.052341 events13
+STEM 0 0 phrase6 target1.00 gain0.0016 meter0.000000 events15
+STEM 0 0 phrase7 target1.00 gain1.0000 meter0.039617 events24
+STEM 0 0 phrase8 target0.00 gain0.9979 meter0.043791 events33
+SUMMARY mode0 role0 peak6475 nonquiet471909 power960933693425 changes8
+STEM 0 1 phrase1 target1.00 gain1.0000 meter0.202231 events5
+STEM 0 1 phrase2 target1.00 gain1.0000 meter0.192562 events9
+STEM 0 1 phrase3 target1.00 gain1.0000 meter0.182648 events13
+STEM 0 1 phrase4 target0.00 gain0.9990 meter0.170320 events17
+STEM 0 1 phrase5 target1.00 gain0.0013 meter0.000016 events18
+STEM 0 1 phrase6 target1.00 gain1.0000 meter0.208612 events22
+STEM 0 1 phrase7 target1.00 gain1.0000 meter0.193647 events26
+STEM 0 1 phrase8 target1.00 gain1.0000 meter0.208485 events30
+SUMMARY mode0 role1 peak14727 nonquiet897215 power28419452763655 changes8
+STEM 0 2 phrase1 target1.00 gain0.0003 meter0.000009 events2
+STEM 0 2 phrase2 target1.00 gain1.0000 meter0.058592 events4
+STEM 0 2 phrase3 target0.00 gain0.9992 meter0.002894 events6
+STEM 0 2 phrase4 target1.00 gain0.0010 meter0.000000 events7
+STEM 0 2 phrase5 target1.00 gain1.0000 meter0.000000 events9
+STEM 0 2 phrase6 target1.00 gain1.0000 meter0.032252 events11
+STEM 0 2 phrase7 target1.00 gain1.0000 meter0.011274 events13
+STEM 0 2 phrase8 target0.00 gain0.9979 meter0.000912 events15
+SUMMARY mode0 role2 peak2693 nonquiet520913 power325993014834 changes8
+STEM 0 3 phrase1 target1.00 gain0.0003 meter0.000001 events3
+STEM 0 3 phrase2 target0.00 gain0.9995 meter0.016185 events8
+STEM 0 3 phrase3 target0.00 gain0.0000 meter0.000000 events10
+STEM 0 3 phrase4 target1.00 gain0.0010 meter0.000000 events11
+STEM 0 3 phrase5 target0.00 gain0.9987 meter0.026648 events15
+STEM 0 3 phrase6 target1.00 gain0.0016 meter0.000006 events17
+STEM 0 3 phrase7 target0.00 gain0.9982 meter0.026532 events22
+STEM 0 3 phrase8 target0.00 gain0.0000 meter0.000000 events23
+SUMMARY mode0 role3 peak2268 nonquiet453487 power126987536045 changes8
+STEM 0 4 phrase1 target0.00 gain0.9997 meter0.000067 events2
+STEM 0 4 phrase2 target1.00 gain0.0005 meter0.000000 events2
+STEM 0 4 phrase3 target1.00 gain1.0000 meter0.000000 events3
+STEM 0 4 phrase4 target1.00 gain1.0000 meter0.006472 events5
+STEM 0 4 phrase5 target1.00 gain1.0000 meter0.006271 events11
+STEM 0 4 phrase6 target1.00 gain1.0000 meter0.001346 events14
+STEM 0 4 phrase7 target0.00 gain0.9982 meter0.006339 events17
+STEM 0 4 phrase8 target1.00 gain0.0021 meter0.000000 events18
+SUMMARY mode0 role4 peak2436 nonquiet280375 power75928277214 changes8
+STEM 0 5 phrase1 target1.00 gain0.0003 meter0.000000 events0
+STEM 0 5 phrase2 target1.00 gain1.0000 meter0.000000 events0
+STEM 0 5 phrase3 target0.00 gain0.9992 meter0.059827 events2
+STEM 0 5 phrase4 target1.00 gain0.0010 meter0.000012 events3
+STEM 0 5 phrase5 target0.00 gain0.9987 meter0.021035 events5
+STEM 0 5 phrase6 target0.00 gain0.0000 meter0.000000 events5
+STEM 0 5 phrase7 target1.00 gain0.0018 meter0.000000 events5
+STEM 0 5 phrase8 target0.00 gain0.9979 meter0.040399 events7
+SUMMARY mode0 role5 peak3785 nonquiet361398 power436205792056 changes8
+STEM 0 6 phrase1 target1.00 gain1.0000 meter0.049320 events3
+STEM 0 6 phrase2 target1.00 gain1.0000 meter0.013551 events5
+STEM 0 6 phrase3 target1.00 gain1.0000 meter0.041622 events7
+STEM 0 6 phrase4 target1.00 gain1.0000 meter0.045970 events9
+STEM 0 6 phrase5 target0.00 gain0.9987 meter0.004160 events11
+STEM 0 6 phrase6 target1.00 gain0.0016 meter0.000000 events12
+STEM 0 6 phrase7 target0.00 gain0.9982 meter0.000000 events14
+STEM 0 6 phrase8 target0.00 gain0.0000 meter0.000000 events14
+SUMMARY mode0 role6 peak3369 nonquiet617999 power586983693800 changes8
+STEM 0 7 phrase1 target1.00 gain1.0000 meter0.214348 events25
+STEM 0 7 phrase2 target1.00 gain1.0000 meter0.218203 events49
+STEM 0 7 phrase3 target0.00 gain0.9992 meter0.199801 events73
+STEM 0 7 phrase4 target0.00 gain0.0000 meter0.000000 events97
+STEM 0 7 phrase5 target1.00 gain0.0013 meter0.000257 events121
+STEM 0 7 phrase6 target0.00 gain0.9984 meter0.193437 events145
+STEM 0 7 phrase7 target0.00 gain0.0000 meter0.000000 events169
+STEM 0 7 phrase8 target1.00 gain0.0021 meter0.000361 events193
+SUMMARY mode0 role7 peak8411 nonquiet85084 power125773176769 changes8
+STEM 1 0 phrase1 target1.00 gain0.0009 meter0.000007 events1
+STEM 1 0 phrase2 target1.00 gain1.0000 meter0.031578 events5
+STEM 1 0 phrase3 target1.00 gain1.0000 meter0.030962 events9
+STEM 1 0 phrase4 target1.00 gain1.0000 meter0.030949 events13
+STEM 1 0 phrase5 target1.00 gain1.0000 meter0.031568 events17
+STEM 1 0 phrase6 target1.00 gain1.0000 meter0.030854 events21
+STEM 1 0 phrase7 target1.00 gain1.0000 meter0.030435 events25
+STEM 1 0 phrase8 target0.00 gain0.9977 meter0.033400 events29
+SUMMARY mode1 role0 peak3370 nonquiet791743 power892437404756 changes8
+STEM 1 1 phrase1 target1.00 gain1.0000 meter0.172591 events5
+STEM 1 1 phrase2 target1.00 gain1.0000 meter0.143357 events9
+STEM 1 1 phrase3 target1.00 gain1.0000 meter0.151152 events13
+STEM 1 1 phrase4 target1.00 gain1.0000 meter0.174566 events17
+STEM 1 1 phrase5 target1.00 gain1.0000 meter0.159380 events21
+STEM 1 1 phrase6 target1.00 gain1.0000 meter0.162963 events25
+STEM 1 1 phrase7 target1.00 gain1.0000 meter0.146478 events29
+STEM 1 1 phrase8 target1.00 gain1.0000 meter0.152533 events33
+SUMMARY mode1 role1 peak14231 nonquiet988876 power27203068190656 changes8
+STEM 1 2 phrase1 target1.00 gain1.0000 meter0.070421 events3
+STEM 1 2 phrase2 target1.00 gain1.0000 meter0.068752 events5
+STEM 1 2 phrase3 target1.00 gain1.0000 meter0.003512 events7
+STEM 1 2 phrase4 target1.00 gain1.0000 meter0.000000 events9
+STEM 1 2 phrase5 target1.00 gain1.0000 meter0.000000 events11
+STEM 1 2 phrase6 target1.00 gain1.0000 meter0.000000 events13
+STEM 1 2 phrase7 target1.00 gain1.0000 meter0.000000 events15
+STEM 1 2 phrase8 target1.00 gain1.0000 meter0.000000 events17
+SUMMARY mode1 role2 peak4638 nonquiet330481 power829691100314 changes8
+STEM 1 3 phrase1 target1.00 gain1.0000 meter0.027966 events5
+STEM 1 3 phrase2 target1.00 gain1.0000 meter0.026844 events9
+STEM 1 3 phrase3 target0.00 gain0.9997 meter0.023336 events13
+STEM 1 3 phrase4 target1.00 gain0.0012 meter0.000002 events14
+STEM 1 3 phrase5 target0.00 gain0.9980 meter0.023257 events18
+STEM 1 3 phrase6 target1.00 gain0.0006 meter0.000002 events19
+STEM 1 3 phrase7 target1.00 gain1.0000 meter0.026844 events23
+STEM 1 3 phrase8 target1.00 gain1.0000 meter0.023312 events27
+SUMMARY mode1 role3 peak2433 nonquiet793360 power332426726047 changes8
+STEM 1 4 phrase1 target1.00 gain1.0000 meter0.014840 events4
+STEM 1 4 phrase2 target1.00 gain1.0000 meter0.014220 events8
+STEM 1 4 phrase3 target1.00 gain1.0000 meter0.014266 events12
+STEM 1 4 phrase4 target0.00 gain0.9988 meter0.014539 events16
+STEM 1 4 phrase5 target0.00 gain0.0000 meter0.000000 events17
+STEM 1 4 phrase6 target1.00 gain0.0006 meter0.000000 events17
+STEM 1 4 phrase7 target1.00 gain1.0000 meter0.016677 events21
+STEM 1 4 phrase8 target0.00 gain0.9977 meter0.015060 events25
+SUMMARY mode1 role4 peak1586 nonquiet491428 power72057483566 changes8
+STEM 1 5 phrase1 target0.00 gain0.9991 meter0.002223 events4
+STEM 1 5 phrase2 target1.00 gain0.0017 meter0.000000 events5
+STEM 1 5 phrase3 target0.00 gain0.9997 meter0.002243 events9
+STEM 1 5 phrase4 target0.00 gain0.0000 meter0.000000 events10
+STEM 1 5 phrase5 target1.00 gain0.0020 meter0.000000 events10
+STEM 1 5 phrase6 target1.00 gain1.0000 meter0.002356 events14
+STEM 1 5 phrase7 target0.00 gain0.9985 meter0.002003 events18
+STEM 1 5 phrase8 target0.00 gain0.0000 meter0.000000 events19
+SUMMARY mode1 role5 peak2031 nonquiet412789 power105925810775 changes8
+STEM 1 6 phrase1 target1.00 gain1.0000 meter0.017295 events3
+STEM 1 6 phrase2 target1.00 gain1.0000 meter0.001477 events5
+STEM 1 6 phrase3 target1.00 gain1.0000 meter0.000000 events7
+STEM 1 6 phrase4 target1.00 gain1.0000 meter0.038077 events9
+STEM 1 6 phrase5 target1.00 gain1.0000 meter0.003925 events11
+STEM 1 6 phrase6 target1.00 gain1.0000 meter0.017656 events13
+STEM 1 6 phrase7 target0.00 gain0.9985 meter0.003692 events15
+STEM 1 6 phrase8 target1.00 gain0.0023 meter0.000000 events16
+SUMMARY mode1 role6 peak2029 nonquiet565812 power152019484887 changes8
+STEM 1 7 phrase1 target0.00 gain0.9991 meter0.138271 events25
+STEM 1 7 phrase2 target0.00 gain0.0000 meter0.000000 events49
+STEM 1 7 phrase3 target1.00 gain0.0003 meter0.000056 events73
+STEM 1 7 phrase4 target1.00 gain1.0000 meter0.245963 events97
+STEM 1 7 phrase5 target0.00 gain0.9980 meter0.238634 events121
+STEM 1 7 phrase6 target0.00 gain0.0000 meter0.000000 events145
+STEM 1 7 phrase7 target1.00 gain0.0015 meter0.000342 events169
+STEM 1 7 phrase8 target0.00 gain0.9977 meter0.201235 events193
+SUMMARY mode1 role7 peak9102 nonquiet70504 power102464373657 changes8
+STEM 2 0 phrase1 target1.00 gain0.0019 meter0.000000 events1
+STEM 2 0 phrase2 target0.00 gain0.9988 meter0.000000 events5
+STEM 2 0 phrase3 target0.00 gain0.0000 meter0.000000 events6
+STEM 2 0 phrase4 target1.00 gain0.0025 meter0.000000 events6
+STEM 2 0 phrase5 target0.00 gain0.9981 meter0.000000 events10
+STEM 2 0 phrase6 target0.00 gain0.0000 meter0.000000 events11
+STEM 2 0 phrase7 target1.00 gain0.0006 meter0.000000 events11
+STEM 2 0 phrase8 target1.00 gain1.0000 meter0.040082 events15
+STEM 2 0 phrase9 target1.00 gain1.0000 meter0.047648 events19
+SUMMARY mode2 role0 peak3452 nonquiet234183 power312032897430 changes9
+STEM 2 1 phrase1 target1.00 gain1.0000 meter0.090720 events5
+STEM 2 1 phrase2 target1.00 gain1.0000 meter0.090722 events9
+STEM 2 1 phrase3 target1.00 gain1.0000 meter0.090895 events13
+STEM 2 1 phrase4 target1.00 gain1.0000 meter0.089403 events17
+STEM 2 1 phrase5 target1.00 gain1.0000 meter0.088589 events21
+STEM 2 1 phrase6 target1.00 gain1.0000 meter0.091731 events25
+STEM 2 1 phrase7 target1.00 gain1.0000 meter0.083851 events29
+STEM 2 1 phrase8 target1.00 gain1.0000 meter0.088399 events33
+STEM 2 1 phrase9 target0.00 gain0.9981 meter0.083741 events37
+SUMMARY mode2 role1 peak7594 nonquiet956876 power11460056367011 changes9
+STEM 2 2 phrase1 target1.00 gain0.0019 meter0.000046 events2
+STEM 2 2 phrase2 target1.00 gain1.0000 meter0.000983 events4
+STEM 2 2 phrase3 target0.00 gain0.9994 meter0.000000 events6
+STEM 2 2 phrase4 target0.00 gain0.0000 meter0.000000 events6
+STEM 2 2 phrase5 target1.00 gain0.0019 meter0.000000 events7
+STEM 2 2 phrase6 target1.00 gain1.0000 meter0.000000 events9
+STEM 2 2 phrase7 target1.00 gain1.0000 meter0.000000 events11
+STEM 2 2 phrase8 target0.00 gain0.9975 meter0.000000 events13
+STEM 2 2 phrase9 target0.00 gain0.0000 meter0.000000 events13
+SUMMARY mode2 role2 peak459 nonquiet135449 power3421857957 changes9
+STEM 2 3 phrase1 target1.00 gain1.0000 meter0.022883 events7
+STEM 2 3 phrase2 target0.00 gain0.9988 meter0.029116 events13
+STEM 2 3 phrase3 target0.00 gain0.0000 meter0.000000 events14
+STEM 2 3 phrase4 target1.00 gain0.0025 meter0.000000 events15
+STEM 2 3 phrase5 target1.00 gain1.0000 meter0.022883 events21
+STEM 2 3 phrase6 target1.00 gain1.0000 meter0.022840 events27
+STEM 2 3 phrase7 target0.00 gain0.9994 meter0.022780 events33
+STEM 2 3 phrase8 target0.00 gain0.0000 meter0.000000 events34
+STEM 2 3 phrase9 target1.00 gain0.0019 meter0.000000 events35
+SUMMARY mode2 role3 peak1639 nonquiet577790 power130272663846 changes9
+STEM 2 4 phrase1 target1.00 gain1.0000 meter0.034216 events17
+STEM 2 4 phrase2 target1.00 gain1.0000 meter0.023367 events33
+STEM 2 4 phrase3 target1.00 gain1.0000 meter0.019246 events49
+STEM 2 4 phrase4 target1.00 gain1.0000 meter0.040199 events65
+STEM 2 4 phrase5 target1.00 gain1.0000 meter0.037497 events81
+STEM 2 4 phrase6 target1.00 gain1.0000 meter0.022154 events97
+STEM 2 4 phrase7 target1.00 gain1.0000 meter0.016272 events113
+STEM 2 4 phrase8 target1.00 gain1.0000 meter0.043071 events129
+STEM 2 4 phrase9 target1.00 gain1.0000 meter0.037405 events145
+SUMMARY mode2 role4 peak2215 nonquiet942104 power240539046074 changes9
+STEM 2 5 phrase1 target0.00 gain0.0000 meter0.000000 events2
+STEM 2 5 phrase2 target1.00 gain0.0012 meter0.000000 events2
+STEM 2 5 phrase3 target1.00 gain1.0000 meter0.011072 events10
+STEM 2 5 phrase4 target1.00 gain1.0000 meter0.011683 events18
+STEM 2 5 phrase5 target0.00 gain0.9981 meter0.013019 events26
+STEM 2 5 phrase6 target0.00 gain0.0000 meter0.000000 events28
+STEM 2 5 phrase7 target1.00 gain0.0006 meter0.000000 events28
+STEM 2 5 phrase8 target1.00 gain1.0000 meter0.011912 events36
+STEM 2 5 phrase9 target1.00 gain1.0000 meter0.011478 events44
+SUMMARY mode2 role5 peak1473 nonquiet580544 power90405497224 changes9
+STEM 2 6 phrase1 target1.00 gain0.0019 meter0.000070 events2
+STEM 2 6 phrase2 target1.00 gain1.0000 meter0.002834 events4
+STEM 2 6 phrase3 target1.00 gain1.0000 meter0.000000 events6
+STEM 2 6 phrase4 target0.00 gain0.9975 meter0.000000 events8
+STEM 2 6 phrase5 target0.00 gain0.0000 meter0.000000 events8
+STEM 2 6 phrase6 target1.00 gain0.0012 meter0.000000 events9
+STEM 2 6 phrase7 target1.00 gain1.0000 meter0.000000 events11
+STEM 2 6 phrase8 target1.00 gain1.0000 meter0.000000 events13
+STEM 2 6 phrase9 target1.00 gain1.0000 meter0.000000 events15
+SUMMARY mode2 role6 peak749 nonquiet156014 power10988941356 changes9
+STEM 2 7 phrase1 target1.00 gain0.0019 meter0.000510 events7
+STEM 2 7 phrase2 target1.00 gain1.0000 meter0.291316 events13
+STEM 2 7 phrase3 target0.00 gain0.9994 meter0.308090 events18
+STEM 2 7 phrase4 target0.00 gain0.0000 meter0.000000 events22
+STEM 2 7 phrase5 target1.00 gain0.0019 meter0.000516 events28
+STEM 2 7 phrase6 target1.00 gain1.0000 meter0.272386 events35
+STEM 2 7 phrase7 target1.00 gain1.0000 meter0.108605 events41
+STEM 2 7 phrase8 target0.00 gain0.9975 meter0.257957 events47
+STEM 2 7 phrase9 target1.00 gain0.0019 meter0.000501 events53
+SUMMARY mode2 role7 peak10243 nonquiet63154 power162844598790 changes9
+PASS 24 normal-gated real PCM stems, 90-second musical evolution, role-set changes, STOP silence; audible-capability mask 255 (no per-song role quota)

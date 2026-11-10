@@ -1,0 +1,20 @@
+{
+  "version": "0.6.7",
+  "platform_run": 42412774240,
+  "platform_source": "3566af463e7eec184d311d6c96b2c882a37609d5",
+  "native_source": "17c2e3d539cd606ec96806511f835c1e2567b39b",
+  "native_byte_reproducible": true,
+  "single_core_verified": true,
+  "wasm_verified": true,
+  "updater_paths": 8,
+  "platform_artifact_sha256": "4e93d784ef82aae1872154daee85213b9e38ca6e16741d7151107959a5594b5d",
+  "file_sha256": {
+    "native/sound-healing-0.6.7.fwsc": "5dcd602134b37c6b81e982aea9998086360dc4e665664dc6dbfbb0ba60c6c83a",
+    "single-core/sound-healing-0.6.7.fwsc": "23e72b0ed98f910687ef00a58e822e9ded6db4fe0594f95921e126f34d19c5fc",
+    "emu/app.wasm": "6a2011d546feafc1fcf328cccaf9f64a210ea167c62a2eddd4bff0d29b1bf4e7"
+  },
+  "physical_acceptance": "OWNER-UNVERIFIED",
+  "midi": "Both performance transports owner-authorized deferred",
+  "kira9": "Untouched",
+  "browser_preview": "HTTP preview lacks secure-context WebMIDI/AudioWorklet; full runtime to be verified on deployed HTTPS; module compilation and host runtime accepted."
+}

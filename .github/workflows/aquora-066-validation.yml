@@ -1,0 +1,104 @@
+name: AQUORA 0.6.6 remaining platform acceptance
+on:
+  push:
+    branches: [aquora-next-integration]
+    paths: ['validation/trigger-066.txt']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: aquora-066-platform
+  cancel-in-progress: false
+jobs:
+  remaining-platform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Recover pinned complete source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          mkdir -p "$RUNNER_TEMP/results"
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install Pillow==11.3.0
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 42353704244
+          name: aquora-066-platform
+          path: ${{ runner.temp }}/results
+      - name: Verify successful unchanged native artifacts without recompiling
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/jobs/128347082224 --jq '.steps[] | select(.name=="Sequential native, reproducibility and single-core gates") | .conclusion')" = success
+          git fetch --no-tags --depth=1 origin c6df8d527d69ad9e0f3a8dce19d440b679bf5337
+          git diff --exit-code c6df8d527d69ad9e0f3a8dce19d440b679bf5337 HEAD -- device vendor
+          cd "$RUNNER_TEMP/results"
+          sha256sum -c --strict SHA256SUMS.txt
+          test "$(cat source-commit.txt)" = c6df8d527d69ad9e0f3a8dce19d440b679bf5337
+          cp source-commit.txt native-source-commit.txt
+          cmp native/sound-healing-0.6.6.fwsc native-repro/sound-healing-0.6.6.fwsc
+      - name: Reuse unchanged successful seven-path updater acceptance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/runs/42353129424 --jq .conclusion)" = success
+          git fetch --no-tags --depth=1 origin aeb0eea3bb7851af57e73f54384adeef12ad0086
+          git diff --exit-code aeb0eea3bb7851af57e73f54384adeef12ad0086 HEAD -- vendor tests/direct_update_066.py
+          job=$(gh api repos/$GITHUB_REPOSITORY/actions/runs/42353129424/jobs --jq ".jobs[0].id")
+          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/$job/logs > "$RUNNER_TEMP/results/inherited-updater-job.log"
+
+      - name: Outstanding host and visual semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset FM1B_CPU2
+          cd "$RUNNER_TEMP/source"
+          out="$RUNNER_TEMP/results"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.6.6 2>&1 | tee "$out/host-build.log"
+          python3 tests/non_midi_066.py device/build/host/sound-healing_host "$out/non-midi"
+          mkdir "$out/lighting"
+          device/build/host/sound-healing_host tests/lighting_output_066.txt "$out/lighting" | tee "$out/lighting.log"
+          python3 tests/startup_modes_066.py device/build/host/sound-healing_host "$out/startup-modes"
+          python3 tests/actions_066.py device/build/host/sound-healing_host "$out/actions"
+          python3 tests/cymatics_sequences_066.py device/build/host/sound-healing_host "$out/cymatics"
+          python3 tests/visual_semantics_066.py "$out/visual-semantics"
+          python3 tests/requirement_gate_next.py --self-test | tee "$out/scope-gate.log"
+          python3 tests/parameter_registry_062.py | tee "$out/parameter-registry.log"
+      - name: Emscripten 3.1.64 and current-source WASM
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+          source ./emsdk_env.sh
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --web --release 0.6.6 2>&1 | tee "$RUNNER_TEMP/results/wasm-build.log"
+          node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
+          cp -r device/build/emu device/web/words "$RUNNER_TEMP/results/"
+      - name: Preserve exact acceptance artifacts
+        if: always()
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP/results"
+          printf '%s\n' "$GITHUB_SHA" > source-commit.txt
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-066-platform
+          path: ${{ runner.temp }}/results/
+          retention-days: 30

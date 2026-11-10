@@ -1,0 +1,8 @@
+{
+  "version": "0.7.0",
+  "identity": "FM-1_73000700",
+  "firmware_sha256": "d697a1fda8e12e9df37a3e143d2446fff784781fcdf67981ab1a4b11f2174789",
+  "firmware_bytes": 611496,
+  "installer_sha256": "b469bb21f1c54525eb7b7880f57aa1d5a7247d3310320ea5f14fca7d792e6746",
+  "publication": "BLOCKED existing Site source helper; local staging only"
+}

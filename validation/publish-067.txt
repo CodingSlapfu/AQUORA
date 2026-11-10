@@ -1,0 +1,1 @@
+Continue accepted publication with exact GitHub-backed site archive. GitHub runner cannot access Sites directly (403); no firmware/test changes or recompilation.

@@ -4,6 +4,7 @@
  * Part of the unity build (unity.c), after usb.c, storage.c and panel.c. */
 
 uint32_t plat_ms(void) { return fm1_ms; }
+int plat_aquora_usb_ready(void){return usb.config&&!usb.suspended;}
 
 /* remote control over USB-MIDI (main_fm1.c remote_frame, tools/fm1_remote.py): buttons and keys held, turns and
  * MASTER, added to the panel's own, so a program can drive the app as a player would */
@@ -41,6 +42,7 @@ int32_t plat_enc(int role)
 static volatile uint32_t master_pos = 0;   /* MASTER's position, 0..4096 (main_fm1.c reads the pot; the remote's
                                                * or the mirror's when they set it) */
 uint32_t plat_master(void) { return master_pos; }
+uint32_t plat_aquora_boot_seed(void) { return fm1_ble_rng32() ^ fm1_ticks() ^ master_pos; }
 
 /* the battery: ADC ch3 (its divider), a slow average by the main loop. The stock firmware's thresholds, as X0X, melodee
  * and dxsloop use them, give 0-3 bars; there is no charger line, so a USB host means power */
@@ -65,6 +67,26 @@ int plat_battery(void)                           /* (a level moves once the read
 /* LEDs: the picture is built off-line and copied one byte per column (Felucca: clearing
  * and relighting would let the 10 kHz scan catch the dark gap and flicker) */
 static uint8_t led_pos[FM1_NKEY];
+/* Duty masks are consumed by the existing 10kHz matrix scanner, never a UI
+ * timer or a busy wait. Full-bright held/pending keys override these masks. */
+void plat_aquora_key_duty(unsigned black,unsigned white)
+{
+    static unsigned old_black=~0u,old_white=~0u;
+    if(black==old_black&&white==old_white)return;
+    uint8_t b[FM1_NCOL]={0},w[FM1_NCOL]={0};
+    for(unsigned key=0;key<NKEYS;key++){
+        unsigned q=led_pos[14u+key];
+        if(q==0xffu)continue;
+        if(black&(1u<<key))b[q>>3]|=1u<<(q&7u);
+        if(white&(1u<<key))w[q>>3]|=1u<<(q&7u);
+    }
+    uint32_t flags=plat_lock();
+    for(unsigned c=0;c<FM1_NCOL;c++){
+        fm1_led_aquora70[c]=b[c];fm1_led_aquora50[c]=w[c];
+    }
+    plat_unlock(flags);
+    old_black=black;old_white=white;
+}
 static void led_pos_init(void)
 {
     uint32_t id, p, r;

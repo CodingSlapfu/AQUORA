@@ -1,0 +1,23 @@
+{
+  "version": "0.7.1",
+  "identity": "FM-1_73000701",
+  "firmware_sha256": "9a8a4ae41320a38f1e2d15e7cc76917826ce919617fda7c5a96f09b25dfa8f6f",
+  "source_commit": "18660873778a0f98be8823c13b62ff9ed8b0889d",
+  "ci_run": 42742339371,
+  "site_version": 193,
+  "site_source_commit": "ea356586114940d0c98ea23d67504ad5132a383b",
+  "site_deployment": "appgdep_6af28443d3ac819195e3642c22349fcb",
+  "site_status": "succeeded",
+  "native_image_bytes": 286588,
+  "native_data_bss_bytes": 92884,
+  "native_data_bss_budget": 98304,
+  "pool_bytes": 101872,
+  "pool_budget": 344064,
+  "publication_url": "https://parallax8-studio.jminie66.chatgpt.site",
+  "release_url": "https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.7.1",
+  "reference_worst_error_hz": 0.000778,
+  "score_contexts": 504,
+  "committed_transitions": 51528,
+  "longform_simulated_hours": 13.32,
+  "physical_timing": "unverified; not a publication gate for this owner-authorized release"
+}

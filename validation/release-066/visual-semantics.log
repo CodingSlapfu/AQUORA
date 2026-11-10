@@ -1,0 +1,3 @@
+nodal residual: 0.509958 -> 0.029373
+PASS original 33-vertex geometry exactly matches pinned 128662b across 294 normal/fullscreen snapshots
+PASS sand converges to nodes, higher pitch increases mode order, silence quiets water

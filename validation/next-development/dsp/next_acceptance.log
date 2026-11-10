@@ -1,0 +1,22 @@
+PASS all scenes: loaded STOP, held keys, scene change, rapid restart, exact silence after 256 fade frames
+PASS all 351 mapped keys, chromatic mode, held retuning, Lead legato, Bass always glide and key release
+Kit River Hands: peak 3417, distinct PCM and mute pass
+Kit Willow Brushes: peak 3645, distinct PCM and mute pass
+Kit Hollow Earth: peak 4556, distinct PCM and mute pass
+Kit Moonlit Felt: peak 3917, distinct PCM and mute pass
+Kit Temple Air: peak 3495, distinct PCM and mute pass
+Kit River Stones: peak 3576, distinct PCM and mute pass
+Kit Warm Pulse: peak 4505, distinct PCM and mute pass
+Kit Star Dust: peak 2816, distinct PCM and mute pass
+Kit Rain Shells: peak 3160, distinct PCM and mute pass
+Kit Willow Brush: peak 2957, distinct PCM and mute pass
+Kit Crystal Taps: peak 3882, distinct PCM and mute pass
+Kit Soft Studio: peak 4300, distinct PCM and mute pass
+Kit Lunar Tide: peak 4679, distinct PCM and mute pass
+Kit Sacred Earth: peak 4474, distinct PCM and mute pass
+Kit Feather Ritual: peak 3401, distinct PCM and mute pass
+Kit FM Moon Kit: peak 4972, distinct PCM and mute pass
+Kit Temple Resonance: peak 4624, distinct PCM and mute pass
+Kit Warm Pocket: peak 5153, distinct PCM and mute pass
+Kit Stardust FM: peak 3702, distinct PCM and mute pass
+PASS all eight solo/mute routes and independent Sacred Bass in both intentions

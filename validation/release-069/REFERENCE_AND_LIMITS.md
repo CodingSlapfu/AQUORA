@@ -1,0 +1,12 @@
+# 0.6.9 reference and evidence limits
+Recovered original archive ZIAO_PROJECT_RECOVERY_2026-11-02.zip SHA256 5d9f1a76f4de4b8354dfe8b5eb776a3636fbc78112d3bd152f2f4498e0891b8f. Read nested EIN1 0.29/0.30 resonance_worlds.h: SHA256 8d2dd5411eb0f79eabaaae5c8e84f0f3d0194a370f5f6342c1741f04080ccd87 / 7f1c1261543aad4f9038a3f1065d6be5865ab736860ba06bb5048556e11201f4. GPL-3.0-only reference; no code copied. Behavioral observations: independent role onsets, peak-to-size response, pitch displacement, shared rings and separate drum ripple. Exact preferred historical version remains unknown.
+
+AQUORA original Chladni implementation adds role-response inertia, bass expansion, note-driven nodal deformation and onset sand impulse. Fixed-pitch field-motion test demonstrates actual music-causal geometry versus prior nearly static field; this numeric metric is NOT a perceptual 2.5x acceptance claim. Actual native-LCD/owner evaluation remains open. Cymatics preserves geometry and palette, moderate low-level response gain ~1.234; Original all 77,616 tested vertices unchanged.
+
+Initial native 0.6.9 built successfully before final LED/learn/visual refinements: package 611496 bytes, identity FM-1_73000609. This is NOT the final release binary. Final native/repro/single/WASM/updater/source-package/site gates remain open.
+
+448 strip-injection controls PASS: real host unity with deterministic 5ms LCD transfer fixture. SELECT finishes five strips on PLAY; page navigation aborts at next safe boundary. This is not hardware latency/FPS evidence. Learn panel actual capture/apply/explicit bank recall PASS, v1–v6 migration all four banks PASS. ASan/UBSan scenario test PASS with detect_leaks=0 because this execution environment's ptrace prevents LeakSanitizer. No leak claim made.
+
+Twelve 180-second actual PCM comparisons (six profiles, all four modes; Experimental compared to Standard baseline) passed ceiling/RMS checks. Level-matched Oggs, raw PCM hashes, Bass stems and role/event/gain/meter timelines exist in current work area, awaiting durable audio archive. Baseline source corrected to exact 8b5627d before accepted run; initial invalid comparison is discarded. No human listening results invented.
+
+Git CLI push lacks credentials; use GitHub plugin Git data API, expected-head lease and independent remote verification. Checkpoint 900d3c485779a975aa12f9a12a7a412895853499 verified on aquora-next-integration; main is older and must not replace this source.
