@@ -48,16 +48,16 @@ static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds",
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum"};
 /* Static panel palettes. Canvas is independently exact black or white. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
- {{RGB(5,17,22),RGB(10,32,38),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
-  {RGB(246,250,251),RGB(184,239,228),RGB(108,154,161),RGB(10,106,99),RGB(20,38,47),RGB(70,91,97)}},
- {{RGB(7,22,29),RGB(18,47,55),RGB(67,142,148),RGB(90,245,209),RGB(236,251,252),RGB(158,199,205)},
-  {RGB(246,252,250),RGB(170,238,214),RGB(66,146,136),RGB(12,121,121),RGB(14,53,56),RGB(66,99,102)}},
- {{RGB(12,15,38),RGB(26,31,65),RGB(62,95,189),RGB(58,247,247),RGB(243,247,255),RGB(162,178,220)},
-  {RGB(250,251,255),RGB(207,216,255),RGB(98,126,203),RGB(10,91,177),RGB(24,35,73),RGB(88,98,137)}},
- {{RGB(32,20,17),RGB(66,39,29),RGB(157,88,48),RGB(255,186,85),RGB(255,244,219),RGB(225,182,145)},
-  {RGB(255,249,240),RGB(255,219,182),RGB(201,130,91),RGB(169,70,40),RGB(69,38,29),RGB(116,73,53)}},
- {{RGB(10,10,32),RGB(21,23,62),RGB(73,84,188),RGB(140,158,255),RGB(237,238,255),RGB(162,172,216)},
-  {RGB(247,247,255),RGB(235,204,248),RGB(110,105,194),RGB(73,60,171),RGB(32,29,74),RGB(92,87,138)}}
+ {{RGB(0,0,0),RGB(0,0,0),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
+  {RGB(0,0,0),RGB(0,0,0),RGB(108,154,161),RGB(10,106,99),RGB(20,38,47),RGB(70,91,97)}},
+ {{RGB(0,0,0),RGB(0,0,0),RGB(67,142,148),RGB(90,245,209),RGB(236,251,252),RGB(158,199,205)},
+  {RGB(0,0,0),RGB(0,0,0),RGB(66,146,136),RGB(12,121,121),RGB(14,53,56),RGB(66,99,102)}},
+ {{RGB(0,0,0),RGB(0,0,0),RGB(62,95,189),RGB(58,247,247),RGB(243,247,255),RGB(162,178,220)},
+  {RGB(0,0,0),RGB(0,0,0),RGB(98,126,203),RGB(10,91,177),RGB(24,35,73),RGB(88,98,137)}},
+ {{RGB(0,0,0),RGB(0,0,0),RGB(157,88,48),RGB(255,186,85),RGB(255,244,219),RGB(225,182,145)},
+  {RGB(0,0,0),RGB(0,0,0),RGB(201,130,91),RGB(169,70,40),RGB(69,38,29),RGB(116,73,53)}},
+ {{RGB(0,0,0),RGB(0,0,0),RGB(73,84,188),RGB(140,158,255),RGB(237,238,255),RGB(162,172,216)},
+  {RGB(0,0,0),RGB(0,0,0),RGB(110,105,194),RGB(73,60,171),RGB(32,29,74),RGB(92,87,138)}}
 };
 static uint16_t skin_text(void){return skins[ui_theme][ui_background].text;}
 static uint16_t skin_dim(void){return skins[ui_theme][ui_background].dim;}
@@ -211,7 +211,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 14:*name="A4 TUNING Hz";return engine.tuning_432?"432":"440";
  case 16:*name="DRUM KIT";return sr_drum_kits[engine.drum_kit].name;
  case 17:*name="DRUM LEVEL %";number=engine.drum_level*100;break;
- case 18:*name="ENERGY %";number=engine.energy*100;break;
+ case 18:*name="INTENSITY %";number=engine.energy*100;break;
  case 82:*name="EVOLUTION";return engine.variation==0?"Stable":engine.variation<.4f?"Subtle":engine.variation<.7f?"Flowing":"Adventurous";
  case 83:*name="PACE";{static const char *pace[]={"Intention","2 loops","4 loops","8 loops"};return pace[engine.evolve_pace];}
  case 84:*name="NEXT PHRASE";return engine.evolve_next?"Queued":"Turn right";
@@ -266,8 +266,13 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 63:{static const char *grid[]={"Live","1/16","1/32","Auto","1/8"};*name="PLAY GRID";return grid[engine.play_grid];}
  case 62:*name="PRESENCE %";number=engine.drum_presence;break;
  case 61:*name="NATURE / FX LOCK";return onoff(engine.sound_locks&(SR_SOUND_NATURE|SR_SOUND_FX));
- case 56:{static const char *modes[]={"On 70/50%","Keys 100%","Off","Dance"};*name="LIGHTS";return modes[lighting];}
- case 90:{static const char *themes[]={"AQUORA Legacy","Aurora","Neon Lagoon","Solar Bloom","Midnight Prism"};*name="PANEL SKIN";return themes[ui_theme];}
+ case 56:{static const char *m[]={"OFF","LOW","MID","HIGH"};*name="LIGHTS";return m[lighting];}
+ case 141:{static const char *m[]={"OFF","C KEYS","WHITE KEYS","ALL KEYS"};*name="KEYS";return m[keys_baseline];}
+ case 142:*name="NOTES";return onoff(notes_lights);
+ case 143:*name="DANCE";return onoff(dance_lights);
+ case 144:*name="ANSWER MY PLAYING";return onoff(engine.response_enabled);
+ case 145:*name="PERFORMANCE";return fullscreen?"HOME TO EXIT":"RIGHT: ENTER";
+
  case 120:{static const char *v[]={"Auto","Together","Strum","Off"};*name="CHORDS";return v[engine.chord_mode];}
  case 121:*name="STRUM GAP ms";if(engine.chord_mode!=2)return "STRUM only";number=engine.chord_gap;break;
  case 122:{static const char *v[]={"Auto","Root","First","Second"};*name="INVERSION";return v[engine.chord_inversion];}
@@ -293,7 +298,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 98:*name="BASS MOTION";return engine.motion_manual&2u?"MANUAL":"AUTO";
  case 95:*name="MANUAL AIR %";number=engine.air_target*100;break;
  case 91:{static const char *fonts[]={"Small","Medium","Large"};*name="FONT SIZE";return fonts[ui_font_size];}
- case 92:*name="BACKGROUND";return ui_background?"White":"Black (Stock)";
+
  case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
  case 78:*name="NATURE MODE";return !engine.bed_type?"Off":(engine.sound_locks&SR_SOUND_NATURE)?"Manual":"Auto";
  case 80:*name="LED TEST";return onoff(led_test);
@@ -696,6 +701,7 @@ static void evolve_graph(unsigned band){
  }
  /* History uses actual note onset/duration/pitch. Future blocks are only
   * already committed scheduled notes; no decorative or guessed events. */
+ unsigned sprites=0;
  for(unsigned i=0;i<96u+graph_future_count;i++){
   unsigned role,note,velocity;uint32_t frame,duration;
   if(i<96){role=graph_notes[i].role;note=graph_notes[i].note;velocity=graph_notes[i].velocity;frame=graph_notes[i].frame;duration=graph_notes[i].duration;}
@@ -716,6 +722,23 @@ static void evolve_graph(unsigned band){
    unsigned core=7u-(unsigned)age/(SR_RATE/49u);if(core>7u)core=7u;
    graph_block(band,x,core,50+role*13,3,skin_text());
    graph_block(band,x+1,2,48+role*13,2,skin_accent());
+  }
+  if(i<96u&&sprites<64u&&age>=0){
+   int32_t release=age-(int32_t)duration;
+   unsigned burst=age<(int32_t)(SR_RATE/3u)|| (release>=0&&release<(int32_t)(SR_RATE/3u));
+   unsigned sustain=age<(int32_t)duration;
+   if(burst||sustain){
+     unsigned life=release>=0?(unsigned)release:(unsigned)age;
+     unsigned phase=life/(SR_RATE/20u),count=burst?6u:2u;
+     for(unsigned q=0;q<count&&sprites<64u;q++,sprites++){
+       unsigned hash=(frame/64u+role*131u+note*17u+q*71u);
+       int dx=(int)(hash%13u)-6,dy=(int)((hash/13u)%11u)-5;
+       int center=sustain?78-(int)(life*4.8f/graph_tick):x+width;
+       if(burst){dx=dx*(int)(phase+1u)/3;dy=dy*(int)(phase+1u)/3;}
+       else {dx=(int)((hash+graph_frame/(SR_RATE/12u))%9u)-4;}
+       graph_block(band,center+dx,burst?2:1,53+role*13+dy,2,phase<2u?skin_text():ink);
+     }
+   }
   }
   if(role==selected){
    int pitch=role==SR_DRUMS?note-32:note-36;if(pitch<0)pitch=0;if(pitch>60)pitch=60;
@@ -746,7 +769,7 @@ static void evolve_graph(unsigned band){
 static int draw(int animate)
 {
  unsigned revision=state_revision;
- if((page==PAGE_EVOLVE||page==PAGE_PLAY)&&!debug&&!intro_active&&!fullscreen){
+ if((page==PAGE_EVOLVE||page==PAGE_PLAY||fullscreen)&&!debug&&!intro_active){
   unsigned flags=plat_lock();
   if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(&graph_snapshot,&engine,offsetof(sr_engine,reverb));memcpy(&graph_snapshot.loop_length,&engine.loop_length,sizeof engine-offsetof(sr_engine,loop_length));}
   graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;graph_phase=engine.tick_phase;
@@ -774,13 +797,12 @@ static int draw(int animate)
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
     * palette is chosen once, not per pixel; normal UI still follows user
     * Black/White preference on entering PLAY. */
-   static const uint16_t intro_palette[5]={
-     RGB(44,204,255), RGB(37,239,177), RGB(255,114,169),
-     RGB(255,204,66), RGB(181,115,255)
-   };
-   const uint16_t bg=intro_active?intro_palette[ui_theme%5]:
-                     ui_background?RGB(255,255,255):RGB(0,0,0);
+   const uint16_t bg=RGB(0,0,0);
    cv_begin(240,48,bg);
+   if(!intro_active&&!fullscreen&&band==0&&plat_ms()-last_control_ms<250u){
+     unsigned w=24u+(250u-(plat_ms()-last_control_ms))*180u/250u;
+     cv_rect(8,45,w,2,skin_accent());
+   }
    /* One surface per logical region; no boxes around 48px transfer bands.
     * The PLAY preview spans two bands with no nested frame. */
    if(!artwork&&!debug){
@@ -803,7 +825,7 @@ static int draw(int animate)
      unsigned elapsed=plat_ms()-intro_start;
      unsigned phase=(elapsed/35u)&127u;
      if(band==1||band==2||band==3){
-       static const uint16_t spiral_ink[6]={RGB(0,83,217),RGB(255,42,96),RGB(255,235,55),RGB(158,41,255),RGB(0,199,180),RGB(240,52,181)};
+       static const uint16_t spiral_ink[6]={RGB(0,0,0),RGB(0,0,0),RGB(255,235,55),RGB(158,41,255),RGB(0,199,180),RGB(240,52,181)};
        unsigned reveal=elapsed<2000u?elapsed*48u/2000u:48u;
        int px=120,py=116-(int)(band*48u);
        for(unsigned j=1;j<=reveal;j++){
@@ -815,24 +837,41 @@ static int draw(int animate)
          band_line(px+1,py,x+1,y,spiral_ink[(j/8u+elapsed/300u)%6]);px=x;py=y;
        }
      }
-     if(band==0){
+     if(band==2){
        /* The same generated AQUORA Sans glyphs as the firmware, revealed
         * after the spiral forms. Preserve full-word placement as it unfolds. */
        unsigned letters=elapsed<2400u?0u:1u+(elapsed-2400u)/260u;
        if(letters>6u)letters=6u;
        char title[7]="AQUORA";title[letters]=0;
-       if(letters)cv_text(54,0,&FONT_L,title,RGB(5,24,39));
-       if(elapsed>=4100u)cv_text(96,34,&FONT_T,APP_VERSION,RGB(5,24,39));
+       int x=(240-fit_width(&FONT_L,"AQUORA"))/2,y=(240-FONT_L.h)/2-96;
+       if(letters){cv_rect(x-4,y-2,fit_width(&FONT_L,"AQUORA")+8,FONT_L.h+4,RGB(0,0,0));cv_text(x,y,&FONT_L,title,RGB(119,255,225));}
      }
      if(band==4){
+       if(elapsed>=4100u)limited_text(8,1,224,&FONT_T,APP_VERSION,skin_text());
        /* Progress fills gently across the intro; never touches audio logic. */
        unsigned progress=elapsed>=8000u?176u:(elapsed*176u)/8000u;
        cv_line(32,6,208,6,RGB(22,108,120));
-       if(progress)cv_line(32,6,32+(int)progress,6,RGB(5,24,39));
-       cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",RGB(5,24,39));
+       if(progress)cv_line(32,6,32+(int)progress,6,RGB(119,255,225));
+       cv_text(44,23,&FONT_XS,"ANY CONTROL TO SKIP",RGB(119,255,225));
      }
    }else if(debug)performance(band);
-   else if(fullscreen)geometry(band*48);
+   else if(fullscreen){
+     geometry(band*48);
+     if(band==0){
+       cv_rect(0,0,240,48,RGB(0,0,0));
+       limited_text(6,0,228,&FONT_B,sr_scenes[engine.scene].name,skin_text());
+       static const char *keys[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+       char bpm[12];num(bpm,(SR_RATE*15u+engine.tick_length/2u)/engine.tick_length);
+       cv_text(6,30,&FONT_XS,keys[sr_tonic(&engine)%12],skin_accent());
+       int x=cv_text(60,30,&FONT_XS,bpm,skin_text());cv_text(x+4,30,&FONT_XS,"BPM",skin_dim());
+       char level[12];num(level,(int)(engine.energy*100.f));cv_text(163,30,&FONT_XS,level,skin_accent());
+     }else if(band==4){
+       cv_rect(0,0,240,48,RGB(0,0,0));
+       int x=cv_text(6,0,&FONT_T,"NOW ",skin_accent());limited_text(x,0,230-x,&FONT_XS,graph_now,skin_text());
+       x=cv_text(6,15,&FONT_T,"NEXT ",skin_dim());limited_text(x,15,230-x,&FONT_XS,graph_next,skin_text());
+       limited_text(6,33,228,&FONT_T,"K1 INTENSITY / HOME EXIT",skin_accent());
+     }
+   }
    else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){
      mixer_console(band);
    }else if(visual&&page==PAGE_MIX&&mix_tab==5){
@@ -1014,11 +1053,11 @@ static int draw(int animate)
    }else if(visual&&page==3&&band<3)mixer_band(band);
    else if(visual&&page==PAGE_PLAY)geometry(band*48);
    else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
-     int now_y=page==PAGE_EVOLVE?14:0;
-     if(page==PAGE_EVOLVE)cv_text(6,0,&FONT_T,song_tab==6?"EVOLVE / ARRANGE":"EVOLVE",skin_accent());
+     int now_y=page==PAGE_EVOLVE?23:0;
+     if(page==PAGE_EVOLVE)cv_text(6,0,ui_font_size==2?&FONT_M:&FONT_B,"EVOLVE",skin_accent());
      int x=cv_text(6,now_y,&FONT_XS,"NOW ",skin_accent());
      limited_text(x,now_y,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
-     int next_y=page==PAGE_PLAY?16:30;
+     int next_y=page==PAGE_PLAY?16:35;
      x=cv_text(6,next_y,&FONT_XS,"NEXT ",skin_dim());
      limited_text(x,next_y,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
      if(page==PAGE_PLAY){
@@ -1049,7 +1088,7 @@ static int draw(int animate)
        limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
      else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?7:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:4;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?8:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:4;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());

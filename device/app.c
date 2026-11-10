@@ -115,17 +115,18 @@ extern void plat_aquora_led_test_log(unsigned slot);
 extern void plat_aquora_key_duty(unsigned black,unsigned white);
 #endif
 static unsigned startup_chime=2;
-static unsigned lighting, fps_auto, frames, missed, shown_fps10, shown_missed;
+static unsigned lighting=2, keys_baseline=3, notes_lights=1, dance_lights=1;
+static unsigned fps_auto, frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
 enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=16 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,0},{32,33,34,35},{100,0,0,0},
- {37,17,10,9},{0,56,0,0},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123}
+ {37,17,10,9},{56,141,142,143},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123}
 };
 static const uint8_t page_controls[4][4]={
- {1,18,22,5},{0,0,0,0},{0,20,25,46},{100,0,0,0}
+ {18,145,22,5},{0,0,0,0},{0,20,25,46},{100,0,0,0}
 };
 #include "arrangement.c"
 #include "quicksave.c"
@@ -167,7 +168,7 @@ static int save_preferences(void)
     settings.air_mode=engine.air_mode;settings.air_sensitivity=air_sensitivity;settings.air_invert=air_invert;settings.air_calibrated=air_sensor.calibrated;settings.air_far=air_sensor.reference;settings.air_near=air_sensor.near_reference;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
-    settings.lighting=lighting;settings.fps_auto=fps_auto;
+    settings.lighting=0x80u|lighting|(keys_baseline<<2u)|(notes_lights<<4u)|(dance_lights<<5u);settings.fps_auto=fps_auto;
     settings.visual=visual_mode;settings.theme=ui_theme;
     settings.font_size=ui_font_size;settings.background=ui_background;
     settings.active_bank=bank_slot;settings.music_mode=engine.music_mode;settings.motion_manual=engine.motion_manual;
@@ -244,6 +245,7 @@ static void mix_select(int delta)
 }
 static unsigned control_for(unsigned knob)
 {
+ if(fullscreen)return knob==0?18:knob==1?145:0;
  if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
  if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128},{0,0,0,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
@@ -253,7 +255,7 @@ static unsigned control_for(unsigned knob)
  if(page==PAGE_SETUP){
    if(setup_tab==4)return knob==0?109:0;
    if(setup_tab==0&&display_subtab){
-     static const uint8_t appearance[]={90,91,92,38};
+     static const uint8_t appearance[]={91,38,109,57};
      return appearance[knob];
    }
    if(setup_tab==3)return knob==0?71:knob==1?72:0;
@@ -261,7 +263,7 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
-   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0},{132,133,134,135},{137,138,139,140}};
+   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0},{132,133,134,135},{144,0,0,0},{137,138,139,140}};
    return ids[song_tab-1][knob];
  }
  if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
@@ -371,6 +373,7 @@ static void consume(void){
  case 15:t->mute=!t->mute;break;
  case 17:sr_set_drum_level(&engine,engine.drum_level+d*.02f);break;
  case 18:engine.energy=adjust(engine.energy,d,.05f,1);break;
+ case 144:engine.response_enabled=switched(engine.response_enabled,d);break;
  case 82:{
    static const float levels[]={0,.25f,.55f,.85f};
    int level=engine.variation==0?0:engine.variation<.4f?1:engine.variation<.7f?2:3;
@@ -421,7 +424,7 @@ static void consume(void){
  case 67:engine.air_track=bounded(engine.air_track+d,0,SR_TRACKS);break;
  case 70:engine.air_target=bounded(d,0,100)*.01f;break;
  case 120:engine.chord_mode=bounded(engine.chord_mode+d,0,3);memset(engine.scheduled,0,sizeof engine.scheduled);break;
- case 121:if(engine.chord_mode==2)engine.chord_gap=bounded(engine.chord_gap+d*10,80,140);break;
+ case 121:if(engine.chord_mode==2)engine.chord_gap=bounded(engine.chord_gap+d*10,120,220);break;
  case 122:engine.chord_inversion=bounded(engine.chord_inversion+d,0,3);break;
  case 123:engine.chord_direction=bounded(engine.chord_direction+d,0,3);break;
  case 124:engine.air_mode=bounded(engine.air_mode+d,0,4);engine.air_request=0;break;
@@ -508,12 +511,13 @@ void app_init(void)
            m.vibrato_rate>=5&&m.vibrato_rate<=80&&m.vibrato_depth<=50)engine.motion[i]=m;
       }
       engine.perfect_key=!!settings.perfect_key;
-      lighting=settings.lighting<=3?settings.lighting:0;
+      if(settings.lighting&0x80u){lighting=settings.lighting&3u;keys_baseline=(settings.lighting>>2u)&3u;notes_lights=(settings.lighting>>4u)&1u;dance_lights=(settings.lighting>>5u)&1u;}
+      else {lighting=settings.lighting==2?0:2;keys_baseline=settings.lighting==0?3:0;notes_lights=settings.lighting!=2;dance_lights=settings.lighting==3;}
       fps_auto=!!settings.fps_auto;
       if(settings.version>=0x41513033u){
         ui_theme=settings.theme<=4?settings.theme:0;
         ui_font_size=settings.font_size<=2?settings.font_size:1;
-        ui_background=settings.background<=1?settings.background:0;
+        ui_background=0;
         if(settings.version>=0x41513034u){
           engine.air_fx=settings.air_fx<=4?settings.air_fx:0;
           engine.air_depth=settings.air_depth<=100?settings.air_depth:100;
@@ -671,11 +675,8 @@ void app_input_only(void){
  }
  if(control){
    last_control_ms=plat_ms();
-   if(fullscreen){
-     fullscreen=0;dirty=1;
-     press&=1u<<B_SAVE;
-     for(unsigned i=0;i<7;i++)enc[i]=0;
-   }
+   if(fullscreen&&(press&(1u<<B_HOME)||enc[0])){fullscreen=0;dirty=1;enc[0]=0;press&=~(1u<<B_HOME);}
+   /* Fullscreen retains transport, keys, PRESETS and contextual intensity. */
  }
  if((press&(1u<<B_EDIT))&&(b&(1u<<B_HOME))){
    page=PAGE_SETUP;setup_tab=3;debug=0;bank_confirm=0;dirty=1;
@@ -715,7 +716,7 @@ void app_input_only(void){
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
-   if(!debug&&page==2)song_tab=(song_tab+1)%7;
+   if(!debug&&page==2)song_tab=(song_tab+1)%8;
    if(page==PAGE_SOUND){
      unsigned index=0;
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
@@ -745,7 +746,7 @@ void app_input_only(void){
  for(unsigned i=0;i<NKEYS;i++){
    if(!(press&(1u<<B_PLAY))&&(requested_play||engine.learn_mode)&&((physical_keys&~oldkeys)&(1u<<i)))send(3,i);
  }
- for(unsigned i=0;i<NKEYS;i++)if(engine.learn_mode&&((physical_keys^oldkeys)&(1u<<i)))
+ for(unsigned i=0;i<NKEYS;i++)if((engine.learn_mode||engine.response_enabled)&&((physical_keys^oldkeys)&(1u<<i)))
    send(136,i|((physical_keys&(1u<<i))?0:32));
  oldkeys=k;
  int d=enc[0];
@@ -767,7 +768,7 @@ void app_input_only(void){
    knob_until=0;dirty=1;
  }
  d=enc[2];
- if(d&&!debug&&page!=PAGE_SETUP&&page!=PAGE_AIR&&!(page==PAGE_SOUND&&sound_picker)){send(page==0?1:page==PAGE_DRUMS?16:2,d>0?1:-1);dirty=1;}
+ if(d){send(1,bounded(d,-8,8));dirty=1;}
  for(unsigned i=0;i<4;i++){
     d=enc[3+i];
     unsigned control=control_for(i);
@@ -840,11 +841,15 @@ void app_input_only(void){
       if(led_test)plat_aquora_led_test_log(led_step);
 #endif
     }
+    else if(control==145){fullscreen=d>0;dirty=1;}
+    else if(control==141){keys_baseline=bounded((int)keys_baseline+d,0,3);if(keys_baseline&&!lighting)lighting=1;preferences_changed_now();}
+    else if(control==142){notes_lights=switched(notes_lights,d);preferences_changed_now();}
+    else if(control==143){dance_lights=switched(dance_lights,d);preferences_changed_now();}
     else if(control==56){lighting=bounded((int)lighting+d,0,3);preferences_changed_now();}
     else if(control==57){fps_auto=switched(fps_auto,d);preferences_changed_now();}
-    else if(control==90){ui_theme=bounded((int)ui_theme+d,0,4);preferences_changed_now();}
+
     else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
-    else if(control==92){ui_background=bounded((int)ui_background+d,0,1);preferences_changed_now();}
+
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
     else {send(control,bounded(d,-8,8));if(control==25||control==50||control==51||control==62||control==93||control==94||control>=96||(control>=32&&control<=35))preferences_changed_now();}
     if(control>=120)preferences_changed_now();
@@ -860,53 +865,74 @@ void app_input_only(void){
  unsigned pending=engine.pending_physical_key;
  unsigned lights=k, dim_keys=0, dim_buttons=0, black_duty=0,white_duty=0;
  if(pending&&pending<=NKEYS)lights|=1u<<(pending-1);
- if(lighting==0){
-   /* Held and queued physical keys override idle duty at full brightness. */
-   for(unsigned key=0;key<NKEYS;key++)if(!(lights&(1u<<key))){
-     if(aq_black_key(key))black_duty|=1u<<key;
-     else white_duty|=1u<<key;
+ static unsigned led_event[SR_TRACKS],led_until[SR_TRACKS],led_note[SR_TRACKS];
+ static float dance_peak[2]={.0001f,.0001f},dance_env[2];
+ static unsigned dance_ms;
+ unsigned led_now=plat_ms(),dt=led_now-dance_ms;
+ unsigned generated=0,tonal=0,drums=0;float energy[2]={0,0};
+ unsigned flags=plat_lock();
+ for(unsigned t=0;t<SR_TRACKS;t++){
+   const sr_track *track=&engine.tracks[t];
+   unsigned audible=(engine.running||engine.preview_frames)&&!track->mute&&track->volume>0&&
+      (engine.solo>=SR_TRACKS||engine.solo==t)&&(t!=SR_DRUMS||(engine.drums_enabled&&engine.drum_level>0));
+   if(track->events!=led_event[t]){
+     led_event[t]=track->events;
+     int note=track->last_note;while(note<53)note+=12;while(note>79)note-=12;
+     led_note[t]=1u<<(note-53);led_until[t]=led_now+120u;
    }
-   buttons|=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
- }else if(lighting==1||lighting==3){
-   buttons=play_pulse?LED_PLAY_GREEN:0;
-   unsigned generated=0;
-   unsigned flags=plat_lock();
-   static unsigned led_event[SR_TRACKS],led_until[SR_TRACKS],led_note[SR_TRACKS];
-   unsigned led_now=plat_ms();
-   for(unsigned t=0;t<SR_DRUMS;t++){
-     const sr_track *track=&engine.tracks[t];
-     if(track->events!=led_event[t]){
-       led_event[t]=track->events;int note=track->last_note;
-       while(note<53)note+=12;while(note>79)note-=12;
-       led_note[t]=1u<<(note-53);led_until[t]=led_now+(lighting==3?300u:140u);
+   if(!audible){led_until[t]=0;continue;}
+   if(track->meter>energy[t==SR_DRUMS])energy[t==SR_DRUMS]=track->meter;
+   if((int32_t)(led_until[t]-led_now)>0){
+     if(t==SR_DRUMS)drums=1;else tonal|=led_note[t];
+     if(notes_lights&&t<SR_DRUMS)generated|=led_note[t];
+   }
+ }
+ for(unsigned v=0;v<SR_VOICES;v++){
+   const sr_voice *voice=&engine.voices[v];unsigned t=voice->track;
+   if(!voice->active||t>=SR_DRUMS||engine.tracks[t].mute||engine.tracks[t].volume<=0||
+      (engine.solo<SR_TRACKS&&engine.solo!=t)||voice->env<.005f)continue;
+   int note=voice->midi;while(note<53)note+=12;while(note>79)note-=12;
+   tonal|=1u<<(note-53);if(notes_lights)generated|=1u<<(note-53);
+ }
+ if(!engine.running&&!engine.preview_frames){generated=tonal=drums=0;energy[0]=energy[1]=0;}
+ plat_unlock(flags);
+ if(dt>=20u){
+   dance_ms=led_now;
+   for(unsigned bus=0;bus<2;bus++){
+     dance_peak[bus]*=.985f;if(dance_peak[bus]<.0001f)dance_peak[bus]=.0001f;
+     if(energy[bus]>dance_peak[bus])dance_peak[bus]=energy[bus];
+     float target=energy[bus]>.00001f?energy[bus]/dance_peak[bus]:0;
+     dance_env[bus]+=(target-dance_env[bus])*(target>dance_env[bus]?.75f:.22f);
+     if(!energy[bus]&&!(bus?drums:tonal))dance_env[bus]=0;
+   }
+ }
+ unsigned baseline=0,dance_mid=0,dance_dim=0;
+ for(unsigned key=0;key<NKEYS;key++){
+   unsigned black=aq_black_key(key),bit=1u<<key;
+   if(keys_baseline==3||(keys_baseline==2&&!black)||(keys_baseline==1&&(5u+key)%12u==0u))baseline|=bit;
+   unsigned active=black?drums:tonal;
+   if(dance_lights&&active){
+     /* Tonal pitches illuminate their nearest white key; drum hits punch
+      * all black keys together. No unrelated pseudo-random rotation. */
+     unsigned near=tonal|((tonal<<1)&~tonal)|((tonal>>1)&~tonal);
+     if(black||(near&bit)){
+       float level=dance_env[black];
+       if(level>.72f)lights|=bit;else if(level>.22f)dance_mid|=bit;else if(level>.015f)dance_dim|=bit;
      }
-     if((engine.running||engine.preview_frames)&&!track->mute&&
-        (engine.solo>=SR_TRACKS||engine.solo==t)&&(int32_t)(led_until[t]-led_now)>0)
-       generated|=led_note[t];
    }
-   for(unsigned v=0;v<SR_VOICES;v++){
-     const sr_voice *voice=&engine.voices[v];unsigned t=voice->track;
-     if(!voice->active||t>=SR_DRUMS||engine.tracks[t].mute||
-       (engine.solo<SR_TRACKS&&engine.solo!=t)||engine.tracks[t].meter<.00001f||voice->env<.005f)continue;
-     int note=voice->midi;
-     while(note<53)note+=12;while(note>79)note-=12;
-     generated|=1u<<(note-53);
-   }
-   static unsigned drum_seen,drum_until;
-   unsigned now=plat_ms(),event=engine.tracks[SR_DRUMS].events;
-   if(event!=drum_seen){drum_seen=event;if(engine.tracks[SR_DRUMS].meter>.00001f)drum_until=now+250u;}
-   if(engine.running&&(int32_t)(drum_until-now)>0&&!engine.tracks[SR_DRUMS].mute&&
-      (engine.solo>=SR_TRACKS||engine.solo==SR_DRUMS))generated|=1u<<((event%3u)*7u);
-   plat_unlock(flags);
-   lights|=generated;
-   if(lighting==3){
-     /* Chord clusters and visible 250ms drum holds: more coverage, no current increase. */
-     unsigned mask=(1u<<NKEYS)-1u;
-     lights|=((generated<<7)|(generated>>5))&mask;
-     if(generated)buttons|=(1u<<B_LFO)|(1u<<B_SEL);
-     if((int32_t)(drum_until-now)>0)buttons|=1u<<B_ARP;
-   }
- }else if(lighting==2){buttons=play_pulse?LED_PLAY_GREEN:0;lights=0;}
+ }
+ unsigned level=keys_baseline&&!lighting?1u:lighting;
+ buttons|=1u<<(page==PAGE_PLAY?B_HOME:page==PAGE_DRUMS?B_ARP:page==PAGE_EVOLVE?B_SEQ:B_SEL);
+ unsigned state_buttons=buttons;
+ unsigned idle_buttons=((1u<<NB)-1u)&~((1u<<B_PLAY)|(1u<<B_REC));
+ if(lighting==3)buttons|=idle_buttons;
+ else if(lighting==2)plat_lights_mid(idle_buttons,0);
+ else if(lighting==1)dim_buttons|=idle_buttons;
+ if(level==3)lights|=baseline;else if(level==2)dance_mid|=baseline;else if(level==1)dance_dim|=baseline;
+ lights|=generated;
+ dance_mid&=~lights;dance_dim&=~(lights|dance_mid);
+ dim_keys=dance_dim;dim_buttons&=~state_buttons;
+ plat_lights_mid(lighting==2?idle_buttons&~state_buttons:0,dance_mid);
  if(led_test&&page==PAGE_SETUP&&!setup_tab){
    buttons=led_step>=NKEYS?1u<<(led_step-NKEYS):0;
    lights=led_step<NKEYS?1u<<led_step:0;

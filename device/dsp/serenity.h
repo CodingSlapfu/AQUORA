@@ -39,6 +39,10 @@ typedef struct {
   sr_learn_phrase learned,capture;
   uint32_t capture_ms,capture_down[16],learn_origin;
   uint8_t capture_raw[16],learn_mode,learn_strength,learn_pending;
+  uint8_t response_enabled,response_pending,response_wait,response_index;
+  sr_learn_phrase response;
+  int8_t motif_memory[4][16];
+  uint8_t motif_scores[4],motif_count,motif_cursor;
   uint8_t chord_mode, chord_gap, chord_inversion, chord_direction, rhythm_style, fill_character;
   uint8_t air_mode, air_request, air_result, chord_alternate, rhythm_pending;
   int8_t chord_previous[3];

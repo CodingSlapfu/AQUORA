@@ -93,7 +93,7 @@ static int arrangement_valid(const arrangement *r)
       if(r->learned.count>16||r->learn_strength>3)return 0;
       for(unsigned n=0;n<r->learned.count;n++)if(r->learned.note[n]>127||r->learned.step[n]>63||!r->learned.length[n]||r->learned.length[n]>63||(n&&r->learned.step[n]<r->learned.step[n-1]))return 0;
     }
-    if(r->version>=AQ_BANK_V5&&(r->chord_mode>3||r->chord_gap<80||r->chord_gap>140||r->chord_inversion>3||r->chord_direction>3||r->rhythm_style>2||r->fill_character>3||r->air_mode>4||r->air_fx>4||r->air_depth>100||r->air_track>8))return 0;
+    if(r->version>=AQ_BANK_V5&&(r->chord_mode>3||r->chord_gap<80||r->chord_gap>220||r->chord_inversion>3||r->chord_direction>3||r->rhythm_style>2||r->fill_character>3||r->air_mode>4||r->air_fx>4||r->air_depth>100||r->air_track>8))return 0;
     if(r->version==AQ_BANK_VERSION&&(r->arrange_next>32||r->arrange_length>16||r->arrange_active>16||r->arrange_elapsed>= (r->arrange_active?r->arrange_active:1)||r->arrange_current>32))return 0;
     if((!legacy&&r->version!=AQ_BANK_V2&&r->version!=AQ_BANK_V3&&r->version!=AQ_BANK_V4&&r->version!=AQ_BANK_V5&&r->version!=AQ_BANK_V6&&r->version!=AQ_BANK_VERSION)||
        (legacy?r->legacy_crc:r->version==AQ_BANK_V2?r->v2_crc:r->version==AQ_BANK_V3?r->crc:r->version==AQ_BANK_V4?r->crc4:r->version==AQ_BANK_V5?r->crc5:r->version==AQ_BANK_V6?r->crc6:r->crc7)!=arrangement_crc(r)||
@@ -197,6 +197,7 @@ static void arrangement_snapshot(arrangement *record)
 #undef SAVE_OPTION
     if(engine.rhythm_pending)record->rhythm_style=engine.rhythm_pending-1u;
     record->version=AQ_BANK_V5;record->crc5=arrangement_crc(record);
+    record->reserved6=0x8000u|engine.response_enabled;
     record->learned=engine.learned;record->learn_strength=engine.learn_strength;record->form_loop=engine.form_loop;
     record->version=AQ_BANK_V6;record->crc6=arrangement_crc(record);
     record->arrange_next=engine.arrange_next;record->arrange_length=engine.arrange_length;
@@ -278,11 +279,11 @@ static void arrangement_apply(const arrangement *record)
       LOAD_OPTION(rhythm_style) LOAD_OPTION(fill_character) LOAD_OPTION(air_mode) LOAD_OPTION(air_fx) LOAD_OPTION(air_depth) LOAD_OPTION(air_track)
 #undef LOAD_OPTION
     }else{
-      engine.chord_mode=engine.chord_inversion=engine.chord_direction=0;engine.chord_gap=100;
+      engine.chord_mode=engine.chord_inversion=engine.chord_direction=0;engine.chord_gap=170;
       engine.rhythm_style=engine.fill_character=engine.air_mode=0;
     }
     engine.learn_mode=engine.capture.count=engine.learn_pending=0;
-    engine.learned.count=0;engine.learn_strength=2;engine.form_loop=0;
+    engine.learned.count=0;engine.learn_strength=2;engine.form_loop=0;engine.response_pending=0;engine.response_enabled=record->version>=AQ_BANK_V6&&(record->reserved6&0x8000u)?record->reserved6&1u:0;engine.current_energy=engine.energy;
     if(record->version>=AQ_BANK_V6){engine.learned=record->learned;engine.learn_strength=record->learn_strength;engine.form_loop=record->form_loop;}
     memset(engine.scheduled,0,sizeof engine.scheduled);engine.air_request=engine.rhythm_pending=0;
     engine.form_key=0;engine.arrange_next=engine.arrange_length=engine.arrange_active=engine.arrange_elapsed=0;
