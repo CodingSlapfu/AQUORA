@@ -20,13 +20,17 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PYVERIFY'
-          import json,hashlib
+          import json,hashlib,re
           from pathlib import Path
           m=json.loads(Path('validation/release-072/LOCAL_ACCEPTANCE.json').read_text())
           for p,h in m['files'].items():
               assert hashlib.sha256(Path(p).read_bytes()).hexdigest()==h,p
           for p in m['passed_logs']:
-              assert 'PASS' in Path(p).read_text(),p
+              log=Path(p).read_text()
+              if p.endswith('/load.log'):
+                  peaks=re.findall(r'peak (\d+); host callback',log)
+                  assert len(peaks)==4 and all(100<int(x)<32767 for x in peaks),p
+              else: assert 'PASS' in log,p
           PYVERIFY
           bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
           mkdir "$RUNNER_TEMP/results"
@@ -98,3 +102,4 @@ jobs:
           tar -czf AQUORA-0.7.2-installer.tar.gz -C official-installer .
           sha256sum AQUORA-0.7.2.fwsc AQUORA-0.7.2-source.tar.gz AQUORA-0.7.2-installer.tar.gz AQUORA-0.7.2-official.zip > RELEASE-SHA256SUMS.txt
           gh release create v0.7.2 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest --title 'AQUORA 0.7.2 — ARRANGE, two-bar score and luminous phrases' --notes-file "$GITHUB_WORKSPACE/device/docs/RELEASE_072.md" AQUORA-0.7.2.fwsc AQUORA-0.7.2-source.tar.gz AQUORA-0.7.2-installer.tar.gz AQUORA-0.7.2-official.zip RELEASE-SHA256SUMS.txt
+
