@@ -751,7 +751,6 @@ static int draw(int animate)
   if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(&graph_snapshot,&engine,offsetof(sr_engine,reverb));memcpy(&graph_snapshot.loop_length,&engine.loop_length,sizeof engine-offsetof(sr_engine,loop_length));}
   graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;graph_phase=engine.tick_phase;
   graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
-  unsigned hold=2u+sr_scenes[engine.scene].energy%3u;
   graph_boundary=(sr_section_remaining(&engine)-1u)*engine.loop_length+engine.loop_length-engine.loop_pos;
   plat_unlock(flags);
   if(page==PAGE_EVOLVE&&song_tab==0)graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);

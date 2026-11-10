@@ -477,7 +477,7 @@ static void apply_sound_profile(sr_engine *e,uint32_t seed,int sounds_only)
       for(unsigned j=0;j<3;j++)if(k==palette[scene].kits[j])w+=j?5u:9u;
       for(unsigned j=0;j<5;j++)if(k==mode_kits[e->music_mode][j])w+=12u;
       w+=song_draw(scene*71u+e->music_mode*193u,k+41u)%5u;
-      if(k+1u==previous)w=1u;
+      if(k+1u==previous||k==e->drum_kit)w=0u;
       weights[k]=w;total+=w;
     }
     unsigned draw=song_draw(seed,7)%total,kit=0;
@@ -1217,6 +1217,8 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   int tonic=sr_tonic(e),degree=motif_degree(e,s);
   unsigned draw=song_draw(seed,s&63u);
   unsigned dynamic=6u+((draw>>4)&3u);
+  int expression=phrase_expression(s);
+  unsigned answer=(bar+e->phrase)%2u;
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
   if((s&15u)==0){
@@ -1230,22 +1232,24 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
     if(!learned_active(e)&&degree>=0&&(s%3u==0u||(s&15u)==10u))
       sr_note_on(e,SR_LEAD,tonic+24+scale[degree],64-dynamic+phrase_expression(s),1.8f);
     if((s+e->phrase)%5u==0u)
-      sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+(s/5u)*2u)%7u],56,2.2f);
+      sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+(s/5u)*2u)%7u],52+expression,2.2f);
     if((s&15u)==6u||((s&15u)==14u&&bar))
       sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+4u)%7u],62-dynamic,2.8f);
     if((s&15u)==12u&&degree>=0)
       sr_note_on(e,SR_HARMONY,tonic+24+scale[(degree+2u)%7u],49,3.6f);
   }else if(e->music_mode==SR_CINEMATIC){
-    if(!learned_active(e)&&degree>=0&&((s&15u)<8u||(s&15u)>=14u))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],72-dynamic+phrase_expression(s),3.5f);
+    if(!learned_active(e)&&degree>=0&&((s&15u)<8u||(s&15u)>=14u))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],68-dynamic+expression,4.2f);
     if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+2u*(bar&1u))%7u],58-dynamic,2.4f);
     if((s&7u)==2)sr_note_on(e,SR_GUITAR,tonic+12+scale[(chord+4u)%7u],54,2.2f);
     if((s&15u)==12)sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+2u)%7u],49,3.f);
   }else{
-    if((s&1u)==(bar==1u?1u:0u)){
+    /* Two-bar question/answer. Leave a cadence breath, vary the arp
+     * contour by section rather than replacing the theme every note. */
+    if((s&1u)==(answer?1u:0u)&&(s&15u)!=(answer?15u:14u)){
       static const uint8_t arpeggio[8]={0,2,1,2,0,1,2,1};
-      unsigned arp=arpeggio[(s/2u)&7u];
+      unsigned arp=arpeggio[((s/2u)+(song_section(e)==2u?2u:0u))&7u];
       unsigned d=(chord+arp*2u)%7u;
-      sr_note_on(e,SR_PIANO,tonic+24+scale[d],78-dynamic+(s%8u==0?8:0),1.15f);
+      sr_note_on(e,SR_PIANO,tonic+24+scale[d],76-dynamic+expression+(s%8u==0?8:0),(s&7u)==0u?1.65f:.95f);
     }
     if((s&7u)==6)sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+s/4u)%7u],61-dynamic,1.4f);
     if((s&7u)==2&&degree>=0){

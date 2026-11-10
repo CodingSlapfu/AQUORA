@@ -135,10 +135,10 @@ static int arrangement_read(unsigned slot,arrangement *record)
 {
     memset(record,0,sizeof(*record));
     int size=plat_store_size(OBJ_BANK1+slot);
-    if(size!=(int)sizeof(*record)&&size!=(int)offsetof(arrangement,learned)&&size!=(int)offsetof(arrangement,chord_mode)&&size!=(int)offsetof(arrangement,song_seed)&&size!=(int)offsetof(arrangement,motif_home)
+    if(size!=(int)sizeof(*record)&&size!=(int)offsetof(arrangement,arrange_next)&&size!=(int)offsetof(arrangement,learned)&&size!=(int)offsetof(arrangement,chord_mode)&&size!=(int)offsetof(arrangement,song_seed)&&size!=(int)offsetof(arrangement,motif_home)
         &&size!=(int)offsetof(arrangement,loop_length))return 0;
     if(plat_store_load(OBJ_BANK1+slot,record,sizeof(*record))!=size)return 0;
-    unsigned version=size==(int)sizeof(*record)?AQ_BANK_VERSION:size==(int)offsetof(arrangement,learned)?AQ_BANK_V5:size==(int)offsetof(arrangement,chord_mode)?AQ_BANK_V4:
+    unsigned version=size==(int)sizeof(*record)?AQ_BANK_VERSION:size==(int)offsetof(arrangement,arrange_next)?AQ_BANK_V6:size==(int)offsetof(arrangement,learned)?AQ_BANK_V5:size==(int)offsetof(arrangement,chord_mode)?AQ_BANK_V4:
         size==(int)offsetof(arrangement,song_seed)?AQ_BANK_V3:size==(int)offsetof(arrangement,motif_home)?AQ_BANK_V2:AQ_BANK_LEGACY;
     if(record->version!=version)return 0;
     return arrangement_valid(record);

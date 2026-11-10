@@ -1149,11 +1149,11 @@ int app_expect(const char *what,int *got){
  }
  if(!strcmp(what,"bank_migration_matrix")){
   *got=1;arrangement record,loaded;arrangement_snapshot(&record);
-  for(unsigned version=1;version<=6;version++){
+  for(unsigned version=1;version<=7;version++){
    record.version=0x41514200u+version;
-   size_t size=version==1?offsetof(arrangement,loop_length):version==2?offsetof(arrangement,motif_home):version==3?offsetof(arrangement,song_seed):version==4?offsetof(arrangement,chord_mode):version==5?offsetof(arrangement,learned):sizeof(record);
+   size_t size=version==1?offsetof(arrangement,loop_length):version==2?offsetof(arrangement,motif_home):version==3?offsetof(arrangement,song_seed):version==4?offsetof(arrangement,chord_mode):version==5?offsetof(arrangement,learned):version==6?offsetof(arrangement,arrange_next):sizeof(record);
    uint32_t crc=arrangement_crc(&record);
-   if(version==1)record.legacy_crc=crc;else if(version==2)record.v2_crc=crc;else if(version==3)record.crc=crc;else if(version==4)record.crc4=crc;else if(version==5)record.crc5=crc;else record.crc6=crc;
+   if(version==1)record.legacy_crc=crc;else if(version==2)record.v2_crc=crc;else if(version==3)record.crc=crc;else if(version==4)record.crc4=crc;else if(version==5)record.crc5=crc;else if(version==6)record.crc6=crc;else record.crc7=crc;
    for(unsigned slot=0;slot<4;slot++){
     if(plat_store_save(OBJ_BANK1+slot,&record,size)||!arrangement_read(slot,&loaded)){*got=0;return 1;}
     arrangement_apply(&loaded);
