@@ -1,7 +1,7 @@
-# AQUORA Issue75 candidate acceptance
+# AQUORA 0.7.3 — software-complete testing delivery, publication blocked
 
-Authoritative specification: GitHub issue75 plus current owner instruction. Musical intelligence first, controls second. Read validation/issue75/RESUME.md. Do not restart baseline0.7.2 or repeat successful unchanged tests. Current code is an isolated0.7.3 candidate, not an official release.
+Issue75 candidate code and required software gates are complete. See validation/issue75/REQUIREMENTS.md and PUBLICATION.json. Do not rebuild/retest accepted work. Reuse accepted CI42879997993 artifact13793516830 and exactFWSC4c76cc91... identity73000703.
 
-All issue75 requirements remain required. New engine/UI paths have targeted evidence; final native/repro/single/WASM, bank/persistence/LED matrices, updater/rollback, profile, precise screenshots, provenance/package/remote verification and requirement reconciliation must pass before publication. Shared publication requires a separate fenced lease and no active legacy publisher. Existing Site must be preserved; stop its phase after one inaccessible-helper failure.
+Remaining delivery: an authenticated release-creation capability (current GitHub Actions integration returned403), then official GitHub publication of accepted bytes; existing Site helper must become available before its separate update. Browser has no signed-in GitHub session. No publication/recovery retry loops. Preserve existingSite/public0.7.2/older rollbacks.
 
-Performance MIDI USB/BLE and UC25HQ80 remain owner-deferred. Original Puya0x856014 only. AIR and all three visualizers required; KIRA-9 untouched. Hardware CPU/DMA/XRUN/FPS/RF/LED polarity and listening are not inferred from host tests.
+Actual FM-1 acceptance remains distinct: listening, physicalflash/rollback, keys/knobs, LEDs, RF/AIR, CPU/XRUN/FPS/LCD/DMA/soak. Software checks are not physical proof. Performance USB/BLE MIDI and UC25HQ80 remain deferred; original Puya0x856014 only. KIRA-9 untouched. Future code changes use a new version/identity rather than replacing the delivered0.7.3 bytes.
