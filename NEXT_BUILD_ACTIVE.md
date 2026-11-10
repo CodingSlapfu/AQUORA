@@ -1,7 +1,7 @@
-# AQUORA 0.7.3 — software-complete testing delivery, publication blocked
+# AQUORA 0.7.3 — official release complete, existing Site update blocked
 
-Issue75 candidate code and required software gates are complete. See validation/issue75/REQUIREMENTS.md and PUBLICATION.json. Do not rebuild/retest accepted work. Reuse accepted CI42879997993 artifact13793516830 and exactFWSC4c76cc91... identity73000703.
+The latest OFFICIAL GitHub release is0.7.3, identityFM-1_73000703. Native/WASM and software gates passed; authenticated owner browser published accepted bytes. Exact public-native/asset hashes and source tag verified. See FAST_RESUME.md and validation/issue75/PUBLICATION.json. Do not rebuild/retest accepted firmware or republish different bytes under073.
 
-Remaining delivery: an authenticated release-creation capability (current GitHub Actions integration returned403), then official GitHub publication of accepted bytes; existing Site helper must become available before its separate update. Browser has no signed-in GitHub session. No publication/recovery retry loops. Preserve existingSite/public0.7.2/older rollbacks.
+Only publication remainder: existingAQUORASite installer/screens/manuals/download labels need073; liveinstaller currently072. Its single authorized opening retry failedMODULE_NOT_FOUND:site-workflow.mjs. Stop retries absent a repaired helper/runtime. PreserveexistingSite,072andearlierrollbackinstallers.
 
-Actual FM-1 acceptance remains distinct: listening, physicalflash/rollback, keys/knobs, LEDs, RF/AIR, CPU/XRUN/FPS/LCD/DMA/soak. Software checks are not physical proof. Performance USB/BLE MIDI and UC25HQ80 remain deferred; original Puya0x856014 only. KIRA-9 untouched. Future code changes use a new version/identity rather than replacing the delivered0.7.3 bytes.
+Owner hardware acceptance remains flash/rollback, listening/inputfeel, LEDs, AIR/RF, CPU/XRUN/FPS/LCD/DMA/soak. Software checks are not physical proof. PerformanceUSB/BLEMIDI andUC25HQ80 remain deferred. KIRA-9 untouched.

@@ -1,7 +1,7 @@
 {
   "version": "0.7.3",
   "identity": "FM-1_73000703",
-  "status": "SOFTWARE_ACCEPTED_TESTING_PACKAGE_DELIVERED; OFFICIAL_PUBLICATION_BLOCKED",
+  "status": "OFFICIAL_GITHUB_RELEASE_PUBLISHED; EXISTING_SITE_UPDATE_BLOCKED",
   "native_source": "d5d5ef71182a6ba556556b676929b98c4cd1057a",
   "packaging_source": "0e0313cae6edfa5171efd9b21955cd0cc4398c34",
   "native_sha256": "4c76cc91eb3622de1cb94b4e21e9b1ea9fca6b9cb551370b8e385d886130302e",
@@ -15,13 +15,30 @@
   "accepted_package_artifact": 13793516830,
   "accepted_package_artifact_sha256": "49101c1c7e7ba5b8efc2fb4212082554d264327f7f1bdad22fd75e33b758771b",
   "publication_run": 42880500279,
-  "publication_blocker": "HTTP 403 Resource not accessible by integration from GitHub releases endpoint; no official 0.7.3 release exists (404 verified). Browser is signed out. No retry of rejected publication.",
+  "publication_blocker": null,
   "publication_lease": "refs/heads/leases/aquora-publication",
-  "publication_lease_released": true,
   "site_project": "appgprj_6ad6d0ae409c8191b45224ecdec724db",
   "site_blocker": "Required site-workflow.mjs helper unavailable in this runtime (MODULE_NOT_FOUND). Existing Site unchanged; no replacement created.",
   "previous_release_preserved": "v0.7.2",
   "rollback_sha256": "08ec871de8286b2ed7d4e8d60088a597a0c9ccc6f9aa14542d6d0ab1c7ec77fb",
   "hardware_accepted": false,
-  "hardware_pending": ["physical flash and bank rollback", "listening and musical aesthetics", "physical key/encoder feel", "LED polarity/PWM/power", "AIR/RF", "CPU/XRUN/LCD-DMA/FPS/soak"]
+  "hardware_pending": [
+    "physical flash and bank rollback",
+    "listening and musical aesthetics",
+    "physical key/encoder feel",
+    "LED polarity/PWM/power",
+    "AIR/RF",
+    "CPU/XRUN/LCD-DMA/FPS/soak"
+  ],
+  "release_url": "https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.7.3",
+  "published_at": "2026-11-10T19:33:41Z",
+  "latest": true,
+  "prerelease": false,
+  "publication_method": "Authenticated owner browser; previous Actions integration403 preserved as history",
+  "publication_lease_epoch": 2,
+  "publication_lease_cleanup": "Release on completion; authoritative status is lease.json at refs/heads/leases/aquora-publication",
+  "website_live_installer": "0.7.2 / FM-1_73000702",
+  "official_zip_sha256": "88cb3518d4474c1ade53c88d26eb1c71228e56a46989ea200c3aad3a434d9678",
+  "public_native_download_verified": true,
+  "official_asset_hashes_verified": true
 }
