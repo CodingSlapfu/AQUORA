@@ -1,2 +1,0 @@
-e6616877aac35a8316ab5d0b79906203fccda479d916a359b3bd006f528057b1  AQUORA-0.6.0-grid-source.tar.gz
-ab541452830282529594cfebdeaec3ce762b38d1803de84cf9ab682dfbe33dcd  AQUORA-0.6.0-grid-package.tar.gz

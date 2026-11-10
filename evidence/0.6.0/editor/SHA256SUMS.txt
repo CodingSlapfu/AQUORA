@@ -1,2 +1,0 @@
-5b97cb48548ebb432ac11be54aed3f2d28b80ad811001dcfded14bd6c0dcabde  AQUORA-0.6.0-editor-source.tar.gz
-054e68b966c56ecf514eaf7ba6d457973d6a09adcd9d6823672d023bb1ca6f83  AQUORA-0.6.0-editor-package.tar.gz

@@ -1,4 +1,0 @@
-MODE 0: 16 voices + density8/HIT100 + stereo binaural + Forest + wet FX + 21-intention rotation; peak 17839; host callback p95 120.3us p99 180.0us max 390.5us (not FM-1 timing)
-MODE 1: 16 voices + density8/HIT100 + stereo binaural + Forest + wet FX + 21-intention rotation; peak 17890; host callback p95 93.0us p99 150.5us max 430.9us (not FM-1 timing)
-MODE 2: 16 voices + density8/HIT100 + stereo binaural + Forest + wet FX + 21-intention rotation; peak 17890; host callback p95 87.9us p99 139.0us max 265.6us (not FM-1 timing)
-MODE 3: 16 voices + density8/HIT100 + stereo binaural + Forest + wet FX + 21-intention rotation; peak 17890; host callback p95 105.9us p99 157.8us max 600.6us (not FM-1 timing)

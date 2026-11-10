@@ -1,9 +1,0 @@
-  ok track == 3
-  ok track == 3
-  ok track == 2
-  ok mix_focus == 2
-  ok track == 2
-  ok track == 3
-  ok track == 3
-  ok drops == 0
-host: 840 ms simulated, 59 blits, render 0.0% of real time (host CPU)

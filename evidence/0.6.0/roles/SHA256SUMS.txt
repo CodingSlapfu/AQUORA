@@ -1,2 +1,0 @@
-53d79fe4820100bb5b607eba385cd4bc365be5c0be669d7f2124617356ebc557  AQUORA-0.6.0-roles-source.tar.gz
-ac5cae6ded1e13ff83e981ed5f140716079f4adba7815530e809c77c4d36a47b  AQUORA-0.6.0-roles-package.tar.gz

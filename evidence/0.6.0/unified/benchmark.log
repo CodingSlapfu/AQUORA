@@ -1,3 +1,0 @@
-quiet: mean 0.1 us p95 0.1 us peak 16.8 us, PCM peak 0 RMS 0
-pitched dry: mean 42.5 us p95 56.5 us peak 268.2 us, PCM peak 8496 RMS 2152
-all + wet: mean 51.5 us p95 68.4 us peak 619.0 us, PCM peak 17863 RMS 3437

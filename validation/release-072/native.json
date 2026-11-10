@@ -1,9 +1,0 @@
-{
-  "identity": "FM-1_73000702",
-  "sha256": "8422810a4e37e559b414dbd2d0bfc2ef70c0190409ce043514d6c1f20febe030",
-  "image_bytes": 289524,
-  "data_bss": 92748,
-  "data_bss_budget": 98304,
-  "pool": 210132,
-  "pool_budget": 344064
-}

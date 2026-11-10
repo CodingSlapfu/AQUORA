@@ -1,2 +1,0 @@
-b2317c2eaabe99e39530d5090f21026fe04a79d6e80c2295c2cb2897fdbf7506  AQUORA-0.6.0-unified-source.tar.gz
-50e413db4aeb0ab88fade5ffce4c304dd287eff91a8cb95022229adfbabfe074  AQUORA-0.6.0-unified-package.tar.gz
