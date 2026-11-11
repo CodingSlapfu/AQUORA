@@ -1020,16 +1020,21 @@ void app_frame(void)
     /* The event timeline is display-only telemetry: never maintain it when
      * EVOLVE is hidden. Musical evolution continues independently in DSP. */
     static unsigned evolve_was_visible;
-    unsigned evolve_visible=page==PAGE_EVOLVE&&!debug&&!intro_active&&!fullscreen;
-    if(evolve_visible&&!evolve_was_visible){
-      memset(evolve_history,0,sizeof evolve_history);
-      memset(engine.timeline,0,sizeof engine.timeline);
-      for(unsigned t=0;t<SR_TRACKS;t++)
-        evolve_events[t]=engine.tracks[t].events;
-      evolve_step=engine.sequence_step;
+    unsigned evolve_visible=page==PAGE_EVOLVE&&song_tab==0&&!debug&&!intro_active&&!fullscreen;
+    if(evolve_visible!=evolve_was_visible){
+      unsigned flags=plat_lock();
+      if(evolve_visible){
+        memset(evolve_history,0,sizeof evolve_history);
+        memset(engine.timeline,0,sizeof engine.timeline);
+        engine.timeline_write=0;
+        for(unsigned t=0;t<SR_TRACKS;t++)
+          evolve_events[t]=engine.tracks[t].events;
+        evolve_step=engine.sequence_step;
+      }
+      engine.timeline_enabled=evolve_visible;
+      plat_unlock(flags);
+      evolve_was_visible=evolve_visible;
     }
-    engine.timeline_enabled=evolve_visible;
-    evolve_was_visible=evolve_visible;
     if(evolve_visible){
       unsigned step=engine.sequence_step;
       if(step!=evolve_step){

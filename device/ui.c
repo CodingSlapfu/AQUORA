@@ -776,7 +776,10 @@ static int draw(int animate)
  if(entry_age<220u)dirty=1;
  if((page==PAGE_EVOLVE||page==PAGE_PLAY||fullscreen)&&!debug&&!intro_active){
   unsigned flags=plat_lock();
-  if(page==PAGE_EVOLVE){memcpy(graph_notes,engine.timeline,sizeof graph_notes);memcpy(&graph_snapshot,&engine,offsetof(sr_engine,reverb));memcpy(&graph_snapshot.loop_length,&engine.loop_length,sizeof engine-offsetof(sr_engine,loop_length));}
+  if(page==PAGE_EVOLVE&&song_tab==0){
+   memcpy(graph_notes,engine.timeline,sizeof graph_notes);
+   sr_score_snapshot(&graph_snapshot,&engine);
+  }
   graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;graph_phase=engine.tick_phase;
   graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
   graph_boundary=(sr_section_remaining(&engine)-1u)*engine.loop_length+engine.loop_length-engine.loop_pos;

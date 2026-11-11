@@ -2,14 +2,17 @@
 #include <stdio.h>
 #include <string.h>
 #include "../device/dsp/engine.c"
-static sr_engine e,unchanged;
+static sr_engine e,unchanged,scratch;
 static sr_event plan[768],heard[768];
 static int16_t pcm[512];
 int main(void){
+ /* A burst spanning the ring end must preserve all 96 most recent events. */
+ for(unsigned i=0;i<320;i++) e.timeline[timeline_slot(&e)].frame=i;
+ for(unsigned i=0;i<96;i++) assert(e.timeline[(e.timeline_write+i)%96].frame==224+i);
  unsigned cases=0,events=0,max=0;
  for(unsigned mode=0;mode<4;mode++)for(unsigned scene=0;scene<21;scene++){
   sr_init(&e,1771+scene);sr_set_scene(&e,scene);sr_set_music_mode(&e,mode);sr_generate_song(&e,1251+scene,0);sr_start(&e);e.timeline_enabled=1;
-  unchanged=e;unsigned count=sr_score_preview(&e,plan,768,34);assert(!memcmp(&e,&unchanged,sizeof e));assert(count&&count<768);if(count>max)max=count;
+  unchanged=e;sr_score_snapshot(&scratch,&e);unsigned count=sr_score_preview(&scratch,plan,768,34);assert(!memcmp(&e,&unchanged,sizeof e));assert(count&&count<768);if(count>max)max=count;
   unsigned total=0;
   while(e.sequence_step<34){unsigned before=e.timeline_write;sr_render(&e,pcm,64);total=preview_collect(&e,heard,768,total,before);}
   unsigned expected=0;

@@ -115,7 +115,10 @@ extern const sr_scene sr_scenes[SR_SCENES];
 extern const sr_frequency sr_frequencies[SR_FREQUENCIES];
 extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
-unsigned sr_score_preview(const sr_engine *snapshot,sr_event *events,unsigned capacity,unsigned ticks);
+/* The caller takes a coherent snapshot while holding the audio lock.
+ * Expansion mutates only that scratch engine and must run outside the lock. */
+void sr_score_snapshot(sr_engine *scratch,const sr_engine *engine);
+unsigned sr_score_preview(sr_engine *scratch,sr_event *events,unsigned capacity,unsigned ticks);
 void sr_plan_sections(sr_engine *e);
 unsigned sr_section_remaining(const sr_engine *e);
 unsigned sr_arrange_section(const sr_engine *e,unsigned ahead);

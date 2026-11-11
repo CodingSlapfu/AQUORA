@@ -722,6 +722,12 @@ void sr_stop(sr_engine *e)
     if(e->pending_mode){e->music_mode=e->pending_mode-1u;e->pending_mode=0;sr_set_scene(e,e->pending_scene?e->pending_scene-1u:e->scene);}
     else if(e->pending_scene)sr_set_scene(e,e->pending_scene-1u);
 }
+static unsigned timeline_slot(sr_engine *e){
+ unsigned slot=e->timeline_write;
+ e->timeline_write=(slot+1u)%96u;
+ return slot;
+}
+
 static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats){
   if((!e->running&&!e->preview_frames&&!e->midi_suppress)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
   int slot=-1;float quiet=1.e9f;
@@ -768,7 +774,7 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   v->release_coef=1.f-expf(-1.f/(fmaxf(patch_time(p->release,e->tracks[track].release),.04f)*SR_RATE));
   v->remain=(uint32_t)clampf(beats*4.f*(float)e->tick_length,1.f,9.e6f);
   if(e->timeline_enabled){
-    unsigned n=e->timeline_write++%96u;
+    unsigned n=timeline_slot(e);
     e->timeline[n].frame=e->frame_count;e->timeline[n].duration=v->remain;
     e->timeline[n].role=track;e->timeline[n].note=midi;e->timeline[n].velocity=velocity;
   }
@@ -1010,7 +1016,7 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   }
   e->tracks[SR_DRUMS].events+=hits;
   if(e->timeline_enabled)for(unsigned voice=0;voice<3;voice++)if(parts&(1u<<voice)){
-   unsigned n=e->timeline_write++%96u;
+   unsigned n=timeline_slot(e);
    e->timeline[n].frame=e->frame_count;e->timeline[n].duration=e->tick_length/2u;
    e->timeline[n].role=SR_DRUMS;e->timeline[n].note=voice==0?36:voice==1?38:42;
    e->timeline[n].velocity=voice==0?110:70;
@@ -1440,11 +1446,6 @@ static void trigger(sr_engine *e){
 /* Pure event-level score expansion. The future uses the SAME trigger and
  * offbeat grammar as playback, with no DSP samples, audio RNG or shared state
  * advanced. Storage lives in the pool; never place an engine copy on stack. */
-#ifdef SR_DEVICE
-static sr_engine preview_score __attribute__((section(".pool")));
-#else
-static sr_engine preview_score;
-#endif
 static void score_advance(sr_engine *e,uint32_t frame){
  uint32_t frames=frame-e->frame_count;
  float fade=(float)e->tick_length*32.f;if(fade<SR_RATE)fade=SR_RATE;
@@ -1453,16 +1454,17 @@ static void score_advance(sr_engine *e,uint32_t frame){
  e->frame_count=frame;
 }
 static unsigned preview_collect(sr_engine *e,sr_event *out,unsigned cap,unsigned count,unsigned before){
- for(unsigned i=before;i!=e->timeline_write;i=(i+1u)&255u){
-  if(count<cap)out[count++]=e->timeline[i%96u];
+ for(unsigned i=before;i!=e->timeline_write;i=(i+1u)%96u){
+  if(count<cap)out[count++]=e->timeline[i];
  }
  return count;
 }
-unsigned sr_score_preview(const sr_engine *snapshot,sr_event *out,unsigned cap,unsigned ticks){
- sr_engine *e=&preview_score;
- /* FX buffers are irrelevant to event planning and intentionally not copied. */
- memcpy(e,snapshot,offsetof(sr_engine,reverb));
- memcpy(&e->loop_length,&snapshot->loop_length,sizeof(*e)-offsetof(sr_engine,loop_length));
+void sr_score_snapshot(sr_engine *scratch,const sr_engine *engine){
+ /* The score never renders audio, so leave the FX buffers untouched. */
+ memcpy(scratch,engine,offsetof(sr_engine,reverb));
+ memcpy(&scratch->loop_length,&engine->loop_length,sizeof(*engine)-offsetof(sr_engine,loop_length));
+}
+unsigned sr_score_preview(sr_engine *e,sr_event *out,unsigned cap,unsigned ticks){
  if(!e->running||e->external_sync)return 0;
  e->timeline_enabled=1;e->midi_enabled=0;
  unsigned count=0;
@@ -1487,7 +1489,7 @@ unsigned sr_score_preview(const sr_engine *snapshot,sr_event *out,unsigned cap,u
     e->scheduled[index].active=0;
     unsigned role=e->scheduled[index].role;
     if(role==SR_DRUMS){
-     if(e->drums_enabled&&!e->freeze&&!e->tracks[role].mute){unsigned j=e->timeline_write++%96u;
+     if(e->drums_enabled&&!e->freeze&&!e->tracks[role].mute){unsigned j=timeline_slot(e);
       e->timeline[j]=(sr_event){due,e->tick_length/2u,SR_DRUMS,e->scheduled[index].note==0?36:e->scheduled[index].note==1?38:42,e->scheduled[index].velocity,0};}
     }else sr_note_on(e,role,e->scheduled[index].note,e->scheduled[index].velocity,e->scheduled[index].beats);
    }
@@ -1975,7 +1977,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
       if(role==SR_DRUMS){
         if(!e->drums_enabled||e->freeze||e->tracks[role].mute)continue;
         float velocity=e->scheduled[i].velocity*(1.f/127.f);
-        if(e->timeline_enabled){unsigned j=e->timeline_write++%96u;
+        if(e->timeline_enabled){unsigned j=timeline_slot(e);
           e->timeline[j].frame=e->frame_count;e->timeline[j].duration=e->tick_length/2u;
           e->timeline[j].role=SR_DRUMS;e->timeline[j].note=e->scheduled[i].note==0?36:e->scheduled[i].note==1?38:42;
           e->timeline[j].velocity=e->scheduled[i].velocity;}
