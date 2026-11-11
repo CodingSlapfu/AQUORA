@@ -152,6 +152,16 @@ const sr_drum_kit sr_drum_kits[SR_DRUM_KITS] = {
   {"Warm Pocket", .97f,.51f,.30f,54,168,.99946f,.27f},
   {"Stardust FM", .69f,.52f,.43f,65,337,.99926f,.24f}
 };
+/* Time constants for the body and the shorter pick/hammer brightness
+ * transient. Preserve patch IDs and use the existing per-voice filter. */
+static const struct {float body,attack_color;} pluck_decay[SR_PATCHES]={
+ [6]={.43f,.045f}, [7]={.75f,.07f}, [8]={.98f,.08f},
+ [9]={.30f,.026f}, [10]={.65f,.035f}, [11]={.48f,.055f},
+ [27]={.55f,.04f}, [34]={.24f,.028f},
+ [36]={.39f,.021f}, [37]={.51f,.037f}, [38]={.095f,.017f},
+ [40]={.71f,.032f}, [41]={.88f,.045f}, [42]={.43f,.025f},
+};
+
 const float sr_binaural_presets[SR_BEAT_PRESETS] = {1.f, 2.f, 4.f, 6.f, 8.f, 10.f, 14.f, 20.f};
 static const uint16_t rv_len[4]={1061,1277,1453,1789};
 static const int8_t scale_notes[5][7] = {
@@ -1223,6 +1233,31 @@ static int phrase_expression(unsigned step){
   static const int8_t arc[8]={-4,0,4,6,2,0,-3,-7};
   return arc[(step&15u)/2u];
 }
+/* Keep an anchor beneath each phrase, with only one additional sustained
+ * color at most. Section changes rotate the anchor instead of stacking
+ * the same drone, choir and harmony across every bar. */
+static void accompaniment(sr_engine *e,unsigned bar,unsigned chord){
+ const sr_scene *scene=&sr_scenes[e->scene];
+ const int8_t *scale=scale_notes[scene->scale];
+ const unsigned section=song_section(e);
+ const unsigned mode=e->music_mode;
+ const unsigned rotation=(e->form_loop+bar+e->scene)%3u;
+ const int tonic=sr_tonic(e);
+ const int root=tonic+12+scale[chord];
+ if(mode==SR_CINEMATIC){
+   unsigned choir=section==2u||(section!=3u&&rotation==1u);
+   sr_note_on(e,choir?SR_CHOIR:SR_DRONE,root,60,12.f);
+   if(section==2u&&e->current_energy>.65f&&rotation!=0u)
+     sr_note_on(e,SR_HARMONY,tonic+24+scale[(chord+4u)%7u],45,4.f);
+ }else if(section==3u||rotation==0u){
+   sr_note_on(e,SR_DRONE,root,55,mode==SR_STANDARD?7.f:4.f);
+ }else if(section==2u&&rotation==1u){
+   sr_note_on(e,SR_CHOIR,tonic+24+scale[(chord+2u)%7u],51,4.f);
+ }else{
+   sr_note_on(e,SR_HARMONY,tonic+24+scale[(chord+4u)%7u],45,2.5f);
+ }
+}
+
 static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 {
   const sr_scene *sc=&sr_scenes[e->scene];
@@ -1236,11 +1271,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   unsigned answer=(bar+e->phrase)%2u;
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
-  if((s&15u)==0){
-    sr_note_on(e,SR_DRONE,tonic+12+scale[chord],61, e->music_mode==SR_CINEMATIC?12.f:6.f);
-    sr_note_on(e,SR_CHOIR,tonic+24+scale[(chord+2u)%7u],56,7.f);
-    sr_note_on(e,SR_HARMONY,tonic+24+scale[(chord+4u)%7u],52,4.f);
-  }
+  if((s&15u)==0)accompaniment(e,bar,chord);
   if(e->music_mode==SR_EXPERIMENTAL){
     /* Three- and five-step interlocks answer a stable motif. Harmonic
      * notes remain in the intention scale; rests leave space for tails. */
@@ -1396,13 +1427,7 @@ static void trigger(sr_engine *e){
   if(evolving&&(s&15u)==0&&e->drums_enabled&&e->drum_density)
     e->kick_env*=.83f+.04f*(song_draw(phrase_seed,SR_DRUMS)&3u);
   bass_groove(e,s);
-  if((s&7u)==0){
-    if((s&15u)==0){
-      unsigned pad=chord;
-      sr_note_on(e,SR_DRONE,(uint8_t)(tonic+12+scale_notes[sc->scale][pad]),
-                 e->scene==6?86:76,8.f);
-    }
-  }
+  if((s&15u)==0)accompaniment(e,bar,chord);
   if((s&3u)==0){
     unsigned draw=evolving||stable?song_draw(phrase_seed,SR_PIANO+(s&15u)*8u):song_draw(phrase_seed,s+73u);
     if(draw%4u<energy){
@@ -1432,16 +1457,7 @@ static void trigger(sr_engine *e){
       ornament(e,1,(uint8_t)note,71,1.7f,s,evolving);
     }
   }
-  if((s&15u)==0){
-    unsigned degree=chord;
-    int note=tonic+12+scale_notes[sc->scale][degree];
-    sr_note_on(e,SR_CHOIR,(uint8_t)note,e->scene==6?80:65,7.f);
-    sr_note_on(e,SR_HARMONY,(uint8_t)(note+12),52,3.8f);
-    if(e->scene>=6){
-      int third=scale_notes[sc->scale][(chord+2u)%7u];
-      sr_note_on(e,SR_HARMONY,(uint8_t)(tonic+24+third),44,3.4f);
-    }
-  }
+
 }
 /* Pure event-level score expansion. The future uses the SAME trigger and
  * offbeat grammar as playback, with no DSP samples, audio RNG or shared state
@@ -1633,7 +1649,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   struct voice_config {
     sr_voice *voice;
     float brightness, cutoff, gain, step, left, right, send;
-    float fm_ratio, fm_depth, fm_envelope;
+    float fm_ratio, fm_depth, fm_envelope, body_decay;
     sr_wave wave;
     uint8_t track, chorus;
   } active[SR_VOICES];
@@ -1702,6 +1718,18 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     unsigned is_fm=track->patch>=SR_FIRST_FM_PATCH;
     config->chorus=!is_fm&&(patch->wave==SR_CHOIR_WAVE||track->patch>=20);
     float brightness=patch_tone(patch,track);
+    config->body_decay=1.f;
+    if(patch->wave==SR_PLUCK){
+      const float body=pluck_decay[track->patch].body;
+      const float transient=pluck_decay[track->patch].attack_color;
+      if(body>0.f){
+        float register_factor=clampf(v->freq*(1.f/440.f),.45f,2.4f);
+        config->body_decay=1.f-(.7f+.3f*register_factor)/(SR_RATE*body);
+        float age=(e->frame_count-v->born)*(1.f/SR_RATE);
+        float color=transient/(transient+age*(.7f+.3f*register_factor));
+        brightness*=.43f+.57f*color;
+      }
+    }
     config->brightness=brightness*(v->freq>3000.f?.15f:1.f);
     config->fm_ratio=0;
     if(is_fm){
@@ -1791,7 +1819,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
         v->phase2+=v->increment*1.0023f;if(v->phase2>=1.f)v->phase2-=1.f;
         s=.75f*s+.25f*sine(v->phase2);
       }
-      if(config->wave==SR_PLUCK)v->peak*=.99996f;
+      if(config->wave==SR_PLUCK)v->peak*=config->body_decay;
       v->filter+=(s-v->filter)*config->cutoff;
       float z=v->filter*v->env*config->gain+v->tail;
       v->tail*=.98f;

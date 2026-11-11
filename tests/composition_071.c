@@ -80,6 +80,18 @@ int main(void){
    assert(!(sr_sections[a].family==3&&sr_sections[b].family==3));
   }
  }
+ /* No arrangement downbeat should stack all three support colors. */
+ for(unsigned mode=0;mode<4;mode++)for(unsigned scene=0;scene<21;scene++){
+  sr_init(&e,scene+1);sr_set_scene(&e,scene);sr_set_music_mode(&e,mode);sr_start(&e);
+  for(unsigned section=0;section<sizeof sr_sections / sizeof *sr_sections;section++){
+   e.form_route[0]=section;
+   for(unsigned bar=0;bar<4;bar++){
+    const unsigned before=e.note_ons;
+    accompaniment(&e,bar,0);
+    assert(e.note_ons>before&&e.note_ons-before<=2);
+   }
+  }
+ }
  /* Mixed output sanity, numerical peaks only. No file is written. */
  unsigned peak=0;
  for(unsigned mode=0;mode<4;mode++){

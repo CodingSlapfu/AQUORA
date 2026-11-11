@@ -1,7 +1,9 @@
-# AQUORA 0.7.3 — official release complete, existing Site update blocked
+# AQUORA 0.7.4 development
 
-The latest OFFICIAL GitHub release is0.7.3, identityFM-1_73000703. Native/WASM and software gates passed; authenticated owner browser published accepted bytes. Exact public-native/asset hashes and source tag verified. See FAST_RESUME.md and validation/issue75/PUBLICATION.json. Do not rebuild/retest accepted firmware or republish different bytes under073.
+The latest official release is [v0.7.3](https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.7.3), identity FM-1_73000703. Its accepted software checkpoint and exact assets are recorded in validation/issue75/PUBLICATION.json.
 
-Only publication remainder: existingAQUORASite installer/screens/manuals/download labels need073; liveinstaller currently072. Its single authorized opening retry failedMODULE_NOT_FOUND:site-workflow.mjs. Stop retries absent a repaired helper/runtime. PreserveexistingSite,072andearlierrollbackinstallers.
+Development branch aquora-0.7.4-development builds a separate candidate with identity FM-1_73000704. See the v0.7.4 delta in validation/NEXT_BUILD_REQUIREMENT_MATRIX.md for remaining owner requirements. The new candidate preserves prior releases and rollback.
 
-Owner hardware acceptance remains flash/rollback, listening/inputfeel, LEDs, AIR/RF, CPU/XRUN/FPS/LCD/DMA/soak. Software checks are not physical proof. PerformanceUSB/BLEMIDI andUC25HQ80 remain deferred. KIRA-9 untouched.
+[#76](https://github.com/CodingSlapfu/AQUORA/issues/76) remains open. The 0.7.2 and 0.7.3 packages have matching marker layouts, UFW entry layouts and byte-identical OTA loaders. Both pass container CRC and padding validation. Those checks do not reproduce the Windows vendor validator or establish hardware acceptance.
+
+The existing Site project is appgprj_6ad6d0ae409c8191b45224ecdec724db. It still needs the matching installer, manuals, and release content after release acceptance. The prior 0.7.3 publication record and original Puya 0x856014 hardware scope still apply. Performance USB/BLE MIDI and UC25HQ80 remain deferred.

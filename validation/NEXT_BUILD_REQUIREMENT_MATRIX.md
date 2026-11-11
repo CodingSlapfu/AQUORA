@@ -123,3 +123,14 @@ Authoritative current owner build instruction and issue bodies1–72 captured in
 | #70 NEXT BUILD: Sonic Candy, recurring Ostinato motifs and emotional Frisson arcs in generative music | COMPLETED SOFTWARE baseline; integration delta under test | Baseline010 composition evidence; current arranger/logs preserve tempo, presence, fills, detail/ostinato/frisson functions. Physical listening pending. |
 | #71 NEXT BUILD: Chladni ≥2× richer music reaction, Cymatics sand morphs into acoustic geometries, Original subtly more reactive | OWNER VISUAL ACCEPTANCE / PRESERVE BASELINE | Latest owner accepts all3 visualizers; earlier redesign/retuning request superseded. device/visual_worker.c unchanged. |
 | #72 NEXT BUILD P0: JIANT-inspired section arranger, kick-locked grooving bass, ON auto mixing, max-default drums, guitar/harp/flute/sax patches | PARTIAL: new implementation; final integration/testing installer gates pending | device/dsp/song_form.h, engine.c; device/ui.c; arranger.log/features.log/graphics.log. Physical artistry/deadline acceptance pending. |
+
+## v0.7.4 development delta
+
+This section tracks owner feedback added after the accepted v0.7.3 software checkpoint. The published v0.7.3 and its validation remain immutable.
+
+| Issue | Development delta | Remaining acceptance |
+|---|---|---|
+| #48 / #72 | Section-aware accompaniment rotates drone, choir and harmony instead of triggering all three at every bar. Pluck families have differentiated body decay and transient brightness. HOME and Performance display intention and mode. | Isolated and full-arrangement audio comparison, further composition and acoustic timbre work, cutoff/resonance and FX orchestration, three-role gate/slicer, measured speaker optimization, and hardware listening. |
+| #40 / #69 / #73 | Reuse the existing intention/mode profiles, weighted patch eligibility and reference oscillators. | Confirm audible owner-requested palette and FX changes on hardware. |
+| #67 / #75 | EVOLVE shares one score snapshot, retains a full 96-event history across ring wrap, and disables event capture on other EVOLVE tabs. Existing ARRANGE, LEDs, startup, musical response and motif behavior carry forward. | Continuous motion and event stability under live changes, larger-text visual review, and FM-1 CPU, LCD, scan, and XRUN measurements. |
+| #76 | Reproducible package comparison verifies marker positions, container layout, checksums and loader identity for official 0.7.2 and 0.7.3. | Windows M-UPGRADE rejection root cause and acceptance on the owner's hardware. |

@@ -690,6 +690,12 @@ static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t 
  if(top<0){height+=top;top=0;}if(top+height>48)height=48-top;
  if(width>0&&height>0)cv_rect(x,top,width,height,ink);
 }
+static void intention_mode_header(void){
+ limited_text(6,0,208,fit_font(sr_scenes[engine.scene].name,208,25),
+              sr_scenes[engine.scene].name,skin_text());
+ limited_text(6,26,191,fit_font(music_modes[engine.music_mode],191,18),
+              music_modes[engine.music_mode],skin_accent());
+}
 static void evolve_graph(unsigned band){
  unsigned offset=band*48;
  for(unsigned t=0;t<SR_TRACKS;t++){
@@ -867,17 +873,16 @@ static int draw(int animate)
      geometry(band*48);
      if(band==0){
        cv_rect(0,0,240,48,RGB(0,0,0));
-       limited_text(6,0,228,&FONT_B,sr_scenes[engine.scene].name,skin_text());
-       static const char *keys[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
-       char bpm[12];num(bpm,(SR_RATE*15u+engine.tick_length/2u)/engine.tick_length);
-       cv_text(6,30,&FONT_XS,keys[sr_tonic(&engine)%12],skin_accent());
-       int x=cv_text(60,30,&FONT_XS,bpm,skin_text());cv_text(x+4,30,&FONT_XS,"BPM",skin_dim());
-       char level[12];num(level,(int)(engine.energy*100.f));cv_text(163,30,&FONT_XS,level,skin_accent());
+       intention_mode_header();
      }else if(band==4){
        cv_rect(0,0,240,48,RGB(0,0,0));
        int x=cv_text(6,0,&FONT_T,"NOW ",skin_accent());limited_text(x,0,230-x,&FONT_XS,graph_now,skin_text());
        x=cv_text(6,15,&FONT_T,"NEXT ",skin_dim());limited_text(x,15,230-x,&FONT_XS,graph_next,skin_text());
-       limited_text(6,33,228,&FONT_T,"K1 INTENSITY / HOME EXIT",skin_accent());
+       limited_text(6,33,125,&FONT_T,"K1 INTENSITY",skin_accent());
+       static const char *keys[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+       char bpm[12];num(bpm,(SR_RATE*15u+graph_tick/2u)/graph_tick);
+       x=cv_text(142,33,&FONT_T,keys[sr_tonic(&engine)%12],skin_accent());
+       x=cv_text(x+8,33,&FONT_T,bpm,skin_text());cv_text(x+4,33,&FONT_T,"BPM",skin_dim());
      }
    }
    else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){
@@ -1062,19 +1067,28 @@ static int draw(int animate)
    }else if(visual&&page==PAGE_EVOLVE){
      evolve_graph(band);
    }else if(visual&&page==3&&band<3)mixer_band(band);
-   else if(visual&&page==PAGE_PLAY)geometry(band*48);
-   else if(band==0&&(page==PAGE_EVOLVE||page==PAGE_PLAY)){
-     int now_y=page==PAGE_EVOLVE?21:0;
-     if(page==PAGE_EVOLVE)cv_text(6+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,"EVOLVE",skin_accent());
-     int x=cv_text(6,now_y,&FONT_T,"NOW ",skin_accent());
-     limited_text(x,now_y,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
-     int next_y=page==PAGE_PLAY?16:35;
-     x=cv_text(6,next_y,&FONT_T,"NEXT ",skin_dim());
-     limited_text(x,next_y,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
-     if(page==PAGE_PLAY){
-       x=cv_text(6,32,&FONT_T,role_names[selected],skin_accent());
-       limited_text(x+8,32,186-x,&FONT_T,patch_name(),skin_text());
+   else if(visual&&page==PAGE_PLAY){
+     geometry(band*48);
+     if(band==1){
+       cv_rect(0,0,240,30,RGB(0,0,0));
+       int x=cv_text(6,0,&FONT_T,"NOW ",skin_accent());
+       limited_text(x,0,232-x,&FONT_T,graph_now?graph_now:"Planning",skin_text());
+       x=cv_text(6,15,&FONT_T,"NEXT ",skin_dim());
+       limited_text(x,15,232-x,&FONT_T,graph_next?graph_next:"Planning",skin_text());
      }
+     if(band==2){
+       cv_rect(0,32,240,16,RGB(0,0,0));
+       int x=cv_text(6,32,&FONT_T,role_names[selected],skin_accent());
+       limited_text(x+8,32,230-x,&FONT_T,patch_name(),skin_text());
+     }
+   }else if(band==0&&page==PAGE_PLAY){
+     intention_mode_header();
+   }else if(band==0&&page==PAGE_EVOLVE){
+     cv_text(6+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,"EVOLVE",skin_accent());
+     int x=cv_text(6,21,&FONT_T,"NOW ",skin_accent());
+     limited_text(x,21,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
+     x=cv_text(6,35,&FONT_T,"NEXT ",skin_dim());
+     limited_text(x,35,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
    }else if(band==0){
      cv_text(8+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS&&ui_font_size!=2){
