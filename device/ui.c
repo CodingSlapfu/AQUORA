@@ -682,6 +682,7 @@ static sr_engine graph_snapshot PLAT_POOL;
 static sr_event graph_future[384] PLAT_POOL;
 static unsigned graph_future_count;
 static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
+static float graph_scale;
 static const char *graph_now,*graph_next;
 static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t ink){
  if(y<48){height-=48-y;y=48;}if(y+height>208)height=208-y;
@@ -714,8 +715,8 @@ static void evolve_graph(unsigned band){
   else {unsigned j=i-96;role=graph_future[j].role;note=graph_future[j].note;velocity=graph_future[j].velocity;frame=graph_future[j].frame;duration=graph_future[j].duration;}
   if(!duration||role>=SR_TRACKS)continue;
   int32_t age=(int32_t)(graph_frame-frame);
-  int x=78-(int)((float)age*4.8f/(float)graph_tick);
-  int width=(int)((float)duration*4.8f/(float)graph_tick);if(width<5)width=5;
+  int x=78-(int)((float)age*graph_scale);
+  int width=(int)((float)duration*graph_scale);if(width<5)width=5;
   if(x>232||x+width<35)continue;
   uint16_t ink=ui_background?skin_accent():colors[role];
   int glint=age>=0&&age<(int32_t)(SR_RATE/7u);
@@ -756,7 +757,7 @@ static void evolve_graph(unsigned band){
  }
  if(band==3){limited_text(6,13,100,&FONT_T,role_names[selected],skin_accent());
   limited_text(110,13,122,&FONT_T,"SEL: DETAIL",skin_dim());}
- int boundary=78+(int)(graph_boundary*24u/5u)-(int)((float)graph_phase*4.8f/(float)graph_tick);
+ int boundary=78+(int)(graph_boundary*24u/5u)-(int)((float)graph_phase*graph_scale);
  int bottom=band==4?15:47;
  if(boundary>78&&boundary<233)for(int y=0;y<bottom-2;y+=6)cv_line(boundary,y,boundary,y+2,skin_dim());
  cv_line(78,0,78,bottom,skin_accent());
@@ -790,7 +791,13 @@ static int draw(int animate)
   graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
   graph_boundary=(sr_section_remaining(&engine)-1u)*engine.loop_length+engine.loop_length-engine.loop_pos;
   plat_unlock(flags);
-  if(page==PAGE_EVOLVE&&song_tab==0)graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);
+  graph_scale=4.8f/(float)graph_tick;
+  if(page==PAGE_EVOLVE&&song_tab==0){
+   unsigned input_before=input_revision;
+   app_input_only();
+   if(input_before!=input_revision){dirty=1;return 0;}
+   graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);
+  }
  }
  unsigned inputs=input_revision, selections=select_revision;
  const unsigned priority=!intro_active&&!fullscreen&&labelled_input!=input_revision;

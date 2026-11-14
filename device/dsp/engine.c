@@ -184,6 +184,13 @@ static const struct {float body,attack_color;} pluck_decay[SR_PATCHES]={
  [60]={.155f,.024f}, [61]={.29f,.016f}, [62]={.44f,.032f},
 };
 
+/* Control-rate wind articulation. Rates are Hz, depth is cents, and the
+ * entrance delay is in seconds. A tongued onset begins on pitch. */
+static const struct {float rate,depth,delay;} wind_motion[]={
+ {5.5f,13.f,.22f},{5.0f,16.f,.27f},{4.6f,5.f,.31f},{5.4f,9.f,.25f},
+ {4.8f,7.f,.29f},{5.2f,11.f,.24f},{4.9f,10.f,.29f},{5.8f,7.f,.18f}
+};
+
 const float sr_binaural_presets[SR_BEAT_PRESETS] = {1.f, 2.f, 4.f, 6.f, 8.f, 10.f, 14.f, 20.f};
 static const uint16_t rv_len[4]={1061,1277,1453,1789};
 static const int8_t scale_notes[5][7] = {
@@ -268,7 +275,9 @@ static void make_motif(sr_engine *e){
   if(e->music_mode==SR_NEOCLASSICAL)rhythm=1;
   for(unsigned i=0;i<16;i++)e->melody[i]=-1;
   for(unsigned i=0;i<4;i++)e->melody[rhythms[rhythm][i]]=g[i];
-  e->melody[rhythms[rhythm][4]]=g[1];e->melody[rhythms[rhythm][5]]=0;
+  e->melody[rhythms[rhythm][3]]=g[0];
+  e->melody[rhythms[rhythm][4]]=g[1];
+  e->melody[rhythms[rhythm][5]]=0;
   /* A breath before the cadence, with an occasional gentle pickup. */
   if(e->music_mode==SR_CINEMATIC)e->melody[7]=-1;
 }
@@ -652,7 +661,7 @@ void sr_init(sr_engine *e,uint32_t seed){
     wave_base[w][i]=base;wave_color[w][i]=wave_reference((sr_wave)w,phase,1)-base;
   }lut_ready=1;}
   e->auto_gain=e->auto_level=1;
-  e->chord_gap=170; e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
+  e->chord_gap=190; e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
   e->learn_strength=2;e->drums_enabled=1;e->drum_level=1.f;e->drum_presence=100;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=SR_DENSITY_MAX;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=.012f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
@@ -803,8 +812,11 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
            interval&&interval>=-5&&interval<=5)neighboring=1;
       }
       unsigned position=e->sequence_step&15u;
-      expression=neighboring&&beats>=1.5f&&position!=0&&
-          (position==6u||(song_section(e)==2u&&position==10u));
+      unsigned patch=e->tracks[track].patch;
+      unsigned sax=track==SR_LEAD&&(patch==48u||patch==49u);
+      expression=neighboring&&position!=0&&
+          (sax?beats>=.75f&&(position>=8u||e->music_mode==SR_CINEMATIC):
+               beats>=1.5f&&(position==6u||(song_section(e)==2u&&position==10u)));
       if(track==SR_BASS)expression=expression&&beats>=3.f&&sr_scenes[e->scene].energy==0;
     }
     if(expression&&(m->glide_mode==2||(m->glide_mode==1&&held))&&e->pitch_last[track]>0)
@@ -1212,6 +1224,16 @@ static unsigned schedule(sr_engine *e,unsigned role,unsigned note,unsigned veloc
  }
  e->scheduled_overflows++;return 0;
 }
+/* Match physical plucked-string patches by their append-only patch IDs. */
+static unsigned string_roll_gap(unsigned patch,unsigned mode)
+{
+ static const uint8_t guitar[SR_MUSIC_MODES]={180,205,190,180};
+ static const uint8_t harp[SR_MUSIC_MODES]={200,230,215,190};
+ if(patch==9u||(patch>=36u&&patch<=39u))return guitar[mode];
+ if(patch==10u||patch==27u||(patch>=40u&&patch<=42u))return harp[mode];
+ return 0;
+}
+
 static unsigned chord_voice(sr_engine *e,unsigned step,unsigned flourish)
 {
  if(e->chord_mode==3||e->frequency_lock)return 0;
@@ -1232,20 +1254,29 @@ static unsigned chord_voice(sr_engine *e,unsigned step,unsigned flourish)
   }
  }
  for(unsigned i=0;i<count;i++)for(unsigned j=i+1;j<count;j++)if(notes[j]<notes[i]){int n=notes[i];notes[i]=notes[j];notes[j]=n;}
- const sr_patch *patch=&sr_patches[e->tracks[role].patch];
- unsigned strum=e->chord_mode==2||(e->chord_mode==0&&!e->freeze&&
-   e->music_mode!=SR_NEOCLASSICAL&&patch->attack<.2f&&song_section(e)==2u&&(step&31u)==16u);
+ unsigned auto_gap=string_roll_gap(e->tracks[role].patch,e->music_mode);
+ unsigned gap=e->chord_mode==2?e->chord_gap:e->chord_mode==0?auto_gap:0;
  unsigned reverse=e->chord_direction==2||(e->chord_direction==3&&(e->chord_alternate++&1u));
+ if(!e->chord_direction&&auto_gap)reverse=((step/16u+e->form_loop)&1u)!=0u;
  unsigned performed=0;
  for(unsigned i=0;i<count;i++){
   unsigned index=reverse?count-1u-i:i;
   e->chord_previous[index]=notes[index];
-  if(strum&&i)performed+=schedule(e,role,notes[index],58-i*4,2.8f,(i*e->chord_gap*SR_RATE+500u)/1000u);
+  unsigned delay=(i*gap*SR_RATE+500u)/1000u;
+  if(e->chord_mode==0)delay/=(count-1u); /* AUTO sets the entire stroke span. */
+  if(delay)performed+=schedule(e,role,notes[index],58-i*4,2.8f,delay);
   else {unsigned before=e->tracks[role].events;sr_note_on(e,role,notes[index],62-i*4,2.8f);performed+=e->tracks[role].events!=before;}
  }
  return performed;
 }
-static unsigned chord_phrase(sr_engine *e,unsigned step){return chord_voice(e,step,0);}
+static unsigned chord_phrase(sr_engine *e,unsigned step)
+{
+ /* In AUTO, the Neoclassical piano has its own hand voicings. A plucked
+  * string patch assigned to the piano role still receives its roll. */
+ if(e->music_mode==SR_NEOCLASSICAL&&e->chord_mode==0&&
+    !string_roll_gap(e->tracks[SR_PIANO].patch,e->music_mode))return 0;
+ return chord_voice(e,step,0);
+}
 static unsigned transition_fill(sr_engine *e,unsigned step,int gesture)
 {
  if(e->freeze||!e->drums_enabled||!e->drum_density||e->fill_character==3||
@@ -1297,17 +1328,29 @@ static void pluck_answer(sr_engine *e,unsigned step,unsigned chord,int lead_degr
   static const uint8_t rhythms[SR_MUSIC_MODES][3]={
     {2,9,13},{5,10,13},{3,7,13},{2,7,11}
   };
-  static const uint8_t intervals[2][3]={{2,4,2},{2,4,0}};
+  static const uint8_t intervals[4][3]={{2,4,2},{2,4,0},{4,2,0},{2,4,0}};
   unsigned pos=step&15u;
   if(lead_degree>=0)return;
   unsigned bar=e->form_loop*(e->loop_length/16u)+step/16u;
   const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
-  const float body=pluck_decay[e->tracks[SR_GUITAR].patch].body;
-  float duration=body>0.f ? .55f+1.4f*body : 1.35f;
+  unsigned patch=e->tracks[SR_GUITAR].patch;
+  unsigned roll=string_roll_gap(patch,e->music_mode);
+  const float body=pluck_decay[patch].body;
+  float duration=body>0.f ? .28f+1.25f*body : 1.10f;
   for(unsigned n=0;n<3;n++)if(pos==rhythms[e->music_mode][n]){
     if(n==2&&e->current_energy<.35f)break;
-    unsigned degree=(chord+intervals[(bar>>1)&1u][n])%7u;
-    sr_note_on(e,SR_GUITAR,sr_tonic(e)+12+scale[degree],n==0?66:55,duration);
+    unsigned degree=(chord+intervals[bar&3u][n])%7u;
+    int root=sr_tonic(e)+12;
+    sr_note_on(e,SR_GUITAR,root+scale[degree],n==0?66:55,duration);
+    /* Sparse section-end answer. A ringing open string gets a rolled
+     * upper note, while a dry pluck answers with an offbeat short stab. */
+    if(n==2&&(bar&3u)==2u&&e->current_energy>.55f&&
+       e->chord_mode==0&&!e->frequency_lock&&pos<14u&&
+       motif_degree(e,step+1u)<0){
+      unsigned delay=roll?(roll*SR_RATE+500u)/1000u:e->tick_length/2u;
+      if(delay<e->tick_length)
+        schedule(e,SR_GUITAR,root+12+scale[chord],46,duration*.70f,delay);
+    }
     break;
   }
 }
@@ -1317,11 +1360,45 @@ static float melody_duration(const sr_engine *e,unsigned step)
   const sr_patch *patch=&sr_patches[e->tracks[SR_LEAD].patch];
   unsigned gap=1;
   while(gap<5u&&(step&15u)+gap<16u&&motif_degree(e,step+gap)<0)gap++;
+  unsigned instrument=e->tracks[SR_LEAD].patch;
   float duration=(gap-.35f)*.25f;
-  if(patch->attack>.08f)duration+=.30f;
-  if(e->music_mode==SR_CINEMATIC)duration+=.55f;
+  if(instrument>=48u&&instrument<=55u){
+    unsigned position=step&15u;
+    if(position>=8u&&gap>=3u)duration+=instrument<=49u?.40f:.26f;
+    if(e->music_mode==SR_CINEMATIC)duration+=.40f;
+    if(instrument==50u||instrument==55u)duration*=.84f;
+  }else{
+    if(patch->attack>.08f)duration+=.30f;
+    if(e->music_mode==SR_CINEMATIC)duration+=.55f;
+  }
   if((step&15u)>=13u)duration+=.5f;
   return duration;
+}
+
+static void piano_phrase(sr_engine *e,unsigned step,unsigned chord,int lead,int expression)
+{
+ static const uint8_t rhythm[2][5]={{0,4,7,10,13},{1,5,8,11,14}};
+ static const uint8_t voicing[2][5]={{0,4,2,4,2},{2,4,0,2,0}};
+ const unsigned pos=step&15u;
+ const unsigned bar=e->form_loop*(e->loop_length/16u)+step/16u;
+ const unsigned answer=bar&1u;
+ const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+ const int root=sr_tonic(e)+12;
+ /* Low anchor and a quieter fifth suggest one pedal per harmonic span.
+  * Gate lengths leave a gap before the next bar changes harmony. */
+ if(e->chord_mode!=3&&!e->frequency_lock){
+   if(pos==0)sr_note_on(e,SR_PIANO,root+scale[chord],57+expression,2.9f);
+   if(pos==8&&e->current_energy>.30f)
+     sr_note_on(e,SR_PIANO,root+scale[(chord+4u)%7u],47+expression,1.45f);
+ }
+ for(unsigned i=0;i<5;i++)if(pos==rhythm[answer][i]){
+   unsigned degree=(chord+voicing[answer][i])%7u;
+   unsigned accent=i==0?6u:i==4?0u:3u;
+   int velocity=lead>=0?49:64;
+   float beats=i==4?.40f:i==0?1.10f:.72f;
+   sr_note_on(e,SR_PIANO,root+12+scale[degree],velocity+accent+expression,beats);
+   break;
+ }
 }
 
 static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
@@ -1334,7 +1411,6 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   unsigned draw=song_draw(seed,s&63u);
   unsigned dynamic=6u+((draw>>4)&3u);
   int expression=phrase_expression(s);
-  unsigned answer=(bar+e->phrase)%2u;
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
   if((s&15u)==0)accompaniment(e,bar,chord);
@@ -1351,17 +1427,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
     if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+2u*(bar&1u))%7u],58-dynamic,2.4f);
     if((s&15u)==12)sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+2u)%7u],49,3.f);
   }else{
-    /* Two-bar question/answer. Leave a cadence breath, vary the arp
-     * contour by section rather than replacing the theme every note. */
-    if((s&1u)==(answer?1u:0u)&&(s&15u)!=(answer?15u:14u)){
-      static const uint8_t arpeggio[8]={0,2,1,2,0,1,2,1};
-      unsigned arp=arpeggio[((s/2u)+(song_section(e)==2u?2u:0u))&7u];
-      unsigned d=(chord+arp*2u)%7u;
-      sr_note_on(e,SR_PIANO,tonic+24+scale[d],76-dynamic+expression+(s%8u==0?8:0),(s&7u)==0u?1.65f:.95f);
-    }
-    if((s&7u)==2&&degree>=0){
-      sr_note_on(e,SR_HARMONY,tonic+24+scale[((unsigned)degree+2u)%7u],48,2.1f);
-    }
+    piano_phrase(e,s,chord,degree,expression);
   }
 }
 static void musical_detail(sr_engine *e,unsigned step)
@@ -1834,6 +1900,15 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
            patch->attack<.03f||((v->born/e->tick_length)&7u)<4u||e->frequency_lock)
           modulation=0;
       }
+    }
+    if(track->patch>=48u&&track->patch<=55u&&!e->frequency_lock&&
+       (v->track>SR_BASS||!(e->motion_manual&(1u<<v->track)))){
+      unsigned wind=track->patch-48u;
+      float age=(e->frame_count-v->born)*(1.f/SR_RATE);
+      float depth=clampf((age-wind_motion[wind].delay)*3.f,0.f,1.f);
+      const float style[SR_MUSIC_MODES]={.72f,1.f,.83f,.60f};
+      modulation=depth*wind_motion[wind].depth*style[e->music_mode]*.0005776f*
+                 sine(age*wind_motion[wind].rate);
     }
     config->step=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
   }
