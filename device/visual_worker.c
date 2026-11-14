@@ -293,12 +293,13 @@ static void prepare_geometry(void)
       if(weight>loudest){loudest=weight;vis_input.note_class=voice->midi%12u;}
       pitch_sum+=voice->freq*weight;pitch_weight+=weight;
     }
-    vis_input.pitch=pitch_weight>.00001f?pitch_sum/pitch_weight:0;
     for(unsigned t=0;t<SR_TRACKS;t++){
       vis_input.meter[t]=engine.tracks[t].meter;
       vis_input.onset[t]=engine.tracks[t].events!=vis_input.event[t]&&engine.tracks[t].meter>.00001f?1.f:vis_input.onset[t]*.82f;
       vis_input.event[t]=engine.tracks[t].events;
     }
+    plat_unlock(flags);
+    vis_input.pitch=pitch_weight>.00001f?pitch_sum/pitch_weight:0;
     if(!visual_mode){
       float energy=0;for(unsigned t=0;t<SR_TRACKS;t++)energy+=vis_input.meter[t]*8.f;
       energy+=vis_input.atmosphere;
@@ -307,7 +308,6 @@ static void prepare_geometry(void)
       if(original_activity>.0001f)original_phase+=dt*(.006f+.030f*original_activity);
       vis_input.phase=(unsigned)original_phase;
     }
-    plat_unlock(flags);
     plat_cpu2_sync();
     unsigned begin=plat_ticks24();
     if(plat_cpu2_run(visual_job,0)){

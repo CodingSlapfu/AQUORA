@@ -1375,6 +1375,30 @@ static float melody_duration(const sr_engine *e,unsigned step)
   return duration;
 }
 
+/* Lift the dampers together just before the next harmony. Key gates
+ * remain short on muted sections and on non-piano patches. The generated
+ * gate is also the duration seen by the score preview and MIDI scheduler. */
+static float piano_gate(const sr_engine *e,unsigned pos,float finger_gate)
+{
+ unsigned patch=e->tracks[SR_PIANO].patch;
+ if(patch<6u||patch>8u||e->frequency_lock||song_section(e)==3u)return finger_gate;
+ unsigned lift=e->current_energy>.7f?14u:13u;
+ if(pos>=lift)return finger_gate;
+ float pedal=(lift-pos)*.25f;
+ return fmaxf(finger_gate,pedal);
+}
+
+static unsigned lead_pitch(const sr_engine *e,unsigned degree)
+{
+ const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+ unsigned patch=e->tracks[SR_LEAD].patch;
+ int note=sr_tonic(e)+24+scale[degree];
+ if((patch==49u||patch==52u)&&note>65)note-=12;
+ if(patch==54u&&note>76)note-=12;
+ if(patch==55u&&note<72)note+=12;
+ return (unsigned)note;
+}
+
 static void piano_phrase(sr_engine *e,unsigned step,unsigned chord,int lead,int expression)
 {
  static const uint8_t rhythm[2][5]={{0,4,7,10,13},{1,5,8,11,14}};
@@ -1387,16 +1411,16 @@ static void piano_phrase(sr_engine *e,unsigned step,unsigned chord,int lead,int 
  /* Low anchor and a quieter fifth suggest one pedal per harmonic span.
   * Gate lengths leave a gap before the next bar changes harmony. */
  if(e->chord_mode!=3&&!e->frequency_lock){
-   if(pos==0)sr_note_on(e,SR_PIANO,root+scale[chord],57+expression,2.9f);
+   if(pos==0)sr_note_on(e,SR_PIANO,root+scale[chord],57+expression,piano_gate(e,pos,2.25f));
    if(pos==8&&e->current_energy>.30f)
-     sr_note_on(e,SR_PIANO,root+scale[(chord+4u)%7u],47+expression,1.45f);
+     sr_note_on(e,SR_PIANO,root+scale[(chord+4u)%7u],47+expression,piano_gate(e,pos,1.10f));
  }
  for(unsigned i=0;i<5;i++)if(pos==rhythm[answer][i]){
    unsigned degree=(chord+voicing[answer][i])%7u;
    unsigned accent=i==0?6u:i==4?0u:3u;
    int velocity=lead>=0?49:64;
    float beats=i==4?.40f:i==0?1.10f:.72f;
-   sr_note_on(e,SR_PIANO,root+12+scale[degree],velocity+accent+expression,beats);
+   sr_note_on(e,SR_PIANO,root+12+scale[degree],velocity+accent+expression,piano_gate(e,pos,beats));
    break;
  }
 }
@@ -1416,7 +1440,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   if((s&15u)==0)accompaniment(e,bar,chord);
   pluck_answer(e,s,chord,degree);
   if(!learned_active(e)&&degree>=0)
-    sr_note_on(e,SR_LEAD,tonic+24+scale[degree],68-dynamic+expression,melody_duration(e,s));
+    sr_note_on(e,SR_LEAD,lead_pitch(e,degree),68-dynamic+expression,melody_duration(e,s));
   if(e->music_mode==SR_EXPERIMENTAL){
     /* Offbeat keys and a sparse upper answer leave room for the hook. */
     if((s&15u)==6u||((s&15u)==14u&&bar))
@@ -1540,7 +1564,7 @@ static void trigger(sr_engine *e){
   if((s&15u)==0&&requested!=3)chord_phrase(e,s);
   transition_fill(e,s,0);
   int learned=learned_index(e,s);
-  if(learned>=0&&k>=0)sr_note_on(e,SR_LEAD,tonic+24+scale_notes[sc->scale][k],74,e->learned.length[learned]*.25f);
+  if(learned>=0&&k>=0)sr_note_on(e,SR_LEAD,lead_pitch(e,k),74,e->learned.length[learned]*.25f);
   musical_detail(e,s);
   if(e->music_mode){mode_phrase(e,s,phrase_seed);return;}
   drum_trigger(e,s,energy);
@@ -1557,7 +1581,7 @@ static void trigger(sr_engine *e){
     }
   }
   if(!learned_active(e)&&k>=0){
-    int note=tonic+24+scale_notes[sc->scale][k];
+    int note=lead_pitch(e,k);
     ornament(e,2,(uint8_t)note,66+phrase_expression(s),melody_duration(e,s),s,evolving);
     unsigned harmony=evolving||stable?song_draw(phrase_seed,SR_HARMONY+(s&15u)*8u):song_draw(phrase_seed,s+73u);
     if(harmony%7u==0){
@@ -1642,17 +1666,34 @@ static inline __attribute__((always_inline)) float nature_call(sr_engine *e,floa
     uint8_t notes, noise_percent;
   } calls[]={
     {1840,2800,950,3,9},{3200,1600,-1050,2,6},{2250,5100,-640,1,8},{2800,2000,620,4,8},
-    {350,3100,-160,3,28},{2950,880,100,5,22},{710,620,440,1,78},{190,9100,-55,1,92}
+    {350,3100,-160,3,28},{2950,880,100,5,22},{710,620,440,1,78},{190,9100,-55,1,92},
+    /* Droplet, gurgle, leaf gust, cricket, night frog, rising birdsong,
+     * distant rumble, long surf wash, falling rain burst, dry canopy ticks. */
+    {1080,440,-910,1,57},{460,1630,-310,3,63},{260,6200,85,1,97},
+    {3520,720,-270,4,42},{290,2900,-115,2,47},{1620,4400,1140,2,11},
+    {73,21000,-30,1,87},{115,15800,25,1,99},{540,6500,220,1,95},
+    {1940,1060,-650,3,79}
   };
-  static const uint8_t calls_by_bed[SR_BEDS][4]={
-    {0,0,0,0},{0,6,2,7},{6,6,2,4},{6,7,6,1},
-    {0,1,2,3},{7,6,7,2},{0,1,2,3},{0,5,6,2},
-    {4,5,4,1},{0,5,3,4},{6,2,6,0},{7,6,6,2},{6,4,0,2},{7,7,6,4}
+  static const uint8_t calls_by_bed[SR_BEDS][8]={
+    {0},
+    {10,10,17,7,6,13,10,17}, /* Wind */
+    {8,9,9,6,2,8,16,4},     /* Water */
+    {16,8,16,6,8,17,16,7},  /* Rain */
+    {0,13,2,3,10,17,11,4},  /* Forest */
+    {15,15,7,16,9,15,13,7}, /* Ocean */
+    {0,1,2,3,13,1,13,2},   /* Birds */
+    {17,10,17,6,11,0,5,10},/* Leaves */
+    {12,11,4,12,5,11,9,1}, /* Florida Night */
+    {0,11,13,4,5,10,3,12}, /* Twilight Meadow */
+    {8,9,8,2,6,13,9,0},    /* Crystal Creek */
+    {16,16,8,7,14,10,6,16},/* Mountain Rain */
+    {9,8,0,2,13,9,17,6},   /* Woodland Brook */
+    {14,7,15,16,14,10,8,16}/* Distant Storm */
   };
   if(!e->bird_left){
     if(e->bird_wait){e->bird_wait--;return 0;}
     if(!e->bird_note){
-      e->bird_phrase=calls_by_bed[type][(e->nature_rng>>20)&3u];
+      e->bird_phrase=calls_by_bed[type][(e->nature_rng>>20)&7u];
       e->bird_pan=noise*.52f;
     }
     unsigned call=e->bird_phrase;
@@ -1662,13 +1703,13 @@ static inline __attribute__((always_inline)) float nature_call(sr_engine *e,floa
     if(++e->bird_note==calls[call].notes){
       e->bird_note=0;
       e->bird_wait=SR_RATE/2u*(5u-e->nature_activity)+((e->nature_rng>>12)&0x1ffffu);
-    }else e->bird_wait=(call==5u?420u:1200u)+((e->nature_rng>>19)&1023u);
+    }else e->bird_wait=(call==5u||call==11u?420u:1200u)+((e->nature_rng>>19)&1023u);
   }
   unsigned call=e->bird_phrase;
   float progress=e->bird_left*e->bird_env;
   float env=progress*(1.f-progress)*4.f;
   e->bird_left--;
-  float hz=e->bird_pitch+calls[call].sweep*progress*progress;
+  float hz=fmaxf(28.f,e->bird_pitch+calls[call].sweep*progress*progress);
   float fundamental=advance(&e->bird_phase,2.f*hz);
   float texture=calls[call].noise_percent*.01f;
   return ((fundamental*.077f+sine(e->bird_phase*2.f)*.014f)*(1.f-texture)

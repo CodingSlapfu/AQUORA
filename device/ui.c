@@ -714,6 +714,7 @@ static void evolve_graph(unsigned band){
   if(i<96){role=graph_notes[i].role;note=graph_notes[i].note;velocity=graph_notes[i].velocity;frame=graph_notes[i].frame;duration=graph_notes[i].duration;}
   else {unsigned j=i-96;role=graph_future[j].role;note=graph_future[j].note;velocity=graph_future[j].velocity;frame=graph_future[j].frame;duration=graph_future[j].duration;}
   if(!duration||role>=SR_TRACKS)continue;
+  if(i>=96u&&(int32_t)(frame-graph_frame)<0)continue;
   int32_t age=(int32_t)(graph_frame-frame);
   int x=78-(int)((float)age*graph_scale);
   int width=(int)((float)duration*graph_scale);if(width<5)width=5;
@@ -781,22 +782,36 @@ static int draw(int animate)
  unsigned entry_age=plat_ms()-page_animation_ms;
  int entry_x=entry_age<220u?(int)((220u-entry_age)*(220u-entry_age)/1600u):0;
  if(entry_age<220u)dirty=1;
+ static unsigned forecast_valid, forecast_step, forecast_revision, forecast_clock, forecast_sync;
+ unsigned score_visible=page==PAGE_EVOLVE&&song_tab==0&&!debug&&!intro_active&&!fullscreen;
+ if(!score_visible)forecast_valid=0;
  if((page==PAGE_EVOLVE||page==PAGE_PLAY||fullscreen)&&!debug&&!intro_active){
   unsigned flags=plat_lock();
-  if(page==PAGE_EVOLVE&&song_tab==0){
+  unsigned refresh=0;
+  if(score_visible){
    memcpy(graph_notes,engine.timeline,sizeof graph_notes);
-   sr_score_snapshot(&graph_snapshot,&engine);
+   refresh=!forecast_valid||forecast_step!=engine.sequence_step||
+     forecast_revision!=revision||forecast_clock!=engine.tick_length||
+     forecast_sync!=engine.external_sync;
+   if(refresh){
+    sr_score_snapshot(&graph_snapshot,&engine);
+    forecast_step=engine.sequence_step;
+    forecast_revision=revision;
+    forecast_clock=engine.tick_length;
+    forecast_sync=engine.external_sync;
+   }
   }
   graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;graph_phase=engine.tick_phase;
   graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
   graph_boundary=(sr_section_remaining(&engine)-1u)*engine.loop_length+engine.loop_length-engine.loop_pos;
   plat_unlock(flags);
   graph_scale=4.8f/(float)graph_tick;
-  if(page==PAGE_EVOLVE&&song_tab==0){
+  if(refresh){
    unsigned input_before=input_revision;
    app_input_only();
-   if(input_before!=input_revision){dirty=1;return 0;}
+   if(input_before!=input_revision){forecast_valid=0;dirty=1;return 0;}
    graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);
+   forecast_valid=1;
   }
  }
  unsigned inputs=input_revision, selections=select_revision;
