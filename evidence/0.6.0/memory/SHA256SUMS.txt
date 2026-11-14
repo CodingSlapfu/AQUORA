@@ -1,2 +1,0 @@
-a38576e13a581ad0f2f0318f185aad7ebc3a8916d01c05e52d17a5c4b15d6e16  AQUORA-0.6.0-memory-source.tar.gz
-316951ae1337af61e9db647c437ef7952ab228b3662b546ba7297951b94d80cb  AQUORA-0.6.0-memory-package.tar.gz

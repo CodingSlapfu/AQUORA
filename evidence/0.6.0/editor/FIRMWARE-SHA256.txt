@@ -1,1 +1,0 @@
-9f3198b7efbffed498e46bdab3e1e04d2890d064ab7e1e78aca67128dfffc64b  stage/firmware/sound-healing-0.6.0.fwsc

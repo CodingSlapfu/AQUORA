@@ -1,2 +1,0 @@
-4a614d447ea605698e90634e206448aed06f4a81e481661b89cb3d046c265029  native-development.fwsc
-09bbc4e6298da72d2e248cc9a93b1bbc731dd991206e51e9f149723ceb4ae0ef  single-core-development.fwsc

@@ -1,9 +1,0 @@
-  ok key_held == 1
-  ok key_held == 0
-  ok key_onset == 0
-  ok key_held == 0
-  ok key_pending == 10
-  ok key_held == 0
-  ok key_pending == 0
-  ok drops == 0
-host: 1348 ms simulated, 68 blits, render 0.6% of real time (host CPU)

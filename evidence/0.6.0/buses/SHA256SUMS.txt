@@ -1,2 +1,0 @@
-fc2b1052a7ecb3557577db4681d81afa087095fd2506422daff54df5c494cc8f  AQUORA-0.6.0-buses-source.tar.gz
-039eaacb17315a07ad4d85594621f83967083e88d9fbf530cccbc04a7dfc7753  AQUORA-0.6.0-buses-package.tar.gz

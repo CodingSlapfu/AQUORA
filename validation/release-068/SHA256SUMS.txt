@@ -1,2 +1,0 @@
-4a019bd3c234c69beb8c123b4a973dd68598fd02714336bb709ec86a7c1570d7  validation/release-068/artifacts/dual-core-candidate.fwsc
-8ce34a142c3df7d9facdbd467c40f4394c365ca5221aea1ec582facf348222f8  validation/release-068/artifacts/single-core-candidate.fwsc

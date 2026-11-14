@@ -1,2 +1,0 @@
-322d6cc82d5bff3fc7c0a3be843b39ac5313b082c57967ac7dea7cbfe6c7e465  AQUORA-0.2.0-source.tar.gz
-7f15db0d0752e6c7c3ca85fbac96a5a1f62bd3d632f4bdca956a7c54a02c1219  AQUORA-0.2.0-package.tar.gz

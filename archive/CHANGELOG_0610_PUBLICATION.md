@@ -1,3 +1,0 @@
-# AQUORA0.6.10 publication complete
-
-Renewed same-Site credential immediately before push/package. Reused prepared source and accepted artifacts; existing sourcee874c18b committed/pushed, Site saved191 and deployment appgdep_6af15115143c819199e0e9ddc8fba0ef succeeded. Independent public HTTPS page/runtime/installer/069rollback checks passed; actual firmware/WASM downloads match accepted hashes. Exact evidence and proof in validation/release-0610/PUBLICATION_COMPLETE.json and PUBLIC_INSTALLER_191.jpg. No firmware/WASM rebuild or acceptance rerun. No new Site. Deferred hardware/MIDI and owner physical/artistic acceptance remain as documented; KIRA-9 untouched.

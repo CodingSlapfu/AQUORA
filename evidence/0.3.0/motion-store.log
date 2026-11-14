@@ -1,9 +1,0 @@
-  ok lead_glide == 150
-  ok lead_vibrato == 7
-  ok bass_glide == 100
-  ok bass_vibrato == 4
-  ok lead_glide == 150
-  ok lead_vibrato == 7
-  ok bass_glide == 100
-  ok bass_vibrato == 4
-host: 1247 ms simulated, 93 blits, render 0.0% of real time (host CPU)

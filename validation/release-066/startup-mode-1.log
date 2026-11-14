@@ -1,7 +1,0 @@
-  ok startup_chime == 1
-  ok intro == 1
-  ok reset_visual_counters == 1
-  ok geometry_jobs == 0
-  ok worker_jobs == 0
-  ok intro == 0
-host: 10541 ms simulated, 700 blits, render 0.1% of real time (host CPU)

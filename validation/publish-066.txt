@@ -1,1 +1,0 @@
-Publish exact accepted 0.6.6 after verified platform run 42353932681 and live installer/Studio verification; both performance MIDI transports deferred.

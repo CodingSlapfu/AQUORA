@@ -1,2 +1,0 @@
-IDLE 30min max=0 false_gestures=0 rejected=4
-PASS weak range rejected, 30min noisy idle/outliers, dropout/reacquisition, one deliberate gesture and held-hand suppression

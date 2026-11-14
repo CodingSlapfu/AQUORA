@@ -1,4 +1,0 @@
-part 0: brighter normalized HF proxy in 19/19 kits; attack emphasis in 0/19
-part 1: brighter normalized HF proxy in 19/19 kits; attack emphasis in 13/19
-part 2: brighter normalized HF proxy in 0/19 kits; attack emphasis in 0/19
-PASS 19 kits x 5 contexts old/new, 57 distinct kernel renders; 247 intention/kit mixed renders below PCM clip; level-matched WAVs + CSV
