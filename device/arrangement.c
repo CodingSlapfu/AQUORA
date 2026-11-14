@@ -168,11 +168,13 @@ static void arrangement_snapshot(arrangement *record)
     memset(record,0,sizeof(*record));
     unsigned irq=plat_lock();
     record->version=AQ_BANK_VERSION;
-    record->v2_crc=(engine.play_strength+1u)|((uint32_t)engine.play_feel<<7)|((uint32_t)engine.nature_style<<8)|((uint32_t)engine.evolve_pace<<10)|((uint32_t)engine.nature_level_manual<<12)|((uint32_t)(engine.nature_activity+1u)<<13)|((uint32_t)(engine.nature_distance+1u)<<16);
+    record->v2_crc=(engine.play_strength+1u)|((uint32_t)engine.play_feel<<7)|((uint32_t)engine.nature_style<<8)|((uint32_t)engine.evolve_pace<<10)|((uint32_t)engine.nature_level_manual<<12)|((uint32_t)(engine.nature_activity+1u)<<13)|((uint32_t)(engine.nature_distance+1u)<<16)|((uint32_t)engine.tone_level_manual<<19);
     record->legacy_crc=engine.sound_locks|((uint32_t)(engine.drum_presence+1u)<<10)|((uint32_t)(engine.play_grid&3u)<<17)|((uint32_t)(engine.play_grid>>2)<<28)|((uint32_t)engine.groove_mode<<19)|((uint32_t)(engine.groove_strength+1u)<<21);
 #define COPY_FIELD(field) record->field=engine.field;
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
+    record->bed_level=sr_limit_level(record->bed_level,SR_NATURE_MAX);
+    record->tone_level=sr_limit_level(record->tone_level,SR_FIXED_TONE_MAX);
     record->visual=visual_mode;
     memcpy(record->melody,engine.melody,sizeof(record->melody));
     memcpy(record->motif_home,engine.motif_home,sizeof(record->motif_home));
@@ -226,6 +228,8 @@ static void arrangement_apply(const arrangement *record)
 #define COPY_FIELD(field) engine.field=record->field;
     AQ_BANK_FIELDS(COPY_FIELD)
 #undef COPY_FIELD
+    engine.bed_level=sr_limit_level(engine.bed_level,SR_NATURE_MAX);
+    engine.tone_level=sr_limit_level(engine.tone_level,SR_FIXED_TONE_MAX);
     engine.sound_locks=record->version==AQ_BANK_LEGACY?0:record->legacy_crc&SR_SOUND_LOCK_MASK;
     unsigned presence=record->version==AQ_BANK_LEGACY?0:(record->legacy_crc>>10)&127u;
     engine.drum_presence=presence&&presence<=101?presence-1:50;
@@ -238,6 +242,7 @@ static void arrangement_apply(const arrangement *record)
     engine.nature_style=(key_timing>>8)&3u;
     engine.evolve_pace=(key_timing>>10)&3u;
     engine.nature_level_manual=(key_timing>>12)&1u;
+    engine.tone_level_manual=(key_timing>>19)&1u;
     engine.evolve_next=0;
     unsigned activity=(key_timing>>13)&7u, distance=(key_timing>>16)&7u;
     engine.nature_activity=activity&&activity<=5?activity-1u:2;

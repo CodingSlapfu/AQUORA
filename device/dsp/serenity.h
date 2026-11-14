@@ -3,6 +3,13 @@
 #include <stdint.h>
 #include <stddef.h>
 #define SR_RATE 44100
+#define SR_FIXED_TONE_MAX .020f
+#define SR_NATURE_MAX .20f
+
+static inline __attribute__((always_inline)) float sr_limit_level(float level, float maximum)
+{
+  return level > 0.f ? (level < maximum ? level : maximum) : 0.f;
+}
 #define SR_HIT_MAX 100u
 #define SR_DENSITY_MAX 8u
 #define SR_SOUND_NATURE (1u<<8)
@@ -10,9 +17,9 @@
 #define SR_SOUND_LOCK_MASK 1023u
 #define SR_TRACKS 8
 #define SR_VOICES 16
-#define SR_PATCHES 48
+#define SR_PATCHES 63
 #define SR_SCENES 21
-#define SR_BEDS 12
+#define SR_BEDS 14
 #define SR_FREQUENCIES 21
 #define SR_DRUM_KITS 19
 #define SR_BEAT_PRESETS 8
@@ -71,7 +78,7 @@ typedef struct {
   uint8_t timeline_enabled,timeline_write;
   sr_event timeline[96];
   uint8_t pending_scene, pending_mode, profile_applying;
-  uint8_t music_mode, motion_manual, recent_patches[SR_MUSIC_MODES][SR_SCENES][SR_TRACKS];
+  uint8_t music_mode, motion_manual, tone_level_manual, recent_patches[SR_MUSIC_MODES][SR_SCENES][SR_TRACKS];
   uint16_t sound_locks;
   uint8_t drum_presence, play_grid, groove_mode, groove_strength;
   uint8_t air_track, air_fx, air_depth, evolve_pace, evolve_next;
@@ -89,7 +96,7 @@ typedef struct {
   uint8_t preview_role;
   uint8_t nature_active, nature_from, nature_style, nature_level_manual, nature_activity, nature_distance, bird_phrase, bird_note;
   float nature_blend, bird_pitch, bird_pan;
-  float nature_mono, nature_side;
+  float nature_mono, nature_side, nature_gain_now;
   uint16_t bird_left;
   float nature_peak;
   uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;

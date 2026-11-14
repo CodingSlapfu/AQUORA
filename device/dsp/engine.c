@@ -88,7 +88,22 @@ const sr_patch sr_patches[SR_PATCHES] = {
   {"Bamboo Legato FM",SR_SINE,.075f,.92f,.30f,.23f},
   {"Alto Reed FM",SR_SINE,.06f,.72f,.48f,.22f},
   {"Tenor Velvet FM",SR_SINE,.095f,.88f,.36f,.24f},
-  {"Breathy Sax FM",SR_SINE,.13f,1.15f,.55f,.20f}
+  {"Breathy Sax FM",SR_SINE,.13f,1.15f,.55f,.20f},
+  {"Alto Saxophone",SR_SINE,.037f,.42f,.72f,.23f},
+  {"Tenor Saxophone",SR_SINE,.058f,.53f,.52f,.26f},
+  {"Chamber Clarinet",SR_SINE,.045f,.38f,.46f,.24f},
+  {"Oboe",SR_SINE,.065f,.48f,.78f,.20f},
+  {"Bassoon",SR_SINE,.071f,.55f,.49f,.26f},
+  {"Concert Flute",SR_SINE,.075f,.46f,.27f,.27f},
+  {"Alto Flute",SR_SINE,.125f,.64f,.19f,.27f},
+  {"Piccolo",SR_SINE,.043f,.28f,.35f,.20f},
+  {"Soprano Ah Choir",SR_SINE,.62f,2.9f,.46f,.23f},
+  {"Male Ooh Choir",SR_SINE,.84f,2.5f,.27f,.26f},
+  {"Mixed Vowel Choir",SR_SINE,.55f,3.2f,.40f,.22f},
+  {"Angelic Air Choir",SR_SINE,1.1f,4.0f,.32f,.23f},
+  {"Pizzicato Cello",SR_PLUCK,.012f,.24f,.39f,.27f},
+  {"Rosewood Mallet",SR_PLUCK,.003f,.45f,.55f,.24f},
+  {"Kalimba Tines",SR_PLUCK,.002f,.62f,.63f,.22f}
 };
 #define SR_FIRST_FM_PATCH 24u
 static const struct {
@@ -105,7 +120,13 @@ static const struct {
   {2.f,.23f,.94f,0.f},{3.f,.42f,.97f,0.f},
   {2.5f,.31f,.985f,.001f},{1.f,.055f,.30f,.001f},
   {2.f,.09f,.40f,0.f},{1.f,.40f,.54f,.001f},
-  {1.f,.28f,.42f,0.f},{3.f,.32f,.38f,.002f}
+  {1.f,.28f,.42f,0.f},{3.f,.32f,.38f,.002f},
+  {1.f,.30f,.25f,0.f},{1.f,.24f,.38f,0.f},
+  {2.f,.21f,.18f,0.f},{1.f,.43f,.16f,0.f},{2.f,.29f,.35f,0.f},
+  {1.f,.065f,.55f,0.f},{2.f,.045f,.65f,0.f},{1.f,.11f,.42f,0.f},
+  {2.f,.20f,.50f,.003f},{1.f,.135f,.34f,.001f},
+  {2.f,.25f,.46f,.002f},{3.f,.12f,.50f,.003f},
+  {2.f,.31f,.96f,0.f},{3.99f,.27f,.99f,0.f},{5.95f,.33f,.99f,0.f}
 };
 _Static_assert(sizeof fm_operators / sizeof *fm_operators == SR_PATCHES-SR_FIRST_FM_PATCH,
                "Every FM patch needs an operator profile");
@@ -160,6 +181,7 @@ static const struct {float body,attack_color;} pluck_decay[SR_PATCHES]={
  [27]={.55f,.04f}, [34]={.24f,.028f},
  [36]={.39f,.021f}, [37]={.51f,.037f}, [38]={.095f,.017f},
  [40]={.71f,.032f}, [41]={.88f,.045f}, [42]={.43f,.025f},
+ [60]={.155f,.024f}, [61]={.29f,.016f}, [62]={.44f,.032f},
 };
 
 const float sr_binaural_presets[SR_BEAT_PRESETS] = {1.f, 2.f, 4.f, 6.f, 8.f, 10.f, 14.f, 20.f};
@@ -410,8 +432,9 @@ static unsigned ensemble(const sr_engine *e,uint32_t seed){
 }
 static unsigned fresh_patch(sr_engine *e,unsigned role,uint32_t seed)
 {
-  static const uint8_t home[SR_PATCHES]={1,1,1,2,2,2,4,4,4,5,5,5,0,0,0,0,0,5,5,6,3,3,2,2,4,6,2,5,1,0,1,1,1,1,1,1,5,5,5,5,5,5,5,0,0,0,0,0};
-  static const uint8_t voices[4][7]={{13,1,23,21,6,9,19},{14,0,5,20,24,27,25},{16,31,23,20,7,10,19},{29,30,26,21,24,27,25}};
+  static const uint8_t home[]={1,1,1,2,2,2,4,4,4,5,5,5,0,0,0,0,0,5,5,6,3,3,2,2,4,6,2,5,1,0,1,1,1,1,1,1,5,5,5,5,5,5,5,0,0,0,0,0, 0,0,0,0,0,0,0,0, 6,6,6,6, 5,5,5};
+  _Static_assert(sizeof home==SR_PATCHES,"Every patch needs an automatic role");
+  static const uint8_t voices[4][7]={{50,1,23,21,6,36,56},{54,0,5,20,24,40,59},{53,31,23,20,7,60,58},{48,30,26,21,24,62,57}};
   unsigned family=ensemble(e,seed),previous=e->recent_patches[e->music_mode][e->scene][role];
   unsigned anchor=voices[family][role],weights[SR_PATCHES],total=0;
   /* Respect an explicitly locked foreground when balancing the ensemble. */
@@ -443,11 +466,11 @@ void sr_select_nature(sr_engine *e,uint32_t seed)
 {
   if(e->sound_locks&SR_SOUND_NATURE)return;
   static const uint8_t palette[][4]={
-    {1,4,8,7},{2,10,5,11},{3,9,6,10},{4,8,7,1},
-    {5,8,11,2},{1,4,7,11},{4,8,11,1},{2,10,9,5},
+    {1,4,8,7},{2,10,12,11},{3,9,6,10},{4,8,7,1},
+    {5,8,11,13},{1,4,7,11},{4,8,11,1},{2,10,9,5},
     {7,9,3,10},{6,9,4,2},{3,6,9,10},{5,4,8,1},{2,9,6,10},
     {9,10,2,6},{1,7,4,9},{8,11,5,4},{2,10,7,1},
-    {5,2,8,11},{6,9,2,10},{3,6,10,9},{4,8,7,5}
+    {5,2,8,13},{6,9,2,10},{3,6,12,9},{4,8,7,5}
   };
   _Static_assert(sizeof palette/sizeof *palette==SR_SCENES,"Complete nature profiles");
   unsigned style=(e->nature_style+e->music_mode)%4u;
@@ -504,7 +527,13 @@ static void apply_sound_profile(sr_engine *e,uint32_t seed,int sounds_only)
   }
   sr_select_nature(e,seed);
   if(!(e->sound_locks&SR_SOUND_NATURE)&&!e->nature_level_manual)
-    e->bed_level=.28f+.05f*palette[scene].space+(e->nature_style==1?.10f:0.f);
+    e->bed_level=.045f+.018f*palette[scene].space
+      +.005f*(song_draw(seed,91)%7u)+(e->nature_style==1?.018f:0.f)
+      -(e->music_mode==SR_CINEMATIC?.018f:0.f);
+  if(!e->tone_level_manual){
+    unsigned reference=song_draw(seed,92)%8u;
+    e->tone_level=reference<2u?0.f:.004f+.002f*reference;
+  }
   if(!(e->sound_locks&SR_SOUND_FX)){
     e->reverb_amount=.12f+.045f*palette[scene].space+.01f*(song_draw(seed,9)%8u);
     e->delay_amount=.06f+.025f*palette[scene].space+.01f*(song_draw(seed,10)%6u);
@@ -525,12 +554,17 @@ static void song_tempo(sr_engine *e,uint32_t seed)
   unsigned group=song_draw(seed,201)%10u;
   group=group<(e->music_mode<=SR_CINEMATIC?6u:2u)?0u:group<8u?1u:2u;
   unsigned lo=ranges[e->music_mode][group][0],hi=ranges[e->music_mode][group][1];
-  unsigned bpm=lo+(song_draw(seed,202)+sr_scenes[e->scene].energy*3u)%(hi-lo+1u);
+  unsigned midpoint=(lo+hi)/2u;
+  unsigned preferred=(midpoint*2u+sr_scenes[e->scene].bpm)/3u;
+  int bpm=(int)preferred+(int)(song_draw(seed,202)%11u)-5;
+  if(bpm<(int)lo)bpm=(int)lo;
+  if(bpm>(int)hi)bpm=(int)hi;
   e->tick_length=(SR_RATE*15u+bpm/2u)/bpm;
 }
 void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
 {
   if(e->running||e->stop_frames)return;
+  if(sounds_only)song_tempo(e,seed);
   if(!sounds_only){
     e->learned.count=e->capture.count=e->learn_pending=0;e->form_loop=0;e->motif_count=e->motif_cursor=0;e->response_pending=0;
     e->arrange_next=e->arrange_length=e->arrange_active=e->arrange_elapsed=0;
@@ -621,7 +655,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   e->chord_gap=170; e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
   e->learn_strength=2;e->drums_enabled=1;e->drum_level=1.f;e->drum_presence=100;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=SR_DENSITY_MAX;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
-  e->binaural_level=.035f;e->tone_level=.025f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
+  e->binaural_level=.035f;e->tone_level=.012f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
     e->gain_trim[t]=e->role_gain[t]=e->role_target[t]=1.f;
     e->tracks[t].patch=default_patches[t];e->tracks[t].volume=t==SR_BASS?.88f:t==SR_DRUMS?1.f:.68f; e->tracks[t].send=1.f;
@@ -1258,6 +1292,38 @@ static void accompaniment(sr_engine *e,unsigned bar,unsigned chord){
  }
 }
 
+static void pluck_answer(sr_engine *e,unsigned step,unsigned chord,int lead_degree)
+{
+  static const uint8_t rhythms[SR_MUSIC_MODES][3]={
+    {2,9,13},{5,10,13},{3,7,13},{2,7,11}
+  };
+  static const uint8_t intervals[2][3]={{2,4,2},{2,4,0}};
+  unsigned pos=step&15u;
+  if(lead_degree>=0)return;
+  unsigned bar=e->form_loop*(e->loop_length/16u)+step/16u;
+  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+  const float body=pluck_decay[e->tracks[SR_GUITAR].patch].body;
+  float duration=body>0.f ? .55f+1.4f*body : 1.35f;
+  for(unsigned n=0;n<3;n++)if(pos==rhythms[e->music_mode][n]){
+    if(n==2&&e->current_energy<.35f)break;
+    unsigned degree=(chord+intervals[(bar>>1)&1u][n])%7u;
+    sr_note_on(e,SR_GUITAR,sr_tonic(e)+12+scale[degree],n==0?66:55,duration);
+    break;
+  }
+}
+
+static float melody_duration(const sr_engine *e,unsigned step)
+{
+  const sr_patch *patch=&sr_patches[e->tracks[SR_LEAD].patch];
+  unsigned gap=1;
+  while(gap<5u&&(step&15u)+gap<16u&&motif_degree(e,step+gap)<0)gap++;
+  float duration=(gap-.35f)*.25f;
+  if(patch->attack>.08f)duration+=.30f;
+  if(e->music_mode==SR_CINEMATIC)duration+=.55f;
+  if((step&15u)>=13u)duration+=.5f;
+  return duration;
+}
+
 static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 {
   const sr_scene *sc=&sr_scenes[e->scene];
@@ -1272,21 +1338,17 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
   if((s&15u)==0)accompaniment(e,bar,chord);
+  pluck_answer(e,s,chord,degree);
+  if(!learned_active(e)&&degree>=0)
+    sr_note_on(e,SR_LEAD,tonic+24+scale[degree],68-dynamic+expression,melody_duration(e,s));
   if(e->music_mode==SR_EXPERIMENTAL){
-    /* Three- and five-step interlocks answer a stable motif. Harmonic
-     * notes remain in the intention scale; rests leave space for tails. */
-    if(!learned_active(e)&&degree>=0&&(s%3u==0u||(s&15u)==10u))
-      sr_note_on(e,SR_LEAD,tonic+24+scale[degree],64-dynamic+phrase_expression(s),1.8f);
-    if((s+e->phrase)%5u==0u)
-      sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+(s/5u)*2u)%7u],52+expression,2.2f);
+    /* Offbeat keys and a sparse upper answer leave room for the hook. */
     if((s&15u)==6u||((s&15u)==14u&&bar))
       sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+4u)%7u],62-dynamic,2.8f);
     if((s&15u)==12u&&degree>=0)
       sr_note_on(e,SR_HARMONY,tonic+24+scale[(degree+2u)%7u],49,3.6f);
   }else if(e->music_mode==SR_CINEMATIC){
-    if(!learned_active(e)&&degree>=0&&((s&15u)<8u||(s&15u)>=14u))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],68-dynamic+expression,4.2f);
     if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+2u*(bar&1u))%7u],58-dynamic,2.4f);
-    if((s&7u)==2)sr_note_on(e,SR_GUITAR,tonic+12+scale[(chord+4u)%7u],54,2.2f);
     if((s&15u)==12)sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+2u)%7u],49,3.f);
   }else{
     /* Two-bar question/answer. Leave a cadence breath, vary the arp
@@ -1297,9 +1359,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
       unsigned d=(chord+arp*2u)%7u;
       sr_note_on(e,SR_PIANO,tonic+24+scale[d],76-dynamic+expression+(s%8u==0?8:0),(s&7u)==0u?1.65f:.95f);
     }
-    if((s&7u)==6)sr_note_on(e,SR_GUITAR,tonic+24+scale[(chord+2u+s/4u)%7u],61-dynamic,1.4f);
     if((s&7u)==2&&degree>=0){
-      if(!learned_active(e))sr_note_on(e,SR_LEAD,tonic+24+scale[degree],65+phrase_expression(s),2.5f);
       sr_note_on(e,SR_HARMONY,tonic+24+scale[((unsigned)degree+2u)%7u],48,2.1f);
     }
   }
@@ -1307,16 +1367,10 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 static void musical_detail(sr_engine *e,unsigned step)
 {
   if(e->freeze||e->variation<=0.f)return;
-  unsigned id=form_index(e,0),family=sr_sections[id].family;
-  unsigned hold=2u+sr_scenes[e->scene].energy%3u;
+  unsigned id=form_index(e,0);
   unsigned preparing=sr_section_remaining(e)==1u;
   int tonic=sr_tonic(e);const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
-  /* Home motif is the anchor across sections, while the lead develops.
-   * Learned phrases already own the theme and never get doubled here. */
-  if(!learned_active(e)&&family!=3u&&(step&3u)==2u){
-    int degree=motif_degree(e,step);
-    if(degree>=0)sr_note_on(e,SR_GUITAR,tonic+24+scale[degree],45, .7f);
-  }
+
   /* A sparse answer in the final bar, coordinated with prepared arrival. */
   if(step+3u==e->loop_length&&(e->form_loop+id)%3u==1u){
     unsigned chord=phrase_chord(e,step/16u)%7u;
@@ -1437,11 +1491,8 @@ static void trigger(sr_engine *e){
     }
   }
   if(!learned_active(e)&&k>=0){
-    unsigned lead=evolving||stable?song_draw(phrase_seed,SR_LEAD+(s&15u)*8u):song_draw(phrase_seed,s+73u);
-    if((s&7u)==0u||lead%5u<=energy+1u){
-      int note=tonic+24+scale_notes[sc->scale][k];
-      ornament(e,2,(uint8_t)note,65+phrase_expression(s)+(evolving?(lead>>8)&7u:0),2.3f,s,evolving);
-    }
+    int note=tonic+24+scale_notes[sc->scale][k];
+    ornament(e,2,(uint8_t)note,66+phrase_expression(s),melody_duration(e,s),s,evolving);
     unsigned harmony=evolving||stable?song_draw(phrase_seed,SR_HARMONY+(s&15u)*8u):song_draw(phrase_seed,s+73u);
     if(harmony%7u==0){
       unsigned degree=evolving&&contour?((unsigned)k+2u)%7u:(unsigned)k;
@@ -1449,14 +1500,7 @@ static void trigger(sr_engine *e){
       ornament(e,3,(uint8_t)note,47,1.8f,s,evolving);
     }
   }
-  if((s&7u)==4){
-    unsigned draw=evolving||stable?song_draw(phrase_seed,SR_GUITAR+(s&15u)*8u):song_draw(phrase_seed,s+73u);
-    if(draw%4u<energy&&!(evolving&&section==3&&(bar&1u))){
-      unsigned degree=(chord+2u*((s/4u)%3u))%7u;
-      int note=tonic+12+scale_notes[sc->scale][degree];
-      ornament(e,1,(uint8_t)note,71,1.7f,s,evolving);
-    }
-  }
+  pluck_answer(e,s,chord,k);
 
 }
 /* Pure event-level score expansion. The future uses the SAME trigger and
@@ -1524,27 +1568,35 @@ static inline __attribute__((always_inline)) float nature_noise(sr_engine *e)
   return (float)(e->nature_rng>>8)*(2.f/16777216.f)-1.f;
 }
 
-static inline __attribute__((always_inline)) float birds(sr_engine *e,float noise)
+static inline __attribute__((always_inline)) float nature_call(sr_engine *e,float noise,unsigned type)
 {
   static const struct {
     uint16_t pitch, length;
     int16_t sweep;
-    uint8_t notes;
-  } calls[]={{1840,2800,950,3},{3200,1600,-1050,2},{2250,5100,-640,1},{2800,2000,620,4}};
+    uint8_t notes, noise_percent;
+  } calls[]={
+    {1840,2800,950,3,9},{3200,1600,-1050,2,6},{2250,5100,-640,1,8},{2800,2000,620,4,8},
+    {350,3100,-160,3,28},{2950,880,100,5,22},{710,620,440,1,78},{190,9100,-55,1,92}
+  };
+  static const uint8_t calls_by_bed[SR_BEDS][4]={
+    {0,0,0,0},{0,6,2,7},{6,6,2,4},{6,7,6,1},
+    {0,1,2,3},{7,6,7,2},{0,1,2,3},{0,5,6,2},
+    {4,5,4,1},{0,5,3,4},{6,2,6,0},{7,6,6,2},{6,4,0,2},{7,7,6,4}
+  };
   if(!e->bird_left){
     if(e->bird_wait){e->bird_wait--;return 0;}
     if(!e->bird_note){
-      e->bird_phrase=(e->nature_rng>>20)&3u;
+      e->bird_phrase=calls_by_bed[type][(e->nature_rng>>20)&3u];
       e->bird_pan=noise*.52f;
     }
     unsigned call=e->bird_phrase;
     e->bird_left=calls[call].length/2u;
     e->bird_env=1.f/e->bird_left;
-    e->bird_pitch=calls[call].pitch+e->bird_note*170+noise*140.f;
+    e->bird_pitch=calls[call].pitch*(1.f+.07f*noise)+e->bird_note*(call<4u?147.f:21.f);
     if(++e->bird_note==calls[call].notes){
       e->bird_note=0;
       e->bird_wait=SR_RATE/2u*(5u-e->nature_activity)+((e->nature_rng>>12)&0x1ffffu);
-    }else e->bird_wait=1200u+((e->nature_rng>>19)&2047u);
+    }else e->bird_wait=(call==5u?420u:1200u)+((e->nature_rng>>19)&1023u);
   }
   unsigned call=e->bird_phrase;
   float progress=e->bird_left*e->bird_env;
@@ -1552,7 +1604,9 @@ static inline __attribute__((always_inline)) float birds(sr_engine *e,float nois
   e->bird_left--;
   float hz=e->bird_pitch+calls[call].sweep*progress*progress;
   float fundamental=advance(&e->bird_phase,2.f*hz);
-  return (fundamental*.077f+sine(e->bird_phase*2.f)*.014f+noise*.009f)*env*env;
+  float texture=calls[call].noise_percent*.01f;
+  return ((fundamental*.077f+sine(e->bird_phase*2.f)*.014f)*(1.f-texture)
+          +noise*.11f*texture)*env*env;
 }
 
 static inline __attribute__((always_inline)) float bed_color(unsigned type,float wind,float rain,float air,float swell,float bird,float *pan)
@@ -1569,6 +1623,8 @@ static inline __attribute__((always_inline)) float bed_color(unsigned type,float
    case 9:return wind*.38f+air*.045f*swell+bird*.7f;
    case 10:*pan*=.5f;return (rain*.90f+air*.065f)*(.65f+swell*.45f);
    case 11:return wind*.38f+rain*.75f+air*(.070f+swell*.03f);
+   case 12:return (rain*.65f+air*.063f)*(.75f+swell*.32f)+wind*.27f;
+   case 13:return (wind*1.15f+rain*.53f)*(.40f+.60f*swell*swell)+air*.028f;
    default:return 0.f;
   }
 }
@@ -1580,7 +1636,10 @@ static inline __attribute__((always_inline)) float bed(sr_engine *e,float *side)
     e->nature_active=e->bed_type;
     e->nature_blend=0;
   }
-  if(!e->nature_active&&e->nature_blend>=1.f)return 0;
+  if(!e->nature_active&&e->nature_blend>=1.f){
+    e->bird_left=e->bird_note=0;
+    return 0;
+  }
   float n=nature_noise(e);
   e->wind_lp+=(n-e->wind_lp)*.0016f;
   e->rain_lp+=(n-e->rain_lp)*.1164f;
@@ -1588,22 +1647,21 @@ static inline __attribute__((always_inline)) float bed(sr_engine *e,float *side)
   float rain=(e->rain_lp-e->wind_lp)*.26f;
   float air=n-e->rain_lp;
   float swell=.55f+.45f*advance(&e->bed_phase,.24f);
-  unsigned mask=(1u<<e->nature_active)|(e->nature_blend<1.f?(1u<<e->nature_from):0);
-  float bird=(mask&((1u<<4)|(1u<<6)|(1u<<8)|(1u<<9)))?
-     birds(e,n)*(1.f-.15f*e->nature_distance):0;
+  unsigned character=e->nature_active?e->nature_active:e->nature_from;
+  float event=nature_call(e,n,character)*(1.f-.15f*e->nature_distance);
   float pan=e->bird_pan;
   float stereo=e->nature_active!=0;
-  float value=bed_color(e->nature_active,wind,rain,air,swell,bird,&pan);
+  float value=bed_color(e->nature_active,wind,rain,air,swell,event,&pan);
   if(e->nature_blend<1.f){
     float previous_pan=e->bird_pan;
     float previous_stereo=e->nature_from!=0;
     stereo=previous_stereo+(stereo-previous_stereo)*e->nature_blend;
-    float previous=bed_color(e->nature_from,wind,rain,air,swell,bird,&previous_pan);
+    float previous=bed_color(e->nature_from,wind,rain,air,swell,event,&previous_pan);
     value=previous+(value-previous)*e->nature_blend;
     e->nature_blend+=2.f/(.5f*SR_RATE);
   }
-  *side=(bird*pan*.34f+air*(swell-.55f)*.018f)*stereo;
-  return value;
+  *side=(event*pan*.34f+air*(swell-.55f)*.018f)*stereo;
+  return value+event*.24f*stereo;
 }
 static inline __attribute__((always_inline)) float fx(sr_engine *e,unsigned mask,float dry,float *wide){
   float wet=0.f;
@@ -1645,11 +1703,13 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   e->nature_peak*=1.f-(float)frames*.0005f;
   for(unsigned b=0;b<SR_BUS_COUNT;b++)e->bus_meter[b]*=1.f-(float)frames*.0005f;
   int full=source==SR_ISOLATE_MIX;
+  const float bed_target=sr_limit_level(e->bed_level,SR_NATURE_MAX);
+  const float reference_level=sr_limit_level(e->tone_level,SR_FIXED_TONE_MAX);
   unsigned scope_track=e->scope_track;
   struct voice_config {
     sr_voice *voice;
     float brightness, cutoff, gain, step, left, right, send;
-    float fm_ratio, fm_depth, fm_envelope, body_decay;
+    float fm_ratio, fm_depth, fm_envelope, body_decay, breath, vocal;
     sr_wave wave;
     uint8_t track, chorus;
   } active[SR_VOICES];
@@ -1730,6 +1790,15 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
         brightness*=.43f+.57f*color;
       }
     }
+    config->breath=0.f;config->vocal=0.f;
+    if(track->patch>=48u&&track->patch<=55u){
+      float age=(e->frame_count-v->born)*(1.f/SR_RATE);
+      float onset=.045f/(.045f+age);
+      config->breath=(track->patch>=53u?.08f:.039f)*(.22f+.78f*onset);
+      brightness*=.72f+.28f*onset;
+    }else if(track->patch>=56u&&track->patch<=59u){
+      config->vocal=track->patch==57u?.14f:.22f;
+    }
     config->brightness=brightness*(v->freq>3000.f?.15f:1.f);
     config->fm_ratio=0;
     if(is_fm){
@@ -1784,6 +1853,8 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
   for(size_t i=0;i<frames;i++){
     float l=0.f,r=0.f,mix=0.f,scope=0.f;
+    unsigned air_hash=(e->frame_count+i)*0x9e3779b9u;
+    float breath_noise=((float)((air_hash^(air_hash>>13))&1023u)-512.f)*(1.f/512.f);
     int capture=scope_track<SR_TRACKS&&((e->frame_count+i)&3u)==0;
     float locked_sample=locked?advance(&e->lock_phase,lock_hz):0;
     for(unsigned a=0;a<count;a++){
@@ -1815,6 +1886,9 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
         float index=config->fm_depth*(1.f-config->fm_envelope*(1.f-v->env));
         s=sine(v->phase+index*sine(v->phase2)+1.f);
       }else s=wave(config->wave,v->phase,config->brightness);
+      if(config->vocal>0.f)
+        s=s*(1.f-config->vocal)+config->vocal*sine(v->phase2);
+      s+=config->breath*breath_noise;
       if(config->chorus){
         v->phase2+=v->increment*1.0023f;if(v->phase2>=1.f)v->phase2-=1.f;
         s=.75f*s+.25f*sine(v->phase2);
@@ -1865,7 +1939,8 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     mix+=drums*send[SR_DRUMS]*.5f;
     e->tracks[SR_DRUMS].meter=e->drum_meter*e->drum_level*(left[SR_DRUMS]+right[SR_DRUMS]);
     e->transport_env+=((e->running||audition||e->external_audio?1.f:0.f)-e->transport_env)*.0008f;
-    float bed_gain=audition?e->bed_level*clampf(((float)e->nature_audition-i)*(1.f/1102.5f),0,1):e->bed_level;
+    e->nature_gain_now+=(bed_target-e->nature_gain_now)*.001f;
+    float bed_gain=audition?e->nature_gain_now*clampf(((float)e->nature_audition-i)*(1.f/1102.5f),0,1):e->nature_gain_now;
     float nature=0, nature_side=0;
     if(!preview&&(audition||e->solo==SR_TRACKS)&&bed_gain>0&&
        (e->bed_type||e->nature_active||e->nature_blend<1.f||e->nature_mono||e->nature_side)){
@@ -1909,7 +1984,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     if(e->reference_hz_now<=0.f)e->reference_hz_now=target_hz;
     e->reference_hz_now+=(target_hz-e->reference_hz_now)*.0008f;
     if(fabsf(target_hz-e->reference_hz_now)<.08f)e->reference_hz_now=target_hz;
-    float target_gain=e->solo==SR_TRACKS?e->tone_level*e->transport_env:0.f;
+    float target_gain=e->solo==SR_TRACKS?reference_level*e->transport_env:0.f;
     e->reference_gain_now+=(target_gain-e->reference_gain_now)*.001f;
     float reference=advance(&e->tone_phase,e->reference_hz_now)*e->reference_gain_now;
     if(full||source==SR_ISOLATE_FIXED){l+=reference;r+=reference;if(!(i&7u))bus_meter(e,SR_BUS_REFERENCE,reference);}

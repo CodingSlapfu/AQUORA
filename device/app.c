@@ -361,7 +361,7 @@ static void consume(void){
  }
  case 3:if(!interrupted&&(play||engine.learn_mode)&&((physical_keys&(1u<<d))||(engine.play_grid&&engine.play_strength&&!engine.keyboard_mode)))sr_key_down(&engine,c.track,(unsigned)d);break;
  case 4:sr_set_frequency(&engine,bounded(engine.frequency+d,0,SR_FREQUENCIES-1));break;
- case 5:engine.nature_level_manual=1;engine.bed_level=adjust(engine.bed_level,d,.02f,1);break;
+ case 5:engine.nature_level_manual=1;engine.bed_level=adjust(engine.bed_level,d,.01f,SR_NATURE_MAX);break;
  case 6:sr_set_binaural(&engine,switched(engine.binaural_enabled,d));break;
  case 7:sr_set_binaural_rate(&engine,fm_clampf(engine.binaural_rate+d*.5f,.5f,40));break;
  case 8:sr_set_binaural_carrier(&engine,fm_clampf(engine.binaural_carrier+d*5.f,80,1000));break;
@@ -386,7 +386,7 @@ static void consume(void){
  case 19:engine.variation=adjust(engine.variation,d,.05f,1);break;
  case 20:engine.freeze=switched(engine.freeze,d);break;
  case 21:engine.bed_type=bounded(engine.bed_type+d,0,SR_BEDS-1);engine.sound_locks|=SR_SOUND_NATURE;break;
- case 22:engine.tone_level=adjust(engine.tone_level,d,.005f,.10f);break;
+ case 22:engine.tone_level_manual=1;engine.tone_level=adjust(engine.tone_level,d,.001f,SR_FIXED_TONE_MAX);break;
  case 23:engine.binaural_level=adjust(engine.binaural_level,d,.005f,.10f);break;
  case 24:t->pan=fm_clampf(t->pan+d*.05f,-1,1);break;
  case 25:engine.motion_manual|=4u;engine.play_queued=0;engine.tick_length=bounded((int)engine.tick_length-d*80,5512,22050);break;
