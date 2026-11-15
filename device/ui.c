@@ -46,9 +46,9 @@ static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain","Woodland Brook","Distant Storm"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum"};
-/* Preference palettes tint the controls and retain their original role colors. */
+/* Static panel palettes. Canvas is independently exact black or white. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
- {{RGB(0,0,0),RGB(0,0,0),RGB(52,69,79),RGB(105,192,255),RGB(237,244,248),RGB(197,208,212)},
+ {{RGB(0,0,0),RGB(0,0,0),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
   {RGB(0,0,0),RGB(0,0,0),RGB(108,154,161),RGB(10,106,99),RGB(20,38,47),RGB(70,91,97)}},
  {{RGB(0,0,0),RGB(0,0,0),RGB(67,142,148),RGB(90,245,209),RGB(236,251,252),RGB(158,199,205)},
   {RGB(0,0,0),RGB(0,0,0),RGB(66,146,136),RGB(12,121,121),RGB(14,53,56),RGB(66,99,102)}},
@@ -59,52 +59,6 @@ static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5
  {{RGB(0,0,0),RGB(0,0,0),RGB(73,84,188),RGB(140,158,255),RGB(237,238,255),RGB(162,172,216)},
   {RGB(0,0,0),RGB(0,0,0),RGB(110,105,194),RGB(73,60,171),RGB(32,29,74),RGB(92,87,138)}}
 };
-static const uint16_t amber=RGB(229,181,100);
-static void metal_panel(int x,int top,int width,int height)
-{
- static const uint16_t brushed[]={
-   RGB(35,43,49),RGB(31,37,43),RGB(32,39,45),RGB(29,35,41),
-   RGB(26,32,38),RGB(25,30,36),RGB(27,33,39),RGB(25,30,35)
- };
- for(int y=0;y<height;y+=3){
-   int rows=height-y<3?height-y:3;
-   cv_rect(x,top+y,width,rows,brushed[(y/3)&7]);
- }
- cv_line(x,top,x+width-1,top,RGB(68,80,88));
- cv_line(x,top+height-1,x+width-1,top+height-1,RGB(11,13,16));
-}
-static void cabinet_rails(unsigned band)
-{
- /* Original engraved walnut grain, bounded to the outer four pixels. */
- static const uint8_t grain[16]={2,0,1,2,3,2,1,0,1,2,1,3,2,1,0,1};
- static const uint16_t walnut[]={RGB(38,23,17),RGB(54,32,22),RGB(67,40,26),RGB(86,53,32)};
- cv_rect(0,0,5,48,walnut[0]);cv_rect(235,0,5,48,walnut[0]);
- for(unsigned y=0;y<48;y+=2){
-   unsigned g=grain[(y/2+5u*band)&15u];
-   cv_line(1,y,3,y,walnut[g]);
-   cv_line(236,y,238,y,walnut[3u-g]);
- }
- cv_line(4,0,4,47,walnut[3]);
- cv_line(235,0,235,47,walnut[2]);
-}
-static void dial(int x,int y,unsigned position)
-{
- static const int8_t tick[9][2]={
-   {-4,3},{-5,0},{-4,-2},{-3,-4},{0,-5},{3,-4},{4,-2},{5,0},{4,3}
- };
- cv_line(x-3,y-7,x+3,y-7,RGB(89,125,142));
- cv_rect(x-6,y-5,13,11,RGB(14,22,30));
- cv_rect(x-4,y-6,9,13,RGB(20,37,51));
- cv_line(x-5,y-5,x+4,y-5,RGB(84,104,116));
- cv_line(x-5,y+5,x+4,y+5,RGB(7,11,18));
- cv_line(x,y,x+tick[position][0],y+tick[position][1],RGB(103,199,255));
-}
-static void focus_jewel(int x,int y,int focus)
-{
- cv_rect(x,y,5,5,RGB(13,19,25));
- cv_line(x+1,y+1,x+3,y+1,focus?amber:RGB(49,83,105));
- cv_line(x+1,y+2,x+3,y+2,focus?RGB(255,220,148):RGB(64,111,141));
-}
 static uint16_t skin_text(void){return skins[ui_theme][ui_background].text;}
 static uint16_t skin_dim(void){return skins[ui_theme][ui_background].dim;}
 static uint16_t skin_accent(void){return skins[ui_theme][ui_background].accent;}
@@ -425,15 +379,12 @@ static void knob_cell(unsigned knob,int x)
 {
  char value[16],tag[]="K1 ";
  const char *name;
- unsigned id=control_for(knob);
- const char *shown=knob_value(id,&name,value);
+ const char *shown=knob_value(control_for(knob),&name,value);
  tag[1]=(char)('1'+knob);
  const felucca_font_t *caption=ui_font_size==2?&FONT_T:&FONT_XS;
  int label_x=cv_text(x,0,caption,tag,skin_accent());
- limited_text(label_x,0,100-(label_x-x),caption,name,skin_dim());
+ limited_text(label_x,0,108-(label_x-x),caption,name,skin_dim());
  int focus=knob_until&&knob_focus==knob;
- focus_jewel(x+102,4,focus);
-
  if(ui_font_size==2){
    const felucca_font_t *font=fit_font(shown,106,34);
    if(font->h<17){
@@ -457,13 +408,7 @@ static void knob_cell(unsigned knob,int x)
  const felucca_font_t *font=ui_font_size==0?&FONT_S:&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_XS;
- int dial_position=-1;
- if(id==18)dial_position=(int)(engine.energy*8.f+.5f);
- if(id==10)dial_position=(int)((engine.drum_density*8u+SR_DENSITY_MAX/2u)/SR_DENSITY_MAX);
- if(id==13)dial_position=(int)(engine.tracks[selected].volume*8.f+.5f);
- int width=dial_position>=0?88:108;
- if(dial_position>=0)dial(x+97,21,(unsigned)bounded(dial_position,0,8));
- limited_text(x,14,width,fit_font(shown,width,font->h),shown,focus?skin_accent():skin_text());
+ limited_text(x,14,108,font,shown,focus?skin_accent():skin_text());
 }
 static void voice_diagnostics(int band)
 {
@@ -617,11 +562,11 @@ static void mixer_console(int band)
      if(meter&&lo>=hi){
        cv_rect(x+5,hi-offset,15,lo-hi+1,tr->mute?skin_dim():RGB(40,139,221));
        cv_line(x+6,hi-offset,x+6,lo-offset,RGB(111,195,255));
-       if(mag>.7f&&bottom-meter>=offset)cv_line(x+5,hi-offset,x+19,hi-offset,amber);
+       if(mag>.7f&&bottom-meter>=offset)cv_line(x+5,hi-offset,x+19,hi-offset,skin_accent());
      }
      int fy=bottom-(int)(tr->volume*77.f);
      if(fy>=offset&&fy<offset+48){
-       cv_line(x+12,fy-offset,x+21,fy-offset,chosen?amber:skin_text());
+       cv_line(x+12,fy-offset,x+21,fy-offset,chosen?skin_accent():skin_text());
        if(fy+1<offset+48)cv_line(x+12,fy+1-offset,x+21,fy+1-offset,RGB(15,35,50));
      }
    }
@@ -804,7 +749,7 @@ static void intention_mode_header(void){
  limited_text(8,26,188,fit_font(music_modes[mode],188,18),
               music_modes[mode],skin_accent());
  if(engine.pending_scene||engine.pending_mode)
-   limited_text(196,6,37,&FONT_T,"QUEUED",amber);
+   limited_text(196,6,37,&FONT_T,"QUEUED",skin_accent());
 }
 static void evolve_graph(unsigned band){
  unsigned offset=band*48;
@@ -943,25 +888,24 @@ static int draw(int animate)
     * Black/White preference on entering PLAY. */
    const uint16_t bg=RGB(0,0,0);
    cv_begin(240,48,bg);
-   if(!fullscreen){
-     cabinet_rails(band);
-     if(!intro_active&&band==0){
-       metal_panel(5,0,230,48);
-       cv_line(6,47,233,47,amber);
-     }else if(!intro_active&&band>=3){
-       if(page==PAGE_MIX||debug||(page==PAGE_EVOLVE&&song_tab==0)){
-         if(band==4&&page!=PAGE_MIX)metal_panel(5,0,230,48);
-       }else{
-         metal_panel(6,1,110,45);
-         metal_panel(124,1,110,45);
-         cv_rect(118,3,4,42,RGB(59,36,24));
-         cv_line(118,4,118,43,RGB(90,54,35));
-       }
-     }
-   }
    if(!intro_active&&!fullscreen&&band==0&&plat_ms()-last_control_ms<250u){
      unsigned w=24u+(250u-(plat_ms()-last_control_ms))*180u/250u;
-     cv_line(8,46,8+w,46,skin_accent());
+     cv_rect(8,45,w,2,skin_accent());
+   }
+   /* One surface per logical region; no boxes around 48px transfer bands.
+    * The PLAY preview spans two bands with no nested frame. */
+   if(!artwork&&!debug){
+     const uint16_t panel=skins[ui_theme][ui_background].panel;
+     const uint16_t edge=skins[ui_theme][ui_background].border;
+     if(band==0){cv_line(8,47,231,47,edge);}
+     else if(band>=3&&page!=PAGE_MIX&&!(page==PAGE_EVOLVE&&song_tab==0)){
+       cv_rect(6,2,110,42,panel);cv_rect(124,2,110,42,panel);
+       if(ui_theme==2||ui_theme==4){
+         cv_line(6,2,115,2,edge);cv_line(124,2,233,2,edge);
+       }else if(ui_theme==3){
+         cv_line(6,43,115,43,edge);cv_line(124,43,233,43,edge);
+       }
+     }
    }
    if(intro_active){
      /* Independent AQUORA intro: flowing sound-pulse typography, never the
@@ -989,10 +933,9 @@ static int draw(int animate)
        if(letters>6u)letters=6u;
        char title[7]="AQUORA";title[letters]=0;
        int x=(240-fit_width(&FONT_L,"AQUORA"))/2,y=(240-FONT_L.h)/2-96;
-       if(letters){
-         metal_panel(x-6,y-4,fit_width(&FONT_L,"AQUORA")+12,FONT_L.h+8);
-         cv_text(x,y,&FONT_L,title,RGB(240,199,124));
-       }
+       /* Draw only glyph pixels, never an opaque box or plaque.
+        * Each 48px band is cleared and the spiral is redrawn before the word. */
+       if(letters)cv_text(x,y,&FONT_L,title,RGB(119,255,225));
      }
      if(band==4){
        if(elapsed>=4100u)limited_text(8,1,224,&FONT_T,APP_VERSION,skin_text());
@@ -1345,7 +1288,7 @@ static int draw(int animate)
    }
    if(band==4&&!intro_active&&(quick_started||quick_pending||
       (quick_finished_ms&&plat_ms()-quick_finished_ms<3000u))){
-     metal_panel(5,17,230,30);
+     cv_rect(4,17,232,29,ui_background?RGB(255,255,255):RGB(0,0,0));
      char bank[12];num(bank,quick_slot+1);
      const char *message=quick_timeout?"Save Failed / Retry ":quick_started||quick_pending?"Saving Bank ":bank_message==BANK_ERROR?"SAVE FAILED - RETRY ":"Saved to Bank ";
      int x=cv_text(8,21,&FONT_XS,message,skin_accent());
