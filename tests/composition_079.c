@@ -65,9 +65,9 @@ static void check_isolation(unsigned mode, unsigned role)
     engine.form_route[0] = 12u; /* exercise all voices in a Bloom passage */
     plan_roles(&engine);
     engine.isolate = SR_ISOLATE_TRACK1 + role;
-    engine.tick_length = 1600;
+    engine.tick_length = 5512; /* fastest supported native sixteenth-note clock */
     unsigned peak = 0;
-    for (unsigned block = 0; block < 1500; block++) {
+    for (unsigned block = 0; block < 6200; block++) {
         sr_render(&engine, pcm, 256);
         for (unsigned i = 0; i < 512; i++) {
             unsigned amplitude = abs(pcm[i]);
@@ -75,6 +75,9 @@ static void check_isolation(unsigned mode, unsigned role)
             assert(amplitude < 32767);
         }
     }
+    if (peak <= 20 || !engine.tracks[role].events || engine.scheduled_overflows)
+        fprintf(stderr, "Stem mode=%u role=%u peak=%u events=%u queue overflows=%u\n",
+                mode, role, peak, engine.tracks[role].events, engine.scheduled_overflows);
     assert(peak > 20 && engine.tracks[role].events > 0 && !engine.scheduled_overflows);
 }
 
