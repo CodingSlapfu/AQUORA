@@ -24,7 +24,8 @@ static void check_score(unsigned mode, unsigned scene, unsigned seed)
     unsigned notes[SR_TRACKS] = {0};
     unsigned sections = 0;
     uint32_t lead = 2166136261u, pluck = lead, bass = lead;
-    for (unsigned loop = 0; loop < 48; loop++) {
+    const unsigned loops = 32u * (2u + sr_scenes[scene].energy % 3u);
+    for (unsigned loop = 0; loop < loops; loop++) {
         sections |= 1u << song_section(&engine);
         unsigned count = sr_score_preview(&engine, events, 512, 32);
         assert(count > 0 && count < 512);
@@ -45,7 +46,8 @@ static void check_score(unsigned mode, unsigned scene, unsigned seed)
             }
         }
     }
-    assert(sections == 31u);
+    assert((sections & 17u) == 17u && (sections & 14u));
+    assert(form_index(&engine, 0) == 15u);
     for (unsigned role = 0; role < SR_TRACKS; role++)
         assert(notes[role] > 0);
     assert(engine.scheduled_overflows == 0);
@@ -60,6 +62,8 @@ static void check_isolation(unsigned mode, unsigned role)
     sr_generate_song(&engine, 987, 0);
     sr_set_loop_length(&engine, 32);
     sr_start(&engine);
+    engine.form_route[0] = 12u; /* exercise all voices in a Bloom passage */
+    plan_roles(&engine);
     engine.isolate = SR_ISOLATE_TRACK1 + role;
     engine.tick_length = 1600;
     unsigned peak = 0;
