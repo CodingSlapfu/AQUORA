@@ -11,7 +11,7 @@ assert "/* Static panel palettes. Canvas is independently exact black or white. 
 for obsolete in ("metal_panel(", "cabinet_rails(", "focus_jewel(", "static void dial("):
     assert obsolete not in source, obsolete
 assert "if(letters)cv_text(x,y,&FONT_L,title,RGB(119,255,225));" in source
-overlay = source.split("if(band==2){", 1)[-1].split("if(band==4){", 1)[0]
+overlay = source.split("   if(intro_active){", 1)[-1].split("if(band==2){", 1)[-1].split("if(band==4){", 1)[0]
 assert "char title[7]=\"AQUORA\"" in overlay
 assert "metal_panel" not in overlay and "cv_rect" not in overlay
 assert "if(band==0)fullscreen_labels();" in source
