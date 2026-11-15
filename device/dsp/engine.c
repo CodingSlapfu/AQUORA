@@ -607,6 +607,18 @@ static void song_tempo(sr_engine *e,uint32_t seed)
   if(bpm>(int)hi)bpm=(int)hi;
   e->tick_length=(SR_RATE*15u+bpm/2u)/bpm;
 }
+static void song_expression(sr_engine *e,unsigned seed,int fresh)
+{
+  unsigned character=intention_score[e->scene][2];
+  if(!(e->expression_manual&SR_MANUAL_ENERGY))
+    e->energy=.12f+.17f*sr_scenes[e->scene].energy+
+        (fresh?.025f*(song_draw(seed,14)%7u):0.f);
+  if(!(e->expression_manual&SR_MANUAL_VARIATION)){
+    unsigned detail=(character+song_draw(seed,15)%7u)%7u;
+    float base=e->music_mode<=SR_CINEMATIC?.16f:.23f;
+    e->variation=base+.045f*detail;
+  }
+}
 void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
 {
   if(e->running||e->stop_frames)return;
@@ -621,8 +633,7 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
     e->phrase=0;
     make_motif(e,0);
     memcpy(e->motif_home,e->melody,sizeof e->melody);
-    e->energy=.12f+.17f*sr_scenes[e->scene].energy+.025f*(song_draw(seed,14)%7u);
-    e->variation=.18f+.04f*(song_draw(seed,15)%7u);
+    song_expression(e,seed,1);
   }
   apply_sound_profile(e,seed,sounds_only);
   apply_motion_profile(e);
@@ -645,12 +656,12 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
   e->arrange_next=e->arrange_length=e->arrange_active=e->arrange_elapsed=0;
   e->learned.count=e->capture.count=e->learn_pending=0;
   e->motif_count=e->motif_cursor=e->response_pending=e->evolve_next=0;
-  e->energy=.12f+.17f*sr_scenes[scene].energy;
   e->song_seed=song_draw(e->song_seed^((uint32_t)scene*0x9e3779b9u),++e->visit_nonce+100u+e->music_mode*31u);
   e->rng=song_draw(e->song_seed,12);e->drum_rng=song_draw(e->song_seed,13);
   e->nature_rng=song_draw(e->song_seed,90);
   if(e->frequency_auto)e->frequency=sr_scenes[scene].frequency;
   song_tempo(e,e->song_seed);
+  song_expression(e,e->song_seed,0);
   apply_sound_profile(e,e->song_seed,0);
   apply_motion_profile(e);
   make_motif(e,1);
@@ -1319,27 +1330,62 @@ static int phrase_expression(unsigned step){
   static const int8_t arc[8]={-4,0,4,6,2,0,-3,-7};
   return arc[(step&15u)/2u];
 }
-/* Hold one section color. Bass gives the root, so the bed voices
- * common tones when possible and leaves room for a new downbeat. */
-static void accompaniment(sr_engine *e,unsigned bar,unsigned chord)
+/* The bass owns the low register. Place the pad above it, favouring
+ * a common tone through the upcoming change and stepwise motion from
+ * the previous chord. These decisions depend on the score, even in solo. */
+static unsigned support_degree(const sr_engine *e,unsigned chord,unsigned next,
+                               unsigned reference,int moving)
 {
  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
- const unsigned section=song_section(e), mode=e->music_mode;
- const unsigned tint=(form_index(e,0)+song_draw(e->song_seed,381))%3u;
- const int tonic=sr_tonic(e);
- unsigned next=phrase_chord(e,bar+1u);
- unsigned next_notes=(1u<<next)|(1u<<((next+2u)%7u))|(1u<<((next+4u)%7u));
- unsigned inner=(chord+2u)%7u, fifth=(chord+4u)%7u;
- if(!(next_notes&(1u<<inner))&&(next_notes&(1u<<fifth)))inner=fifth;
- float gate=next_notes&(1u<<inner)?4.05f:3.15f;
- unsigned color=section==2u||((section==1u||section==4u)&&tint==1u)?SR_CHOIR:SR_DRONE;
- int note=tonic+12+scale[inner];
- if(color==SR_CHOIR&&(mode==SR_NEOCLASSICAL||mode==SR_EXPERIMENTAL))note+=12;
- sr_note_on(e,color,note,mode==SR_CINEMATIC?61:52,gate);
- if(section==2u&&e->current_energy>.53f){
-   unsigned upper=inner==fifth?(chord+2u)%7u:fifth;
-   sr_note_on(e,SR_HARMONY,tonic+24+scale[upper],43,2.7f);
+ unsigned best=chord,best_cost=100u;
+ for(unsigned voice=0;voice<3;voice++){
+  unsigned degree=(chord+2u*voice)%7u;
+  int distance=scale[degree]-scale[reference];
+  if(distance<0)distance=-distance;
+  if(distance>6)distance=12-distance;
+  unsigned common=degree==next||degree==(next+2u)%7u||degree==(next+4u)%7u;
+  unsigned cost=2u*distance+3u*!common+3u*(voice==0)+8u*(moving&&degree==reference);
+  if(cost<best_cost){best_cost=cost;best=degree;}
  }
+ return best;
+}
+
+static void accompaniment(sr_engine *e,unsigned step,unsigned chord)
+{
+ const unsigned pos=step&15u,bar=step/16u,section=song_section(e);
+ const unsigned mode=e->music_mode;
+ const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+ const int tonic=sr_tonic(e);
+ if(pos==0u){
+  unsigned previous=bar?phrase_chord(e,bar-1u):chord;
+  unsigned next=phrase_chord(e,bar+1u);
+  unsigned inner=support_degree(e,chord,next,(previous+2u)%7u,0);
+  int note=tonic+12+scale[inner];
+  /* A root kick uses this same harmony in bass_groove. Match its
+   * register when moving the pad above a high tonic override. */
+  int bass=tonic+scale[chord];
+  while(bass<33)bass+=12;
+  while(bass>60)bass-=12;
+  while(note<bass+10||note<55)note+=12;
+  unsigned common=inner==next||inner==(next+2u)%7u||inner==(next+4u)%7u;
+  sr_note_on(e,SR_DRONE,note,mode==SR_CINEMATIC?58:49,common?4.0f:3.15f);
+  return;
+ }
+
+ /* Choir answers the hook in a gap, using chord tones below the
+  * melody. Hold a longer vowel at the bloom and release before a change. */
+ if(pos<5u||pos>13u||motif_degree(e,step)>=0||motif_degree(e,step-1u)>=0)return;
+ if(section==3u||(section==0u&&mode!=SR_CINEMATIC))return;
+ unsigned delay=mode==SR_CINEMATIC?3u:2u;
+ int call=motif_degree(e,step-delay);
+ if(call<0)return;
+ unsigned answer=support_degree(e,chord,phrase_chord(e,bar+1u),(unsigned)call,1);
+ int note=tonic+24+scale[answer];
+ if(note>=tonic+24+scale[call])note-=12;
+ while(note<53)note+=12;
+ float gate=(15u-pos)*.25f;
+ if(section!=2u&&gate>1.4f)gate=1.4f;
+ sr_note_on(e,SR_CHOIR,note,(section==2u?59:49)+(pos<9u?3:0),gate);
 }
 
 static void pluck_answer(sr_engine *e,unsigned step,unsigned chord,int lead_degree)
@@ -1418,60 +1464,63 @@ static unsigned lead_pitch(const sr_engine *e,unsigned degree)
 
 static void piano_phrase(sr_engine *e,unsigned step,unsigned chord,int lead,int expression)
 {
- static const uint8_t rhythm[2][5]={{0,4,7,10,13},{1,5,8,11,14}};
- static const uint8_t voicing[2][5]={{0,4,2,4,2},{2,4,0,2,0}};
- const unsigned pos=step&15u;
- const unsigned bar=e->form_loop*(e->loop_length/16u)+step/16u;
- const unsigned answer=(bar+(song_draw(e->song_seed,390)&1u))&1u;
+ static const uint8_t rhythm[SR_MUSIC_MODES][2][4]={
+  {{2,7,11,14},{3,6,10,13}},
+  {{2,6,10,14},{3,7,11,14}},
+  {{1,5,9,13},{2,6,10,14}},
+  {{3,6,11,14},{2,7,10,13}}
+ };
+ const unsigned pos=step&15u,bar=step/16u,mode=e->music_mode;
+ const unsigned section=song_section(e);
+ const unsigned answer=(score_bar(e,step)+(song_draw(e->song_seed,390)&1u))&1u;
  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
  const int root=sr_tonic(e)+12;
- /* Low anchor and a quieter fifth suggest one pedal per harmonic span.
-  * Gate lengths leave a gap before the next bar changes harmony. */
- if(e->chord_mode!=3&&!e->frequency_lock){
-   if(pos==0)sr_note_on(e,SR_PIANO,root+scale[chord],57+expression,piano_gate(e,pos,2.25f));
-   if(pos==8&&e->current_energy>.30f)
-     sr_note_on(e,SR_PIANO,root+scale[(chord+4u)%7u],47+expression,piano_gate(e,pos,1.10f));
- }
- for(unsigned i=0;i<5;i++)if(pos==rhythm[answer][i]){
-   unsigned degree=(chord+voicing[answer][i])%7u;
-   unsigned accent=i==0?6u:i==4?0u:3u;
-   int velocity=lead>=0?49:64;
-   float beats=i==4?.40f:i==0?1.10f:.72f;
-   sr_note_on(e,SR_PIANO,root+12+scale[degree],velocity+accent+expression,piano_gate(e,pos,beats));
-   break;
+ if(mode==SR_NEOCLASSICAL&&e->chord_mode!=3&&!e->frequency_lock&&pos==0u)
+  sr_note_on(e,SR_PIANO,root+scale[chord],54+expression,piano_gate(e,pos,2.25f));
+
+ const uint8_t *phrase=rhythm[mode][answer];
+ unsigned count=mode==SR_NEOCLASSICAL?4u:3u;
+ for(unsigned i=0;i<count;i++){
+  if(pos!=phrase[i])continue;
+  if(mode!=SR_NEOCLASSICAL&&(lead>=0||(section==3u&&i==1u)))return;
+  int call=-1;
+  for(unsigned back=1u;back<=4u&&back<=pos&&call<0;back++)
+   call=motif_degree(e,step-back);
+  unsigned next=phrase_chord(e,bar+1u);
+  unsigned reference=call>=0?(unsigned)call:(chord+(answer?4u:2u))%7u;
+  unsigned target=i+1u==count?next:chord;
+  unsigned degree=support_degree(e,chord,target,reference,i==1u&&section!=3u);
+  /* Let the middle of an exposed piano phrase connect the two chord
+   * tones with a short scale step, then land on a consonant response. */
+  if(mode==SR_NEOCLASSICAL&&i==1u&&call<0&&section!=3u)degree=(degree+6u)%7u;
+  int velocity=(lead>=0?48:57)+expression+(i==0u?4:0);
+  float beats=i==0u?1.15f:i+1u==count?.65f:.38f;
+  if(mode==SR_CINEMATIC)beats+=.45f;
+  sr_note_on(e,SR_PIANO,root+(mode==SR_NEOCLASSICAL?12:0)+scale[degree],
+      velocity,piano_gate(e,pos,beats));
+  return;
  }
 }
 
 static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 {
-  const sr_scene *sc=&sr_scenes[e->scene];
-  const int8_t *scale=scale_notes[sc->scale];
-  unsigned bar=s/16u;
-  unsigned chord=composition_chord(e,s);
+  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+  unsigned chord=composition_chord(e,s),pos=s&15u;
   int tonic=sr_tonic(e),degree=motif_degree(e,s);
-  unsigned draw=song_draw(seed,score_bar(e,s)*16u+(s&15u));
+  unsigned draw=song_draw(seed,score_bar(e,s)*16u+pos);
   unsigned dynamic=6u+((draw>>4)&3u);
   int expression=phrase_expression(s);
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
-  if((s&15u)==0)accompaniment(e,bar,chord);
+  accompaniment(e,s,chord);
   pluck_answer(e,s,chord,degree);
   if(!learned_active(e)&&degree>=0)
     ornament(e,2,lead_pitch(e,degree),68-dynamic+expression,melody_duration(e,s),s,e->variation>0.f&&!e->freeze);
-  if(e->music_mode==SR_EXPERIMENTAL){
-    /* Offbeat keys and a sparse upper answer leave room for the hook. */
-    if((s&15u)==6u||((s&15u)==14u&&bar))
-      sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+4u)%7u],62-dynamic,2.8f);
-    if((s&15u)==12u&&degree>=0)
-      sr_note_on(e,SR_HARMONY,tonic+24+scale[(degree+2u)%7u],49,3.6f);
-  }else if(e->music_mode==SR_CINEMATIC){
-    if((s&7u)==6)sr_note_on(e,SR_PIANO,tonic+24+scale[(chord+2u*(bar&1u))%7u],58-dynamic,2.4f);
-    if((s&15u)==12)sr_note_on(e,SR_HARMONY,tonic+36+scale[(chord+2u)%7u],49,3.f);
-  }else if(e->music_mode==SR_NEOCLASSICAL){
-    piano_phrase(e,s,chord,degree,expression);
-  }else if(degree<0&&((s&15u)==4u||(s&15u)==12u)){
-    unsigned inner=(chord+((s&8u)?4u:2u))%7u;
-    ornament(e,0,tonic+12+scale[inner],54+expression,1.8f,s,e->variation>0.f&&!e->freeze);
+  piano_phrase(e,s,chord,degree,expression);
+  if(pos==12u&&(song_section(e)==2u||song_section(e)==4u)){
+    unsigned next=phrase_chord(e,s/16u+1u);
+    unsigned inner=support_degree(e,chord,next,(chord+4u)%7u,0);
+    sr_note_on(e,SR_HARMONY,tonic+24+scale[inner],44+expression,.85f);
   }
 }
 static void musical_detail(sr_engine *e,unsigned step)

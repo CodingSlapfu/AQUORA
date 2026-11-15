@@ -29,6 +29,7 @@ extern "C" {
 
 enum {SR_BUS_NATURE, SR_BUS_SACRED, SR_BUS_REFERENCE, SR_BUS_BINAURAL, SR_BUS_FX, SR_BUS_COUNT};
 enum {SR_STANDARD, SR_CINEMATIC, SR_NEOCLASSICAL, SR_EXPERIMENTAL, SR_MUSIC_MODES};
+enum {SR_MANUAL_ENERGY=1u, SR_MANUAL_VARIATION=2u};
 typedef enum {SR_LEAD, SR_BASS, SR_DRONE, SR_HARMONY, SR_PIANO, SR_GUITAR, SR_CHOIR, SR_DRUMS} sr_role;
 enum {SR_ISOLATE_MIX, SR_ISOLATE_TRACK1, SR_ISOLATE_FIXED=SR_TRACKS+1,
       SR_ISOLATE_SACRED, SR_ISOLATE_BINAURAL, SR_ISOLATE_NATURE, SR_ISOLATE_FX};
@@ -78,7 +79,7 @@ typedef struct {
   uint8_t arrange_next,arrange_length,arrange_active,arrange_elapsed;
   uint8_t timeline_enabled,timeline_write;
   sr_event timeline[96];
-  uint8_t pending_scene, pending_mode, profile_applying;
+  uint8_t pending_scene, pending_mode, profile_applying, expression_manual;
   uint8_t music_mode, motion_manual, tone_level_manual, recent_patches[SR_MUSIC_MODES][SR_SCENES][SR_TRACKS];
   uint16_t sound_locks;
   uint8_t drum_presence, play_grid, groove_mode, groove_strength;

@@ -200,6 +200,7 @@ static void arrangement_snapshot(arrangement *record)
     record->auto_level=engine.auto_level;
     plat_unlock(irq);
     record->song_seed=engine.song_seed;record->music_mode=engine.music_mode;record->motion_manual=engine.motion_manual;
+    record->reserved=engine.expression_manual;
     record->version=AQ_BANK_V3;record->crc=arrangement_crc(record);
     record->version=AQ_BANK_V4;record->crc4=arrangement_crc(record);
 #define SAVE_OPTION(x) record->x=engine.x;
@@ -288,6 +289,7 @@ static void arrangement_apply(const arrangement *record)
     }
     engine.song_seed=record->version>=AQ_BANK_V4?record->song_seed:record->rng;
     engine.music_mode=record->version>=AQ_BANK_V4?record->music_mode:SR_STANDARD;
+    engine.expression_manual=record->version>=AQ_BANK_V4?(record->reserved&3u):0;
     engine.motion_manual=record->version>=AQ_BANK_V4?record->motion_manual:sr_legacy_motion_manual(record->motion,record->scene);
     for(unsigned role=0;role<2;role++)
         if(!(engine.motion_manual&(1u<<role)))sr_motion_auto(&engine,role,1);

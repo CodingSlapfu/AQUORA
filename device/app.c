@@ -373,17 +373,18 @@ static void consume(void){
  case 14:sr_set_tuning_432(&engine,switched(engine.tuning_432,d));break;
  case 15:t->mute=!t->mute;break;
  case 17:sr_set_drum_level(&engine,engine.drum_level+d*.02f);break;
- case 18:engine.energy=adjust(engine.energy,d,.05f,1);break;
+ case 18:engine.expression_manual|=SR_MANUAL_ENERGY;engine.energy=adjust(engine.energy,d,.05f,1);break;
  case 144:engine.response_enabled=switched(engine.response_enabled,d);if(!engine.response_enabled){engine.response_pending=0;if(!engine.learn_mode)engine.capture.count=0;}break;
  case 82:{
    static const float levels[]={0,.25f,.55f,.85f};
    int level=engine.variation==0?0:engine.variation<.4f?1:engine.variation<.7f?2:3;
+   engine.expression_manual|=SR_MANUAL_VARIATION;
    engine.variation=levels[bounded(level+d,0,3)];
    break;
  }
  case 83:engine.evolve_pace=bounded(engine.evolve_pace+d,0,3);break;
  case 84:if(d>0&&!engine.freeze)engine.evolve_next=1;break;
- case 19:engine.variation=adjust(engine.variation,d,.05f,1);break;
+ case 19:engine.expression_manual|=SR_MANUAL_VARIATION;engine.variation=adjust(engine.variation,d,.05f,1);break;
  case 20:engine.freeze=switched(engine.freeze,d);break;
  case 21:engine.bed_type=bounded(engine.bed_type+d,0,SR_BEDS-1);engine.sound_locks|=SR_SOUND_NATURE;break;
  case 22:engine.tone_level_manual=1;engine.tone_level=adjust(engine.tone_level,d,.001f,SR_FIXED_TONE_MAX);break;
