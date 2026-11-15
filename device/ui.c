@@ -886,6 +886,7 @@ static int draw(int animate)
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
     * palette is chosen once, not per pixel; normal UI still follows user
     * Black/White preference on entering PLAY. */
+   const int artwork=intro_active||fullscreen;
    const uint16_t bg=RGB(0,0,0);
    cv_begin(240,48,bg);
    if(!intro_active&&!fullscreen&&band==0&&plat_ms()-last_control_ms<250u){
