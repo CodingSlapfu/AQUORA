@@ -1,0 +1,3 @@
+# AQUORA v0.7.8 website publication
+
+Existing public Site version 201 deployed as `appgdep_6afa1c6e537481918349db7a997c5516` from Site source `8117faad722ccc2fbf865ee27c727a65585b67fc`. [Web Installer](https://parallax8-studio.jminie66.chatgpt.site/install/) serves `FM-1_73000708` with SHA-256 `1ddda3a8264d02be486e4e8c04eb73fbaddaf883d6be9849d7ddafd844dd8605`. Live checksum code accepted the exact image and rejected a one-byte change. The live v0.7.7, v0.7.6, v0.7.5 and v0.7.3 rollback installers and firmware checksums passed. The updated homepage, downloads, release page, guide, WASM and worklet were verified. Firmware was reused unchanged from the official release. Physical FM-1 acceptance remains pending.
