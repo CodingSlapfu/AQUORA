@@ -214,7 +214,11 @@ static const char *drum_status(void)
 }
 static void limited_text(int x,int y,int width,const felucca_font_t *font,const char *s,uint16_t color)
 {
- if(ui_font_size==2){int height=text_room(y);if(height>font->h)height=font->h;font=fit_font(s,width,height);}
+ if(ui_font_size==2||fit_width(font,s)>width){
+   int height=text_room(y);
+   if(height>font->h)height=font->h;
+   font=fit_font(s,width,height);
+ }
  char text[80];
  unsigned length=0;
  int used=0;
@@ -950,6 +954,8 @@ static int draw(int animate)
        }else{
          metal_panel(6,1,110,45);
          metal_panel(124,1,110,45);
+         cv_rect(118,3,4,42,RGB(59,36,24));
+         cv_line(118,4,118,43,RGB(90,54,35));
        }
      }
    }
@@ -1142,7 +1148,7 @@ static int draw(int animate)
      }
    }else if(visual&&page==PAGE_SETUP){
      if(band==1&&setup_tab==2){limited_text(8,1,224,&FONT_B,"AQUORA SANS / ABOUT",skin_text());limited_text(8,28,224,&FONT_T,aquora_font_provenance,skin_dim());}
-     else if(band==1)cv_text(8,3,&FONT_B,setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"ARRANGEMENT BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
+     else if(band==1)cv_text(8,3,&FONT_B,setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
      if(band==2){
        if(setup_tab>=4){
          limited_text(8,0,224,&FONT_XS,"K1: OFF / QUIET / NORMAL",skin_text());
@@ -1218,13 +1224,13 @@ static int draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"ARRANGEMENT BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==6?"ARRANGE / EDIT":song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==6?"ARRANGE / EDIT":song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(page==PAGE_SOUND||page==PAGE_PLAY){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
      cv_text(30,25,&FONT_XS,track,skin_text());
      limited_text(44,25,63,&FONT_XS,role_names[selected],skin_accent());
-     limited_text(109,25,90,&FONT_T,page==PAGE_PLAY?patch_name():"TURN TRACK / EDIT PAGE",skin_text());
+     limited_text(109,25,90,&FONT_T,page==PAGE_PLAY?patch_name():"TRACK / EDIT",skin_text());
      }
      if(0){
        cv_text(101,25,&FONT_XS,"PRE",skin_dim());

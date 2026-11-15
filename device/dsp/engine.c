@@ -1319,34 +1319,26 @@ static int phrase_expression(unsigned step){
   static const int8_t arc[8]={-4,0,4,6,2,0,-3,-7};
   return arc[(step&15u)/2u];
 }
-/* Keep an anchor beneath each phrase, with only one additional sustained
- * color at most. Section changes rotate the anchor instead of stacking
- * the same drone, choir and harmony across every bar. */
-static void accompaniment(sr_engine *e,unsigned bar,unsigned chord){
- const sr_scene *scene=&sr_scenes[e->scene];
- const int8_t *scale=scale_notes[scene->scale];
- const unsigned section=song_section(e);
- const unsigned mode=e->music_mode;
- const unsigned rotation=(score_bar(e,bar*16u)+song_draw(e->song_seed,381))%3u;
+/* Hold one section color. Bass gives the root, so the bed voices
+ * common tones when possible and leaves room for a new downbeat. */
+static void accompaniment(sr_engine *e,unsigned bar,unsigned chord)
+{
+ const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+ const unsigned section=song_section(e), mode=e->music_mode;
+ const unsigned tint=(form_index(e,0)+song_draw(e->song_seed,381))%3u;
  const int tonic=sr_tonic(e);
- /* Keep common tones in a compact middle register while the bass carries the root. */
- const unsigned third=(chord+2u)%7u, fifth=(chord+4u)%7u;
- const int target=scale[third]<=6?5:9;
- const int a=scale[third],b=scale[fifth];
- const int inner=(a-target)*(a-target)<=(b-target)*(b-target)?a:b;
- const int root=tonic+12+inner;
- if(mode==SR_CINEMATIC){
-   unsigned choir=section==2u||(section!=3u&&rotation==1u);
-   sr_note_on(e,choir?SR_CHOIR:SR_DRONE,root,60,12.f);
-   if(section==2u&&e->current_energy>.65f&&rotation!=0u)
-     sr_note_on(e,SR_HARMONY,tonic+24+scale[(chord+4u)%7u],45,4.f);
- }else if(section==3u||rotation==0u){
-   sr_note_on(e,SR_DRONE,root,55,mode==SR_STANDARD?7.f:4.f);
- }else if(section==2u&&rotation==1u){
-   sr_note_on(e,SR_CHOIR,tonic+24+scale[(chord+2u)%7u],51,4.f);
- }else{
-   unsigned voice=e->role_target[SR_HARMONY]>0.f?SR_HARMONY:SR_DRONE;
-   sr_note_on(e,voice,tonic+12+scale[fifth],45,2.5f);
+ unsigned next=phrase_chord(e,bar+1u);
+ unsigned next_notes=(1u<<next)|(1u<<((next+2u)%7u))|(1u<<((next+4u)%7u));
+ unsigned inner=(chord+2u)%7u, fifth=(chord+4u)%7u;
+ if(!(next_notes&(1u<<inner))&&(next_notes&(1u<<fifth)))inner=fifth;
+ float gate=next_notes&(1u<<inner)?4.05f:3.15f;
+ unsigned color=section==2u||((section==1u||section==4u)&&tint==1u)?SR_CHOIR:SR_DRONE;
+ int note=tonic+12+scale[inner];
+ if(color==SR_CHOIR&&(mode==SR_NEOCLASSICAL||mode==SR_EXPERIMENTAL))note+=12;
+ sr_note_on(e,color,note,mode==SR_CINEMATIC?61:52,gate);
+ if(section==2u&&e->current_energy>.53f){
+   unsigned upper=inner==fifth?(chord+2u)%7u:fifth;
+   sr_note_on(e,SR_HARMONY,tonic+24+scale[upper],43,2.7f);
  }
 }
 
