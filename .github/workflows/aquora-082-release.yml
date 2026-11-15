@@ -1,4 +1,4 @@
-name: AQUORA #82 — classic LCD, native 0.7.8 and release
+name: 'AQUORA #82 — classic LCD, native 0.7.8 and release'
 on:
   push:
     branches: [aquora-issue82-classic-ui]
@@ -70,7 +70,7 @@ jobs:
           done
           cc -O2 -Idevice/dsp tests/music_load_0610.c device/dsp/engine.c -lm -o "$RUNNER_TEMP/load"
           "$RUNNER_TEMP/load" > "$RUNNER_TEMP/results/qa/music_load.log"
-      - name: Real host LCD: classic pages, spiral lettering, 240px shots, latency
+      - name: 'Real host LCD: classic pages, spiral lettering, 240px shots, latency'
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/source"
