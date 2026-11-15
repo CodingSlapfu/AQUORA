@@ -1350,42 +1350,55 @@ static unsigned support_degree(const sr_engine *e,unsigned chord,unsigned next,
  return best;
 }
 
-static void accompaniment(sr_engine *e,unsigned step,unsigned chord)
+static void accompaniment(sr_engine *e,unsigned bar,unsigned chord)
 {
- const unsigned pos=step&15u,bar=step/16u,section=song_section(e);
- const unsigned mode=e->music_mode;
  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
  const int tonic=sr_tonic(e);
- if(pos==0u){
-  unsigned previous=bar?phrase_chord(e,bar-1u):chord;
-  unsigned next=phrase_chord(e,bar+1u);
-  unsigned inner=support_degree(e,chord,next,(previous+2u)%7u,0);
-  int note=tonic+12+scale[inner];
-  /* A root kick uses this same harmony in bass_groove. Match its
-   * register when moving the pad above a high tonic override. */
-  int bass=tonic+scale[chord];
-  while(bass<33)bass+=12;
-  while(bass>60)bass-=12;
-  while(note<bass+10||note<55)note+=12;
-  unsigned common=inner==next||inner==(next+2u)%7u||inner==(next+4u)%7u;
-  sr_note_on(e,SR_DRONE,note,mode==SR_CINEMATIC?58:49,common?4.0f:3.15f);
-  return;
+ unsigned previous=bar?phrase_chord(e,bar-1u):chord;
+ unsigned next=phrase_chord(e,bar+1u);
+ unsigned inner=support_degree(e,chord,next,(previous+2u)%7u,0);
+ int note=tonic+12+scale[inner];
+ /* A root kick uses this same harmony in bass_groove. Match its
+  * register when moving the pad above a high tonic override. */
+ int bass=tonic+scale[chord];
+ while(bass<33)bass+=12;
+ while(bass>60)bass-=12;
+ while(note<bass+10||note<55)note+=12;
+ unsigned common=inner==next||inner==(next+2u)%7u||inner==(next+4u)%7u;
+ sr_note_on(e,SR_DRONE,note,e->music_mode==SR_CINEMATIC?58:49,common?4.0f:3.15f);
+ /* Open the voicing at a crest without layering another bass root. */
+ if(song_section(e)==2u&&e->music_mode<=SR_CINEMATIC){
+  unsigned upper=(chord+(inner==(chord+4u)%7u?2u:4u))%7u;
+  int upper_note=tonic+12+scale[upper];
+  while(upper_note<note+3)upper_note+=12;
+  sr_note_on(e,SR_DRONE,upper_note,39,2.65f);
  }
+}
 
- /* Choir answers the hook in a gap, using chord tones below the
-  * melody. Hold a longer vowel at the bloom and release before a change. */
+static void choir_answer(sr_engine *e,unsigned step,unsigned chord)
+{
+ const unsigned pos=step&15u,bar=step/16u,section=song_section(e),mode=e->music_mode;
+ const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+ const int tonic=sr_tonic(e);
+ /* The choir enters after the lead has left space. In Cinematic,
+  * pick up a longer phrase from the most recent lead note in the bar. */
  if(pos<5u||pos>13u||motif_degree(e,step)>=0||motif_degree(e,step-1u)>=0)return;
  if(section==3u||(section==0u&&mode!=SR_CINEMATIC))return;
- unsigned delay=mode==SR_CINEMATIC?3u:2u;
- int call=motif_degree(e,step-delay);
+ int call=motif_degree(e,step-2u);
+ if(call<0&&mode==SR_CINEMATIC&&(pos==7u||pos==12u))
+  for(unsigned back=3u;back<=5u&&call<0;back++)call=motif_degree(e,step-back);
  if(call<0)return;
  unsigned answer=support_degree(e,chord,phrase_chord(e,bar+1u),(unsigned)call,1);
  int note=tonic+24+scale[answer];
  if(note>=tonic+24+scale[call])note-=12;
  while(note<53)note+=12;
  float gate=(15u-pos)*.25f;
- if(section!=2u&&gate>1.4f)gate=1.4f;
- sr_note_on(e,SR_CHOIR,note,(section==2u?59:49)+(pos<9u?3:0),gate);
+ if(section!=2u&&mode!=SR_CINEMATIC&&gate>1.4f)gate=1.4f;
+ /* Avoid a zero-age choir attack being displaced by a piano or guitar
+  * note on the same sequencer tick when the voice pool is full. */
+ schedule(e,SR_CHOIR,note,(section==2u?59:49)+(pos<9u?3:0),gate,
+          e->tick_length/3u);
+
 }
 
 static void pluck_answer(sr_engine *e,unsigned step,unsigned chord,int lead_degree)
@@ -1512,11 +1525,12 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   int expression=phrase_expression(s);
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
-  accompaniment(e,s,chord);
+  if(pos==0u)accompaniment(e,s/16u,chord);
   pluck_answer(e,s,chord,degree);
   if(!learned_active(e)&&degree>=0)
     ornament(e,2,lead_pitch(e,degree),68-dynamic+expression,melody_duration(e,s),s,e->variation>0.f&&!e->freeze);
   piano_phrase(e,s,chord,degree,expression);
+  choir_answer(e,s,chord);
   if(pos==12u&&(song_section(e)==2u||song_section(e)==4u)){
     unsigned next=phrase_chord(e,s/16u+1u);
     unsigned inner=support_degree(e,chord,next,(chord+4u)%7u,0);
