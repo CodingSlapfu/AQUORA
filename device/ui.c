@@ -1010,6 +1010,14 @@ static int draw(int animate)
        char value[16];const char *name;
        const char *current=knob_value(control_for(knob_focus),&name,value);
        visual_title(8,29,224,17,current);
+     }else if(band==4&&fullscreen_performance){
+       static const char *keys[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+       char bpm[12];
+       num(bpm,(SR_RATE*15u+graph_tick/2u)/graph_tick);
+       visual_title(8,9,176,14,graph_now);
+       visual_title(188,9,44,14,keys[sr_tonic(&engine)%12]);
+       visual_title(8,27,176,14,graph_next);
+       visual_title(188,27,44,14,bpm);
      }
    }
    else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){

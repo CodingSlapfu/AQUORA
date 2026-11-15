@@ -36,7 +36,7 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm,arrange_browse;
-static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, last_control_ms;
+static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, fullscreen_performance, last_control_ms;
 static unsigned preferences_saving, preferences_generation, preferences_saved_ms;
 #ifndef PLAT_HOST
 static unsigned preferences_snapshot_generation;
@@ -676,7 +676,7 @@ void app_input_only(void){
  }
  if(control){
    last_control_ms=plat_ms();
-   if(fullscreen&&(press&(1u<<B_HOME)||enc[0])){fullscreen=0;dirty=1;enc[0]=0;press&=~(1u<<B_HOME);}
+   if(fullscreen&&(press&(1u<<B_HOME)||enc[0])){fullscreen=fullscreen_performance=0;dirty=1;enc[0]=0;press&=~(1u<<B_HOME);}
    /* Fullscreen retains transport, keys, PRESETS and contextual intensity. */
  }
  if((press&(1u<<B_EDIT))&&(b&(1u<<B_HOME))){
@@ -842,7 +842,7 @@ void app_input_only(void){
       if(led_test)plat_aquora_led_test_log(led_step);
 #endif
     }
-    else if(control==145){fullscreen=d>0;dirty=1;}
+    else if(control==145){fullscreen=fullscreen_performance=d>0;dirty=1;}
     else if(control==141){keys_baseline=bounded((int)keys_baseline+d,0,3);if(keys_baseline&&!lighting)lighting=1;preferences_changed_now();}
     else if(control==142){notes_lights=switched(notes_lights,d);preferences_changed_now();}
     else if(control==143){dance_lights=switched(dance_lights,d);preferences_changed_now();}
@@ -1102,7 +1102,7 @@ void app_frame(void)
     }
     if(knob_until&&(int32_t)(now-knob_until)>=0){knob_until=0;dirty=1;}
     if(!intro_active&&!fullscreen&&!debug&&page==PAGE_PLAY&&!quick_started&&!quick_pending&&now-last_control_ms>=10000u){
-      fullscreen=1;battery_overlay_ms=now;dirty=1;
+      fullscreen=1;fullscreen_performance=0;battery_overlay_ms=now;dirty=1;
     }
     if(now-battery_poll_ms>=500u){
       battery_poll_ms=now;
