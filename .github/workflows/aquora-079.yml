@@ -1,0 +1,165 @@
+name: AQUORA v0.7.9 validation and publication
+on:
+  push:
+    branches: [aquora-v0.7.9-composition]
+  workflow_dispatch:
+concurrency:
+  group: aquora-v079
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify ancestry and preserve classic device UI and visualizers
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 406f4a64b66063fa502a6929a40c08637aa3c585 HEAD
+          git diff --exit-code 406f4a64b66063fa502a6929a40c08637aa3c585 -- device/ui.c device/visual_worker.c device/fm1.toml
+      - name: Recover the pinned source and toolchain
+        run: |
+          set -euo pipefail
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          mkdir -p "$RUNNER_TEMP/results"/{native,repro,single-core,qa,rollback,installer}
+          python3 -m pip install Pillow==11.3.0
+          curl --fail --location --max-time 180 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
+          echo "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd  $RUNNER_TEMP/jieli.tar.xz" | sha256sum -c --strict
+          mkdir "$RUNNER_TEMP/jieli"
+          tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
+          echo "JIELI_TOOLCHAIN=$RUNNER_TEMP/jieli/jieli-linux-toolchains-20260730.1" >> "$GITHUB_ENV"
+      - name: Run full song, isolation, arrangement, bank and DSP regression gates
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          for gate in composition_079 composition_mix_077 intelligence_075 banks_075 transitions_075 preview_072 composition_071 arrange_072 arrange_banks_072; do
+            cc -O2 "tests/$gate.c" -lm -o "$RUNNER_TEMP/$gate"
+            "$RUNNER_TEMP/$gate" > "$RUNNER_TEMP/results/qa/$gate.log"
+          done
+          cc -O2 -Idevice/dsp tests/music_load_0610.c device/dsp/engine.c -lm -o "$RUNNER_TEMP/load"
+          "$RUNNER_TEMP/load" > "$RUNNER_TEMP/results/qa/music_load.log"
+      - name: Verify classic LCD, spiral, responsiveness and LEDs
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.9 > "$RUNNER_TEMP/results/qa/host-build.log" 2>&1
+          host="$PWD/device/build/host/sound-healing_host"
+          python3 tests/issue82_classic_ui.py "$host" "$RUNNER_TEMP/results/qa/classic"
+          python3 tests/lcd_075.py "$host" "$RUNNER_TEMP/results/qa/lcd" > "$RUNNER_TEMP/results/qa/lcd.log"
+          python3 tests/latency_075.py "$host" "$RUNNER_TEMP/results/qa/latency" > "$RUNNER_TEMP/results/qa/latency.log"
+          python3 tests/lighting_075.py "$host" "$RUNNER_TEMP/results/qa/lighting" > "$RUNNER_TEMP/results/qa/lighting.log"
+      - name: Compile and verify reproducible native and single-core firmware
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          export AC79_SDK="$PWD/vendor/ac79-package-files"
+          for kind in native repro single-core; do
+            if [ "$kind" = single-core ]; then export FM1B_CPU2=0; else unset FM1B_CPU2; fi
+            python3 vendor/fm1-base/tools/build.py device --release 0.7.9 > "$RUNNER_TEMP/results/$kind/build.log" 2>&1
+            cp device/build/*.fwsc device/build/*.elf "$RUNNER_TEMP/results/$kind/"
+          done
+          cmp "$RUNNER_TEMP/results/native/sound-healing-0.7.9.fwsc" "$RUNNER_TEMP/results/repro/sound-healing-0.7.9.fwsc"
+          cp "$RUNNER_TEMP/results/native/sound-healing-0.7.9.fwsc" "$RUNNER_TEMP/results/AQUORA-0.7.9.fwsc"
+          test "$(stat -c %s "$RUNNER_TEMP/results/AQUORA-0.7.9.fwsc")" -gt 100000
+          python3 tests/direct_update_075.py "$RUNNER_TEMP/results/AQUORA-0.7.9.fwsc" FM-1_73000709 > "$RUNNER_TEMP/results/qa/update.log"
+          python3 tests/direct_update_075.py "$RUNNER_TEMP/results/single-core/sound-healing-0.7.9.fwsc" FM-1_73000709 > "$RUNNER_TEMP/results/qa/single-core-update.log"
+      - name: Compile matching WASM and verify installer checksum guard
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+          source ./emsdk_env.sh
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --web --release 0.7.9 > "$RUNNER_TEMP/results/qa/wasm-build.log" 2>&1
+          node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
+          cp -r device/build/emu "$RUNNER_TEMP/results/emu"
+          python3 vendor/fm1-base/tools/make_site.py device "$RUNNER_TEMP/results/AQUORA-0.7.9.fwsc" 0.7.9 "$RUNNER_TEMP/results/installer"
+          python3 - "$RUNNER_TEMP/results/installer" <<'PY'
+          import sys,re,json,hashlib
+          from pathlib import Path
+          p=Path(sys.argv[1])/'install/index.html'
+          s=p.read_text()
+          m=re.search(r'const meta = (\{.*?\});',s)
+          assert m,'Missing installer metadata'
+          meta=json.loads(m.group(1))
+          assert meta['product']=='FM-1_73000709'
+          fw=p.parent/meta['pkg']
+          assert fw.is_file()
+          meta['sha256']=hashlib.sha256(fw.read_bytes()).hexdigest()
+          s=s[:m.start(1)]+json.dumps(meta)+s[m.end(1):]
+          if 'async function candidateHashOk' not in s:
+              s=s.replace('let writing = false;', '''async function candidateHashOk(raw) {
+            const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", raw)), b => b.toString(16).padStart(2, "0")).join("");
+            return hash === meta.sha256;
+          }
+          let writing = false;''')
+              s=s.replace('    if (productOf(pkg) !== meta.product)', '    if (!await candidateHashOk(pkg)) { sayK("badpkg"); return; }\n    if (productOf(pkg) !== meta.product)')
+          assert 'if (!await candidateHashOk(pkg))' in s
+          p.write_text(s)
+          print('Verified staged installer SHA-256:',meta['sha256'])
+          PY
+          node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/installer/install/index.html" "$RUNNER_TEMP/results/AQUORA-0.7.9.fwsc" > "$RUNNER_TEMP/results/qa/installer-hash.log"
+      - name: Verify immutable rollback and package exact firmware
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          r="$RUNNER_TEMP/results"
+          gh release download v0.7.8 --repo CodingSlapfu/AQUORA --pattern AQUORA-0.7.8.fwsc --dir "$r/rollback"
+          echo '1ddda3a8264d02be486e4e8c04eb73fbaddaf883d6be9849d7ddafd844dd8605  '"$r/rollback/AQUORA-0.7.8.fwsc" | sha256sum -c --strict
+          printf '%s\n' "$GITHUB_SHA" > "$r/SOURCE-COMMIT.txt"
+          cat > "$r/RELEASE_NOTES.md" <<'EOF'
+          AQUORA v0.7.9 — Composition and accompaniment.
+          Pads occupy a separate register above the bass, piano phrases develop
+          the shared harmony, and the choir answers the main theme.
+          Explicit intensity and variation edits carry through song generation.
+          Original Puya 0x856014 FM-1 only. Software validation is included.
+          Physical listening, flash and rollback acceptance remain owner-tested.
+          The exact official v0.7.8 is included as a rollback.
+          EOF
+          cd "$r"
+          find native single-core rollback emu installer qa -type f -print0 | sort -z | xargs -0 sha256sum > BUNDLE-SHA256SUMS.txt
+          sha256sum AQUORA-0.7.9.fwsc RELEASE_NOTES.md SOURCE-COMMIT.txt >> BUNDLE-SHA256SUMS.txt
+          zip -q -r AQUORA-0.7.9-official.zip AQUORA-0.7.9.fwsc native single-core rollback emu installer qa RELEASE_NOTES.md SOURCE-COMMIT.txt BUNDLE-SHA256SUMS.txt
+          sha256sum AQUORA-0.7.9.fwsc AQUORA-0.7.9-official.zip > RELEASE-SHA256SUMS.txt
+          sha256sum -c --strict RELEASE-SHA256SUMS.txt
+          unzip -tq AQUORA-0.7.9-official.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AQUORA-0.7.9-results
+          path: ${{ runner.temp }}/results
+          if-no-files-found: error
+  publish:
+    if: github.ref == 'refs/heads/aquora-v0.7.9-composition'
+    needs: build-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: AQUORA-0.7.9-results
+          path: ${{ runner.temp }}/accepted
+      - name: Publish exact accepted firmware and verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/accepted"
+          sha256sum -c --strict RELEASE-SHA256SUMS.txt
+          if gh release view v0.7.9 --repo CodingSlapfu/AQUORA > /dev/null 2>&1; then
+            echo 'v0.7.9 already exists; refusing to replace published bytes'; exit 1
+          fi
+          gh release create v0.7.9 AQUORA-0.7.9.fwsc AQUORA-0.7.9-official.zip RELEASE-SHA256SUMS.txt --repo CodingSlapfu/AQUORA --target "$GITHUB_SHA" --title 'AQUORA v0.7.9 — Composition and accompaniment' --notes-file RELEASE_NOTES.md --latest
+          gh release view v0.7.9 --repo CodingSlapfu/AQUORA --json isDraft,isPrerelease,tagName --jq '.tagName + " draft=" + (.isDraft|tostring) + " prerelease=" + (.isPrerelease|tostring)'
+          mkdir verify-release
+          gh release download v0.7.9 --repo CodingSlapfu/AQUORA --pattern 'AQUORA-0.7.9*' --dir verify-release
+          (cd verify-release && sha256sum -c --strict ../RELEASE-SHA256SUMS.txt)
+          
