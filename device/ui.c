@@ -46,9 +46,9 @@ static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain","Woodland Brook","Distant Storm"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum"};
-/* Static panel palettes. Canvas is independently exact black or white. */
+/* Preference palettes tint the controls and retain their original role colors. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
- {{RGB(0,0,0),RGB(0,0,0),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
+ {{RGB(0,0,0),RGB(0,0,0),RGB(52,69,79),RGB(105,192,255),RGB(237,244,248),RGB(197,208,212)},
   {RGB(0,0,0),RGB(0,0,0),RGB(108,154,161),RGB(10,106,99),RGB(20,38,47),RGB(70,91,97)}},
  {{RGB(0,0,0),RGB(0,0,0),RGB(67,142,148),RGB(90,245,209),RGB(236,251,252),RGB(158,199,205)},
   {RGB(0,0,0),RGB(0,0,0),RGB(66,146,136),RGB(12,121,121),RGB(14,53,56),RGB(66,99,102)}},
@@ -59,6 +59,52 @@ static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5
  {{RGB(0,0,0),RGB(0,0,0),RGB(73,84,188),RGB(140,158,255),RGB(237,238,255),RGB(162,172,216)},
   {RGB(0,0,0),RGB(0,0,0),RGB(110,105,194),RGB(73,60,171),RGB(32,29,74),RGB(92,87,138)}}
 };
+static const uint16_t amber=RGB(229,181,100);
+static void metal_panel(int x,int top,int width,int height)
+{
+ static const uint16_t brushed[]={
+   RGB(35,43,49),RGB(31,37,43),RGB(32,39,45),RGB(29,35,41),
+   RGB(26,32,38),RGB(25,30,36),RGB(27,33,39),RGB(25,30,35)
+ };
+ for(int y=0;y<height;y+=3){
+   int rows=height-y<3?height-y:3;
+   cv_rect(x,top+y,width,rows,brushed[(y/3)&7]);
+ }
+ cv_line(x,top,x+width-1,top,RGB(68,80,88));
+ cv_line(x,top+height-1,x+width-1,top+height-1,RGB(11,13,16));
+}
+static void cabinet_rails(unsigned band)
+{
+ /* Original engraved walnut grain, bounded to the outer four pixels. */
+ static const uint8_t grain[16]={2,0,1,2,3,2,1,0,1,2,1,3,2,1,0,1};
+ static const uint16_t walnut[]={RGB(38,23,17),RGB(54,32,22),RGB(67,40,26),RGB(86,53,32)};
+ cv_rect(0,0,5,48,walnut[0]);cv_rect(235,0,5,48,walnut[0]);
+ for(unsigned y=0;y<48;y+=2){
+   unsigned g=grain[(y/2+5u*band)&15u];
+   cv_line(1,y,3,y,walnut[g]);
+   cv_line(236,y,238,y,walnut[3u-g]);
+ }
+ cv_line(4,0,4,47,walnut[3]);
+ cv_line(235,0,235,47,walnut[2]);
+}
+static void dial(int x,int y,unsigned position)
+{
+ static const int8_t tick[9][2]={
+   {-4,3},{-5,0},{-4,-2},{-3,-4},{0,-5},{3,-4},{4,-2},{5,0},{4,3}
+ };
+ cv_line(x-3,y-7,x+3,y-7,RGB(89,125,142));
+ cv_rect(x-6,y-5,13,11,RGB(14,22,30));
+ cv_rect(x-4,y-6,9,13,RGB(20,37,51));
+ cv_line(x-5,y-5,x+4,y-5,RGB(84,104,116));
+ cv_line(x-5,y+5,x+4,y+5,RGB(7,11,18));
+ cv_line(x,y,x+tick[position][0],y+tick[position][1],RGB(103,199,255));
+}
+static void focus_jewel(int x,int y,int focus)
+{
+ cv_rect(x,y,5,5,RGB(13,19,25));
+ cv_line(x+1,y+1,x+3,y+1,focus?amber:RGB(49,83,105));
+ cv_line(x+1,y+2,x+3,y+2,focus?RGB(255,220,148):RGB(64,111,141));
+}
 static uint16_t skin_text(void){return skins[ui_theme][ui_background].text;}
 static uint16_t skin_dim(void){return skins[ui_theme][ui_background].dim;}
 static uint16_t skin_accent(void){return skins[ui_theme][ui_background].accent;}
@@ -87,6 +133,10 @@ static void band_line(int x0,int y0,int x1,int y1,uint16_t color)
  if(y1>=48){x1=x0+(x1-x0)*(47-y0)/(y1-y0);y1=47;}
  cv_line(x0,y0,x1,y1,color);
 }
+/* The worker always computes a square 240x240 scene. An identical
+ * scale on both axes maps that scene into the normal PLAY window. */
+static int visual_x(int x){return fullscreen?x:78+x*84/240;}
+static int visual_y(int y){return fullscreen?y:54+y*84/240;}
 static void geometry(int offset)
 {
  if(vis_input.water==2){
@@ -94,10 +144,10 @@ static void geometry(int offset)
    uint16_t grain=ui_background?RGB(107,55,17):RGB(255,218,139);
    for(unsigned i=0;i<vis_output.node_count;i++){
      const int16_t *p=vis_output.nodes[i];
-     band_line(p[0],p[1]-offset,p[2],p[3]-offset,ink);
+     band_line(visual_x(p[0]),visual_y(p[1])-offset,visual_x(p[2]),visual_y(p[3])-offset,ink);
    }
    for(unsigned i=0;i<512;i++){
-     int x=vis_output.sand[i][0],y=vis_output.sand[i][1]-offset;
+     int x=visual_x(vis_output.sand[i][0]),y=visual_y(vis_output.sand[i][1])-offset;
      if(y>=0&&y<48)cv_line(x,y,x+1,y,grain);
    }
    return;
@@ -107,31 +157,29 @@ static void geometry(int offset)
      RGB(7,39,55),RGB(9,49,66),RGB(12,61,78),RGB(16,74,91),
      RGB(23,89,105),RGB(33,106,121),RGB(48,126,137),RGB(67,147,155),
      RGB(91,171,175),RGB(121,194,195),RGB(158,217,213),RGB(207,242,230)};
-   int top=vis_input.full?0:52, bottom=vis_input.full?240:140;
    for(unsigned row=0;row<30;row++){
-     int start=top+(int)row*(bottom-top)/30-offset;
-     int end=top+(int)(row+1)*(bottom-top)/30-offset;
-     if(start<0)start=0;if(end>48)end=48;
-     if(end<=start)continue;
-          if(offset+start==0)start++;
-     if(offset+end>=240)end=239-offset;
+     int start=visual_y((int)row*8)-offset;
+     int end=visual_y((int)(row+1)*8)-offset;
+     if(start<0)start=0;
+     if(end>48)end=48;
      if(end<=start)continue;
      for(unsigned x=0;x<30;x++){
        unsigned light=vis_output.water_light[row][x];
        uint16_t color=ui_background?(light?RGB(255-light*5,255-light*2,255-light):RGB(255,255,255)):water[light];
-       cv_rect(x*8+(x==0),start,8-(x==0)-(x==29),end-start,color);
+       int left=visual_x((int)x*8);
+       cv_rect(left,start,visual_x((int)(x+1u)*8)-left,end-start,color);
      }
    }
    unsigned shade=nodal_level>.65f?3:nodal_level>.3f?2:1;
    static const uint16_t ink[2][4]={{RGB(9,24,31),RGB(27,84,108),RGB(48,156,184),RGB(127,245,224)},
       {RGB(240,248,250),RGB(142,180,185),RGB(34,103,125),RGB(8,59,84)}};
    for(unsigned i=0;i<vis_output.node_count;i++){
-     const int16_t *p=vis_output.nodes[i];int y0=p[1]-offset,y1=p[3]-offset;
+     const int16_t *p=vis_output.nodes[i];int y0=visual_y(p[1])-offset,y1=visual_y(p[3])-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
-     band_line(p[0],y0,p[2],y1,ink[ui_background][shade]);
+     band_line(visual_x(p[0]),y0,visual_x(p[2]),y1,ink[ui_background][shade]);
    }
    for(unsigned i=0;i<512;i++){
-     int x=vis_output.sand[i][0],y=vis_output.sand[i][1]-offset;
+     int x=visual_x(vis_output.sand[i][0]),y=visual_y(vis_output.sand[i][1])-offset;
      if(y>=0&&y<48)cv_line(x,y,x+1,y,ui_background?RGB(117,79,25):i%3?RGB(229,196,126):RGB(255,235,187));
    }
    return;
@@ -140,9 +188,9 @@ static void geometry(int offset)
    int quiet=engine.tracks[t].mute||(engine.solo<SR_TRACKS&&engine.solo!=t);
    uint16_t c=ui_background?(quiet?RGB(145,157,160):RGB((colors[t]>>11)*4,((colors[t]>>5)&63)*2,(colors[t]&31)*4)):quiet?RGB(25,45,49):colors[t];
    for(unsigned j=1;j<vis_output.count[t];j++){
-     int y0=vis_output.xy[t][j-1][1]-offset,y1=vis_output.xy[t][j][1]-offset;
+     int y0=visual_y(vis_output.xy[t][j-1][1])-offset,y1=visual_y(vis_output.xy[t][j][1])-offset;
      if((y0<0&&y1<0)||(y0>=48&&y1>=48))continue;
-     band_line(vis_output.xy[t][j-1][0],y0,vis_output.xy[t][j][0],y1,c);
+     band_line(visual_x(vis_output.xy[t][j-1][0]),y0,visual_x(vis_output.xy[t][j][0]),y1,c);
    }
  }
 }
@@ -178,6 +226,27 @@ static void limited_text(int x,int y,int width,const felucca_font_t *font,const 
  }
  text[length]=0;
  cv_text(x,y,font,text,color);
+}
+static void sidebar_text(int x,int y,int width,const char *s,uint16_t ink)
+{
+ unsigned start=0;
+ for(unsigned row=0;row<3&&y+(int)row*12+FONT_T.h<=48&&s[start];row++){
+   char line[32];
+   unsigned count=0,space=0;
+   int pixels=0;
+   while(s[start+count]&&count+1<sizeof line){
+     char c=s[start+count];
+     pixels+=FONT_T.adv[glyph(&FONT_T,(uint8_t)c)];
+     if(pixels>width)break;
+     if(c==' ')space=count;
+     line[count++]=c;
+   }
+   if(s[start+count]&&space)count=space;
+   if(!count)break;
+   line[count]=0;cv_text(x,y+(int)row*12,&FONT_T,line,ink);
+   start+=count;
+   while(s[start]==' ')start++;
+ }
 }
 static const char *tenth(char *buffer,int value)
 {
@@ -352,12 +421,15 @@ static void knob_cell(unsigned knob,int x)
 {
  char value[16],tag[]="K1 ";
  const char *name;
- const char *shown=knob_value(control_for(knob),&name,value);
+ unsigned id=control_for(knob);
+ const char *shown=knob_value(id,&name,value);
  tag[1]=(char)('1'+knob);
  const felucca_font_t *caption=ui_font_size==2?&FONT_T:&FONT_XS;
  int label_x=cv_text(x,0,caption,tag,skin_accent());
- limited_text(label_x,0,108-(label_x-x),caption,name,skin_dim());
+ limited_text(label_x,0,100-(label_x-x),caption,name,skin_dim());
  int focus=knob_until&&knob_focus==knob;
+ focus_jewel(x+102,4,focus);
+
  if(ui_font_size==2){
    const felucca_font_t *font=fit_font(shown,106,34);
    if(font->h<17){
@@ -381,7 +453,13 @@ static void knob_cell(unsigned knob,int x)
  const felucca_font_t *font=ui_font_size==0?&FONT_S:&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_B;
  if(text_pixels(font,shown)>108)font=&FONT_XS;
- limited_text(x,14,108,font,shown,focus?skin_accent():skin_text());
+ int dial_position=-1;
+ if(id==18)dial_position=(int)(engine.energy*8.f+.5f);
+ if(id==10)dial_position=(int)((engine.drum_density*8u+SR_DENSITY_MAX/2u)/SR_DENSITY_MAX);
+ if(id==13)dial_position=(int)(engine.tracks[selected].volume*8.f+.5f);
+ int width=dial_position>=0?88:108;
+ if(dial_position>=0)dial(x+97,21,(unsigned)bounded(dial_position,0,8));
+ limited_text(x,14,width,fit_font(shown,width,font->h),shown,focus?skin_accent():skin_text());
 }
 static void voice_diagnostics(int band)
 {
@@ -510,8 +588,6 @@ static void mixer_console(int band)
    const sr_track *tr=&engine.tracks[t];
    int x=5+(int)t*29;
    int chosen=mix_focus==t;
-   uint16_t c=tr->mute?skin_dim():colors[t];
-   if(ui_background&&tr->mute)c=RGB(97,100,116);
    if(band==1){
      limited_text(x,1,26,&FONT_XS,abbr[t],chosen?skin_accent():skin_text());
      if(chosen)cv_line(x,18,x+22,18,skin_accent());
@@ -523,7 +599,8 @@ static void mixer_console(int band)
    if(y0<0)y0=0;
    if(y1>47)y1=47;
    if(y1>=y0){
-     cv_rect(x+3,y0,18,y1-y0+1,skins[ui_theme][ui_background].panel);
+     cv_rect(x+3,y0,18,y1-y0+1,RGB(11,19,29));
+     cv_line(x+4,y0,x+4,y1,RGB(41,54,64));
      cv_line(x+3,y0,x+3,y1,skins[ui_theme][ui_background].border);
      cv_line(x+21,y0,x+21,y1,skins[ui_theme][ui_background].border);
      if(top>=offset&&top<offset+48)cv_line(x+3,top-offset,x+21,top-offset,skin_dim());
@@ -533,9 +610,16 @@ static void mixer_console(int band)
      int hi=bottom-meter;
      if(hi<offset)hi=offset;
      int lo=bottom;if(lo>offset+47)lo=offset+47;
-     if(meter&&lo>=hi)cv_rect(x+5,hi-offset,15,lo-hi+1,c);
+     if(meter&&lo>=hi){
+       cv_rect(x+5,hi-offset,15,lo-hi+1,tr->mute?skin_dim():RGB(40,139,221));
+       cv_line(x+6,hi-offset,x+6,lo-offset,RGB(111,195,255));
+       if(mag>.7f&&bottom-meter>=offset)cv_line(x+5,hi-offset,x+19,hi-offset,amber);
+     }
      int fy=bottom-(int)(tr->volume*77.f);
-     if(fy>=offset&&fy<offset+48)cv_line(x+12,fy-offset,x+21,fy-offset,chosen?skin_accent():skin_text());
+     if(fy>=offset&&fy<offset+48){
+       cv_line(x+12,fy-offset,x+21,fy-offset,chosen?amber:skin_text());
+       if(fy+1<offset+48)cv_line(x+12,fy+1-offset,x+21,fy+1-offset,RGB(15,35,50));
+     }
    }
  }
  if(band==4){
@@ -691,11 +775,32 @@ static void graph_block(unsigned band,int x,int width,int y,int height,uint16_t 
  if(top<0){height+=top;top=0;}if(top+height>48)height=48-top;
  if(width>0&&height>0)cv_rect(x,top,width,height,ink);
 }
+static void visual_title(int x,int y,int width,int height,const char *text)
+{
+ const felucca_font_t *font=fit_font(text,width,height);
+ const uint16_t shade=ui_background?RGB(255,255,255):RGB(0,0,0);
+ const uint16_t ink=ui_background?RGB(8,21,32):RGB(239,247,255);
+ cv_text(x+1,y+1,font,text,shade);
+ cv_text(x,y,font,text,ink);
+}
+static void fullscreen_labels(void)
+{
+ unsigned scene=engine.pending_scene?engine.pending_scene-1u:engine.scene;
+ unsigned mode=engine.pending_mode?engine.pending_mode-1u:engine.music_mode;
+ visual_title(8,3,224,23,sr_scenes[scene].name);
+ visual_title(8,26,190,17,music_modes[mode]);
+ if(engine.pending_scene||engine.pending_mode)visual_title(189,27,44,14,"QUEUED");
+}
 static void intention_mode_header(void){
- limited_text(6,0,208,fit_font(sr_scenes[engine.scene].name,208,25),
-              sr_scenes[engine.scene].name,skin_text());
- limited_text(6,26,191,fit_font(music_modes[engine.music_mode],191,18),
-              music_modes[engine.music_mode],skin_accent());
+ unsigned scene=engine.pending_scene?engine.pending_scene-1u:engine.scene;
+ unsigned mode=engine.pending_mode?engine.pending_mode-1u:engine.music_mode;
+ int width=engine.pending_scene||engine.pending_mode?183:198;
+ limited_text(8,0,width,fit_font(sr_scenes[scene].name,width,25),
+              sr_scenes[scene].name,skin_text());
+ limited_text(8,26,188,fit_font(music_modes[mode],188,18),
+              music_modes[mode],skin_accent());
+ if(engine.pending_scene||engine.pending_mode)
+   limited_text(196,6,37,&FONT_T,"QUEUED",amber);
 }
 static void evolve_graph(unsigned band){
  unsigned offset=band*48;
@@ -768,7 +873,7 @@ static void evolve_graph(unsigned band){
   for(unsigned knob=0;knob<4;knob++){
    char value[16];const char *name;
    const char *shown=knob?knob_value(control_for(knob),&name,value):role_names[selected];
-   int x=6+(int)knob*58;
+   int x=8+(int)knob*57;
    limited_text(x,17,52,&FONT_T,captions[knob],skin_dim());
    limited_text(x,30,52,&FONT_T,shown,knob_until&&knob_focus==knob?skin_accent():skin_text());
   }
@@ -829,30 +934,28 @@ static int draw(int animate)
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
-   const int artwork=intro_active||fullscreen;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
     * palette is chosen once, not per pixel; normal UI still follows user
     * Black/White preference on entering PLAY. */
    const uint16_t bg=RGB(0,0,0);
    cv_begin(240,48,bg);
-   if(!intro_active&&!fullscreen&&band==0&&plat_ms()-last_control_ms<250u){
-     unsigned w=24u+(250u-(plat_ms()-last_control_ms))*180u/250u;
-     cv_rect(8,45,w,2,skin_accent());
-   }
-   /* One surface per logical region; no boxes around 48px transfer bands.
-    * The PLAY preview spans two bands with no nested frame. */
-   if(!artwork&&!debug){
-     const uint16_t panel=skins[ui_theme][ui_background].panel;
-     const uint16_t edge=skins[ui_theme][ui_background].border;
-     if(band==0){cv_line(8,47,231,47,edge);}
-     else if(band>=3&&page!=PAGE_MIX&&!(page==PAGE_EVOLVE&&song_tab==0)){
-       cv_rect(6,2,110,42,panel);cv_rect(124,2,110,42,panel);
-       if(ui_theme==2||ui_theme==4){
-         cv_line(6,2,115,2,edge);cv_line(124,2,233,2,edge);
-       }else if(ui_theme==3){
-         cv_line(6,43,115,43,edge);cv_line(124,43,233,43,edge);
+   if(!fullscreen){
+     cabinet_rails(band);
+     if(!intro_active&&band==0){
+       metal_panel(5,0,230,48);
+       cv_line(6,47,233,47,amber);
+     }else if(!intro_active&&band>=3){
+       if(page==PAGE_MIX||debug||(page==PAGE_EVOLVE&&song_tab==0)){
+         if(band==4&&page!=PAGE_MIX)metal_panel(5,0,230,48);
+       }else{
+         metal_panel(6,1,110,45);
+         metal_panel(124,1,110,45);
        }
      }
+   }
+   if(!intro_active&&!fullscreen&&band==0&&plat_ms()-last_control_ms<250u){
+     unsigned w=24u+(250u-(plat_ms()-last_control_ms))*180u/250u;
+     cv_line(8,46,8+w,46,skin_accent());
    }
    if(intro_active){
      /* Independent AQUORA intro: flowing sound-pulse typography, never the
@@ -880,7 +983,10 @@ static int draw(int animate)
        if(letters>6u)letters=6u;
        char title[7]="AQUORA";title[letters]=0;
        int x=(240-fit_width(&FONT_L,"AQUORA"))/2,y=(240-FONT_L.h)/2-96;
-       if(letters){cv_rect(x-4,y-2,fit_width(&FONT_L,"AQUORA")+8,FONT_L.h+4,RGB(0,0,0));cv_text(x,y,&FONT_L,title,RGB(119,255,225));}
+       if(letters){
+         metal_panel(x-6,y-4,fit_width(&FONT_L,"AQUORA")+12,FONT_L.h+8);
+         cv_text(x,y,&FONT_L,title,RGB(240,199,124));
+       }
      }
      if(band==4){
        if(elapsed>=4100u)limited_text(8,1,224,&FONT_T,APP_VERSION,skin_text());
@@ -893,18 +999,11 @@ static int draw(int animate)
    }else if(debug)performance(band);
    else if(fullscreen){
      geometry(band*48);
-     if(band==0){
-       cv_rect(0,0,240,48,RGB(0,0,0));
-       intention_mode_header();
-     }else if(band==4){
-       cv_rect(0,0,240,48,RGB(0,0,0));
-       int x=cv_text(6,0,&FONT_T,"NOW ",skin_accent());limited_text(x,0,230-x,&FONT_XS,graph_now,skin_text());
-       x=cv_text(6,15,&FONT_T,"NEXT ",skin_dim());limited_text(x,15,230-x,&FONT_XS,graph_next,skin_text());
-       limited_text(6,33,125,&FONT_T,"K1 INTENSITY",skin_accent());
-       static const char *keys[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
-       char bpm[12];num(bpm,(SR_RATE*15u+graph_tick/2u)/graph_tick);
-       x=cv_text(142,33,&FONT_T,keys[sr_tonic(&engine)%12],skin_accent());
-       x=cv_text(x+8,33,&FONT_T,bpm,skin_text());cv_text(x+4,33,&FONT_T,"BPM",skin_dim());
+     if(band==0)fullscreen_labels();
+     else if(band==4&&knob_until){
+       char value[16];const char *name;
+       const char *current=knob_value(control_for(knob_focus),&name,value);
+       visual_title(8,29,224,17,current);
      }
    }
    else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){
@@ -1092,16 +1191,16 @@ static int draw(int animate)
    else if(visual&&page==PAGE_PLAY){
      geometry(band*48);
      if(band==1){
-       cv_rect(0,0,240,30,RGB(0,0,0));
-       int x=cv_text(6,0,&FONT_T,"NOW ",skin_accent());
-       limited_text(x,0,232-x,&FONT_T,graph_now?graph_now:"Planning",skin_text());
-       x=cv_text(6,15,&FONT_T,"NEXT ",skin_dim());
-       limited_text(x,15,232-x,&FONT_T,graph_next?graph_next:"Planning",skin_text());
+       limited_text(8,2,66,&FONT_T,"NOW",skin_accent());
+       const char *now=graph_now?graph_now:"Planning";
+       sidebar_text(8,15,67,now,skin_text());
+       limited_text(170,2,62,&FONT_T,"NEXT",skin_dim());
+       const char *next=graph_next?graph_next:"Planning";
+       sidebar_text(170,15,62,next,skin_text());
      }
      if(band==2){
-       cv_rect(0,32,240,16,RGB(0,0,0));
-       int x=cv_text(6,32,&FONT_T,role_names[selected],skin_accent());
-       limited_text(x+8,32,230-x,&FONT_T,patch_name(),skin_text());
+       limited_text(8,8,68,&FONT_T,role_names[selected],skin_accent());
+       sidebar_text(170,8,62,patch_name(),skin_text());
      }
    }else if(band==0&&page==PAGE_PLAY){
      intention_mode_header();
@@ -1165,7 +1264,7 @@ static int draw(int animate)
      for(unsigned knob=0;knob<4;knob++){
        char value[16];const char *name;
        const char *shown=knob?knob_value(control_for(knob),&name,value):role_names[selected];
-       int x=6+(int)knob*58;
+       int x=8+(int)knob*57;
        limited_text(x,0,52,&FONT_T,captions[knob],skin_dim());
        const felucca_font_t *font=fit_font(shown,52,24);
        limited_text(x,15,52,font,shown,knob_until&&knob_focus==knob?skin_accent():skin_text());
@@ -1232,7 +1331,7 @@ static int draw(int animate)
    }
    if(band==4&&!intro_active&&(quick_started||quick_pending||
       (quick_finished_ms&&plat_ms()-quick_finished_ms<3000u))){
-     cv_rect(4,17,232,29,ui_background?RGB(255,255,255):RGB(0,0,0));
+     metal_panel(5,17,230,30);
      char bank[12];num(bank,quick_slot+1);
      const char *message=quick_timeout?"Save Failed / Retry ":quick_started||quick_pending?"Saving Bank ":bank_message==BANK_ERROR?"SAVE FAILED - RETRY ":"Saved to Bank ";
      int x=cv_text(8,21,&FONT_XS,message,skin_accent());
@@ -1243,7 +1342,7 @@ static int draw(int animate)
      if(quick_has_save&&quick_saved_revision==state_revision&&bank_slot==quick_slot)tag[2]=0;
      cv_text(205,25,&FONT_XS,tag,skin_dim());
    }
-   if(band==0&&!intro_active)battery_glyph();
+   if(band==0&&!intro_active&&!fullscreen)battery_glyph();
    cv_blit(0,band*48);AQ_VIS_COUNT(ui_blits);
    /* Acknowledge the submitted control band, rather than charging later
     * optional graphics to label feedback. Physical DMA completion is a

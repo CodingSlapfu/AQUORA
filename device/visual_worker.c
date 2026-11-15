@@ -100,7 +100,7 @@ static void resonance_job(void)
     float goal_n=3.f+((pitch_class+vis_input.scene)%4u)+complexity*.6f;
     water_m+=(goal_m-water_m)*dt*.9f;
     water_n+=(goal_n-water_n)*dt*.9f;
-    float cy=vis_input.full?120.f:96.f,sy=vis_input.full?117.f:44.f;
+    const float cy=120.f,sy=117.f;
     for(unsigned i=0;i<512;i++){
       float x=sand_x[i],y=sand_y[i],f=sand_field(x,y);
       float gx=(sand_field(x+.008f,y)-sand_field(x-.008f,y))*62.5f;
@@ -204,7 +204,7 @@ static void chladni_job(void)
     plate_grid[j][i]=rect*(1.f-plate_blend)+(radial+now*.65f)*plate_blend;
   }
   vis_output.node_count=0;
-  float cy=vis_input.full?120.f:96.f,sy=vis_input.full?112.f:42.f;
+  const float cy=120.f,sy=112.f;
   for(unsigned i=0;i<512;i++){
     float x=sand_x[i],y=sand_y[i],f=plate_sample(x,y);
     float gx=(plate_sample(x+.02f,y)-plate_sample(x-.02f,y))*25.f;
@@ -257,12 +257,12 @@ static void visual_job(uint32_t unused)
       vis_output.count[t]=33;
       unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;
       float pulse=vis_input.meter[t]*154.f+vis_input.onset[t]*10.f;
-      float radius=(vis_input.full?52.f+t*9.f:45.f+t*6.f)+(pulse>22.f?22.f:pulse);
+      float radius=48.f+t*7.f+(pulse>20.f?20.f:pulse);
       for(unsigned j=0;j<=32;j++){
         unsigned a=j*4;
         float petal=radius*(.82f+.18f*vis_sine[(3*a+phase)&127]);
         vis_output.xy[t][j][0]=120+(int)(petal*vis_sine[(a+phase)&127]);
-        vis_output.xy[t][j][1]= (vis_input.full?120:96)+(int)(petal*(vis_input.full?1.04f:.44f)*vis_sine[(2*a+phase)&127]);
+        vis_output.xy[t][j][1]= 120+(int)(petal*vis_sine[(2*a+phase)&127]);
       }
     }
     vis_output.busy_us=(plat_ticks24()-begin)/24;

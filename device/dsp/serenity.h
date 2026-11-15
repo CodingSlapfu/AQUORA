@@ -38,7 +38,7 @@ typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
 typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; uint8_t last_note; } sr_track;
-typedef struct { uint8_t active, track, gate, midi, key, external, channel; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
+typedef struct { uint8_t active, track, gate, midi, key, external, channel, patch; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {uint32_t frame,duration;uint8_t role,note,velocity,reserved;} sr_event;
 typedef struct {uint8_t count;uint8_t note[16],step[16],length[16];} sr_learn_phrase;
@@ -73,6 +73,7 @@ typedef struct {
   float energy,variation,bed_phase,bird_phase,bird_env;
   uint8_t freeze, perfect_key, solo, sacred_mode, restart, fx_mask, drum_hit;
   uint32_t song_seed, visit_nonce, form_loop;
+  uint16_t last_theme[SR_MUSIC_MODES][SR_SCENES];
   uint32_t form_key; uint8_t form_route[33];
   uint8_t arrange_next,arrange_length,arrange_active,arrange_elapsed;
   uint8_t timeline_enabled,timeline_write;
@@ -114,7 +115,7 @@ typedef struct {
   float reverb_wet, delay_wet;
   uint8_t loop_length, loop_pos, pending_length, keyboard_mode, tonic_override, pending_key, pending_physical_key;
   int8_t melody[16], motif_home[16];
-  struct { uint16_t phase; uint8_t midi, velocity; } ornaments[4];
+  struct { uint16_t phase; uint8_t midi, velocity; float beats; } ornaments[4];
 } sr_engine;
 
 extern const sr_patch sr_patches[SR_PATCHES];

@@ -9,7 +9,7 @@ static int16_t pcm[512];
 static void finish_score_step(void){
  /* Drain the control-rate offbeat queue without rendering sound files. */
  for(unsigned slot=0;slot<4;slot++)if(e.ornaments[slot].phase){
-  sr_note_on(&e,ornament_track[slot],e.ornaments[slot].midi,e.ornaments[slot].velocity,ornament_gate[slot]);e.ornaments[slot].phase=0;
+  sr_note_on(&e,ornament_track[slot],e.ornaments[slot].midi,e.ornaments[slot].velocity,e.ornaments[slot].beats);e.ornaments[slot].phase=0;
  }
  for(unsigned i=0;i<12;i++)if(e.scheduled[i].active){
   if(e.scheduled[i].role<SR_DRUMS)sr_note_on(&e,e.scheduled[i].role,e.scheduled[i].note,e.scheduled[i].velocity,e.scheduled[i].beats);
