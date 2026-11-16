@@ -234,16 +234,19 @@ static int mix_visible(unsigned channel)
  default:return engine.reverb_amount>0||engine.delay_amount>0||engine.air_wet>0;
  }
 }
+static const uint8_t mix_order[]={SR_LEAD,SR_BASS,SR_PIANO,SR_GUITAR,SR_DRONE,SR_CHOIR,SR_HARMONY,SR_DRUMS};
 static void mix_select(int delta)
 {
  int next=(int)mix_focus;
+ if(mix_focus<SR_TRACKS)for(unsigned i=0;i<SR_TRACKS;i++)if(mix_order[i]==mix_focus)next=(int)i;
  int direction=delta>0?1:-1;
  unsigned moves=delta>0?(unsigned)delta:(unsigned)-delta;
  while(moves){
    next+=direction;
    if(next<0||next>=(mix_tab==5?SR_TRACKS:SR_TRACKS+SR_BUS_COUNT))break;
-   if(!mix_visible((unsigned)next))continue;
-   mix_focus=(unsigned)next;
+   unsigned channel=next<SR_TRACKS?mix_order[next]:(unsigned)next;
+   if(!mix_visible(channel))continue;
+   mix_focus=channel;
    moves--;
  }
  if(mix_focus<SR_TRACKS)selected=mix_focus;

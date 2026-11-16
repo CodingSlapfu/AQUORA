@@ -257,7 +257,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 22:*name="FIXED TONE %";return tenth(buffer,(int)(engine.tone_level*1000.f+.5f));
  case 23:*name="BINAURAL %";number=engine.binaural_level*100;break;
  case 24:*name="PAN %";number=track->pan*100;break;
- case 25:*name="TEMPO BPM";return tenth(buffer,(SR_RATE*150u+engine.tick_length/2u)/engine.tick_length);
+ case 25:*name=engine.motion_manual&4u?"LOCKED BPM":"SONG BPM";return tenth(buffer,(SR_RATE*150u+engine.tick_length/2u)/engine.tick_length);
  case 28:*name="SOLO";return engine.solo<SR_TRACKS?role_names[engine.solo]:"OFF";
  case 29:*name="FX SEND %";number=track->send*100;break;
  case 30:*name="SACRED LEVEL %";number=engine.sacred_level*100;break;
@@ -371,6 +371,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 156:{static const char *names[]={"Sparse","Gentle","Present","Featured"};*name="VOCAL PRESENCE";return names[engine.vocal_presence?engine.vocal_presence-1u:1u];}
  case 157:*name="PART MUTE";return engine.drum_mutes&(1u<<drum_part)?"Mute":"On";
  case 158:*name="PART SOLO";return engine.drum_solo==drum_part?"Solo":"Off";
+ case 160:*name="TEMPO MODE";return engine.motion_manual&4u?"Locked":"Auto";
+ case 161:*name="INTENSITY MODE";return engine.expression_manual&SR_MANUAL_ENERGY?"Locked":"Auto";
  case 159:*name="PART LEVEL";num(buffer,engine.drum_levels[drum_part]);return buffer;
  case 146:*name="AUDIO OUTPUT";return engine.speaker_enabled?"FM-1 Speaker":"Headphones";
  case 147:{static const char *names[]={"Lagoon","Orchid","Electric Blue","Amber","Indigo"};*name="THEME";return names[ui_theme];}
@@ -554,60 +556,173 @@ static void mixer_overview(int band)
    x+=width;
  }
 }
-/* 0.6.2 professional instrument console: all eight role levels and meter
- * states are drawn only on the actually visible MIX page. No extra DSP or
- * FFT: data comes from the engine's existing post-mix track meters. */
+enum { WATER_TOP=75, WATER_BOTTOM=188 };
+static struct { uint8_t height, peak, splash, events; } water[SR_TRACKS];
+static unsigned water_phase;
+static int intention_match=-1;
+
+static int water_wave(unsigned phase)
+{
+ phase&=31u;
+ return phase<16u?(int)phase-8:23-(int)phase;
+}
+
+static uint16_t water_tint(uint16_t color,unsigned scale)
+{
+ return (uint16_t)((((color>>11)*scale>>4)<<11)|
+     (((((color>>5)&63u)*scale)>>4)<<5)|((color&31u)*scale>>4));
+}
+
+/* Pitch-class agreement with the selected anchor's octave, fifth and
+ * major third families. Exact/octave alignment has full credit.
+ * Weights approximate audible amplitude; percussion and noise are excluded. */
+static float match_pitch(float pitch,float anchor)
+{
+ if(!(pitch>=10.f&&pitch<=24000.f))return 0.f;
+ while(pitch<anchor)pitch*=2.f;
+ while(pitch>=2.f*anchor)pitch*=.5f;
+ float octave=fm_minf(pitch-anchor,2.f*anchor-pitch);
+ float fifth=fm_fabsf(pitch-1.5f*anchor);
+ float third=fm_fabsf(pitch-1.25f*anchor);
+ float inverse=1.f/anchor;
+ return fm_maxf(fm_clampf(1.f-32.f*octave*inverse,0,1),
+     fm_maxf(.8f*fm_clampf(1.f-32.f*fifth*inverse,0,1),
+           .6f*fm_clampf(1.f-32.f*third*inverse,0,1)));
+}
+
+static void mixer_snapshot(void)
+{
+ struct {float pitch,weight;} notes[SR_VOICES+2];
+ unsigned total=0,flags=plat_lock();
+ unsigned scene=engine.scene;
+ for(unsigned i=0;i<SR_TRACKS;i++){
+   const sr_track *track=&engine.tracks[i];
+   unsigned events=(uint8_t)track->events;
+   if(events!=water[i].events)water[i].splash=i==SR_DRUMS?36:i==SR_DRONE?5:17;
+   else if(water[i].splash)water[i].splash--;
+   water[i].events=events;
+ }
+ float meter[SR_TRACKS];
+ for(unsigned i=0;i<SR_TRACKS;i++)meter[i]=engine.tracks[i].meter;
+ for(unsigned i=0;i<SR_VOICES;i++){
+   const sr_voice *voice=&engine.voices[i];
+   if(!voice->active||voice->track==SR_DRUMS)continue;
+   const sr_track *track=&engine.tracks[voice->track];
+   if(track->mute||(engine.solo<SR_TRACKS&&engine.solo!=voice->track)||
+       (engine.isolate!=SR_ISOLATE_MIX&&engine.isolate!=SR_ISOLATE_TRACK1+voice->track))continue;
+   float weight=voice->env*track->volume*engine.gain_trim[voice->track]*
+       (voice->sample_zone?.27f:sr_patches[voice->patch].gain);
+   if(voice->track==SR_CHOIR&&!voice->sample_zone)weight*=1.f-.72f*engine.vocal_priority;
+   if(voice->track==SR_DRONE)weight*=1.f-.24f*engine.vocal_priority;
+   if(weight>.0002f){
+     notes[total].pitch=engine.frequency_lock?sr_frequencies[engine.frequency].hz:
+         voice->sample_zone?voice->freq:voice->increment*SR_RATE;
+     notes[total++].weight=weight;
+   }
+ }
+ if(engine.bus_meter[SR_BUS_REFERENCE]>.0002f){
+   notes[total].pitch=engine.reference_hz_now;
+   notes[total++].weight=engine.bus_meter[SR_BUS_REFERENCE];
+ }
+ if(engine.bus_meter[SR_BUS_SACRED]>.0002f){
+   notes[total].pitch=engine.sacred_hz_now;
+   notes[total++].weight=engine.bus_meter[SR_BUS_SACRED];
+ }
+ plat_unlock(flags);
+ float anchor=sr_frequencies[sr_scenes[scene].frequency].hz;
+ float mass=0.f,aligned=0.f;
+ for(unsigned i=0;i<total;i++){
+   if(notes[i].pitch<=0.f)continue;
+   mass+=notes[i].weight;
+   aligned+=notes[i].weight*match_pitch(notes[i].pitch,anchor);
+ }
+ static unsigned previous_scene=SR_SCENES;
+ if(mass<=.0002f)intention_match=-1;
+ else{
+   int score=(int)(100.f*aligned/mass+.5f);
+   if(intention_match<0||previous_scene!=scene)intention_match=score;
+   else if(score!=intention_match){
+     int delta=score-intention_match;
+     intention_match+=delta>0?(delta+3)/4:(delta-3)/4;
+   }
+ }
+ previous_scene=scene;
+ water_phase=plat_ms()/50u;
+ for(unsigned i=0;i<SR_TRACKS;i++){
+   int target=(int)(fm_sqrtf(fm_sqrtf(fm_clampf(meter[i],0,1)))*105.f);
+   int last=water[i].height;
+   int rise=i==SR_DRONE?3:1,fall=i==SR_DRONE?6:4;
+   water[i].height=target>last?last+(target-last+rise-1)/rise:last-(last-target+fall-1)/fall;
+   water[i].peak=target>=water[i].peak?target:water[i].peak-1;
+ }
+}
+
 static void mixer_console(int band)
 {
- static const char *abbr[]={"LD","BS","PD","HM","PN","PL","CH","DR"};
- const int offset=band*48;
- for(unsigned t=0;t<SR_TRACKS;t++){
-   const sr_track *tr=&engine.tracks[t];
-   int x=5+(int)t*29;
+ static const char *names[]={"LEAD","BASS","PIANO","PLUCK","PADS","CHOIR","HARM","DRUMS"};
+ static const uint16_t neon[]={RGB(255,45,142),RGB(23,201,255),RGB(255,207,46),RGB(145,255,44),
+   RGB(38,249,214),RGB(178,96,255),RGB(255,74,212),RGB(255,135,29)};
+ int offset=band*48;
+ for(unsigned column=0;column<SR_TRACKS;column++){
+   unsigned t=mix_order[column];
+   const sr_track *track=&engine.tracks[t];
+   int x=3+(int)column*29;
+   int enabled=!track->mute&&(engine.solo==SR_TRACKS||engine.solo==t);
+   uint16_t ink=enabled?neon[column]:RGB(124,135,160);
+   uint16_t dim=water_tint(ink,5);
    int chosen=mix_focus==t;
    if(band==1){
-     limited_text(x,1,26,&FONT_XS,abbr[t],chosen?skin_accent():skin_text());
-     if(chosen)cv_line(x,18,x+22,18,skin_accent());
-     if(tr->mute)cv_text(x,29,&FONT_XS,"M",skin_dim());
-     if(engine.solo==t)cv_text(x+13,29,&FONT_XS,"S",skin_accent());
+     limited_text(x,0,29,&FONT_T,names[column],ink);
+     for(unsigned k=0;k<5;k++)
+       cv_rect(x+1+(int)k*5,16,3,5,water[t].peak>(int)k*21?ink:dim);
    }
-   const int top=99, bottom=182;
-   int y0=top-offset, y1=bottom-offset;
-   if(y0<0)y0=0;
-   if(y1>47)y1=47;
-   if(y1>=y0){
-     cv_rect(x+3,y0,18,y1-y0+1,RGB(11,19,29));
-     cv_line(x+4,y0,x+4,y1,RGB(41,54,64));
-     cv_line(x+3,y0,x+3,y1,skins[ui_theme][ui_background].border);
-     cv_line(x+21,y0,x+21,y1,skins[ui_theme][ui_background].border);
-     if(top>=offset&&top<offset+48)cv_line(x+3,top-offset,x+21,top-offset,skin_dim());
-     if(bottom>=offset&&bottom<offset+48)cv_line(x+3,bottom-offset,x+21,bottom-offset,skin_dim());
-     float mag=fm_clampf(tr->meter,0,1);
-     int meter=(int)(fm_sqrtf(fm_sqrtf(mag))*78.f);
-     int hi=bottom-meter;
-     if(hi<offset)hi=offset;
-     int lo=bottom;if(lo>offset+47)lo=offset+47;
-     if(meter&&lo>=hi){
-       cv_rect(x+5,hi-offset,15,lo-hi+1,tr->mute?skin_dim():RGB(40,139,221));
-       cv_line(x+6,hi-offset,x+6,lo-offset,RGB(111,195,255));
-       if(mag>.7f&&bottom-meter>=offset)cv_line(x+5,hi-offset,x+19,hi-offset,skin_accent());
+   int top=WATER_TOP-offset,bottom=WATER_BOTTOM-offset;
+   if(top<0)top=0;
+   if(bottom>47)bottom=47;
+   if(top<=bottom){
+     cv_rect(x,top,27,bottom-top+1,RGB(5,12,26));
+     cv_line(x,top,x,bottom,chosen?ink:dim);
+     cv_line(x+26,top,x+26,bottom,chosen?ink:dim);
+     int level=WATER_BOTTOM-(int)water[t].height-offset;
+     int amp=1+water[t].splash/7;
+     if(water[t].height){
+       int fill=level+amp;
+       if(fill<top)fill=top;
+       if(fill<=bottom)cv_rect(x+2,fill,23,bottom-fill+1,water_tint(ink,4));
+       for(int j=2;j<=24&&level+amp>=top&&level-amp<=bottom;j++){
+         int y=level+water_wave(water_phase+column*7u+(unsigned)j*2u)*amp/8;
+         if(y<top)y=top;
+         if(y>bottom)continue;
+         int end=fill<bottom?fill:bottom;
+         if(y<end)cv_line(x+j,y,x+j,end,dim);
+         cv_rect(x+j,y,1,1,ink);
+       }
+       if(fill<=bottom){
+         cv_line(x+3,fill,x+3,bottom,dim);
+         cv_line(x+23,fill,x+23,bottom,dim);
+       }
+       for(unsigned k=0;k<4;k++){
+         unsigned rise=(water_phase*(1u+k%2u)+column*19u+k*17u)%
+             (water[t].height+1u+water[t].splash/3u);
+         int y=WATER_BOTTOM-offset-(int)rise;
+         if(y<top||y>bottom)continue;
+         int bubble=x+4+(int)((k*7u+column*5u+(water_phase>>3))%18u);
+         cv_rect(bubble,y,k==0?2:1,1,k==0?RGB(220,249,255):ink);
+       }
      }
-     int fy=bottom-(int)(tr->volume*77.f);
-     if(fy>=offset&&fy<offset+48){
-       cv_line(x+12,fy-offset,x+21,fy-offset,chosen?skin_accent():skin_text());
-       if(fy+1<offset+48)cv_line(x+12,fy+1-offset,x+21,fy+1-offset,RGB(15,35,50));
-     }
+     if(WATER_TOP>=offset)cv_line(x+3,top,x+23,top,dim);
+     if(WATER_BOTTOM<offset+48)cv_line(x+2,bottom,x+24,bottom,ink);
+   }
+   if(band==4){
+     char value[12];
+     num(value,(int)(track->volume*100.f+.5f));
+     unsigned end=ui_len(value);value[end]='%';value[end+1]=0;
+     graph_text(x,1,value,ink);
+     if(track->mute||engine.solo==t)graph_text(x+8,15,track->mute?"M":"S",ink);
+     if(chosen)cv_line(x+1,27,x+24,27,ink);
    }
  }
- if(band==4){
-   unsigned t=mix_focus<SR_TRACKS?mix_focus:selected;
-   const sr_track *tr=&engine.tracks[t];
-   char v[12];
-   limited_text(7,1,99,&FONT_B,role_names[t],skin_accent());
-   cv_text(114,1,&FONT_XS,tr->mute?"MUTED":engine.solo==t?"SOLO":"ACTIVE",skin_text());
-   num(v,(int)(tr->meter*100.f));cv_text(193,1,&FONT_XS,v,skin_text());
-   limited_text(8,26,224,&FONT_XS,"K1/FX: STRIP  SELECT: CH",skin_dim());
- }
+ if(band==4)graph_text(7,33,"VOL %   SELECT CHANNEL   FX STRIP",RGB(173,206,224));
 }
 static void mixer_focus_strip(int band)
 {
@@ -779,7 +894,8 @@ static unsigned submit_panel_band(unsigned band,int full_motion)
     return 1;
 }
 static unsigned graph_future_count;
-static uint32_t drum_forecast[16];
+static uint32_t drum_forecast[16],drum_view_history[16];
+static unsigned drum_view_step,drum_view_mutes,drum_view_solo;
 static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
 static float graph_scale;
 static const char *graph_now,*graph_next;
@@ -923,6 +1039,12 @@ static int draw(int animate)
   unsigned flags=plat_lock();
   unsigned refresh=0;
   unsigned drum_position=engine.drum_playhead&15u;
+  if(drums_visible){
+   drum_view_step=drum_position;
+   drum_view_mutes=engine.drum_mutes;
+   drum_view_solo=engine.drum_solo;
+   memcpy(drum_view_history,engine.drum_steps+(engine.drum_playhead&~15u),sizeof drum_view_history);
+  }
   if(score_visible||drums_visible){
    if(score_visible)memcpy(graph_notes,engine.timeline,sizeof graph_notes);
    refresh=!forecast_valid||forecast_page!=page||forecast_step!=engine.sequence_step||
@@ -972,6 +1094,8 @@ static int draw(int animate)
    display_animate=animate;
  }
  static const uint8_t control_first[5]={3,4,0,1,2};
+ int water_visible=page==PAGE_MIX&&(mix_tab==0||mix_tab==3)&&!debug&&!intro_active&&!fullscreen;
+ if(water_visible&&!display_strip&&(animate||dirty))mixer_snapshot();
  for(;display_strip<5;display_strip++){
    int band=display_first?control_first[display_strip]:display_strip;
    /* Input dispatch must not wait for a complete animated LCD frame. Poll
@@ -982,7 +1106,7 @@ static int draw(int animate)
    if(input_revision-display_inputs!=select_revision-display_selections){display_strip=0;dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
-   int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
+   int visual=intro_active||fullscreen||band==1||band==2||water_visible||(drums_visible&&band>0)||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
     * palette is chosen once, not per pixel; normal UI still follows user
@@ -1000,7 +1124,7 @@ static int draw(int animate)
      const uint16_t panel=skins[ui_theme][ui_background].panel;
      const uint16_t edge=skins[ui_theme][ui_background].border;
      if(band==0){cv_line(8,47,231,47,edge);}
-     else if(band>=3&&page!=PAGE_MIX&&!(page==PAGE_EVOLVE&&song_tab==0)){
+     else if(band>=3&&page!=PAGE_MIX&&page!=PAGE_DRUMS&&!(page==PAGE_EVOLVE&&song_tab==0)){
        cv_rect(6,2,110,42,panel);cv_rect(124,2,110,42,panel);
        if(ui_theme==2||ui_theme==4){
          cv_line(6,2,115,2,edge);cv_line(124,2,233,2,edge);
@@ -1065,8 +1189,23 @@ static int draw(int animate)
        visual_title(188,27,44,14,bpm);
      }
    }
-   else if(visual&&page==PAGE_MIX&&(mix_tab==0||mix_tab==3)){
-     mixer_console(band);
+   else if(water_visible){
+     if(band) mixer_console(band);
+     else{
+       unsigned scene=engine.scene;
+       char hz[12],match[12];
+       num(hz,(int)sr_frequencies[sr_scenes[scene].frequency].hz);
+       if(intention_match<0)ui_copy(match,"N/A");
+       else{num(match,intention_match);unsigned len=ui_len(match);match[len]='%';match[len+1]=0;}
+       limited_text(7,0,146,&FONT_B,"WATER MIXER",RGB(46,226,255));
+       char position[]="EDIT 1/5";position[5]=(char)('1'+mix_tab);
+       graph_text(155,1,position,RGB(173,206,224));
+       limited_text(7,20,155,&FONT_XS,sr_scenes[scene].name,RGB(225,248,255));
+       int x=graph_text(167,20,hz,RGB(225,248,255));
+       graph_text(x+3,20,"Hz",RGB(225,248,255));
+       x=graph_text(7,34,"INTENTION FREQ MATCH",RGB(76,232,255));
+       graph_text(x+6,34,match,RGB(225,248,255));
+     }
    }else if(visual&&page==PAGE_MIX&&mix_tab==5){
      mixer_focus_strip(band);
    }else if(visual&&page==PAGE_AIR){
@@ -1108,37 +1247,33 @@ static int draw(int animate)
        limited_text(8,33,226,&FONT_XS,air_tab==2?(engine.air_request?"WAVE QUEUED / NEXT PHRASE":engine.air_result>=128?"BLOCKED / MUTE, OFF OR VOICES":engine.air_result?"MUSICAL ACTION APPLIED":air_gesture.stage==2?"DETECTED / RELEASE HAND":"NEAR THEN FAR / RIGHT: TEST"):air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
      }
    }else if(visual&&page==PAGE_DRUMS){
-     if(band==1){
-       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART MIX"};
-       cv_text(8,0,&FONT_B,tabs[drum_tab],ui_background?skin_text():colors[SR_DRUMS]);
-       limited_text(8,25,146,&FONT_XS,drum_tab==5?sr_drum_parts[drum_part]:sr_drum_kits[engine.drum_kit].name,skin_text());
-       limited_text(157,25,76,&FONT_T,"SELECT: TAB",skin_dim());
-     }else{
-       static const char *lanes[]={"Kick","Snare","Cl Hat","Kick 2","Clap","Op Hat","Ped Hat","Rim","Snare 2","Low Tom","Hi Tom","Crash","Ride","Shaker","Conga","Bell"};
-       static const unsigned role_ink[]={SR_BASS,SR_DRUMS,SR_GUITAR};
-       uint32_t steps[16];
-       unsigned flags=plat_lock();
-       unsigned current=engine.drum_playhead;
-       unsigned muted=engine.drum_mutes;
-       memcpy(steps,engine.drum_steps+(current&~15u),sizeof steps);
-       plat_unlock(flags);
-       unsigned first=drum_tab==5?(drum_part/3u)*3u:0u;
-       for(unsigned lane=first;lane<first+3u&&lane<SR_DRUM_PARTS;lane++){
-         int y=(lane-first)*16;
-         uint16_t ink=(muted&(1u<<lane))||(engine.drum_solo<SR_DRUM_PARTS&&engine.drum_solo!=lane)
-             ?skin_dim():colors[role_ink[lane%3u]];
-         if(drum_tab==5&&lane==drum_part)cv_line(4,y,4,y+13,skin_accent());
-         limited_text(8,y,58,&FONT_T,lanes[lane],ink);
-         for(unsigned step=0;step<16;step++){
-           unsigned future=step>(current&15u);
-           unsigned flags=future?drum_forecast[step]:steps[step];
-           unsigned hit=flags&(1u<<lane);
-           int x=67+step*10;
-           if(step==(current&15u))cv_rect(x-1,y,10,13,skin_accent());
-           cv_rect(x,y+2,9,9,hit?ink:skins[ui_theme][ui_background].border);
-           if(hit&&future)cv_rect(x+2,y+4,5,5,bg);
-           if(hit&&(flags&(65536u<<lane)))cv_line(x+1,y+4,x+7,y+4,skin_text());
-         }
+     static const char *lanes[]={"Kick","Snare","Cl Hat","Kick 2","Clap","Op Hat","Ped Hat","Rim","Snare 2","Low Tom","Hi Tom","Crash","Ride","Shaker","Conga","Bell"};
+     for(unsigned lane=0;lane<SR_DRUM_PARTS;lane++){
+       unsigned row_band=1u+lane/5u;
+       int y=(int)(lane%5u)*9;
+       if(row_band!=(unsigned)band)continue;
+       uint16_t ink=(drum_view_mutes&(1u<<lane))||(drum_view_solo<SR_DRUM_PARTS&&drum_view_solo!=lane)
+         ?skin_dim():colors[lane%3u==0?SR_BASS:lane%3u==1?SR_DRUMS:SR_GUITAR];
+       if(lane==drum_part&&drum_tab==5)cv_rect(3,y,2,9,skin_accent());
+       graph_text(8,y,lanes[lane],ink);
+       for(unsigned step=0;step<16;step++){
+         unsigned events=step>drum_view_step?drum_forecast[step]:drum_view_history[step];
+         unsigned hit=events&(1u<<lane);
+         int x=69+(int)step*10;
+         if(step==drum_view_step)cv_rect(x-1,y,10,9,skins[ui_theme][ui_background].border);
+         cv_rect(x,y+3,7,hit?4:1,hit?ink:skins[ui_theme][ui_background].border);
+         if(hit&&step>drum_view_step)cv_rect(x+1,y+4,5,2,bg);
+         if(hit&&(events&(65536u<<lane)))cv_rect(x+2,y+3,2,1,skin_text());
+       }
+     }
+     if(band==4){
+       for(unsigned k=0;k<4;k++){
+         char number[16];const char *name;
+         const char *value=knob_value(control_for(k),&name,number);
+         int x=4+(int)k*59;
+         if(k==0&&drum_tab==5){name="K1 PART";value=sr_drum_parts[drum_part];}
+         limited_text(x,12,56,&FONT_T,name,skin_dim());
+         limited_text(x,25,56,&FONT_XS,value,skin_text());
        }
      }
    }else if(visual&&page==PAGE_SOUND&&sound_picker){
@@ -1295,12 +1430,9 @@ static int draw(int animate)
      limited_text(x,35,224-x,&FONT_XS,graph_next?graph_next:"Planning",skin_text());
    }else if(band==0){
      cv_text(8+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
-     if(page==PAGE_DRUMS&&ui_font_size!=2){
-       char count[12];num(count,engine.tracks[SR_DRUMS].events%10000u);
-       int x=cv_text(104,2,&FONT_XS,"PULSE ",skin_text());
-       cv_text(x,2,&FONT_XS,count,skin_accent());
-       char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
-       cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
+     if(page==PAGE_DRUMS){
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART MIX"};
+       limited_text(104,2,110,&FONT_XS,tabs[drum_tab],colors[SR_DRUMS]);
      }else if(page==PAGE_SOUND){
        limited_text(104,2,128,fit_font(groups[group],128,20),groups[group],skin_text());
      }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==6?"ARRANGE / EDIT":song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
@@ -1318,14 +1450,17 @@ static int draw(int animate)
        limited_text(127,25,105,&FONT_XS,patch_name(),skin_text());
      }
      if(preferences_saved_ms&&plat_ms()-preferences_saved_ms<1800u&&page==PAGE_SETUP)
-       limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
-     else if(page!=0&&page!=PAGE_SOUND){
-       unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?8:page==PAGE_MIX?5:page==PAGE_DRUMS?6:page==PAGE_SETUP?5:4;
-       if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
+       limited_text(173,25,59,&FONT_T,"SAVED",skin_accent());
+     if(page!=0&&page!=PAGE_SOUND){
+       unsigned section=page==PAGE_MIX?mix_tab:page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:air_tab;
+       unsigned total=page==PAGE_MIX?5:page==PAGE_DRUMS?6:page==PAGE_SETUP?5:4;
+       if(page==PAGE_MIX&&mix_tab==5){
+         limited_text(8,25,224,&FONT_T,"EDIT: MIX 1/5   SEL MUTE / LFO SOLO",skin_accent());
+       }else{
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
-       limited_text(x+3,25,232-x,&FONT_XS,page==PAGE_MIX&&mix_tab==5?"SEL MUTE / LFO SOLO":"NEXT SECTION",skin_text());
+       limited_text(x+5,25,163-x,&FONT_XS,"NEXT PAGE",skin_text());
+       }
      }
      if(page==PAGE_PLAY&&(engine.pending_mode))
        limited_text(107,2,125,&FONT_T,"NEXT BEAT",skin_accent());
