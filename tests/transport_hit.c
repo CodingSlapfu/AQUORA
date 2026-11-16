@@ -243,12 +243,16 @@ static unsigned nature_pcm_peak(unsigned type,float level)
 static void nature_audibility(void)
 {
     for(unsigned type=1;type<=7;type++){
-        unsigned low=nature_pcm_peak(type,.18f);
-        unsigned middle=nature_pcm_peak(type,.5f);
-        unsigned high=nature_pcm_peak(type,1.f);
-        assert(low>30&&middle>low&&high>middle&&high<12000);
+        /* Current Nature DSP caps this bus at 20 percent. */
+        unsigned low=nature_pcm_peak(type,.08f);
+        unsigned middle=nature_pcm_peak(type,.14f);
+        unsigned high=nature_pcm_peak(type,.20f);
+        fprintf(stderr,"Nature %u peak at 8/14/20%%: %u/%u/%u\n",
+                type,low,middle,high);
+        assert(low>5&&middle>low&&high>middle&&high<12000);
+        assert(nature_pcm_peak(type,.5f)==high);
+        assert(nature_pcm_peak(type,1.f)==high);
         assert(nature_pcm_peak(type,0)==0);
-        printf("Nature %u peak at 18/50/100%%: %u/%u/%u\n",type,low,middle,high);
     }
     a.solo=SR_LEAD;
     a.nature_audition=512;
