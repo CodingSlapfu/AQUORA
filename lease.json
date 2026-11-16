@@ -1,7 +1,1 @@
-{
-  "owner": "work-0713-ef08536dfc44",
-  "epoch": 21,
-  "released": true,
-  "expires": 1794854870,
-  "checkpoint": "a46e113ffdccd6c04bfade632c1d76d263628f85"
-}
+{"owner":"work-0714-ef08536dfc44","epoch":22,"released":false,"expires":1794862892,"checkpoint":"a46e113ffdccd6c04bfade632c1d76d263628f85"}
