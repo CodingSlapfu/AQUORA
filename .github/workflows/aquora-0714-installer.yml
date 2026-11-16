@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           name: aquora-0714-native-validation
@@ -28,6 +28,14 @@ jobs:
           (cd native && sha256sum -c --strict SHA256SUMS)
           bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
           python3 -m pip install Pillow==11.3.0
+      - name: Render and verify the drum step editor
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/results"
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.14 2>&1 | tee "$RUNNER_TEMP/results/host.log"
+          printf 'master 2048\nwait 3000\ntap ARP\nwait 200\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\nwait 300\nexpect drum_tab 6\nshot drum-steps.png\nexpect drops 0\n' > "$RUNNER_TEMP/results/drum.script"
+          device/build/host/sound-healing_host "$RUNNER_TEMP/results/drum.script" "$RUNNER_TEMP/results" 2>&1 | tee "$RUNNER_TEMP/results/drum.log"
       - name: Compile matching browser firmware and stage installer
         run: |
           set -euo pipefail
