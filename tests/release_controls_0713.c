@@ -33,6 +33,7 @@ static void vocal_priority(void)
 {
     static voice_block block;
     sr_init(&engine,13);
+    sr_start(&engine);
     sr_note_on(&engine,SR_CHOIR,60,70,3.f);
     sr_note_on(&engine,SR_DRONE,65,70,3.f);
     prepare_voices(&engine,&block,64);
