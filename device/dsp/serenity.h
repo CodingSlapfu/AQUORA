@@ -39,7 +39,7 @@ typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
 typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; uint8_t last_note; } sr_track;
-typedef struct { uint8_t active, track, gate, midi, key, external, channel, patch; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, filter_tail, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
+typedef struct { uint8_t active, track, gate, midi, key, external, channel, patch, sample_zone; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, filter_tail, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {uint32_t frame,duration;uint8_t role,note,velocity,reserved;} sr_event;
 typedef struct {uint8_t count;uint8_t note[16],step[16],length[16];} sr_learn_phrase;
@@ -73,7 +73,7 @@ typedef struct {
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;
   float speaker_low, speaker_body, speaker_mix;
-  uint8_t speaker_enabled;
+  uint8_t speaker_enabled,vocals_enabled,vocal_presence;
   float lock_phase;
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;
@@ -164,6 +164,7 @@ void sr_set_frequency(sr_engine *e, uint8_t frequency);
 void sr_set_perfect_key(sr_engine *e, uint8_t enabled);
 void sr_set_tuning_432(sr_engine *e, uint8_t enabled);
 void sr_set_drums(sr_engine *e, uint8_t enabled);
+void sr_set_vocals(sr_engine *e,unsigned enabled,unsigned presence);
 float sr_patch_preview(const sr_track *track,float phase);
 float sr_patch_envelope(const sr_track *track,float seconds,int releasing);
 void sr_set_drum_level(sr_engine *e, float level);

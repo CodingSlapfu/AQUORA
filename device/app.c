@@ -67,7 +67,7 @@ extern void plat_air_enable(int on);
 static unsigned quick_item;
 static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature",
  "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate","Nature Style","Evolution","Master FX","Track Routing"};
-static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14,16};
+static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14,16,17};
 
 static volatile unsigned intro_active;
 static unsigned intro_start, intro_samples, intro_master;
@@ -122,11 +122,11 @@ static unsigned frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
 static unsigned page_animation_ms;
-enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=17 };
+enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=18 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,0},{32,33,34,35},{100,0,0,0},
- {37,17,10,9},{56,141,142,143},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123},{152,153,154,0}
+ {37,17,10,9},{56,141,142,143},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123},{152,153,154,0},{155,156,0,0}
 };
 static const uint8_t page_controls[4][4]={
  {18,145,22,5},{0,0,0,0},{0,20,25,46},{100,0,0,0}
@@ -152,6 +152,7 @@ typedef struct {
     uint32_t tempo_ticks;
     uint8_t drum_presence;
     uint8_t auto_mix; /* schema40 alignment padding: 0x80 | gain | level<<1; zero legacy => defaults ON */
+    uint8_t vocals; /* reserved trailing byte, tagged to ignore older settings */
 } aq_settings;
 _Static_assert(sizeof(aq_settings)==offsetof(aq_settings,tempo_ticks)+8u,"Reuse schema40 padding without moving settings");
 
@@ -163,6 +164,7 @@ static int save_preferences(void)
 {
     aq_settings settings={0};
     unsigned flags=plat_lock();
+    settings.vocals=0xa0u|engine.vocals_enabled|(engine.vocal_presence<<1u);
     settings.auto_mix=0x80u|engine.auto_gain|(engine.auto_level<<1u);
     settings.version=0x41513040u;settings.tempo_ticks=engine.tick_length;settings.drum_presence=engine.drum_presence;settings.air_noise=air_sensor.noise;
 #if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
@@ -359,6 +361,8 @@ static void consume(void){
  case 110:midi.settings.controls_out=switched(midi.settings.controls_out,d);midi_cc_program=midi_cc_volume=midi_cc_pan=midi_cc_send=midi_cc_bend=-1;break;
  case 152:engine.filter_cutoff=bounded((int)engine.filter_cutoff+d,0,15);break;
  case 153:engine.filter_resonance=bounded((int)engine.filter_resonance+d,0,15);break;
+ case 155:sr_set_vocals(&engine,switched(engine.vocals_enabled,d),engine.vocal_presence);break;
+ case 156:sr_set_vocals(&engine,engine.vocals_enabled,bounded((int)engine.vocal_presence+d,1,4));break;
  case 154:engine.slicer_mask=bounded((int)engine.slicer_mask+d,0,7);break;
  case 137:arrange_browse=bounded((int)arrange_browse+d,0,7);break;
  case 138:{unsigned id=engine.arrange_next?engine.arrange_next-1u:sr_arrange_section(&engine,1);sr_arrange_queue(&engine,bounded((int)id+d,0,31),engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u);break;}
@@ -554,6 +558,8 @@ void app_init(void)
       }
       engine.perfect_key=!!settings.perfect_key;
       engine.speaker_enabled=settings.output_profile==0x81u;
+      if(settings.version==0x41513040u&&(settings.vocals&0xf0u)==0xa0u)
+        sr_set_vocals(&engine,settings.vocals&1u,(settings.vocals>>1u)&7u);
       if(settings.lighting&0x80u){lighting=settings.lighting&3u;keys_baseline=(settings.lighting>>2u)&3u;notes_lights=(settings.lighting>>4u)&1u;dance_lights=(settings.lighting>>5u)&1u;}
       else {lighting=settings.lighting==2?0:2;keys_baseline=settings.lighting==0?3:0;notes_lights=settings.lighting!=2;dance_lights=settings.lighting==3;}
       if(settings.version>=0x41513033u){
@@ -1253,6 +1259,8 @@ int app_expect(const char *what,int *got){
    printf("CONTROL run=%u queue_p95_ms=%u queue_p99_ms=%u label_p95_ms=%u label_p99_ms=%u label_max_ms=%u poll_p99_ms=%u drops=%u\n",run,q.p95/100u,q.p99/100u,l.p95/100u,l.p99/100u,l.peak/100u,p.p99/100u,dropped);
   }*got=1;return 1;
  }
+ if(!strcmp(what,"vocals")){*got=engine.vocals_enabled;return 1;}
+ if(!strcmp(what,"vocal_presence")){*got=engine.vocal_presence;return 1;}
  if(!strcmp(what,"speaker")){*got=engine.speaker_enabled;return 1;}
  if(!strcmp(what,"drum_mutes")){*got=engine.drum_mutes;return 1;}
  if(!strcmp(what,"mix_focus")){*got=mix_focus;return 1;}

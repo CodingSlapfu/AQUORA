@@ -202,6 +202,14 @@ static const struct {float rate,depth,delay;} wind_motion[]={
 };
 
 const float sr_binaural_presets[SR_BEAT_PRESETS] = {1.f, 2.f, 4.f, 6.f, 8.f, 10.f, 14.f, 20.f};
+#include "vocal_samples.inc"
+
+#if defined(SR_DEVICE) && !defined(PLAT_HOST)
+__attribute__((section(".pool"),aligned(4)))
+#endif
+static int8_t vocal_pcm[VOCAL_ZONES][VOCAL_LENGTH];
+static uint8_t vocal_pcm_ready;
+
 static const uint16_t rv_len[4]={1061,1277,1453,1789};
 static const int8_t scale_notes[5][7] = {
   {0,2,4,7,9,12,14}, {0,2,3,5,7,10,12}, {0,3,5,7,10,12,15},
@@ -728,9 +736,27 @@ void sr_set_drum_kit(sr_engine *e,uint8_t kit){if(kit<SR_DRUM_KITS)e->drum_kit=k
 void sr_set_binaural(sr_engine *e,uint8_t enabled){e->binaural_enabled=enabled?1:0;}
 void sr_set_binaural_rate(sr_engine *e,float hz){if(isfinite(hz)&&hz>=.5f&&hz<=40.f)e->binaural_rate=hz;}
 void sr_set_binaural_carrier(sr_engine *e,float hz){if(isfinite(hz)&&hz>=80.f&&hz<=1000.f)e->binaural_carrier=hz;}
+void sr_set_vocals(sr_engine *e,unsigned enabled,unsigned presence)
+{
+  e->vocals_enabled=!!enabled;
+  e->vocal_presence=presence<1u?1u:presence>4u?4u:presence;
+  if(!enabled)for(unsigned i=0;i<SR_VOICES;i++){
+    sr_voice *voice=&e->voices[i];
+    if(!voice->active||!voice->sample_zone)continue;
+    release_voice(e,voice);
+    voice->remain=0;
+    voice->release_coef=.0012f;
+  }
+}
 void sr_set_track_patch(sr_engine *e,uint8_t t,uint8_t patch){if(t<SR_TRACKS&&patch<SR_PATCHES)e->tracks[t].patch=patch;}
 void sr_init(sr_engine *e,uint32_t seed){
-  memset(e,0,sizeof(*e)); e->rng=seed?seed:0x73ac05u;
+    if(!vocal_pcm_ready){
+      memcpy(vocal_pcm,vocal_flash,sizeof vocal_pcm);
+      vocal_pcm_ready=1;
+    }
+
+  memset(e,0,sizeof(*e));
+    e->vocal_presence=2; e->rng=seed?seed:0x73ac05u;
   if(!lut_ready){
     for(int i=0;i<=LUT;i++)sin_table[i]=sinf((float)i*2.f*PI/(float)LUT);
     lut_ready=1;
@@ -865,11 +891,12 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   for(int i=0;i<SR_VOICES;i++){
     if(!e->voices[i].active){slot=i;break;}
     if(e->voices[i].key&&e->voices[i].gate)continue;
+    if(e->voices[i].sample_zone&&e->voices[i].born==e->frame_count)continue;
     float score=e->voices[i].env+(e->voices[i].track==SR_BASS?.35f:e->voices[i].key&&e->voices[i].gate?.25f:0);
     if(score<quiet){quiet=score;slot=i;}
   }
   if(slot<0)return 0;
-  sr_voice *v=&e->voices[slot];release_voice(e,v);e->note_ons++;float tail=v->active?v->filter*v->env*calibrated_patch_gain(v->patch):0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;v->patch=e->tracks[track].patch;
+  sr_voice *v=&e->voices[slot];release_voice(e,v);e->note_ons++;float tail=v->active?v->filter*v->env*(v->sample_zone?.27f:calibrated_patch_gain(v->patch)):0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;v->patch=e->tracks[track].patch;
   const sr_patch *p=&sr_patches[e->tracks[track].patch];
   e->tracks[track].last_note=midi;
   v->born=e->frame_count;v->freq=sr_note_frequency(e,midi);v->pitch=v->freq;v->midi=midi;
@@ -1435,6 +1462,56 @@ static void accompaniment(sr_engine *e,unsigned bar,unsigned chord)
  }
 }
 
+/* Real, pitched human takes share the existing choir role and voice pool.
+ * Fit each chord tone into one of two vocal registers before transposition. */
+static void recorded_note(sr_engine *e,int note,unsigned zone,unsigned velocity,float beats)
+{
+ unsigned occupied=0;
+ for(unsigned i=0;i<SR_VOICES;i++)occupied+=e->voices[i].active&&e->voices[i].sample_zone!=0;
+ if(occupied>=2u)return;
+ int root=zone<3u?60:72;
+ while(note>root+6)note-=12;
+ while(note<root-6)note+=12;
+ sr_voice *voice=note_on(e,SR_CHOIR,note,velocity,beats);
+ if(!voice)return;
+ voice->sample_zone=zone+1u;
+ voice->phase2=voice->freq*(VOCAL_RATE/(float)SR_RATE)/vocal_zones[zone].hz;
+ voice->attack_coef=.00065f;
+ voice->release_coef=.00095f;
+}
+
+static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
+{
+ if(!e->vocals_enabled||!e->vocal_presence||e->frequency_lock||e->freeze||
+    (e->sound_locks&(1u<<SR_CHOIR))||
+    (e->solo<SR_TRACKS&&e->solo!=SR_CHOIR))return 0;
+
+ unsigned section=song_section(e),bar=score_bar(e,step),pos=step&15u,mode=e->music_mode;
+ unsigned window=(bar+e->scene+mode)&3u;
+ if(section==0u||section==3u||window>=e->vocal_presence||
+    (mode==SR_EXPERIMENTAL&&(section!=4u||(bar&3u)!=0u)))return 0;
+ if(pos==7u||pos==11u){
+   int call=-1;
+   for(unsigned back=1;back<=4u&&call<0;back++)call=motif_degree(e,step-back);
+   if(call>=0&&(motif_degree(e,step)<0||(section==2u&&pos==11u))){
+     const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+     unsigned target=phrase_chord(e,step/16u+1u);
+     unsigned tone=support_degree(e,chord,target,(unsigned)call,1);
+     unsigned vowel=(form_index(e,0)+e->scene+(pos==11u))%3u;
+     unsigned zone=vowel+(mode==SR_CINEMATIC||((bar+pos)&1u)?3u:0u);
+     unsigned velocity=(pos==7u?63u:54u)+4u*e->vocal_presence;
+     float held=pos==7u?.65f:.8f;
+     recorded_note(e,sr_tonic(e)+scale[tone],zone,velocity,held);
+     if(pos==11u&&section==2u&&e->vocal_presence>=2u&&mode!=SR_EXPERIMENTAL){
+       unsigned harmony=tone==chord?(chord+2u)%7u:chord;
+       recorded_note(e,sr_tonic(e)+scale[harmony],zone<3u?zone+3u:zone-3u,
+                     velocity-19u,held+.10f);
+     }
+   }
+ }
+ return 1;
+}
+
 static void choir_answer(sr_engine *e,unsigned step,unsigned chord)
 {
  const unsigned pos=step&15u,bar=step/16u,section=song_section(e),mode=e->music_mode;
@@ -1590,7 +1667,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   if(!learned_active(e)&&degree>=0)
     ornament(e,2,lead_pitch(e,degree),68-dynamic+expression,melody_duration(e,s),s,e->variation>0.f&&!e->freeze);
   piano_phrase(e,s,chord,degree,expression);
-  choir_answer(e,s,chord);
+  if(!recorded_vocal_phrase(e,s,chord))choir_answer(e,s,chord);
   if(pos==12u&&(song_section(e)==2u||song_section(e)==4u)){
     unsigned next=phrase_chord(e,s/16u+1u);
     unsigned inner=support_degree(e,chord,next,(chord+4u)%7u,0);
@@ -1688,6 +1765,18 @@ static void trigger(sr_engine *e){
  * offbeat grammar as playback, with no DSP samples, audio RNG or shared state
  * advanced. Storage lives in the pool; never place an engine copy on stack. */
 static void score_advance(sr_engine *e,uint32_t frame){
+ uint32_t elapsed=frame-e->frame_count;
+ if(e->vocals_enabled)for(unsigned i=0;i<SR_VOICES;i++){
+   sr_voice *v=&e->voices[i];
+   if(!v->active||!v->sample_zone)continue;
+   if(v->gate&&elapsed<v->remain){v->remain-=elapsed;continue;}
+   if(v->gate){
+     v->gate=0;
+     v->remain+=SR_RATE/6u; /* approximately the audible release floor */
+   }
+   if(elapsed>=v->remain)v->active=0;
+   else v->remain-=elapsed;
+ }
  e->frame_count=frame;
 }
 static unsigned preview_collect(sr_engine *e,sr_event *out,unsigned cap,unsigned count,unsigned before){
@@ -2041,7 +2130,7 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     config->cutoff=e->filter_cutoff?.008f+cutoff:.028f+brightness*.24f;
     float air_focus=(e->air_track>=SR_TRACKS||e->air_track==v->track)?e->air_wet*e->air_depth*.01f:0;
     if(e->air_fx==3)config->cutoff*=1.f-.88f*air_focus;
-    config->gain=calibrated_patch_gain(v->patch);
+    config->gain=v->sample_zone?.27f:calibrated_patch_gain(v->patch);
     config->left=left[v->track];
     config->right=right[v->track];
     if(e->air_mode==4){float swell=1.f+.12f*air_focus;config->left*=swell;config->right*=swell;}
@@ -2189,7 +2278,15 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
       }
       unsigned cached=precomputed?precomputed[a]:0u;
       float s;
-      if(cached){
+      if(v->sample_zone){
+        unsigned zone=v->sample_zone-1u;
+        unsigned index=(unsigned)v->phase;
+        unsigned next=index+1u<VOCAL_LENGTH?index+1u:vocal_zones[zone].loop;
+        const int8_t *pcm=vocal_pcm[zone];
+        s=(pcm[index]+(pcm[next]-pcm[index])*(v->phase-index))*(1.f/128.f);
+        v->phase+=v->phase2;
+        if(v->phase>=VOCAL_LENGTH)v->phase-=VOCAL_LENGTH-vocal_zones[zone].loop;
+      }else if(cached){
         s=cached>FM_JOB_VOICES?local_fm.samples[i][cached-FM_JOB_VOICES-1u]:
           remote_fm.samples[i][cached-1u];
       }else{
@@ -2201,8 +2298,8 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
         float index=config->fm_depth*(1.f-config->fm_envelope*(1.f-v->env));
         s=fm_sample(v->phase,v->phase2,index,config->vocal);
       }
-      s+=config->breath*breath_noise;
-      if(config->wave==SR_PLUCK)v->peak*=config->body_decay;
+      if(!v->sample_zone)s+=config->breath*breath_noise;
+      if(!v->sample_zone&&config->wave==SR_PLUCK)v->peak*=config->body_decay;
       if(resonance>0.f){
         s+=(v->filter-v->filter_tail)*resonance;
         v->filter_tail+=(v->filter-v->filter_tail)*config->cutoff;
@@ -2336,7 +2433,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames)
         sr_voice *v=c->voice;
         /* Key-off and release tails stay local so event order and lifecycle
          * cannot diverge across the cores. */
-        if(!v->gate||(v->remain&&v->remain<=frames))continue;
+        if(v->sample_zone||!v->gate||(v->remain&&v->remain<=frames))continue;
         unsigned local=local_fm.count<remote_fm.count+2u;
         fm_job *job=local?&local_fm:&remote_fm;
         unsigned slot=job->count++;

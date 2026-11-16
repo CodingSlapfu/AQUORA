@@ -45,7 +45,7 @@ static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS
 #define FONT_B (*ui_value_font())
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain","Woodland Brook","Distant Storm"};
-static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum","Filter / Slicer"};
+static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum","Filter / Slicer","Recorded Vocals"};
 /* Static panel palettes. Canvas is independently exact black or white. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
  {{RGB(0,0,0),RGB(0,0,0),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
@@ -367,6 +367,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
    unsigned part=id-149u;
    *name=parts[part];return engine.drum_mutes&(1u<<part)?"Mute":"On";
  }
+ case 155:*name="RECORDED VOCALS";return engine.vocals_enabled?"On":"Off";
+ case 156:{static const char *names[]={"Sparse","Gentle","Present","Featured"};*name="VOCAL PRESENCE";return names[engine.vocal_presence?engine.vocal_presence-1u:1u];}
  case 146:*name="AUDIO OUTPUT";return engine.speaker_enabled?"FM-1 Speaker":"Headphones";
  case 147:{static const char *names[]={"Lagoon","Orchid","Electric Blue","Amber","Indigo"};*name="THEME";return names[ui_theme];}
  case 148:*name="BACKGROUND";return ui_background?"White":"Black";
