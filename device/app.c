@@ -10,7 +10,8 @@ static sr_engine engine PLAT_POOL;
 static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
 typedef struct {int kind,value; unsigned track, captured_ms;} command;
 static command queue[64];
-static volatile unsigned intention_request,intention_applied;
+static volatile unsigned intention_request,intention_applied,intention_ticks;
+static unsigned intention_latency_us,intention_prepare_us,lcd_submit_us;
 static volatile unsigned qread,qwrite,state_revision,command_enqueued,command_applied;
 static unsigned displayed_revision, input_revision, select_revision;
 static unsigned dropped,page,selected,group,oldkeys,oldbuttons,lastdraw,dirty=1,debug;
@@ -315,6 +316,7 @@ static void select_intention(int delta)
  unsigned prior=shown_intention();
  unsigned target=bounded((int)prior+delta,0,SR_SCENES-1);
  if(target!=prior){
+   intention_ticks=plat_ticks24();
    intention_request=((intention_request&~31u)+32u)|target;
    dirty=1;
  }
@@ -512,7 +514,10 @@ static void consume(void){
  }
  }
  if(request!=intention_applied){
+   unsigned start=plat_ticks24();
+   intention_latency_us=(start-intention_ticks)/24u;
    sr_set_scene(&engine,request%32u);
+   intention_prepare_us=(plat_ticks24()-start)/24u;
    intention_applied=request;
    state_revision++;
  }
@@ -1224,13 +1229,13 @@ void app_frame(void)
     }
     if(animate){
       lastdraw=now;
-      unsigned begin=plat_ticks24();
       if(page==PAGE_PLAY&&!intro_active&&((!quick_started&&!quick_pending)||quick_timeout))prepare_geometry();
-      graphics_us=(plat_ticks24()-begin)/24;
+      graphics_us=vis_output.busy_us;
     }
     if(animate||dirty||battery_dirty){
       redraw_ui_ms=now;
       unsigned draw_start=plat_ticks24();
+      lcd_submit_us=0;
       unsigned complete=draw(animate);
       frame_us=(plat_ticks24()-draw_start)/24;
       if(!debug&&!intro_active)measure(&display_timing[page],(frame_us+9u)/10u);
@@ -1404,6 +1409,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"geometry_jobs"))*got=geometry_jobs;
  else if(!strcmp(what,"history_updates"))*got=history_updates;
  else if(!strcmp(what,"ui_blits"))*got=ui_blits;
+ else if(!strcmp(what,"intention_ack"))*got=intention_request==intention_applied;
  else if(!strcmp(what,"worker_jobs"))*got=worker_jobs;
  else if(!strcmp(what,"worker_waits"))*got=worker_waits;
  else if(!strcmp(what,"scope_samples"))*got=engine.scope_samples;

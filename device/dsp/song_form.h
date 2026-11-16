@@ -31,9 +31,22 @@ void sr_plan_sections(sr_engine *e){
  uint32_t key=song_draw(e->song_seed,cycle+701u+e->scene*7u+e->music_mode*149u);
  if(e->form_key==key&&e->form_route[32]==28u)return;
  e->form_key=key;
+ /* The large-scale milestones recur in every journey. The seeded scenes
+  * between them develop and prepare those arrivals. */
+ static const uint8_t landmarks[SR_MUSIC_MODES][4]={
+   {2,5,22,28}, {2,19,12,28}, {17,5,22,28}, {24,7,26,28}
+ };
+ unsigned cadence=0;
+ for(unsigned n=0;n<16;n++)if(e->motif_home[n]>=0)cadence=e->motif_home[n];
  unsigned used[32]={0};
  e->form_route[0]=cycle?28u:0u;used[e->form_route[0]]=1;
  for(unsigned slot=1;slot<32;slot++){
+  unsigned landmark=slot==2u?1u:slot==10u?2u:slot==20u?3u:slot==28u?4u:0u;
+  if(landmark){
+   unsigned id=landmarks[e->music_mode][landmark-1u];
+   e->form_route[slot]=id;used[id]++;
+   continue;
+  }
   unsigned prev=e->form_route[slot-1u],family=sr_sections[prev].family;
   unsigned phase=slot%8u,energy=sr_scenes[e->scene].energy;
   unsigned target=phase<3u?1u:phase<6u?2u:phase==6u?3u:4u;
@@ -60,18 +73,19 @@ void sr_plan_sections(sr_engine *e){
    if(family==3u&&a->family==3u)w=0;
    /* Score the cadence of this song's actual stored theme. Its final
     * voiced scale degree biases the destination without re-rolling notes. */
-   int cadence=0;
-   for(unsigned n=0;n<16;n++)if(e->motif_home[n]>=0)cadence=e->motif_home[n];
-   unsigned distance=(a->harmony+7u-(unsigned)cadence)%7u;
+   unsigned distance=(a->harmony+7u-cadence)%7u;
    if(distance==0u||distance==3u||distance==4u)w*=2u;
    unsigned penalty=1u+used[id]*3u;
    w=(w+penalty-1u)/penalty;
    if(id==prev||(slot>1u&&id==e->form_route[slot-2u]))w=0;
+   unsigned next_landmark=slot==1u?1u:slot==9u?2u:slot==19u?3u:slot==27u?4u:0u;
+   if(next_landmark&&(id==landmarks[e->music_mode][next_landmark-1u]||id==20u||id==21u))w=0;
    if(slot==30u&&(id==15u||id==20u||id==21u))w=0;
    if(slot==31u)w=id==15u?1u:0u;
    weights[id]=w;total+=w;
   }
-  unsigned draw=song_draw(key,slot)%total,id=1;
+  unsigned draw=total?song_draw(key,slot)%total:0u,id=1;
+  if(!total){e->form_route[slot]=2u;used[2]++;continue;}
   for(;id<31;id++){if(draw<weights[id])break;draw-=weights[id];}
   e->form_route[slot]=id;used[id]++;
  }

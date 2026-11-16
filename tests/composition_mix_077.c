@@ -11,12 +11,13 @@ static void set_intention(sr_engine *engine, unsigned intention)
 {
     const uint32_t old_seed = engine->song_seed;
     sr_set_scene(engine, intention);
-    assert(engine->pending_scene == intention + 1);
-    for (unsigned i = 0; engine->pending_scene && i < 4; i++)
-        trigger(engine);
     assert(!engine->pending_scene);
     assert(engine->scene == intention && engine->song_seed != old_seed);
-    assert(engine->form_loop == 0 && engine->loop_pos == 1 && engine->phrase == 0);
+    assert(engine->form_loop == 0 && engine->loop_pos == 0 && engine->phrase == 0);
+    assert(engine->tick_phase == engine->tick_length);
+    int16_t first_block[512];
+    sr_render(engine, first_block, 256);
+    assert(engine->sequence_step == 1 && engine->loop_pos == 1);
 }
 
 static void test_visits(void)

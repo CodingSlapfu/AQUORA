@@ -38,7 +38,7 @@ static struct {
 typedef struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[512][4];uint16_t node_count;int16_t sand[512][2];uint8_t water_light[30][30];} visual_result;
 static visual_result vis_output __attribute__((aligned(64)));
 static visual_result vis_work __attribute__((aligned(64)));
-static unsigned visual_pending, visual_started;
+static unsigned visual_pending, visual_started, visual_started_ticks;
 static float vis_sine[128];
 static unsigned worker_wait_us,worker_fallbacks,worker_completed,visual_last_ms;
 static float original_phase,original_activity;
@@ -317,6 +317,7 @@ static void poll_visual_worker(void)
     }
     if(plat_cpu2_wait()==0){
       vis_output=vis_work;
+      worker_wait_us=(plat_ticks24()-visual_started_ticks)/24u;
       worker_completed++;
       visual_pending=0;
     }else{
@@ -371,6 +372,7 @@ static void prepare_geometry(void)
 #ifndef PLAT_HOST
     if(aq_flash_busy_base)return;
 #endif
+    visual_started_ticks=plat_ticks24();
     if(plat_cpu2_on()&&plat_cpu2_run(visual_job,0)){
       AQ_VIS_COUNT(worker_jobs);
       visual_pending=1;

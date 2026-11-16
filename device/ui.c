@@ -479,7 +479,7 @@ static void performance(int band)
    }
    if(band==1){label(8,0,"CALLBACK MEAN us",callback_stats.mean);label(127,0,"CALLBACK PEAK us",callback_stats.peak);}
    if(band==2){label(8,0,"CALLBACK P95 us",callback_stats.p95);label(127,0,"CALLBACK P99 us",callback_stats.p99);}
-   if(band==3){timing_summary play_draw=summarize(&display_timing[PAGE_PLAY]);label(8,0,"PLAY DRAW P95 us",play_draw.p95*10u);label(127,0,"PLAY DRAW P99 us",play_draw.p99*10u);}
+   if(band==3){label(8,0,"PRESETS ACK us",intention_latency_us);label(127,0,"PLAN BUILD us",intention_prepare_us);}
    if(band==4){
      int voices=0;for(int i=0;i<SR_VOICES;i++)voices+=!!engine.voices[i].active;
      label(8,0,"ACTIVE VOICES",voices);label(127,0,"INPUT DROPS",dropped);
@@ -497,6 +497,7 @@ static void performance(int band)
    label(127,0,"MISSED / 2s",shown_missed);
    if(ui_font_size!=2)cv_text(8,31,&FONT_XS,"DRAW us",skin_text());
    char draw[12];num(draw,frame_us);if(ui_font_size!=2)cv_text(65,31,&FONT_XS,draw,skin_text());
+   if(ui_font_size!=2){cv_text(125,31,&FONT_XS,"LCD us",skin_text());num(draw,lcd_submit_us);cv_text(170,31,&FONT_XS,draw,skin_text());}
 
  }else if(band==2){
    label(8,0,"AUDIO MEAN us",audio_stats.mean);
@@ -507,10 +508,10 @@ static void performance(int band)
    label(127,0,"AUDIO+FX % BUDGET",(audio_stats.mean+fx_stats.mean)*100/5805);
    char v[12];num(v,plat_xruns());if(ui_font_size!=2)cv_text(66,15,&FONT_B,v,skin_text());
  }else if(band==4){
-   if(ui_font_size==2){label(8,0,"FM BLOCKS",worker_completed);label(127,0,"FALLBACK",worker_fallbacks);}
+   if(ui_font_size==2){label(8,0,"GEOMETRY JOBS",worker_completed);label(127,0,"FALLBACK",worker_fallbacks);}
    else{
-   cv_text(8,0,&FONT_XS,plat_cpu2_on()?"CORE 1 FM / CORE 0 MIX":"CORE 0 / SINGLE-CORE FALLBACK",skin_text());
-   label(8,12,"GEOM / WAIT us",vis_output.busy_us);
+   cv_text(8,0,&FONT_XS,plat_cpu2_on()?"CORE 1 DISPLAY / CORE 0 AUDIO":"CORE 0 / SINGLE-CORE FALLBACK",skin_text());
+   label(8,12,"GEOMETRY us",vis_output.busy_us);
    char v[12];num(v,worker_wait_us);cv_text(66,27,&FONT_B,v,skin_text());
    label(127,12,"FALLBACK / BAD",worker_fallbacks);
    num(v,plat_cpu2_bad());cv_text(185,27,&FONT_B,v,skin_text());
@@ -1390,8 +1391,10 @@ static int draw(int animate)
      cv_text(205,25,&FONT_XS,tag,skin_dim());
    }
    if(band==0&&!intro_active&&!fullscreen)battery_glyph();
+   unsigned lcd_start=plat_ticks24();
    if(submit_panel_band(band,animate&&(intro_active||
       (page==PAGE_PLAY&&band>0&&(fullscreen||band<3)))))AQ_VIS_COUNT(ui_blits);
+   if(!debug)lcd_submit_us+=(plat_ticks24()-lcd_start)/24u;
    /* Acknowledge the submitted control band, rather than charging later
     * optional graphics to label feedback. Physical DMA completion is a
     * separate device measurement, not represented by this counter. */

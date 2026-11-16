@@ -332,21 +332,30 @@ static unsigned phrase_chord(const sr_engine *e,unsigned bar)
     {0,3,5,4,0,1,4,0},{0,5,3,4,2,3,4,0},{0,2,3,0,5,1,4,0},
     {0,1,5,3,0,5,4,0},{0,3,1,4,5,3,4,0},{0,5,2,5,3,1,4,0}
   };
-  unsigned position=score_bar(e,bar*16u)&7u;
+  unsigned absolute=score_bar(e,bar*16u);
+  unsigned position=absolute&7u;
   unsigned family=song_section(e);
   unsigned identity=(intention_score[e->scene][2]+e->music_mode+
     song_draw(e->song_seed,327)%6u)%6u;
   if(e->freeze||e->variation<=0.f)return progressions[identity][position];
   unsigned section=form_index(e,0);
-  unsigned center=section_harmony(section);
   unsigned bars_left=sr_section_remaining(e);
-  if(bars_left==1u){
+  if(absolute>e->form_loop&&absolute-e->form_loop>=bars_left){
+    unsigned next=form_index(e,1);
+    return section_harmony(next);
+  }
+  unsigned center=section_harmony(section);
+  if(absolute==e->form_loop&&bars_left==1u){
     unsigned destination=section_harmony(form_index(e,1));
     if(family==4u)return 0;
     return (destination+4u)%7u;
   }
   if(family==2u||family==3u)identity=(identity+section)%6u;
   if(family==4u)center=0;
+  /* The head of a new scene states its center. Long, mellow modes
+   * occasionally sustain a chord across the two-bar melodic answer. */
+  if(bars_left==2u*(2u+sr_scenes[e->scene].energy%3u)&&absolute==e->form_loop)return center;
+  if(e->music_mode<=SR_CINEMATIC&&family==3u)position&=~1u;
   return (progressions[identity][position]+center)%7u;
 }
 #include "learn.h"
@@ -359,7 +368,11 @@ static int motif_degree_base(const sr_engine *e,unsigned step)
   if(!e->freeze&&e->variation>0.f){
     if(section==3u&&pos>=4u&&pos<12u)return -1;
     if(section==2u&&pos>=4u&&pos<12u)degree+=2;
-    if(section==1u&&(bar&1u)&&pos>=8u&&pos<14u)degree++;
+    if((bar&1u)&&pos>=8u&&pos<14u){
+      /* A second-bar answer uses the same head and a different tail. */
+      if(section==1u)degree+=(e->music_mode==SR_NEOCLASSICAL)?-1:1;
+      if(section==2u&&e->music_mode==SR_EXPERIMENTAL)degree--;
+    }
     if(section==4u&&pos>=7u&&pos<13u)degree--;
   }
   if((bar&7u)==7u&&pos>=14u)return 0;
@@ -798,8 +811,12 @@ static void plan_roles(sr_engine *e)
       0x77, /* hush: fewer melodic attacks, same tonal bed */
       0x7f  /* return: answer with upper harmony */
     };
-    unsigned active=sections[song_section(e)]|e->sound_locks|(1u<<SR_DRUMS);
+    unsigned family=song_section(e);
+    unsigned active=sections[family]|e->sound_locks|(1u<<SR_DRUMS);
     unsigned featured=sr_sections[form_index(e,0)].roles|e->sound_locks|(1u<<SR_DRUMS);
+    /* A suspension exposes its answering voices. Bass and pad continue
+     * through the handover while absent parts finish their natural tails. */
+    if(family==3u)active=featured|(1u<<SR_BASS)|(1u<<SR_DRONE);
     for(unsigned t=0;t<SR_TRACKS;t++){
       unsigned bit=1u<<t;
       e->role_target[t]=!(active&bit)?0.f:(featured&bit)?1.f:.74f;
@@ -823,8 +840,7 @@ void sr_stop(sr_engine *e)
     e->running=0;e->response_pending=0;
     memset(e->scheduled,0,sizeof e->scheduled);e->air_request=0;
     if(e->rhythm_pending){e->rhythm_style=e->rhythm_pending-1u;e->rhythm_pending=0;}
-    if(e->pending_mode){e->music_mode=e->pending_mode-1u;e->pending_mode=0;sr_set_scene(e,e->pending_scene?e->pending_scene-1u:e->scene);}
-    else if(e->pending_scene)sr_set_scene(e,e->pending_scene-1u);
+    if(e->pending_mode){e->music_mode=e->pending_mode-1u;e->pending_mode=0;sr_set_scene(e,e->scene);}
 }
 static unsigned timeline_slot(sr_engine *e){
  unsigned slot=e->timeline_write;
@@ -934,8 +950,11 @@ void sr_midi_bend(sr_engine *e,unsigned channel,int value)
 
 void sr_note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats)
 {
-    if(track<SR_TRACKS&&e->running&&!e->preview_frames&&e->solo>=SR_TRACKS&&
-       e->role_target[track]==0.f)return;
+    if(track<SR_DRUMS&&e->running&&!e->preview_frames){
+      if(e->solo>=SR_TRACKS&&e->role_target[track]==0.f)return;
+      if(e->role_target[track]>0.f)
+        velocity=(uint8_t)(velocity*(.55f+.45f*e->role_target[track])+.5f);
+    }
     (void)note_on(e,track,midi,velocity,beats);
 }
 uint8_t sr_key_note(const sr_engine *e,unsigned key)
@@ -1381,7 +1400,7 @@ static unsigned support_degree(const sr_engine *e,unsigned chord,unsigned next,
  unsigned best=chord,best_cost=100u;
  for(unsigned voice=0;voice<3;voice++){
   unsigned degree=(chord+2u*voice)%7u;
-  int distance=scale[degree]-scale[reference];
+  int distance=(scale[degree]%12)-(scale[reference]%12);
   if(distance<0)distance=-distance;
   if(distance>6)distance=12-distance;
   unsigned common=degree==next||degree==(next+2u)%7u||degree==(next+4u)%7u;
@@ -1602,16 +1621,15 @@ static void trigger(sr_engine *e){
   unsigned requested=0;
   /* Continuous expression changes future notes on the musical grid. */
   e->current_energy+=clampf(e->energy-e->current_energy,-.08f,.08f);
-  /* Scene/mode changes commit on the next quarter beat, independent of
-   * loop length. Latest encoder target replaces the previous target. */
+  /* The separate mode control remains quantized. Intention selection is
+   * committed by the app at the audio callback boundary. */
   unsigned song_changed=0;
   if((e->sequence_step&3u)==0u){
-    if(e->pending_scene||e->pending_mode){
+    if(e->pending_mode){
       e->profile_applying=1;
-      unsigned scene=e->pending_scene?e->pending_scene-1u:e->scene;
-      if(e->pending_mode)e->music_mode=e->pending_mode-1u;
-      e->pending_scene=e->pending_mode=0;
-      sr_set_scene(e,scene);plan_roles(e);song_changed=1;
+      e->music_mode=e->pending_mode-1u;
+      e->pending_mode=0;
+      sr_set_scene(e,e->scene);song_changed=1;
       e->profile_applying=0;
     }
   }

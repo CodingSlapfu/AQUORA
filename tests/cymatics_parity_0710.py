@@ -48,7 +48,7 @@ int main(void){
 """
     c_file = directory / f"{name}.c"
     executable = directory / name
-    c_file.write_text(harness + source[start:end] + runner)
+    c_file.write_text(harness + source[start:end].replace("vis_work", "vis_output") + runner)
     subprocess.run(["cc", "-O2", "-ffp-contract=off", str(c_file), "-lm",
                     "-o", str(executable)], check=True)
     return subprocess.check_output([str(executable)])

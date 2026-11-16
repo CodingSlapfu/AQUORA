@@ -35,11 +35,13 @@ int main(void){
                 unsigned stripe=(frame+band)%6;
                 canvas[stripe*240*8+frame]^=(uint16_t)(1u<<(frame%16));
             }
-            unsigned changed=memcmp(rows,canvas,sizeof canvas)!=0;
+            unsigned motion=frame==14 || frame==15;
+            unsigned full=motion || frame==16 || frame==0;
+            unsigned changed=full || memcmp(rows,canvas,sizeof canvas)!=0;
             unsigned before=transmissions;
-            assert(submit_panel_band(band)==changed);
+            assert(submit_panel_band(band,motion)==changed);
             assert(transmissions-before==changed);
-            if(changed)assert(height==(frame==0?48u:8u)&&cv_last_sent==canvas);
+            if(changed)assert(height==(full?48u:8u)&&cv_last_sent==canvas);
             memcpy(rows,canvas,sizeof canvas);
         }
         assert(memcmp(expected,actual,sizeof actual)==0);
