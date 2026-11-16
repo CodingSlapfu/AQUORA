@@ -368,6 +368,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
    unsigned part=id-149u;
    *name=parts[part];return engine.drum_mutes&(1u<<part)?"Mute":"On";
  }
+ case 167:*name="HIT";return (engine.drum_pattern[drum_part]&(1u<<drum_edit_step))?"ON":"OFF";
+ case 168:*name="LANE MODE";return (engine.drum_manual_mask&(1u<<drum_part))?"MANUAL":"AUTO";
  case 163:*name="CHORUS %";number=engine.vocal_chorus;break;
  case 164:*name="ROOM %";number=engine.vocal_reverb;break;
  case 166:*name="TUNE %";number=engine.vocal_tune;break;
@@ -1335,13 +1337,16 @@ static int draw(int animate)
        if(row_band!=(unsigned)band)continue;
        uint16_t ink=(drum_view_mutes&(1u<<lane))||(drum_view_solo<SR_DRUM_PARTS&&drum_view_solo!=lane)
          ?skin_dim():colors[lane%3u==0?SR_BASS:lane%3u==1?SR_DRUMS:SR_GUITAR];
-       if(lane==drum_part&&drum_tab==5)cv_rect(3,y,2,9,skin_accent());
+       if(lane==drum_part&&drum_tab>=5)cv_rect(3,y,2,9,skin_accent());
        graph_text(8,y,lanes[lane],ink);
        for(unsigned step=0;step<16;step++){
          unsigned events=step>drum_view_step?drum_forecast[step]:drum_view_history[step];
+         if(drum_tab==6&&(engine.drum_manual_mask&(1u<<lane)))
+           events=(engine.drum_pattern[lane]&(1u<<step))?(1u<<lane):0u;
          unsigned hit=events&(1u<<lane);
          int x=69+(int)step*10;
-         if(step==drum_view_step)cv_rect(x-1,y,10,9,skins[ui_theme][ui_background].border);
+         if(drum_tab==6&&lane==drum_part&&step==drum_edit_step)cv_rect(x-1,y,10,9,skin_accent());
+         else if(step==drum_view_step)cv_rect(x-1,y,10,9,skins[ui_theme][ui_background].border);
          cv_rect(x,y+3,7,hit?4:1,hit?ink:skins[ui_theme][ui_background].border);
          if(hit&&step>drum_view_step)cv_rect(x+1,y+4,5,2,bg);
          if(hit&&(events&(65536u<<lane)))cv_rect(x+2,y+3,2,1,skin_text());
@@ -1352,7 +1357,8 @@ static int draw(int animate)
          char number[16];const char *name;
          const char *value=knob_value(control_for(k),&name,number);
          int x=4+(int)k*59;
-         if(k==0&&drum_tab==5){name="K1 PART";value=sr_drum_parts[drum_part];}
+         if(k==0&&drum_tab>=5){name="K1 PART";value=sr_drum_parts[drum_part];}
+         if(k==1&&drum_tab==6){name="K2 STEP";num(number,drum_edit_step+1u);value=number;}
          limited_text(x,12,56,&FONT_T,name,skin_dim());
          limited_text(x,25,56,&FONT_XS,value,skin_text());
        }
@@ -1512,7 +1518,7 @@ static int draw(int animate)
    }else if(band==0){
      cv_text(8+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS){
-       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART / FX AUDITION"};
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART / FX AUDITION","STEP EDIT / FX AUDITION"};
        limited_text(104,2,110,&FONT_XS,tabs[drum_tab],colors[SR_DRUMS]);
      }else if(page==PAGE_SOUND){
        limited_text(104,2,128,fit_font(groups[group],128,20),groups[group],skin_text());
@@ -1534,7 +1540,7 @@ static int draw(int animate)
        limited_text(173,25,59,&FONT_T,"SAVED",skin_accent());
      if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_MIX?mix_tab:page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:air_tab;
-       unsigned total=page==PAGE_MIX?5:page==PAGE_DRUMS?6:page==PAGE_SETUP?5:4;
+       unsigned total=page==PAGE_MIX?5:page==PAGE_DRUMS?7:page==PAGE_SETUP?5:4;
        if(page==PAGE_MIX&&mix_tab==5){
          limited_text(8,25,224,&FONT_T,"EDIT: MIX 1/5   SEL MUTE / LFO SOLO",skin_accent());
        }else{

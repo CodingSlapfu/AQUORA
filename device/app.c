@@ -38,7 +38,7 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm,arrange_browse;
-static unsigned drum_part;
+static unsigned drum_part, drum_edit_step;
 static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, fullscreen_performance, last_control_ms;
 static unsigned preferences_saving, preferences_generation, preferences_saved_ms;
 #ifndef PLAT_HOST
@@ -260,7 +260,7 @@ static unsigned control_for(unsigned knob)
  if(page==PAGE_VOCALS){static const uint8_t controls[3][4]={{155,156,13,28},{155,156,13,29},{163,164,165,166}};return controls[vocal_tab][knob];}
  if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128},{0,0,0,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
-   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159}};
+   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
    return controls[drum_tab][knob];
  }
  if(page==PAGE_SETUP){
@@ -464,6 +464,17 @@ static void consume(void){
  case 164:engine.vocal_reverb=bounded(engine.vocal_reverb+d*5,0,100);break;
  case 166:engine.vocal_tune=bounded(engine.vocal_tune+d*5,0,100);break;
  case 165:engine.vocal_delay=bounded(engine.vocal_delay+d*5,0,100);break;
+ case 167:{
+   unsigned step=(unsigned)(d<0?-d:d)-1u;
+   if(step<16u){
+     unsigned bit=1u<<step;
+     engine.drum_manual_mask|=1u<<c.drum_part;
+     if(d>0)engine.drum_pattern[c.drum_part]|=bit;
+     else engine.drum_pattern[c.drum_part]&=~bit;
+   }
+   break;
+ }
+ case 168:if(d>0)engine.drum_manual_mask|=1u<<c.drum_part;else if(d<0)engine.drum_manual_mask&=~(1u<<c.drum_part);break;
  case 162:sr_audition_drum(&engine,c.drum_part);break;
  case 160:sr_set_auto_tempo(&engine,d<0);break;
  case 161:if(d>0)engine.expression_manual|=SR_MANUAL_ENERGY;else engine.expression_manual&=~SR_MANUAL_ENERGY;break;
@@ -828,7 +839,7 @@ void app_input_only(void){
  if(press&(1u<<B_REC))stop_visual_worker();
  if(press&(1u<<B_ENV))send(14,0);
  if(press&(1u<<B_FX)){
-   if(page==PAGE_DRUMS&&drum_tab==5&&!debug)send(162,0);
+   if(page==PAGE_DRUMS&&drum_tab>=5&&!debug)send(162,0);
    else if(page==PAGE_MIX&&!debug){
      mix_tab=mix_tab==5?0:5;
      if(mix_focus>=SR_TRACKS)mix_focus=selected;
@@ -846,7 +857,7 @@ void app_input_only(void){
    }
    if(page==PAGE_AIR)air_tab=(air_tab+1)%4;
    if(page==PAGE_VOCALS)vocal_tab=(vocal_tab+1u)%3u;
-   if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%6;
+   if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%7;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
      mix_tab=mix_tab>=4?0:mix_tab+1;mix_reset=0;}
@@ -854,7 +865,7 @@ void app_input_only(void){
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
- if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%6:0;page=PAGE_DRUMS;debug=0;}
+ if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%7:0;page=PAGE_DRUMS;debug=0;}
  if((press&(1u<<B_LFO))&&!(page==PAGE_MIX&&!debug&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(debug?27:28,0);
  /* SAVE has exactly one meaning on every page, including fullscreen. */
  if(press&(1u<<B_SAVE))arrangement_quick_save();
@@ -885,7 +896,7 @@ void app_input_only(void){
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
    }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
    else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3||mix_tab==5))mix_select(d);
-   else if(page==PAGE_DRUMS)drum_tab=bounded((int)drum_tab+d,0,5);
+   else if(page==PAGE_DRUMS)drum_tab=bounded((int)drum_tab+d,0,6);
    else if(page==PAGE_SETUP&&setup_tab==2)save_info=bounded((int)save_info+d,0,2);
    else if(page==PAGE_SETUP&&setup_tab==0)display_subtab=bounded((int)display_subtab+d,0,1);
    else if(page!=PAGE_DRUMS){selected=bounded((int)selected+d,0,7);if(page==PAGE_PLAY)select_revision++;}
@@ -897,10 +908,14 @@ void app_input_only(void){
     d=enc[3+i];
     unsigned control=control_for(i);
     if(!d)continue;
-    if(page==PAGE_DRUMS&&drum_tab==5&&!debug&&!fullscreen&&i==0){
+    if(page==PAGE_DRUMS&&drum_tab>=5&&!debug&&!fullscreen&&i==0){
       drum_part=bounded((int)drum_part+d,0,SR_DRUM_PARTS-1);
       dirty=1;
       continue;
+    }
+    if(page==PAGE_DRUMS&&drum_tab==6&&!debug&&!fullscreen){
+      if(i==1){drum_edit_step=bounded((int)drum_edit_step+d,0,15);dirty=1;continue;}
+      if(i==2)d=d>0?(int)drum_edit_step+1:-(int)drum_edit_step-1;
     }
     if(!control)continue;
     if(control==71)quick_item=bounded((int)quick_item+d,0,QUICK_COUNT-1u);

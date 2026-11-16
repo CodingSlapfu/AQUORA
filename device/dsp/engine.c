@@ -1156,6 +1156,7 @@ static unsigned groove_density(const sr_engine *e,unsigned step){
 }
 static float groove_kick(const sr_engine *e,unsigned step){
  if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return 0;
+ if(e->drum_manual_mask&1u)return (e->drum_pattern[0]>>(step&15u))&1u ? 1.f : 0.f;
  unsigned density=groove_density(e,step);
  unsigned beat=step&15u,bar=score_bar(e,step);
 
@@ -1247,6 +1248,7 @@ static void drum_colors(sr_engine *e,unsigned step,unsigned density)
    if(beat==13)mask|=1u<<10;
    if(beat==15)mask|=1u<<9;
  }
+ mask&=~e->drum_manual_mask;
  while(mask){
    unsigned part=__builtin_ctz(mask);
    mask&=mask-1u;
@@ -1324,6 +1326,10 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   if((parts&4u)&&!drum_hit_allowed(e,step,2)){
     parts&=~4u;e->shaker_env=prior_hat;
   }
+  unsigned manual=e->drum_manual_mask&~1u;
+  if(manual&2u)e->hand_env=prior_hand;
+  if(manual&4u)e->shaker_env=prior_hat;
+  parts&=~manual;
   e->tracks[SR_DRUMS].events+=__builtin_popcount(parts);
   if(parts&1u)drum_record(e,0,(unsigned)(e->kick_env*127.f+.5f));
   if(parts&2u)drum_record(e,1,(unsigned)(e->hand_env*127.f+.5f));
@@ -1332,6 +1338,11 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
     if(e->drum_active&(1u<<2u))e->drum_amp[2]*=.18f;
   }
   drum_colors(e,step,density);
+  while(manual){
+    unsigned part=__builtin_ctz(manual);
+    manual&=manual-1u;
+    if(e->drum_pattern[part]&(1u<<beat))drum_strike(e,part,96);
+  }
 }
 void sr_preview_sound(sr_engine *e,unsigned role)
 {

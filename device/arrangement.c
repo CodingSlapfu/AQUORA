@@ -12,7 +12,8 @@
 #define AQ_BANK_V6 0x41514206u
 #define AQ_BANK_V7 0x41514207u
 #define AQ_BANK_V8 0x41514208u
-#define AQ_BANK_VERSION 0x41514209u
+#define AQ_BANK_V9 0x41514209u
+#define AQ_BANK_VERSION 0x4151420Au
 _Static_assert(AQ_BANK_BASE >= 0x97000u && AQ_BANK_BASE + AQ_BANKS * AQ_BANK_STRIDE <= 0xA0000u,
                "Bank sector pairs must stay in the documented data region");
 
@@ -67,9 +68,12 @@ typedef struct {
     uint32_t crc8;
     uint16_t drum_mutes;
     uint8_t drum_levels[16], drum_solo;
-    uint32_t crc9;
+    /* V10 moves the terminal CRC, reclaiming the V9 CRC word for steps. */
+    union { uint32_t crc9; uint16_t drum_pattern[SR_DRUM_PARTS]; };
+    uint32_t crc10;
 } arrangement;
-_Static_assert(sizeof(arrangement)<512,"Arrangement record budget");
+_Static_assert(offsetof(arrangement,drum_pattern)+sizeof(uint32_t)==480,"V9 bank wire size");
+_Static_assert(sizeof(arrangement)==512,"V10 bank wire size");
 
 static unsigned visual_mode, bank_slot, bank_action, bank_confirm;
 static unsigned bank_status[AQ_BANKS], bank_message;
@@ -82,7 +86,7 @@ static uint32_t arrangement_crc(const arrangement *record)
     uint32_t crc=0xffffffffu;
     size_t end=record->version==AQ_BANK_LEGACY?offsetof(arrangement,legacy_crc):
         record->version==AQ_BANK_V2?offsetof(arrangement,v2_crc):
-        record->version==AQ_BANK_V3?offsetof(arrangement,crc):record->version==AQ_BANK_V4?offsetof(arrangement,crc4):record->version==AQ_BANK_V5?offsetof(arrangement,crc5):record->version==AQ_BANK_V6?offsetof(arrangement,crc6):record->version==AQ_BANK_V7?offsetof(arrangement,crc7):record->version==AQ_BANK_V8?offsetof(arrangement,crc8):offsetof(arrangement,crc9);
+        record->version==AQ_BANK_V3?offsetof(arrangement,crc):record->version==AQ_BANK_V4?offsetof(arrangement,crc4):record->version==AQ_BANK_V5?offsetof(arrangement,crc5):record->version==AQ_BANK_V6?offsetof(arrangement,crc6):record->version==AQ_BANK_V7?offsetof(arrangement,crc7):record->version==AQ_BANK_V8?offsetof(arrangement,crc8):record->version==AQ_BANK_V9?offsetof(arrangement,crc9):offsetof(arrangement,crc10);
     for(size_t i=0;i<end;i++){
         crc^=bytes[i];
         for(unsigned j=0;j<8;j++)crc=(crc>>1)^((0u-(crc&1u))&0xedb88320u);
@@ -98,7 +102,7 @@ static int range(float value,float lo,float hi)
 static int arrangement_valid(const arrangement *r)
 {
     int legacy=r->version==AQ_BANK_LEGACY;
-    if(r->version==AQ_BANK_VERSION){
+    if(r->version>=AQ_BANK_V9){
       if(r->drum_solo>SR_DRUM_PARTS)return 0;
       for(unsigned i=0;i<SR_DRUM_PARTS;i++)if(r->drum_levels[i]>100u)return 0;
     }
@@ -112,8 +116,8 @@ static int arrangement_valid(const arrangement *r)
     }
     if(r->version>=AQ_BANK_V5&&(r->chord_mode>3||r->chord_gap<80||r->chord_gap>220||r->chord_inversion>3||r->chord_direction>3||r->rhythm_style>2||r->fill_character>3||r->air_mode>4||r->air_fx>4||r->air_depth>100||r->air_track>8))return 0;
     if(r->version>=AQ_BANK_V7&&(r->arrange_next>32||r->arrange_length>16||r->arrange_active>16||r->arrange_elapsed>= (r->arrange_active?r->arrange_active:1)||r->arrange_current>32))return 0;
-    if((!legacy&&r->version!=AQ_BANK_V2&&r->version!=AQ_BANK_V3&&r->version!=AQ_BANK_V4&&r->version!=AQ_BANK_V5&&r->version!=AQ_BANK_V6&&r->version!=AQ_BANK_V7&&r->version!=AQ_BANK_V8&&r->version!=AQ_BANK_VERSION)||
-       (legacy?r->legacy_crc:r->version==AQ_BANK_V2?r->v2_crc:r->version==AQ_BANK_V3?r->crc:r->version==AQ_BANK_V4?r->crc4:r->version==AQ_BANK_V5?r->crc5:r->version==AQ_BANK_V6?r->crc6:r->version==AQ_BANK_V7?r->crc7:r->version==AQ_BANK_V8?r->crc8:r->crc9)!=arrangement_crc(r)||
+    if((!legacy&&r->version!=AQ_BANK_V2&&r->version!=AQ_BANK_V3&&r->version!=AQ_BANK_V4&&r->version!=AQ_BANK_V5&&r->version!=AQ_BANK_V6&&r->version!=AQ_BANK_V7&&r->version!=AQ_BANK_V8&&r->version!=AQ_BANK_V9&&r->version!=AQ_BANK_VERSION)||
+       (legacy?r->legacy_crc:r->version==AQ_BANK_V2?r->v2_crc:r->version==AQ_BANK_V3?r->crc:r->version==AQ_BANK_V4?r->crc4:r->version==AQ_BANK_V5?r->crc5:r->version==AQ_BANK_V6?r->crc6:r->version==AQ_BANK_V7?r->crc7:r->version==AQ_BANK_V8?r->crc8:r->version==AQ_BANK_V9?r->crc9:r->crc10)!=arrangement_crc(r)||
        (!legacy&&((r->loop_length!=16&&r->loop_length!=32&&r->loop_length!=64)||
         (r->pending_length&&r->pending_length!=16&&r->pending_length!=32&&r->pending_length!=64)||
         r->keyboard_mode>1||r->pending_key>12||r->frequency_lock>1||r->auto_gain>1||r->auto_level>1||
@@ -152,10 +156,11 @@ static int arrangement_read(unsigned slot,arrangement *record)
 {
     memset(record,0,sizeof(*record));
     int size=plat_store_size(OBJ_BANK1+slot);
-    if(size!=(int)sizeof(*record)&&size!=(int)offsetof(arrangement,drum_mutes)&&size!=(int)offsetof(arrangement,motif_memory)&&size!=(int)offsetof(arrangement,arrange_next)&&size!=(int)offsetof(arrangement,learned)&&size!=(int)offsetof(arrangement,chord_mode)&&size!=(int)offsetof(arrangement,song_seed)&&size!=(int)offsetof(arrangement,motif_home)
+    const int v9_size=(int)offsetof(arrangement,crc9)+4;
+    if(size!=(int)sizeof(*record)&&size!=v9_size&&size!=(int)offsetof(arrangement,drum_mutes)&&size!=(int)offsetof(arrangement,motif_memory)&&size!=(int)offsetof(arrangement,arrange_next)&&size!=(int)offsetof(arrangement,learned)&&size!=(int)offsetof(arrangement,chord_mode)&&size!=(int)offsetof(arrangement,song_seed)&&size!=(int)offsetof(arrangement,motif_home)
         &&size!=(int)offsetof(arrangement,loop_length))return 0;
     if(plat_store_load(OBJ_BANK1+slot,record,sizeof(*record))!=size)return 0;
-    unsigned version=size==(int)sizeof(*record)?AQ_BANK_VERSION:size==(int)offsetof(arrangement,drum_mutes)?AQ_BANK_V8:size==(int)offsetof(arrangement,motif_memory)?AQ_BANK_V7:size==(int)offsetof(arrangement,arrange_next)?AQ_BANK_V6:size==(int)offsetof(arrangement,learned)?AQ_BANK_V5:size==(int)offsetof(arrangement,chord_mode)?AQ_BANK_V4:
+    unsigned version=size==(int)sizeof(*record)?AQ_BANK_VERSION:size==v9_size?AQ_BANK_V9:size==(int)offsetof(arrangement,drum_mutes)?AQ_BANK_V8:size==(int)offsetof(arrangement,motif_memory)?AQ_BANK_V7:size==(int)offsetof(arrangement,arrange_next)?AQ_BANK_V6:size==(int)offsetof(arrangement,learned)?AQ_BANK_V5:size==(int)offsetof(arrangement,chord_mode)?AQ_BANK_V4:
         size==(int)offsetof(arrangement,song_seed)?AQ_BANK_V3:size==(int)offsetof(arrangement,motif_home)?AQ_BANK_V2:AQ_BANK_LEGACY;
     if(record->version!=version)return 0;
     return arrangement_valid(record);
@@ -233,7 +238,11 @@ static void arrangement_snapshot(arrangement *record)
     memcpy(record->motif_scores,engine.motif_scores,sizeof record->motif_scores);
     record->motif_count=engine.motif_count;record->motif_cursor=engine.motif_cursor;record->current_energy=engine.current_energy;
     record->version=AQ_BANK_V8;record->crc8=arrangement_crc(record);
-    record->version=AQ_BANK_VERSION;record->crc9=arrangement_crc(record);
+    /* The high 12 bits of v2_crc and bits 1–4 of reserved6 were unused. */
+    record->v2_crc|=(uint32_t)(engine.drum_manual_mask&0xfffu)<<20u;
+    record->reserved6|=(uint16_t)((engine.drum_manual_mask>>12u)<<1u);
+    memcpy(record->drum_pattern,engine.drum_pattern,sizeof record->drum_pattern);
+    record->version=AQ_BANK_VERSION;record->crc10=arrangement_crc(record);
 }
 
 static void arrangement_apply(const arrangement *record)
@@ -271,10 +280,16 @@ static void arrangement_apply(const arrangement *record)
     engine.drum_mutes=record->version>=AQ_BANK_V5&&(record->future&0xFFF8u)==0xA510u?record->future&7u:0;
     engine.drum_solo=SR_DRUM_PARTS;
     memset(engine.drum_levels,100,sizeof engine.drum_levels);
-    if(record->version>=AQ_BANK_VERSION){
+    if(record->version>=AQ_BANK_V9){
       engine.drum_mutes=record->drum_mutes;
       engine.drum_solo=record->drum_solo;
       memcpy(engine.drum_levels,record->drum_levels,sizeof engine.drum_levels);
+    }
+    engine.drum_manual_mask=0;
+    memset(engine.drum_pattern,0,sizeof engine.drum_pattern);
+    if(record->version==AQ_BANK_VERSION){
+      engine.drum_manual_mask=(uint16_t)((record->v2_crc>>20u)|((uint32_t)(record->reserved6&30u)<<11u));
+      memcpy(engine.drum_pattern,record->drum_pattern,sizeof engine.drum_pattern);
     }
     memset(engine.drum_steps,0,sizeof engine.drum_steps);
     engine.drum_playhead=0;
