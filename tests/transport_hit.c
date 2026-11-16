@@ -117,17 +117,25 @@ static void fixed_reference_isolation(void)
 
 static void scene_frequency_isolation(void)
 {
-    static const unsigned expected[]={174,417,963,396,741,639,852,528,417,741,777,888,963};
     sr_init(&a,731);
     a.isolate=SR_ISOLATE_FIXED;
+    /* Keep the reference tone ON across auto-song sound-profile changes. */
+    a.tone_level_manual=1;
     a.tone_level=.07f;
     a.binaural_enabled=1;
     a.sacred_mode=2;
     sr_start(&a);
     for(unsigned scene=0;scene<SR_SCENES;scene++){
         sr_set_scene(&a,scene);
+        assert(a.frequency_auto&&a.frequency==sr_scenes[scene].frequency);
+        /* Auto Hz comes from the current 22-intention mapping, not a
+         * thirteen-entry legacy lookup. Allow the reference pitch glide. */
+        const unsigned target=(unsigned)(sr_frequencies[a.frequency].hz+.5f);
+        for(unsigned settle=0;settle<64;settle++)block(&a);
         unsigned crossings=rising_crossings();
-        assert(crossings+2>=expected[scene]&&crossings<=expected[scene]+1);
+        if(crossings+2<target||crossings>target+2)
+            fprintf(stderr,"Intention %u: target %u Hz, measured %u crossings\\n",scene,target,crossings);
+        assert(crossings+2>=target&&crossings<=target+2);
     }
     a.isolate=SR_ISOLATE_SACRED;
     assert(rising_crossings()>=59);
@@ -145,7 +153,7 @@ static void scene_frequency_isolation(void)
     sr_stop(&a);
     block(&a);
     block(&a);silence();
-    puts("PASS all thirteen Auto frequencies in PCM, Sacred Bass isolation, independent binaural stereo and STOP silence");
+    puts("PASS every current intention's Auto frequency in PCM, Sacred Bass isolation, independent binaural stereo and STOP silence");
 }
 
 static void loop_key_boundary(void)
