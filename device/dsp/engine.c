@@ -1384,7 +1384,14 @@ static inline __attribute__((always_inline)) float drum_aux(sr_engine *e)
      unsigned index=e->drum_phase[i]>>8u;
      if(index>=DRUM_WAVE_LENGTH){e->drum_active&=~(1u<<i);continue;}
      mixed+=drum_pcm[i][index]*e->drum_amp[i]*drum_lane_level(e,i+3u);
-     e->drum_phase[i]+=236u+(e->drum_kit%7u)*7u;
+     /* Each kit now has a distinct sampled-drum tuning. The old
+      * modulo-seven rule repeated identical rates across 19 kits.
+      * One table lookup per subsampled voice keeps CPU use bounded. */
+     static const uint16_t kit_sample_rate[SR_DRUM_KITS]={
+       226u,242u,263u,208u,251u,278u,231u,295u,247u,220u,
+       273u,237u,201u,282u,256u,304u,214u,291u,268u
+     };
+     e->drum_phase[i]+=kit_sample_rate[e->drum_kit];
    }
    e->drum_aux_to=mixed*(.28f/128.f);
  }
