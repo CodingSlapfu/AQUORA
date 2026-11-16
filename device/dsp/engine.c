@@ -2512,10 +2512,11 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
   const float bed_target=sr_limit_level(e->bed_level,SR_NATURE_MAX);
   const float reference_level=sr_limit_level(e->tone_level,SR_FIXED_TONE_MAX);
   float resonance=e->filter_resonance*(.78f/15.f);
-  int vocal_fx=!e->tracks[SR_CHOIR].mute&&e->vocals_enabled&&
+  int vocal_visible=!locked&&!e->tracks[SR_CHOIR].mute&&e->vocals_enabled&&
       (e->solo>=SR_TRACKS||e->solo==SR_CHOIR)&&
-      (full||source==SR_ISOLATE_TRACK1+SR_CHOIR)&&
-      (e->vocal_chorus||e->vocal_reverb||e->vocal_delay);
+      (full||source==SR_ISOLATE_TRACK1+SR_CHOIR);
+  int vocal_fx=vocal_visible&&(e->vocal_chorus||e->vocal_reverb||e->vocal_delay);
+  if(!vocal_visible)e->vocal_face_peak=0.f;
   if(!vocal_fx){
     e->vocal_fx_tail=0;e->vocal_fx_history=0;
     e->vocal_fx_left=e->vocal_fx_right=e->vocal_fx_input=0.f;
@@ -2523,6 +2524,7 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
   /* Track meters are display-only. Decay once per render chunk. */
   float meter_decay=1.f-(float)frames*.00097f;
   for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
+  e->vocal_face_peak*=meter_decay;
   for(size_t i=0;i<frames;i++){
     float l=0.f,r=0.f,mix=0.f,scope=0.f,vocal=0.f;
     if(smooth_slicer)for(unsigned lane=0;lane<3;lane++){
@@ -2594,6 +2596,11 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
       float mag=raw*(config->left+config->right);
       sr_track *track=&e->tracks[config->track];
       if(mag>track->meter)track->meter=mag;
+      if(vocal_visible&&v->sample_zone&&mag>e->vocal_face_peak){
+        e->vocal_face_peak=mag;
+        e->vocal_face_zone=v->sample_zone;
+        e->vocal_face_midi=v->midi;
+      }
     }
     if(locked&&!e->lock_textures){
       if(capture){
@@ -2831,6 +2838,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
    for(unsigned v=0;v<SR_VOICES;v++)if(e->voices[v].active&&e->voices[v].external)e->external_audio=1;
   }
   if(!e->external_audio&&!e->running&&!e->stop_frames&&!e->nature_audition&&!e->preview_frames){
+    e->vocal_face_peak=0.f;
     memset(out,0,frames*2*sizeof(*out));
     return;
   }

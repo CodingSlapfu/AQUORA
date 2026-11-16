@@ -1,4 +1,4 @@
-#include "kira_face/face.h"
+#include "kira_face/vocal_pose.h"
 _Static_assert(AQUORA_FONT_FAMILY==0x41515335u,"AQUORA Sans atlas required");
 static const char aquora_font_provenance[]="AQUORA Sans:" AQUORA_FONT_ATLAS_SHA256;
 /* SPDX-License-Identifier: MPL-2.0 */
@@ -1122,26 +1122,9 @@ static int draw(int animate)
  /* Bind one audio observation to every portrait band in this frame. */
  static k9_face vocal_pose;
  if(page==PAGE_VOCALS&&!vocal_tab&&!display_strip&&(animate||dirty)){
-   vocal_pose=(k9_face){0};
-   float envelope=0.f;
    unsigned flags=plat_lock();
-   const sr_track *track=&engine.tracks[SR_CHOIR];
-   if(engine.vocals_enabled&&!track->mute&&track->meter>.0003f&&
-      (engine.solo>=SR_TRACKS||engine.solo==SR_CHOIR)&&
-      (engine.isolate==SR_ISOLATE_MIX||engine.isolate==SR_ISOLATE_TRACK1+SR_CHOIR)){
-     for(unsigned i=0;i<SR_VOICES;i++){
-       const sr_voice *voice=&engine.voices[i];
-       if(voice->active&&voice->sample_zone&&voice->env>envelope){
-         envelope=voice->env;
-         vocal_pose.mouth=1+(voice->sample_zone-1u)%3u;
-         vocal_pose.brow=voice->midi>68?2:0;
-       }
-     }
-   }
+   vocal_pose=k9_recorded_vocal_pose(&engine);
    plat_unlock(flags);
-   vocal_pose.open=(uint16_t)(fm_clampf(envelope*3.f,0,1)*58.f);
-   vocal_pose.jaw=vocal_pose.open/10u;
-   vocal_pose.neck=vocal_pose.open/15u;
    vocal_pose.blink=plat_ms()%3900u<100u?255:0;
  }
  for(;display_strip<5;display_strip++){
