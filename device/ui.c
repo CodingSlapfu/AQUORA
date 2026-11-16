@@ -672,7 +672,13 @@ static void mixer_console(int band)
    uint16_t dim=water_tint(ink,5);
    int chosen=mix_focus==t;
    if(band==1){
-     limited_text(x,0,29,&FONT_T,names[column],ink);
+     const char *name=names[column];
+     char letter[2]={0,0};
+     int tx=x+(28-fit_width(&FONT_T,name)+(int)ui_len(name))/2;
+     while(*name){
+       letter[0]=*name++;
+       tx=graph_text(tx,0,letter,ink)-1;
+     }
      for(unsigned k=0;k<5;k++)
        cv_rect(x+1+(int)k*5,16,3,5,water[t].peak>(int)k*21?ink:dim);
    }
@@ -688,7 +694,11 @@ static void mixer_console(int band)
      if(water[t].height){
        int fill=level+amp;
        if(fill<top)fill=top;
-       if(fill<=bottom)cv_rect(x+2,fill,23,bottom-fill+1,water_tint(ink,4));
+       if(fill<=bottom){
+         cv_rect(x+2,fill,23,bottom-fill+1,water_tint(ink,5));
+         cv_rect(x+5,fill,3,bottom-fill+1,water_tint(ink,8));
+         cv_rect(x+19,fill,3,bottom-fill+1,water_tint(ink,7));
+       }
        for(int j=2;j<=24&&level+amp>=top&&level-amp<=bottom;j++){
          int y=level+water_wave(water_phase+column*7u+(unsigned)j*2u)*amp/8;
          if(y<top)y=top;
@@ -710,7 +720,10 @@ static void mixer_console(int band)
          cv_rect(bubble,y,k==0?2:1,1,k==0?RGB(220,249,255):ink);
        }
      }
-     if(WATER_TOP>=offset)cv_line(x+3,top,x+23,top,dim);
+     if(WATER_TOP>=offset){
+       cv_line(x+4,top,x+22,top,dim);
+       cv_line(x+2,top+2,x+24,top+2,water_tint(ink,8));
+     }
      if(WATER_BOTTOM<offset+48)cv_line(x+2,bottom,x+24,bottom,ink);
    }
    if(band==4){
@@ -1193,17 +1206,15 @@ static int draw(int animate)
      if(band) mixer_console(band);
      else{
        unsigned scene=engine.scene;
-       char hz[12],match[12];
-       num(hz,(int)sr_frequencies[sr_scenes[scene].frequency].hz);
+       char match[12];
        if(intention_match<0)ui_copy(match,"N/A");
        else{num(match,intention_match);unsigned len=ui_len(match);match[len]='%';match[len+1]=0;}
        limited_text(7,0,146,&FONT_B,"WATER MIXER",RGB(46,226,255));
        char position[]="EDIT 1/5";position[5]=(char)('1'+mix_tab);
        graph_text(155,1,position,RGB(173,206,224));
        limited_text(7,20,155,&FONT_XS,sr_scenes[scene].name,RGB(225,248,255));
-       int x=graph_text(167,20,hz,RGB(225,248,255));
-       graph_text(x+3,20,"Hz",RGB(225,248,255));
-       x=graph_text(7,34,"INTENTION FREQ MATCH",RGB(76,232,255));
+       graph_text(167,20,sr_frequencies[sr_scenes[scene].frequency].name,RGB(225,248,255));
+       int x=graph_text(7,34,"INTENTION FREQ MATCH",RGB(76,232,255));
        graph_text(x+6,34,match,RGB(225,248,255));
      }
    }else if(visual&&page==PAGE_MIX&&mix_tab==5){

@@ -670,15 +670,15 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
     e->learned.count=e->capture.count=e->learn_pending=0;e->form_loop=0;e->motif_count=e->motif_cursor=0;e->response_pending=0;
     e->arrange_next=e->arrange_length=e->arrange_active=e->arrange_elapsed=0;
     e->song_seed=song_draw(seed,100u+e->music_mode);
+    song_tempo(e,e->song_seed);
     e->rng=song_draw(seed,12);
     e->drum_rng=song_draw(seed,13);
     e->nature_rng=song_draw(seed,90);
     e->phrase=0;
     make_motif(e,0);
     memcpy(e->motif_home,e->melody,sizeof e->melody);
+    song_expression(e,seed,1);
   }
-  song_tempo(e,sounds_only?song_draw(seed,203):e->song_seed);
-  song_expression(e,seed,1);
   apply_sound_profile(e,seed,sounds_only);
   apply_motion_profile(e);
   sr_plan_sections(e);
