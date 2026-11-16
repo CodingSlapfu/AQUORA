@@ -25,7 +25,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/aquora"
           for test in drum_kits_0714 transport_hit release_controls_0714; do
             # These fixtures #include engine.c; linking it again creates duplicate symbols.
-            cc -O2 -Idevice/dsp "tests/$test.c" -lm -o "$RUNNER_TEMP/aquora/$test"
+            if [ "$test" = transport_hit ]; then
+              cc -O2 -Idevice/dsp "tests/$test.c" device/dsp/engine.c -lm -o "$RUNNER_TEMP/aquora/$test"
+            else
+              cc -O2 -Idevice/dsp "tests/$test.c" -lm -o "$RUNNER_TEMP/aquora/$test"
+            fi
           done
       - name: Audio differentiation and regressions
         shell: bash
