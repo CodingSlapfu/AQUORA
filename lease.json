@@ -1,7 +1,7 @@
 {
-  "owner": "chat-0714-transport-fixture",
-  "epoch": 25,
-  "released": true,
-  "expires": 1794869306,
+  "owner": "chat-0714-drum-editor",
+  "epoch": 26,
+  "released": false,
+  "expires": 1794873600,
   "checkpoint": "4abb529333e0cff8b69f7617096da4b8ee296428"
 }
