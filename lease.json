@@ -1,8 +1,8 @@
 {
-  "owner": "work-0710-resume",
-  "epoch": 12,
-  "released": true,
-  "expires": 1794798916,
+  "owner": "work-0710-completion",
+  "epoch": 13,
+  "released": false,
+  "expires": 1794805444,
   "scope": "v0.7.10 Cymatics and drum preview continuation verified; release held",
   "checkpoint": "e41d1b08a9f87f95b01ca3db9822e5feca5fd07b",
   "verified_artifact_backup": "8688878a4503eac16ce3411e23dcf87cca62c7c2",
