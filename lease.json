@@ -1,7 +1,7 @@
 {
   "owner": "chat-0714-transport-fixture",
   "epoch": 24,
-  "released": false,
+  "released": true,
   "expires": 1794869275,
-  "checkpoint": "45d4e47ecc0c6072a355fc396b59a82d86d57b63"
+  "checkpoint": "b240a1281307d047c68467cdb9c4fc084e7397a3"
 }
