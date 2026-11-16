@@ -202,6 +202,17 @@ static const struct {float rate,depth,delay;} wind_motion[]={
 };
 
 const float sr_binaural_presets[SR_BEAT_PRESETS] = {1.f, 2.f, 4.f, 6.f, 8.f, 10.f, 14.f, 20.f};
+const char *const sr_drum_parts[SR_DRUM_PARTS]={
+  "Kick","Snare","Closed Hat","Kick 2","Clap","Open Hat","Pedal Hat","Rim",
+  "Snare 2","Low Tom","High Tom","Crash","Ride","Shaker","Conga","Bell"
+};
+const uint8_t sr_drum_notes[SR_DRUM_PARTS]={36,38,42,35,39,46,44,37,40,45,50,49,51,70,64,53};
+
+#include "drum_waves.inc"
+#if defined(SR_DEVICE) && !defined(PLAT_HOST)
+__attribute__((section(".pool"),aligned(4)))
+#endif
+static int8_t drum_pcm[13][DRUM_WAVE_LENGTH];
 #include "vocal_samples.inc"
 
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
@@ -752,11 +763,14 @@ void sr_set_track_patch(sr_engine *e,uint8_t t,uint8_t patch){if(t<SR_TRACKS&&pa
 void sr_init(sr_engine *e,uint32_t seed){
     if(!vocal_pcm_ready){
       memcpy(vocal_pcm,vocal_flash,sizeof vocal_pcm);
+      memcpy(drum_pcm,drum_flash,sizeof drum_pcm);
       vocal_pcm_ready=1;
     }
 
   memset(e,0,sizeof(*e));
-    e->vocal_presence=2; e->rng=seed?seed:0x73ac05u;
+    e->vocal_presence=2;
+    memset(e->drum_levels,100,sizeof e->drum_levels);
+    e->drum_solo=SR_DRUM_PARTS; e->rng=seed?seed:0x73ac05u;
   if(!lut_ready){
     for(int i=0;i<=LUT;i++)sin_table[i]=sinf((float)i*2.f*PI/(float)LUT);
     lut_ready=1;
@@ -788,6 +802,8 @@ void sr_init(sr_engine *e,uint32_t seed){
  * generating a fresh downbeat, even when STOP and PLAY share a block. */
 static void clear_transport(sr_engine *e)
 {
+    e->drum_active=e->drum_subsample=0;
+    e->drum_aux_from=e->drum_aux_to=0.f;
     e->external_audio=0;
     e->play_queued=0;
     e->play_released=0;
@@ -885,11 +901,51 @@ static inline __attribute__((always_inline)) float calibrated_patch_gain(unsigne
     return sr_patches[patch].gain*(patch<24u?legacy_trim[patch]:1.f);
 }
 
+/* Two hot callbacks reduce future polyphony and release a quiet optional
+ * voice. Slow recovery avoids oscillating around a processor deadline. */
+void sr_deadline_observe(sr_engine *e,unsigned callback_us)
+{
+ if(callback_us>4900u){
+   e->deadline_low=0;
+   if(++e->deadline_high<2u)return;
+   e->deadline_high=0;
+   unsigned cap=e->voice_limit?e->voice_limit:SR_VOICES;
+   unsigned floor=callback_us>=5800u?6u:9u;
+   if(cap>floor)e->voice_limit=cap-1u;
+   sr_voice *quiet=0;
+   unsigned active=0;
+   for(unsigned i=0;i<SR_VOICES;i++){
+     sr_voice *v=&e->voices[i];
+     active+=!!v->active;
+     if(v->active&&v->gate&&!v->key&&!v->external&&v->track>SR_BASS&&
+        (!quiet||v->env<quiet->env))quiet=v;
+   }
+   if(quiet&&e->voice_limit&&active>e->voice_limit){
+     release_voice(e,quiet);
+     quiet->remain=0;
+     quiet->release_coef=.006f;
+   }
+ }else{
+   e->deadline_high=0;
+   if(!e->voice_limit||callback_us>=3200u){e->deadline_low=0;return;}
+   if(++e->deadline_low>=80u){
+     e->deadline_low=0;
+     if(++e->voice_limit>=SR_VOICES)e->voice_limit=0;
+   }
+ }
+}
+
 static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats){
   if((!e->running&&!e->preview_frames&&!e->midi_suppress)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
+  unsigned active=0;
+  if(e->voice_limit)for(unsigned i=0;i<SR_VOICES;i++)active+=!!e->voices[i].active;
   int slot=-1;float quiet=1.e9f;
   for(int i=0;i<SR_VOICES;i++){
-    if(!e->voices[i].active){slot=i;break;}
+    if(!e->voices[i].active){
+      if(!e->voice_limit||active<e->voice_limit){slot=i;break;}
+      continue;
+    }
+    if(e->voice_limit&&track>SR_BASS&&e->voices[i].track<=SR_BASS)continue;
     if(e->voices[i].key&&e->voices[i].gate)continue;
     if(e->voices[i].sample_zone&&e->voices[i].born==e->frame_count)continue;
     float score=e->voices[i].env+(e->voices[i].track==SR_BASS?.35f:e->voices[i].key&&e->voices[i].gate?.25f:0);
@@ -1118,6 +1174,58 @@ static void bass_groove(sr_engine *e,unsigned step){
  if(pickup)length=.16f;
  sr_note_on(e,SR_BASS,note,pickup?76:kick>.9f?108:91,length);
 }
+static void drum_record(sr_engine *e,unsigned lane,unsigned velocity)
+{
+ unsigned bit=1u<<lane;
+ e->drum_steps[e->drum_playhead]|=bit|(velocity>=96u?bit<<16u:0u);
+ if(e->timeline_enabled){
+   unsigned n=timeline_slot(e);
+   e->timeline[n]=(sr_event){e->frame_count,e->tick_length/2u,SR_DRUMS,sr_drum_notes[lane],velocity,0};
+ }
+}
+static void drum_strike(sr_engine *e,unsigned lane,unsigned velocity)
+{
+ drum_record(e,lane,velocity);
+ e->tracks[SR_DRUMS].events++;
+ float peak=velocity*(1.f/127.f);
+ if(lane==0)e->kick_env=peak;
+ else if(lane==1)e->hand_env=peak;
+ else if(lane==2)e->shaker_env=peak;
+ else{
+   unsigned voice=lane-3u;
+   e->drum_active|=1u<<voice;
+   e->drum_phase[voice]=0;
+   e->drum_amp[voice]=peak;
+ }
+ if((lane==2||lane==6)&&(e->drum_active&(1u<<2u)))e->drum_amp[2]*=.18f;
+}
+
+/* Stable accents from one bar/section score. The secondary kick never
+ * replaces groove_kick(), which is the bassline's anchor. */
+static void drum_colors(sr_engine *e,unsigned step,unsigned density)
+{
+ unsigned beat=step&15u,bar=e->form_loop,section=song_section(e);
+ unsigned mask=0;
+ if(density>=2&&beat==12&&section==2u)mask|=1u<<4;
+ if(density>=3&&(beat==6||beat==14))mask|=1u<<(section==2u?5:6);
+ if(density>=3&&beat==10&&(bar&1u))mask|=1u<<7;
+ if(density>=4&&beat==15&&section!=3u)mask|=1u<<8;
+ if(density>=4&&beat==7&&section==2u)mask|=1u<<3;
+ if(density>=4&&beat==2&&(bar&1u))mask|=1u<<13;
+ if(density>=5&&beat==0&&section==2u&&(bar&3u)==0u)mask|=1u<<11;
+ if(density>=5&&(beat==0||beat==8)&&section==2u&&(bar&1u))mask|=1u<<12;
+ if(density>=5&&beat==11&&section!=3u&&(bar&1u))mask|=1u<<14;
+ if(density>=6&&beat==8&&section==4u)mask|=1u<<15;
+ if(density>=5&&sr_section_remaining(e)==1u){
+   if(beat==13)mask|=1u<<10;
+   if(beat==15)mask|=1u<<9;
+ }
+ while(mask){
+   unsigned part=__builtin_ctz(mask);
+   mask&=mask-1u;
+   drum_strike(e,part,part==11u?77u:part==3u?86u:60u);
+ }
+}
 static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   e->drum_playhead=step&63u;
   e->drum_steps[e->drum_playhead]=0;
@@ -1182,16 +1290,14 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
       hits++;
     }
   }
-  unsigned accents=(e->kick_env>=.75f?1u:0u)|(e->hand_env>=.75f?2u:0u)|(e->shaker_env>=.75f?4u:0u);
-  e->drum_steps[e->drum_playhead]=parts|((parts&accents)<<3u);
   e->tracks[SR_DRUMS].events+=hits;
-  if(e->timeline_enabled)for(unsigned voice=0;voice<3;voice++)if(parts&(1u<<voice)){
-   unsigned n=timeline_slot(e);
-   e->timeline[n].frame=e->frame_count;e->timeline[n].duration=e->tick_length/2u;
-   e->timeline[n].role=SR_DRUMS;e->timeline[n].note=voice==0?36:voice==1?38:42;
-   float level=voice==0?e->kick_env:voice==1?e->hand_env:e->shaker_env;
-   e->timeline[n].velocity=(uint8_t)(level*127.f+.5f);
+  if(parts&1u)drum_record(e,0,(unsigned)(e->kick_env*127.f+.5f));
+  if(parts&2u)drum_record(e,1,(unsigned)(e->hand_env*127.f+.5f));
+  if(parts&4u){
+    drum_record(e,2,(unsigned)(e->shaker_env*127.f+.5f));
+    if(e->drum_active&(1u<<2u))e->drum_amp[2]*=.18f;
   }
+  drum_colors(e,step,density);
 }
 void sr_preview_sound(sr_engine *e,unsigned role)
 {
@@ -1209,18 +1315,47 @@ void sr_preview_sound(sr_engine *e,unsigned role)
   }else sr_note_on(e,role,(uint8_t)(sr_tonic(e)+(role==SR_BASS?0:24)),72,1.3f);
 }
 
+static inline __attribute__((always_inline)) float drum_lane_level(const sr_engine *e,unsigned lane)
+{
+ return (e->drum_mutes&(1u<<lane))||(e->drum_solo<SR_DRUM_PARTS&&e->drum_solo!=lane)
+        ?0.f:e->drum_levels[lane]*.01f;
+}
+
+/* Update the lightweight one-shot bus at its native 11.025 kHz rate. Linear
+ * interpolation is shared by the whole bus. All live reads are from SRAM. */
+static inline __attribute__((always_inline)) float drum_aux(sr_engine *e)
+{
+ if(!e->drum_active&&e->drum_aux_to==0.f&&e->drum_aux_from==0.f)return 0.f;
+ unsigned phase=e->drum_subsample;
+ if(!phase){
+   e->drum_aux_from=e->drum_aux_to;
+   float mixed=0.f;
+   unsigned live=e->drum_active;
+   while(live){
+     unsigned i=__builtin_ctz(live);
+     live&=live-1u;
+     unsigned index=e->drum_phase[i]>>8u;
+     if(index>=DRUM_WAVE_LENGTH){e->drum_active&=~(1u<<i);continue;}
+     mixed+=drum_pcm[i][index]*e->drum_amp[i]*drum_lane_level(e,i+3u);
+     e->drum_phase[i]+=236u+(e->drum_kit%7u)*7u;
+   }
+   e->drum_aux_to=mixed*(.28f/128.f);
+ }
+ e->drum_subsample=(phase+1u)&3u;
+ return e->drum_aux_from+(e->drum_aux_to-e->drum_aux_from)*((phase+1u)*.25f);
+}
 static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
   /* Silence is a common path in the default generator. Skip all oscillators,
    * noise and kit inspection when no percussion envelope is active. */
   if(e->kick_env<=.0003f&&e->hand_env<=.0003f&&e->shaker_env<=.0003f){
     e->kick_env=e->kick_previous=e->kick_attack=e->hand_env=e->shaker_env=0.f;
-    return 0.f;
+    return drum_aux(e)*e->drum_level;
   }
   const sr_drum_kit *kit=&sr_drum_kits[e->drum_kit];
   for(unsigned part=0;part<3;part++){
-    float target=(e->drum_mutes&(1u<<part))?0.f:1.f;
+    float target=drum_lane_level(e,part);
     float gain=e->drum_part_gain[part];
-    if(gain!=target)e->drum_part_gain[part]=clampf(gain+(target>0.f?.004f:-.004f),0.f,1.f);
+    if(gain!=target)e->drum_part_gain[part]=clampf(gain+clampf(target-gain,-.004f,.004f),0.f,1.f);
   }
   float sound=0.f;
   unsigned fm=e->drum_kit>=15;
@@ -1262,7 +1397,7 @@ static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
     sound+=(noise-e->shaker_lp)*e->shaker_env*kit->shaker*.28f*brightness*e->drum_part_gain[2];
     e->shaker_env*=.9967f;
   }else e->shaker_env=0.f;
-  sound*=1.14f;
+  sound=(sound+drum_aux(e))*1.14f;
   e->drum_meter=fmaxf(e->drum_meter*.9993f,fabsf(sound));
   return sound*e->drum_level;
 }
@@ -1409,7 +1544,7 @@ static unsigned transition_fill(sr_engine *e,unsigned step,int gesture)
  unsigned count=gesture?3u:preparing?2u+sr_sections[next].pulse:2u;
  if(e->music_mode==SR_NEOCLASSICAL&&count>2u)count=2u;
  unsigned performed=0;for(unsigned i=0;i<count;i++)
-   performed+=schedule(e,SR_DRUMS,((i+style)%3u)?1:2,
+   performed+=schedule(e,SR_DRUMS,(const uint8_t[]){10,9,8,14,7}[(i+style)%5u],
        34u+i*7u+(preparing?7u:0u),0,(i+1u)*e->tick_length/(count+1u));
  return performed;
 }
@@ -1816,7 +1951,7 @@ unsigned sr_score_preview(sr_engine *e,sr_event *out,unsigned cap,unsigned ticks
     unsigned role=e->scheduled[index].role;
     if(role==SR_DRUMS){
      if(e->drums_enabled&&!e->freeze&&!e->tracks[role].mute){unsigned j=timeline_slot(e);
-      e->timeline[j]=(sr_event){due,e->tick_length/2u,SR_DRUMS,e->scheduled[index].note==0?36:e->scheduled[index].note==1?38:42,e->scheduled[index].velocity,0};}
+      e->timeline[j]=(sr_event){due,e->tick_length/2u,SR_DRUMS,sr_drum_notes[e->scheduled[index].note],e->scheduled[index].velocity,0};}
     }else sr_note_on(e,role,e->scheduled[index].note,e->scheduled[index].velocity,e->scheduled[index].beats);
    }
    count=preview_collect(e,out,cap,count,before);
@@ -2555,19 +2690,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
       unsigned role=e->scheduled[i].role;e->scheduled[i].active=0;
       if(role==SR_DRUMS){
         if(!e->drums_enabled||e->freeze||e->tracks[role].mute)continue;
-        float velocity=e->scheduled[i].velocity*(1.f/127.f);
-        if(e->timeline_enabled){unsigned j=timeline_slot(e);
-          e->timeline[j].frame=e->frame_count;e->timeline[j].duration=e->tick_length/2u;
-          e->timeline[j].role=SR_DRUMS;e->timeline[j].note=e->scheduled[i].note==0?36:e->scheduled[i].note==1?38:42;
-          e->timeline[j].velocity=e->scheduled[i].velocity;}
-        if(e->scheduled[i].note==0)e->kick_env=velocity;
-        else if(e->scheduled[i].note==1)e->hand_env=velocity;else e->shaker_env=velocity;
-        unsigned part=e->scheduled[i].note;
-        if(part<3u){
-          unsigned bit=1u<<part;
-          e->drum_steps[e->drum_playhead]|=bit|(velocity>=.75f?bit<<3u:0u);
-        }
-        e->tracks[role].events++;
+        drum_strike(e,e->scheduled[i].note,e->scheduled[i].velocity);
       }else sr_note_on(e,role,e->scheduled[i].note,e->scheduled[i].velocity,e->scheduled[i].beats);
     }else if(n>(unsigned)due)n=(unsigned)due;
   }

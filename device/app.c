@@ -8,7 +8,7 @@
 #include "lighting_policy.h"
 static sr_engine engine PLAT_POOL;
 static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
-typedef struct {int kind,value; unsigned track, captured_ms;} command;
+typedef struct {int kind,value; unsigned track, captured_ms, drum_part;} command;
 static command queue[64];
 static volatile unsigned intention_request,intention_applied,intention_ticks;
 static unsigned intention_latency_us,intention_prepare_us,lcd_submit_us;
@@ -38,6 +38,7 @@ static volatile unsigned requested_play, stop_generation, physical_keys;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm,arrange_browse;
+static unsigned drum_part;
 static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, fullscreen_performance, last_control_ms;
 static unsigned preferences_saving, preferences_generation, preferences_saved_ms;
 #ifndef PLAT_HOST
@@ -254,7 +255,7 @@ static unsigned control_for(unsigned knob)
  if(debug)return knob==0?(debug==3?42:0):0;
  if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128},{0,0,0,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
-   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49}};
+   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159}};
    return controls[drum_tab][knob];
  }
  if(page==PAGE_SETUP){
@@ -304,7 +305,7 @@ static void drums_enable(int enabled)
 }
 static int bounded(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
 static float adjust(float x,int d,float step,float hi){return fm_clampf(x+d*step,0,hi);}
-static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected,plat_ms()};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
+static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected,plat_ms(),drum_part};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
 /* Latest absolute target wins even when the general command ring is full.
  * A single aligned word carries the target and its generation. */
 static unsigned shown_intention(void)
@@ -331,7 +332,7 @@ static void consume(void){
  unsigned play=requested_play;
  unsigned interrupted=stop!=applied_stop;
  if(interrupted){applied_stop=stop;sr_stop(&engine);}
- unsigned count=0;while(qread!=qwrite&&count++<64){command c=queue[qread];__asm__ volatile("":::"memory");qread=(qread+1)&63;sr_track *t=&engine.tracks[c.track];int d=c.value;
+ unsigned count=0;while(qread!=qwrite&&count++<20){command c=queue[qread];__asm__ volatile("":::"memory");qread=(qread+1)&63;sr_track *t=&engine.tracks[c.track];int d=c.value;
  if(c.kind!=200||(((uint32_t)c.value>>8)&255u)!=0xf8)state_revision++;
  measure(&control_queue_timing[!!engine.running],(plat_ms()-c.captured_ms)*100u);
  command_applied++;
@@ -447,6 +448,14 @@ static void consume(void){
    else if(d<0)engine.drum_mutes&=~bit;
    break;
  }
+ case 157:{
+   unsigned bit=1u<<c.drum_part;
+   if(d>0)engine.drum_mutes|=bit;
+   else if(d<0)engine.drum_mutes&=~bit;
+   break;
+ }
+ case 158:engine.drum_solo=d>0?c.drum_part:SR_DRUM_PARTS;break;
+ case 159:engine.drum_levels[c.drum_part]=bounded(engine.drum_levels[c.drum_part]+d*5,0,100);break;
  case 146:engine.speaker_enabled=switched(engine.speaker_enabled,d);break;
  case 49:t->mute=switched(t->mute,d);break;
  case 50:engine.auto_gain=switched(engine.auto_gain,d);break;
@@ -639,7 +648,7 @@ void app_init(void)
     qread=qwrite=command_enqueued=command_applied=0;
     quick_started=quick_pending=quick_timeout=quick_finished_ms=0;
     requested_play=stop_generation=applied_stop=physical_keys=0;
-    page=selected=group=debug=display_subtab=0;
+    page=selected=group=debug=display_subtab=drum_part=0;
     mix_tab=mix_reset=mix_focus=mix_bus=song_tab=song_arm=setup_tab=drum_tab=air_tab=save_info=0;
     preferences_dirty=preferences_changed=0;
     air_packet_window=air_packet_rate=air_packet_total=air_last_packet_ms=0;
@@ -730,6 +739,9 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     if(chime)intro_samples+=n;
     if(!master)intro_gain=0;
     unsigned total=plat_ticks24()-begin;
+#ifndef PLAT_HOST
+    sr_deadline_observe(&engine,total/24u);
+#endif
     unsigned fx=engine.fx_ticks<total?engine.fx_ticks:total;
     measure(&audio_timing,(total-fx)/24);
     measure(&fx_timing,fx/24);
@@ -738,6 +750,14 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
 void app_say(const char*a,const char*b){(void)a;(void)b;dirty=1;}
 void app_input_only(void){
  unsigned poll_now=plat_ms();
+#ifndef PLAT_HOST
+ /* The hardware timer continuously accumulates encoder edges. Re-reading
+  * the scanner and taking LED snapshots in every foreground spin repeatedly
+  * masks the audio IRQ, including while SETUP is idle. */
+ static unsigned previous_poll=~0u;
+ if(poll_now==previous_poll)return;
+ previous_poll=poll_now;
+#endif
  if(input_poll_ms)measure(&control_poll_timing[!!engine.running],(poll_now-input_poll_ms)*100u);
  input_poll_ms=poll_now;
  midi_poll();unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbuttons;oldbuttons=b;
@@ -745,7 +765,8 @@ void app_input_only(void){
              plat_enc(EN_K1),plat_enc(EN_K1+1),plat_enc(EN_K1+2),plat_enc(EN_K1+3)};
  int control=press!=0;
  for(unsigned i=0;i<7;i++)control|=enc[i]!=0;
- if(control||k!=oldkeys){input_revision++;input_changed_ms=plat_ms();}
+ unsigned key_edge=k!=oldkeys;
+ if(control||key_edge){input_revision++;input_changed_ms=plat_ms();}
  if(intro_active){
    unsigned now=plat_ms();
    /* First sample after power-on is a baseline, not a user input edge. */
@@ -810,7 +831,7 @@ void app_input_only(void){
      group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
    }
    if(page==PAGE_AIR)air_tab=(air_tab+1)%4;
-   if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%5;
+   if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%6;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
      mix_tab=mix_tab>=4?0:mix_tab+1;mix_reset=0;}
@@ -818,7 +839,7 @@ void app_input_only(void){
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
- if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%5:0;page=PAGE_DRUMS;debug=0;}
+ if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%6:0;page=PAGE_DRUMS;debug=0;}
  if((press&(1u<<B_LFO))&&!(page==PAGE_MIX&&!debug&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(debug?27:28,0);
  /* SAVE has exactly one meaning on every page, including fullscreen. */
  if(press&(1u<<B_SAVE))arrangement_quick_save();
@@ -849,7 +870,7 @@ void app_input_only(void){
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
    }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
    else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3||mix_tab==5))mix_select(d);
-   else if(page==PAGE_DRUMS)drum_tab=bounded((int)drum_tab+d,0,4);
+   else if(page==PAGE_DRUMS)drum_tab=bounded((int)drum_tab+d,0,5);
    else if(page==PAGE_SETUP&&setup_tab==2)save_info=bounded((int)save_info+d,0,2);
    else if(page==PAGE_SETUP&&setup_tab==0)display_subtab=bounded((int)display_subtab+d,0,1);
    else if(page!=PAGE_DRUMS){selected=bounded((int)selected+d,0,7);if(page==PAGE_PLAY)select_revision++;}
@@ -860,7 +881,13 @@ void app_input_only(void){
  for(unsigned i=0;i<4;i++){
     d=enc[3+i];
     unsigned control=control_for(i);
-    if(!d||!control)continue;
+    if(!d)continue;
+    if(page==PAGE_DRUMS&&drum_tab==5&&!debug&&!fullscreen&&i==0){
+      drum_part=bounded((int)drum_part+d,0,SR_DRUM_PARTS-1);
+      dirty=1;
+      continue;
+    }
+    if(!control)continue;
     if(control==71)quick_item=bounded((int)quick_item+d,0,QUICK_COUNT-1u);
     else if(control==72&&d>0){
       if(quick_item>=QUICK_CATEGORIES)open_parameter(quick_item-QUICK_CATEGORIES);
@@ -940,12 +967,17 @@ void app_input_only(void){
     else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
 
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
-    else {send(control,bounded(d,-8,8));if(control==25||control==50||control==51||control==62||control==93||control==94||control>=96||(control>=32&&control<=35))preferences_changed_now();}
-    if(control>=120)preferences_changed_now();
+    else {send(control,bounded(d,-8,8));if(control==25||control==50||control==51||control==62||control==93||control==94||(control>=96&&control<157)||(control>=32&&control<=35))preferences_changed_now();}
+    if(control>=120&&control<157)preferences_changed_now();
     if(control!=72){knob_focus=i;knob_until=plat_ms()+900;}
     dirty=1;
  }
  if(press)dirty=1;
+#ifndef PLAT_HOST
+ static unsigned last_light_refresh;
+ if(!control&&!key_edge&&poll_now-last_light_refresh<8u)return;
+ last_light_refresh=poll_now;
+#endif
  unsigned clock_flags=plat_lock();
  unsigned play_pulse=aq_play_pulse(engine.running,engine.sequence_step,
                                   engine.tick_phase,engine.tick_length);
@@ -1208,8 +1240,19 @@ void app_frame(void)
       fade=age>=2000u?0:age<=1200u?4:4-(age-1200u)/200u;
     }
     if(fade!=battery_fade){battery_fade=fade;battery_dirty=1;}
+    if(display_strip){
+      unsigned active_animation=display_animate;
+      unsigned draw_start=plat_ticks24();
+      unsigned complete=draw(active_animation);
+      frame_us+=(plat_ticks24()-draw_start)/24u;
+      if(complete){
+        if(active_animation&&page==PAGE_PLAY)frames++;
+        if(!debug&&!intro_active)measure(&display_timing[page],(frame_us+9u)/10u);
+      }
+      return;
+    }
     poll_visual_worker();
-    if(now-redraw_ui_ms<FRAME_MIN_MS)return;
+    if(now-redraw_ui_ms<(labelled_input!=input_revision?8u:FRAME_MIN_MS))return;
     unsigned elapsed=now-lastdraw;
     /* Never latch a frozen image: reduce optional cadence under sustained
      * pressure, then recover automatically. Audio ISR always owns priority. */
@@ -1230,7 +1273,7 @@ void app_frame(void)
     int live_air=page==PAGE_AIR&&(air_on||engine.air_target>.0001f||engine.air_wet>.0001f);
     int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
     if(animate&&page==0){
-      missed+=elapsed/FRAME_MIN_MS-1u;
+      if(elapsed>=FRAME_MIN_MS)missed+=elapsed/FRAME_MIN_MS-1u;
 
     }
     if(animate){
@@ -1244,7 +1287,7 @@ void app_frame(void)
       lcd_submit_us=0;
       unsigned complete=draw(animate);
       frame_us=(plat_ticks24()-draw_start)/24;
-      if(!debug&&!intro_active)measure(&display_timing[page],(frame_us+9u)/10u);
+      if(complete&&!debug&&!intro_active)measure(&display_timing[page],(frame_us+9u)/10u);
       if(complete&&animate&&page==0)frames++;
     }
 }
@@ -1262,6 +1305,8 @@ int app_expect(const char *what,int *got){
  if(!strcmp(what,"vocals")){*got=engine.vocals_enabled;return 1;}
  if(!strcmp(what,"vocal_presence")){*got=engine.vocal_presence;return 1;}
  if(!strcmp(what,"speaker")){*got=engine.speaker_enabled;return 1;}
+ if(!strcmp(what,"drum_part")){*got=drum_part;return 1;}
+ if(!strcmp(what,"drum_solo")){*got=engine.drum_solo;return 1;}
  if(!strcmp(what,"drum_mutes")){*got=engine.drum_mutes;return 1;}
  if(!strcmp(what,"mix_focus")){*got=mix_focus;return 1;}
  if(!strcmp(what,"boot_starts")){*got=boot_starts;return 1;}

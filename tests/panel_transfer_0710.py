@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 
 ui = Path("device/ui.c").read_text()
-cache = ui[ui.index("static uint16_t panel_pixels"):ui.index("static unsigned graph_future_count;")]
+cache = ui[ui.index("static uint32_t panel_signature"):ui.index("static unsigned graph_future_count;")]
 harness = r"""
 #include <assert.h>
 #include <stdint.h>

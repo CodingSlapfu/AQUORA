@@ -1051,7 +1051,7 @@ static void fm1_main(void)
 #if FM1B_CDC
         cdc_task();
 #endif
-        if (fm1_ms - last_frame >= 16u) {           /* ~60 frames/s at most; input in between */
+        if (fm1_ms - last_frame >= 4u) {           /* Service one short display slice; frame cadence is app-owned. */
             last_frame = fm1_ms;
             fm1b_dbg.ui_frames++;
             fm1b_dbg.stage = 5;

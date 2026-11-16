@@ -69,7 +69,10 @@ typedef struct {
   float shaker_env, shaker_lp, hand_noise_lp;
   float drum_part_gain[3], slicer_gain[3];
   uint8_t filter_cutoff, filter_resonance, slicer_mask;
-  uint8_t drum_mutes, drum_steps[64], drum_playhead;
+  uint16_t drum_mutes, drum_active;
+  uint32_t drum_steps[64], drum_phase[13];
+  float drum_amp[13], drum_aux_from, drum_aux_to;
+  uint8_t drum_levels[16], drum_solo, drum_playhead, drum_subsample;
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;
   float speaker_low, speaker_body, speaker_mix;
@@ -116,6 +119,7 @@ typedef struct {
   float role_gain[SR_TRACKS], role_target[SR_TRACKS];
   uint32_t (*clock_ticks)(void);
   uint32_t fx_ticks;
+  uint8_t voice_limit,deadline_high,deadline_low;
   int16_t reverb[4][1789]; int16_t delay[16384];
   uint16_t rev_pos[4], delay_pos, rev_history, delay_history;
   float reverb_wet, delay_wet;
@@ -132,11 +136,15 @@ typedef struct {
   int (*finish)(void);
 } sr_fm_worker;
 void sr_set_fm_worker(const sr_fm_worker *worker);
+void sr_deadline_observe(sr_engine *e,unsigned callback_us);
 
 extern const sr_patch sr_patches[SR_PATCHES];
 extern const sr_scene sr_scenes[SR_SCENES];
 extern const sr_frequency sr_frequencies[SR_FREQUENCIES];
 extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
+enum { SR_DRUM_PARTS=16 };
+extern const char *const sr_drum_parts[SR_DRUM_PARTS];
+extern const uint8_t sr_drum_notes[SR_DRUM_PARTS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
 /* The caller takes a coherent snapshot while holding the audio lock.
  * Expansion mutates only that scratch engine and must run outside the lock. */

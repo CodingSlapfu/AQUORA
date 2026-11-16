@@ -369,6 +369,9 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  }
  case 155:*name="RECORDED VOCALS";return engine.vocals_enabled?"On":"Off";
  case 156:{static const char *names[]={"Sparse","Gentle","Present","Featured"};*name="VOCAL PRESENCE";return names[engine.vocal_presence?engine.vocal_presence-1u:1u];}
+ case 157:*name="PART MUTE";return engine.drum_mutes&(1u<<drum_part)?"Mute":"On";
+ case 158:*name="PART SOLO";return engine.drum_solo==drum_part?"Solo":"Off";
+ case 159:*name="PART LEVEL";num(buffer,engine.drum_levels[drum_part]);return buffer;
  case 146:*name="AUDIO OUTPUT";return engine.speaker_enabled?"FM-1 Speaker":"Headphones";
  case 147:{static const char *names[]={"Lagoon","Orchid","Electric Blue","Amber","Indigo"};*name="THEME";return names[ui_theme];}
  case 148:*name="BACKGROUND";return ui_background?"White":"Black";
@@ -738,35 +741,45 @@ static void battery_glyph(void)
 static __typeof__(engine.timeline) graph_notes;
 static sr_engine graph_snapshot PLAT_POOL;
 static sr_event graph_future[384] PLAT_POOL;
-/* RGB565 is cached byte-for-byte. Trim unchanged rows at either end and
- * submit at most one DMA window per band. A hash collision cannot hide pixels. */
-static uint16_t panel_pixels[240u*240u] PLAT_POOL;
+/* Fingerprint 8-row regions. A rendered stripe is submitted as a contiguous
+ * range; only the canvas buffers hold pixels. The signature combines a
+ * rotating sum and an independent multiplicative sequence. */
+static uint32_t panel_signature[30][2];
 static unsigned panel_cached_bands;
-
 static unsigned submit_panel_band(unsigned band,int full_motion)
 {
-    enum { width=240, rows=48, stripe=8 };
-    uint16_t *previous=panel_pixels+band*width*rows;
-    unsigned first=0,last=rows,mask=1u<<band;
+    enum { width=240, rows=48, stripe=8, stripes=rows/stripe };
+    unsigned first=stripes,last=0,mask=1u<<band;
     if(full_motion){
         panel_cached_bands&=~mask;
-    }else if(panel_cached_bands&mask){
-        while(first<last&&!memcmp(previous+first*width,cv_px+first*width,
-                                   stripe*width*sizeof *previous))first+=stripe;
-        if(first==last)return 0;
-        while(last-first>stripe&&!memcmp(previous+(last-stripe)*width,
-              cv_px+(last-stripe)*width,stripe*width*sizeof *previous))last-=stripe;
+        first=0;last=stripes;
+    }else{
+        for(unsigned i=0;i<stripes;i++){
+            const uint16_t *pixels=cv_px+i*stripe*width;
+            uint32_t a=2166136261u,b=0x94d049bbu;
+            for(unsigned j=0;j<stripe*width;j+=2){
+                uint32_t pair=pixels[j]|((uint32_t)pixels[j+1]<<16);
+                a=(a^pair)*16777619u;
+                b=((b<<5)|(b>>27))+pair;
+            }
+            uint32_t *previous=panel_signature[band*stripes+i];
+            if(!(panel_cached_bands&mask)||a!=previous[0]||b!=previous[1]){
+                if(first==stripes)first=i;
+                last=i+1u;
+                previous[0]=a;previous[1]=b;
+            }
+        }
+        panel_cached_bands|=mask;
     }
-    if(!full_motion)memcpy(previous+first*width,cv_px+first*width,(last-first)*width*sizeof *previous);
-    lcd_blit(0,band*rows+first,width,last-first,cv_px+first*width);
+    if(first>=last)return 0;
+    lcd_blit(0,band*rows+first*stripe,width,(last-first)*stripe,cv_px+first*stripe*width);
 #if APP_CANVAS_DOUBLE_BUFFER
     cv_last_sent=cv_px;
 #endif
-    if(!full_motion)panel_cached_bands|=mask;
     return 1;
 }
 static unsigned graph_future_count;
-static uint8_t drum_forecast[16];
+static uint32_t drum_forecast[16];
 static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
 static float graph_scale;
 static const char *graph_now,*graph_next;
@@ -881,9 +894,22 @@ static void evolve_graph(unsigned band){
   }
  }
 }
+static unsigned display_strip,display_animate,display_first,display_inputs,display_selections,display_revision;
+#ifndef PLAT_HOST
+static unsigned panel_transfer_started;
+#endif
 static int draw(int animate)
 {
- unsigned revision=state_revision;
+#ifndef PLAT_HOST
+ if(app_lcd_transfer_pending()&&plat_ticks24()-panel_transfer_started<240000u)return 0;
+#endif
+ if(display_strip&&input_revision-display_inputs!=select_revision-display_selections){
+    display_strip=0;
+    dirty=1;
+ }
+ unsigned revision=display_strip?display_revision:state_revision;
+ if(display_strip)animate=display_animate;
+
  static unsigned prior_page=~0u;
  if(page!=prior_page){prior_page=page;page_animation_ms=plat_ms();}
  unsigned entry_age=plat_ms()-page_animation_ms;
@@ -893,7 +919,7 @@ static int draw(int animate)
  unsigned score_visible=page==PAGE_EVOLVE&&song_tab==0&&!debug&&!intro_active&&!fullscreen;
  unsigned drums_visible=page==PAGE_DRUMS&&!debug&&!intro_active&&!fullscreen;
  if(!score_visible&&!drums_visible)forecast_valid=0;
- if((page==PAGE_EVOLVE||page==PAGE_PLAY||fullscreen||drums_visible)&&!debug&&!intro_active){
+ if(!display_strip&&(page==PAGE_EVOLVE||page==PAGE_PLAY||fullscreen||drums_visible)&&!debug&&!intro_active){
   unsigned flags=plat_lock();
   unsigned refresh=0;
   unsigned drum_position=engine.drum_playhead&15u;
@@ -928,24 +954,32 @@ static int draw(int animate)
      if(event->role!=SR_DRUMS||(int32_t)(event->frame-next)<0)continue;
      unsigned step=drum_position+1u+(event->frame-next)/graph_tick;
      if(step>=16u)continue;
-     unsigned bit=event->note==36?1u:event->note==38?2u:4u;
-     drum_forecast[step]|=bit|(event->velocity>=95u?bit<<3u:0u);
+     for(unsigned lane=0;lane<SR_DRUM_PARTS;lane++)if(event->note==sr_drum_notes[lane]){
+       unsigned bit=1u<<lane;
+       drum_forecast[step]|=bit|(event->velocity>=96u?bit<<16u:0u);
+       break;
+     }
     }
    }else graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);
    forecast_valid=1;
   }
  }
- unsigned inputs=input_revision, selections=select_revision;
- const unsigned priority=!intro_active&&!fullscreen&&labelled_input!=input_revision;
+ if(!display_strip){
+   display_inputs=input_revision;
+   display_selections=select_revision;
+   display_first=!intro_active&&!fullscreen&&labelled_input!=input_revision;
+   display_revision=revision;
+   display_animate=animate;
+ }
  static const uint8_t control_first[5]={3,4,0,1,2};
- for(int strip=0;strip<5;strip++){
-   int band=priority?control_first[strip]:strip;
+ for(;display_strip<5;display_strip++){
+   int band=display_first?control_first[display_strip]:display_strip;
    /* Input dispatch must not wait for a complete animated LCD frame. Poll
     * only between bands, never while the canvas/snapshot is being drawn.
     * Navigation can change every page-local selector: abandon this frame
     * rather than mixing snapshots or clearing the new dirty notification. */
    app_input_only();
-   if(input_revision-inputs!=select_revision-selections){dirty=1;return 0;}
+   if(input_revision-display_inputs!=select_revision-display_selections){display_strip=0;dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=intro_active||fullscreen||band==1||band==2||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
@@ -1075,32 +1109,35 @@ static int draw(int animate)
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
-       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES"};
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART MIX"};
        cv_text(8,0,&FONT_B,tabs[drum_tab],ui_background?skin_text():colors[SR_DRUMS]);
-       limited_text(8,25,146,&FONT_XS,sr_drum_kits[engine.drum_kit].name,skin_text());
+       limited_text(8,25,146,&FONT_XS,drum_tab==5?sr_drum_parts[drum_part]:sr_drum_kits[engine.drum_kit].name,skin_text());
        limited_text(157,25,76,&FONT_T,"SELECT: TAB",skin_dim());
      }else{
-       static const char *lanes[]={"BD","SD","HH"};
+       static const char *lanes[]={"Kick","Snare","Cl Hat","Kick 2","Clap","Op Hat","Ped Hat","Rim","Snare 2","Low Tom","Hi Tom","Crash","Ride","Shaker","Conga","Bell"};
        static const unsigned role_ink[]={SR_BASS,SR_DRUMS,SR_GUITAR};
-       uint8_t steps[16];
+       uint32_t steps[16];
        unsigned flags=plat_lock();
        unsigned current=engine.drum_playhead;
        unsigned muted=engine.drum_mutes;
        memcpy(steps,engine.drum_steps+(current&~15u),sizeof steps);
        plat_unlock(flags);
-       for(unsigned lane=0;lane<3;lane++){
-         int y=lane*16;
-         uint16_t ink=(muted&(1u<<lane))?skin_dim():colors[role_ink[lane]];
-         cv_text(8,y,&FONT_T,lanes[lane],ink);
+       unsigned first=drum_tab==5?(drum_part/3u)*3u:0u;
+       for(unsigned lane=first;lane<first+3u&&lane<SR_DRUM_PARTS;lane++){
+         int y=(lane-first)*16;
+         uint16_t ink=(muted&(1u<<lane))||(engine.drum_solo<SR_DRUM_PARTS&&engine.drum_solo!=lane)
+             ?skin_dim():colors[role_ink[lane%3u]];
+         if(drum_tab==5&&lane==drum_part)cv_line(4,y,4,y+13,skin_accent());
+         limited_text(8,y,58,&FONT_T,lanes[lane],ink);
          for(unsigned step=0;step<16;step++){
            unsigned future=step>(current&15u);
            unsigned flags=future?drum_forecast[step]:steps[step];
            unsigned hit=flags&(1u<<lane);
-           int x=29+step*12;
-           if(step==(current&15u))cv_rect(x-1,y,11,13,skin_accent());
+           int x=67+step*10;
+           if(step==(current&15u))cv_rect(x-1,y,10,13,skin_accent());
            cv_rect(x,y+2,9,9,hit?ink:skins[ui_theme][ui_background].border);
            if(hit&&future)cv_rect(x+2,y+4,5,5,bg);
-           if(hit&&(flags&(8u<<lane)))cv_line(x+1,y+4,x+7,y+4,skin_text());
+           if(hit&&(flags&(65536u<<lane)))cv_line(x+1,y+4,x+7,y+4,skin_text());
          }
        }
      }
@@ -1284,7 +1321,7 @@ static int draw(int animate)
        limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
      else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?8:page==PAGE_MIX?5:page==PAGE_DRUMS?5:page==PAGE_SETUP?5:4;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?8:page==PAGE_MIX?5:page==PAGE_DRUMS?6:page==PAGE_SETUP?5:4;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
@@ -1322,7 +1359,10 @@ static int draw(int animate)
      }
    }else{
      unsigned start=band==3?0:2;
-     knob_cell(start,8);
+     if(page==PAGE_DRUMS&&drum_tab==5&&start==0){
+       cv_text(8,0,&FONT_T,"K1 DRUM PART",skin_dim());
+       limited_text(8,15,108,&FONT_B,sr_drum_parts[drum_part],skin_accent());
+     }else knob_cell(start,8);
      knob_cell(start+1,126);
      if(band==4&&ui_font_size!=2){
        if(page==PAGE_DRUMS){
@@ -1395,7 +1435,12 @@ static int draw(int animate)
    if(band==0&&!intro_active&&!fullscreen)battery_glyph();
    unsigned lcd_start=plat_ticks24();
    if(submit_panel_band(band,animate&&(intro_active||
-      (page==PAGE_PLAY&&band>0&&(fullscreen||band<3)))))AQ_VIS_COUNT(ui_blits);
+      (page==PAGE_PLAY&&band>0&&(fullscreen||band<3))))){
+     AQ_VIS_COUNT(ui_blits);
+#ifndef PLAT_HOST
+     panel_transfer_started=plat_ticks24();
+#endif
+   }
    if(!debug)lcd_submit_us+=(plat_ticks24()-lcd_start)/24u;
    /* Acknowledge the submitted control band, rather than charging later
     * optional graphics to label feedback. Physical DMA completion is a
@@ -1405,8 +1450,12 @@ static int draw(int animate)
      measure(&control_label_timing[!!engine.running],(plat_ms()-input_changed_ms)*100u);
      labelled_input=input_revision;
    }
+#ifndef PLAT_HOST
+   if(display_strip<4){display_strip++;return 0;}
+#endif
  }
- dirty=input_revision!=inputs;
+ display_strip=0;
+ dirty=input_revision!=display_inputs;
  battery_dirty=0;
  displayed_revision=revision;
  return 1;

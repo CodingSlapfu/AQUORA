@@ -15,6 +15,7 @@ static void check_drum_mutes(void)
     engine.kick_env=engine.hand_env=engine.shaker_env=1.f;
     for(unsigned i=0;i<512;i++)assert(drum_sample(&engine)==0.f);
 
+    bank.version=AQ_BANK_V8;
     bank.future=0;
     bank.crc8=arrangement_crc(&bank);
     arrangement_apply(&bank);
@@ -67,7 +68,7 @@ static void check_effects(void)
     for(unsigned block=0;block<5;block++)render_samples(&engine,dry,64);
     assert(engine.slicer_gain[1]==1.f&&engine.slicer_gain[2]==1.f);
     bank.reserved=0;
-    bank.crc8=arrangement_crc(&bank);
+    bank.crc9=arrangement_crc(&bank);
     arrangement_apply(&bank);
     assert(!engine.filter_cutoff&&!engine.filter_resonance&&!engine.slicer_mask);
 }

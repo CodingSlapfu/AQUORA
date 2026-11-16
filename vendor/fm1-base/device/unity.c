@@ -63,6 +63,12 @@
 
 #include "libc.c"
 #include "lcd.c"
+
+/* A pending stripe never makes the app wait on the panel bus. */
+static int app_lcd_transfer_pending(void)
+{
+    return lcd_busy && !fm1_lcd_transfer_done();
+}
 #include "gfx.c"
 
 static volatile uint32_t fm1_ms;  /* milliseconds since boot (TIMER4-based, TIMER5 ISR) */
