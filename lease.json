@@ -1,7 +1,16 @@
 {
   "owner": "work-0711-publish",
   "epoch": 16,
-  "released": false,
-  "expires": 1794820659,
-  "checkpoint": "ad1917a6ef1497ea5b7f002753827b4c7735c044"
+  "released": true,
+  "expires": 0,
+  "checkpoint": "ad1917a6ef1497ea5b7f002753827b4c7735c044",
+  "release_url": "https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.7.11",
+  "firmware_identity": "FM-1_73000711",
+  "firmware_sha256": "924e66305433f0078fc1e9df37acfe98fd39d595b1b62c8186b34e88f3b04a8a",
+  "site_source": "54a20aad6a25fbf9b176797f62b634dd5c53d1e9",
+  "site_version": 205,
+  "deployment_id": "appgdep_6afabe3a64008191a7dafb6008b0b876",
+  "live_url": "https://parallax8-studio.jminie66.chatgpt.site",
+  "verified_rollback_installers": 14,
+  "hardware_acceptance": "Pending owner testing after authorized publication"
 }
