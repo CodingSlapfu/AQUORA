@@ -1,9 +1,9 @@
 {
   "owner": "work-0710-completion",
   "epoch": 13,
-  "released": false,
-  "expires": 1794805444,
-  "scope": "v0.7.10 Cymatics and drum preview continuation verified; release held",
+  "released": true,
+  "expires": 1794802388,
+  "scope": "Integrated v0.7.10 LCD, arrangement clock and effects verified; official release held",
   "checkpoint": "e41d1b08a9f87f95b01ca3db9822e5feca5fd07b",
   "verified_artifact_backup": "8688878a4503eac16ce3411e23dcf87cca62c7c2",
   "site_source": "9382805e1a5dee211604426ca39c9c295368ad6f",
@@ -17,7 +17,7 @@
   "official_zip_sha256": "c4ee2eaef8f99c1c56456cad50a1d3d89c9c0f646b54994cd2632739cc820d96",
   "release_url": "https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.7.9",
   "hardware_acceptance": "Owner listening, FM-1 timing, flash and rollback acceptance pending",
-  "next_development_checkpoint": "2533c0b150f9723be773e648dba2e8d4e14ef06d",
+  "next_development_checkpoint": "fcf1217ea285928b79e73b5385291127a3a563c5",
   "next_development_branch": "aquora-v0.7.10-integrated",
-  "next_native_sha256": "bbc75980653c3b6c583e1fafa07a8e1f6c74be4481e220ceea97f80f1bf3c931"
+  "next_native_sha256": "d5917d63e4493ec10117ecf8e56314a1d3b2aa4dde2b46e0694da180ce2f4b85"
 }
