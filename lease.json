@@ -1,7 +1,7 @@
 {
-  "owner": "work-0714-pattern-editor",
-  "epoch": 27,
-  "released": true,
-  "expires": 1794872644,
+  "owner": "work-0714-mixer-portrait",
+  "epoch": 28,
+  "released": false,
+  "expires": 1794876753,
   "checkpoint": "349e8cc6ac380d4758302858b2a7a4573780c179"
 }
