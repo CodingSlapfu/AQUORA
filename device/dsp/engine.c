@@ -1223,7 +1223,7 @@ static void drum_strike(sr_engine *e,unsigned lane,unsigned velocity)
 /* A stable draw per score position keeps detents nested and repeatable. */
 static int drum_hit_allowed(const sr_engine *e,unsigned step,unsigned lane)
 {
- unsigned rank=song_draw(e->song_seed, 701u+step*17u+lane)%100u;
+ unsigned rank=song_draw(e->song_seed, 701u+step*17u+lane+1093u*e->form_loop)%100u;
  return rank<e->drum_hit;
 }
 
@@ -1240,7 +1240,7 @@ static void drum_colors(sr_engine *e,unsigned step,unsigned density)
  if(density>=5&&beat==0&&section==2u&&(bar&3u)==0u)mask|=1u<<11;
  if(density>=5&&(beat==0||beat==8)&&section==2u&&(bar&1u))mask|=1u<<12;
  if(density>=5&&beat==11&&section!=3u&&(bar&1u))mask|=1u<<14;
- if(density>=6&&beat==8&&section==4u)mask|=1u<<15;
+ if(density>=3&&(beat==8||beat==12)&&section==4u)mask|=1u<<15;
  if(density>=5&&sr_section_remaining(e)==1u){
    if(beat==13)mask|=1u<<10;
    if(beat==15)mask|=1u<<9;
@@ -1345,6 +1345,19 @@ void sr_preview_sound(sr_engine *e,unsigned role)
   if(role==SR_DRUMS){
     if(!e->tracks[role].mute){e->kick_env=.62f;e->hand_env=.51f;e->shaker_env=.4f;}
   }else sr_note_on(e,role,(uint8_t)(sr_tonic(e)+(role==SR_BASS?0:24)),72,1.3f);
+}
+
+void sr_audition_drum(sr_engine *e,unsigned lane)
+{
+  if(lane>=SR_DRUM_PARTS||e->frequency_lock||e->tracks[SR_DRUMS].mute)return;
+  if(!e->running){
+    if(e->stop_frames||e->external_audio)return;
+    if(!e->preview_frames)clear_transport(e);
+    e->nature_audition=0;
+    e->preview_role=SR_DRUMS;
+    e->preview_frames=SR_RATE;
+  }
+  drum_strike(e,lane,104);
 }
 
 static inline __attribute__((always_inline)) float drum_lane_level(const sr_engine *e,unsigned lane)
@@ -1632,6 +1645,28 @@ static void accompaniment(sr_engine *e,unsigned bar,unsigned chord)
 
 /* Real, pitched human takes use the dedicated vocal lane and shared voice pool.
  * Fit each chord tone into one of two vocal registers before transposition. */
+/* Recorded samples already have a calibrated root. Snap played chromatic
+ * notes toward the nearest scale degree, retaining pitch bend at low mix. */
+static float vocal_pitch_target(const sr_engine *e,const sr_voice *voice)
+{
+  int played=voice->midi, tonic=sr_tonic(e)%12;
+  if(!e->vocal_tune)return voice->freq;
+  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+  int best=played, distance=13;
+  for(int delta=-2;delta<=2;delta++){
+    int candidate=played+delta;
+    if(candidate<0||candidate>127)continue;
+    unsigned degree=(candidate-tonic+12)%12;
+    int separation=delta<0?-delta:delta;
+    for(unsigned i=0;i<7;i++)if((unsigned)scale[i]%12u==degree&&separation<distance){
+      best=candidate;
+      distance=separation;
+    }
+  }
+  float corrected=sr_note_frequency(e,best);
+  return voice->freq+(corrected-voice->freq)*(e->vocal_tune*.01f);
+}
+
 static sr_voice *recorded_note(sr_engine *e,int note,unsigned zone,unsigned velocity,float beats)
 {
  if(!e->vocals_enabled)return 0;
@@ -1644,6 +1679,7 @@ static sr_voice *recorded_note(sr_engine *e,int note,unsigned zone,unsigned velo
  sr_voice *voice=note_on(e,SR_CHOIR,note,velocity,beats);
  if(!voice)return 0;
  voice->sample_zone=zone+1u;
+ voice->freq=voice->pitch=vocal_pitch_target(e,voice);
  voice->phase2=voice->freq*(VOCAL_RATE/(float)SR_RATE)/vocal_zones[zone].hz;
  voice->attack_coef=.00065f;
  voice->release_coef=.00095f;
@@ -2394,6 +2430,44 @@ static void remote_fm_render(uint32_t unused)
     synthesize_fm(&remote_fm);
 }
 
+/* Shared quarter-rate history for independent vocal chorus, room and echo.
+ * The dry vocal path retains full sample rate. */
+static inline __attribute__((always_inline)) float vocal_tap(const sr_engine *e,unsigned offset)
+{
+  return e->vocal_fx_history>=offset?
+      e->vocal_fx_buffer[(e->vocal_fx_pos-offset)&8191u]*(1.f/32768.f):0.f;
+}
+
+static inline __attribute__((always_inline)) void vocal_effects(sr_engine *e,float dry,
+    unsigned frame,float *left,float *right)
+{
+  unsigned chorus=e->vocal_chorus,room=e->vocal_reverb,echo=e->vocal_delay;
+  if(!(chorus|room|echo)){e->vocal_fx_history=0;e->vocal_fx_tail=0;e->vocal_fx_input=0;return;}
+  if(fabsf(dry)>.0001f)e->vocal_fx_tail=SR_RATE*2u;
+  if(!e->vocal_fx_tail){e->vocal_fx_history=0;return;}
+  e->vocal_fx_tail--;
+  e->vocal_fx_input+=dry;
+  if(!(frame&3u)){
+    unsigned sweep=(frame>>8u)&511u;
+    if(sweep>255u)sweep=511u-sweep;
+    float a=chorus?vocal_tap(e,105u+(sweep>>2u))*(chorus*.0028f):0.f;
+    float b=chorus?vocal_tap(e,190u-(sweep>>2u))*(chorus*.0028f):0.f;
+    float room_a=room?vocal_tap(e,499u):0.f;
+    float room_b=room?vocal_tap(e,787u):0.f;
+    unsigned delay=e->tick_length>>1u;
+    float repeat=echo?vocal_tap(e,delay<8192u?delay:8191u):0.f;
+    e->vocal_fx_left=a+room_a*(room*.0035f)+repeat*(echo*.004f);
+    e->vocal_fx_right=b+room_b*(room*.0035f)+repeat*(echo*.0033f);
+    float next=e->vocal_fx_input*.25f+(room_a+room_b)*(room*.0016f)+repeat*(echo*.0031f);
+    e->vocal_fx_buffer[e->vocal_fx_pos]=sampleout(next);
+    e->vocal_fx_pos=(e->vocal_fx_pos+1u)&8191u;
+    if(e->vocal_fx_history<8192u)e->vocal_fx_history++;
+    e->vocal_fx_input=0;
+  }
+  *left+=e->vocal_fx_left;
+  *right+=e->vocal_fx_right;
+}
+
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 __attribute__((section(".ram_text"), noinline))
 #endif
@@ -2419,7 +2493,7 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
   float meter_decay=1.f-(float)frames*.00097f;
   for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
   for(size_t i=0;i<frames;i++){
-    float l=0.f,r=0.f,mix=0.f,scope=0.f;
+    float l=0.f,r=0.f,mix=0.f,scope=0.f,vocal=0.f;
     if(smooth_slicer)for(unsigned lane=0;lane<3;lane++){
       float gain=e->slicer_gain[lane];
       float target=slicer_target[lane];
@@ -2483,6 +2557,7 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
       l+=z*config->left;
       r+=z*config->right;
       mix+=z*config->send;
+      if(v->sample_zone)vocal+=z*(config->left+config->right)*.5f;
       if(capture&&scope_track==config->track)scope+=z*(config->left+config->right);
       float raw=fabsf(z);
       float mag=raw*(config->left+config->right);
@@ -2501,6 +2576,11 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
       dry[3*i]=l;dry[3*i+1]=r;dry[3*i+2]=0;
       continue;
     }
+    if(!e->tracks[SR_CHOIR].mute&&e->vocals_enabled&&
+       (e->solo>=SR_TRACKS||e->solo==SR_CHOIR)&&
+       (full||source==SR_ISOLATE_TRACK1+SR_CHOIR))
+      vocal_effects(e,vocal,e->frame_count+i,&l,&r);
+    else {e->vocal_fx_tail=0;e->vocal_fx_history=0;e->vocal_fx_input=0;}
     float drums=drum_sample(e);
     if(smooth_slicer)drums*=e->slicer_gain[2];
     if(e->air_track>=SR_TRACKS||e->air_track==SR_DRUMS){

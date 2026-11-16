@@ -368,6 +368,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
    unsigned part=id-149u;
    *name=parts[part];return engine.drum_mutes&(1u<<part)?"Mute":"On";
  }
+ case 163:*name="CHORUS %";number=engine.vocal_chorus;break;
+ case 164:*name="ROOM %";number=engine.vocal_reverb;break;
+ case 166:*name="TUNE %";number=engine.vocal_tune;break;
+ case 165:*name="ECHO %";number=engine.vocal_delay;break;
  case 155:*name="RECORDED VOCALS";return engine.vocals_enabled?"On":"Off";
  case 156:{static const char *names[]={"Sparse","Gentle","Present","Featured"};*name="VOCAL PRESENCE";return names[engine.vocal_presence?engine.vocal_presence-1u:1u];}
  case 157:*name="PART MUTE";return engine.drum_mutes&(1u<<drum_part)?"Mute":"On";
@@ -1241,7 +1245,7 @@ static int draw(int animate)
        }
        pose.blink=plat_ms()%3900u<100u?255:0;
        k9_face_render(cv_px,48u*band,48,&pose);
-     }else if(vocal_tab&&band>=1&&band<=3){
+     }else if(vocal_tab==1&&band>=1&&band<=3){
        int16_t samples[128];
        unsigned flags=plat_lock(),start=engine.scope_write;
        for(unsigned i=0;i<128;i++)samples[i]=engine.scope[(start+i)&127u];
@@ -1253,11 +1257,19 @@ static int draw(int animate)
          previous=y;
        }
      }
-     if(band==0)graph_text(7,3,vocal_tab?"VOCALS / SIGNAL":"VOCALS / KIRA-9",RGB(228,182,255));
+     if(band==0)graph_text(7,3,vocal_tab==2?"VOCALS / EFFECTS":vocal_tab?"VOCALS / SIGNAL":"VOCALS / KIRA-9",RGB(228,182,255));
+     if(vocal_tab==2&&band==2){
+       for(unsigned k=0;k<4;k++){
+         char buf[16];const char *name;
+         const char *value=knob_value(control_for(k),&name,buf);
+         limited_text(6+59*k,2,57,&FONT_T,name,skin_dim());
+         limited_text(6+59*k,24,57,&FONT_XS,value,skin_text());
+       }
+     }
      if(band==4){
        graph_text(8,2,track->mute?"MUTED":engine.vocals_enabled?"VOCALS ON":"VOCALS OFF",RGB(228,182,255));
-       graph_text(126,2,vocal_tab?"EDIT 2/2":"EDIT 1/2",RGB(228,182,255));
-       graph_text(8,20,vocal_tab?"ON   ACTIVITY   GAIN   SEND":"ON   ACTIVITY   GAIN   SOLO",RGB(225,248,255));
+       graph_text(126,2,vocal_tab==2?"EDIT 3/3":vocal_tab?"EDIT 2/3":"EDIT 1/3",RGB(228,182,255));
+       graph_text(8,20,vocal_tab==2?"CHORUS   ROOM   ECHO   TUNE":vocal_tab?"ON   ACTIVITY   GAIN   SEND":"ON   ACTIVITY   GAIN   SOLO",RGB(225,248,255));
      }
    }
    else if(water_visible){
@@ -1500,7 +1512,7 @@ static int draw(int animate)
    }else if(band==0){
      cv_text(8+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS){
-       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART MIX"};
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART / FX AUDITION"};
        limited_text(104,2,110,&FONT_XS,tabs[drum_tab],colors[SR_DRUMS]);
      }else if(page==PAGE_SOUND){
        limited_text(104,2,128,fit_font(groups[group],128,20),groups[group],skin_text());

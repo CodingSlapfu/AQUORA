@@ -33,22 +33,33 @@ static void test_sources(void)
 
 static void test_score(void)
 {
-    unsigned lanes=0;
-    for(unsigned mode=0;mode<SR_MUSIC_MODES;mode++){
-        sr_init(&e,712);
-        sr_set_scene(&e,4);
-        sr_set_music_mode(&e,mode);
-        for(unsigned bar=0;bar<256;bar++){
-            e.form_loop=bar;
-            sr_plan_sections(&e);
-            for(unsigned beat=0;beat<16;beat++){
-                drum_trigger(&e,beat,2);
-                lanes|=e.drum_steps[beat]&65535u;
-                assert(!!(e.drum_steps[beat]&1u)==(groove_kick(&e,beat)>0.f));
+    static const unsigned hit_settings[]={0,25,50,75,100};
+    unsigned previous=0;
+    for(unsigned setting=0;setting<sizeof(hit_settings)/sizeof(hit_settings[0]);setting++){
+        unsigned lanes=0, count=0;
+        for(unsigned mode=0;mode<SR_MUSIC_MODES;mode++){
+            sr_init(&e,712);
+            sr_set_scene(&e,4);
+            sr_set_music_mode(&e,mode);
+            if(setting==1)assert(e.drum_hit==hit_settings[setting]);
+            e.drum_hit=hit_settings[setting];
+            for(unsigned bar=0;bar<256;bar++){
+                e.form_loop=bar;
+                sr_plan_sections(&e);
+                for(unsigned beat=0;beat<16;beat++){
+                    drum_trigger(&e,beat,2);
+                    unsigned hits=e.drum_steps[beat]&65535u;
+                    lanes|=hits;
+                    count+=__builtin_popcount(hits);
+                    assert(!!(hits&1u)==(groove_kick(&e,beat)>0.f));
+                }
             }
         }
+        printf("HIT %u%%: %u strikes, lanes %04x\n",hit_settings[setting],count,lanes);
+        assert(count>previous);
+        if(setting>=1)assert(lanes==65535u);
+        previous=count;
     }
-    assert(lanes==65535u);
 }
 
 static void test_deadlines(void)
