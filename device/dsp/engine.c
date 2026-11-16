@@ -1119,7 +1119,8 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
    unsigned n=timeline_slot(e);
    e->timeline[n].frame=e->frame_count;e->timeline[n].duration=e->tick_length/2u;
    e->timeline[n].role=SR_DRUMS;e->timeline[n].note=voice==0?36:voice==1?38:42;
-   e->timeline[n].velocity=voice==0?110:70;
+   float level=voice==0?e->kick_env:voice==1?e->hand_env:e->shaker_env;
+   e->timeline[n].velocity=(uint8_t)(level*127.f+.5f);
   }
 }
 void sr_preview_sound(sr_engine *e,unsigned role)

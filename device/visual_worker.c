@@ -61,29 +61,28 @@ static float visual_sin(float phase)
     float x=vis_sine[(unsigned)a&127u];
     return x+(vis_sine[(unsigned)(a+1)&127u]-x)*f;
 }
-static float sand_field(float x,float y)
+typedef struct { float m,n; } sand_axis;
+static inline sand_axis sand_axis_at(float position)
 {
-    float cross=visual_sin((x+1.f)*32.f*water_m)*visual_sin((y+1.f)*32.f*water_n)
-      -visual_sin((x+1.f)*32.f*water_n)*visual_sin((y+1.f)*32.f*water_m);
-    float rings=visual_sin((x*x+y*y)*(35.f+water_n*12.f)+water_breath);
-    return cross*(1.f-water_shape)+rings*water_shape;
-
+    float phase=(position+1.f)*32.f;
+    return (sand_axis){visual_sin(phase*water_m),visual_sin(phase*water_n)};
 }
-/* Share one sampled field across all grains. Bilinear gradients replace
- * four extra modal evaluations for each particle. */
-static float water_grid[31][31];
+static inline float sand_field(float xx,float yy,sand_axis x,sand_axis y)
+{
+    float cross=x.m*y.n-x.n*y.m;
+    float rings=visual_sin((xx+yy)*(35.f+water_n*12.f)+water_breath);
+    return cross*(1.f-water_shape)+rings*water_shape;
+}
 static void sand_gradient(float x,float y,float *field,float *gx,float *gy)
 {
-    float u=fm_clampf((x+1.f)*15.f,0.f,29.999f);
-    float v=fm_clampf((y+1.f)*15.f,0.f,29.999f);
-    unsigned i=(unsigned)u,j=(unsigned)v;
-    u-=i;v-=j;
-    float a=water_grid[j][i],b=water_grid[j][i+1];
-    float c=water_grid[j+1][i],d=water_grid[j+1][i+1];
-    float top=a+(b-a)*u,bottom=c+(d-c)*u;
-    *field=top+(bottom-top)*v;
-    *gx=15.f*((b-a)+(d-c-b+a)*v);
-    *gy=15.f*(bottom-top);
+    sand_axis x_axis=sand_axis_at(x),y_axis=sand_axis_at(y);
+    float xx=x*x,yy=y*y;
+    float xp=x+.008f,xm=x-.008f,yp=y+.008f,ym=y-.008f;
+    *field=sand_field(xx,yy,x_axis,y_axis);
+    *gx=(sand_field(xp*xp,yy,sand_axis_at(xp),y_axis)-
+         sand_field(xm*xm,yy,sand_axis_at(xm),y_axis))*62.5f;
+    *gy=(sand_field(xx,yp*yp,x_axis,sand_axis_at(yp))-
+         sand_field(xx,ym*ym,x_axis,sand_axis_at(ym)))*62.5f;
 }
 static void resonance_job(void)
 {
@@ -117,8 +116,6 @@ static void resonance_job(void)
     water_m+=(goal_m-water_m)*dt*.9f;
     water_n+=(goal_n-water_n)*dt*.9f;
     const float cy=120.f,sy=117.f;
-    for(unsigned j=0;j<=30;j++)for(unsigned i=0;i<=30;i++)
-      water_grid[j][i]=sand_field(i*(1.f/15.f)-1.f,j*(1.f/15.f)-1.f);
     float particle_drive=nodal_level*.18f;
     for(unsigned i=0;i<512;i++){
       float x=sand_x[i],y=sand_y[i],f,gx,gy;
@@ -131,11 +128,19 @@ static void resonance_job(void)
       vis_output.sand[i][0]=120+(int)(sand_x[i]*117.f);
       vis_output.sand[i][1]=(int)(cy+sand_y[i]*sy);
     }
+    sand_axis light_axes[30];
+    float light_positions[30],light_squares[30];
+    for(unsigned i=0;i<30;i++){
+      float position=(i-14.5f)/15.f;
+      light_positions[i]=position;
+      light_squares[i]=position*position;
+      light_axes[i]=sand_axis_at(position);
+    }
     for(unsigned y=0;y<30;y++)for(unsigned x=0;x<30;x++){
-      float px=(x-14.5f)/15.f,py=(y-14.5f)/15.f;
-      float radius=fm_sqrtf(px*px+py*py);
+      float py=light_positions[y];
+      float radius=fm_sqrtf(light_squares[x]+light_squares[y]);
       float ripple=visual_sin(radius*(75.f+complexity*20.f)-vis_input.phase*3.f);
-      float standing=.25f*(water_grid[y][x]+water_grid[y][x+1]+water_grid[y+1][x]+water_grid[y+1][x+1]);
+      float standing=sand_field(light_squares[x],light_squares[y],light_axes[x],light_axes[y]);
       float light=nodal_level*(.45f+ripple*.18f+standing*.12f);
       vis_output.water_light[y][x]=(uint8_t)fm_clampf(light*15.f,0,15);
       /* Bright short water reflections, never an outline of the nodes. */

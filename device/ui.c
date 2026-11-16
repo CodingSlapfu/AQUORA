@@ -721,6 +721,7 @@ static __typeof__(engine.timeline) graph_notes;
 static sr_engine graph_snapshot PLAT_POOL;
 static sr_event graph_future[384] PLAT_POOL;
 static unsigned graph_future_count;
+static uint8_t drum_forecast[16];
 static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
 static float graph_scale;
 static const char *graph_now,*graph_next;
@@ -843,20 +844,22 @@ static int draw(int animate)
  unsigned entry_age=plat_ms()-page_animation_ms;
  int entry_x=entry_age<220u?(int)((220u-entry_age)*(220u-entry_age)/1600u):0;
  if(entry_age<220u)dirty=1;
- static unsigned forecast_valid, forecast_step, forecast_revision, forecast_clock, forecast_sync;
+ static unsigned forecast_valid, forecast_step, forecast_revision, forecast_clock, forecast_sync, forecast_page;
  unsigned score_visible=page==PAGE_EVOLVE&&song_tab==0&&!debug&&!intro_active&&!fullscreen;
- if(!score_visible)forecast_valid=0;
- if((page==PAGE_EVOLVE||page==PAGE_PLAY||fullscreen)&&!debug&&!intro_active){
+ unsigned drums_visible=page==PAGE_DRUMS&&!debug&&!intro_active&&!fullscreen;
+ if(!score_visible&&!drums_visible)forecast_valid=0;
+ if((page==PAGE_EVOLVE||page==PAGE_PLAY||fullscreen||drums_visible)&&!debug&&!intro_active){
   unsigned flags=plat_lock();
   unsigned refresh=0;
-  if(score_visible){
-   memcpy(graph_notes,engine.timeline,sizeof graph_notes);
-   refresh=!forecast_valid||forecast_step!=engine.sequence_step||
+  unsigned drum_position=engine.drum_playhead&15u;
+  if(score_visible||drums_visible){
+   if(score_visible)memcpy(graph_notes,engine.timeline,sizeof graph_notes);
+   refresh=!forecast_valid||forecast_page!=page||forecast_step!=engine.sequence_step||
      forecast_revision!=revision||forecast_clock!=engine.tick_length||
      forecast_sync!=engine.external_sync;
    if(refresh){
     sr_score_snapshot(&graph_snapshot,&engine);
-    forecast_step=engine.sequence_step;
+    forecast_step=engine.sequence_step;forecast_page=page;
     forecast_revision=revision;
     forecast_clock=engine.tick_length;
     forecast_sync=engine.external_sync;
@@ -871,7 +874,19 @@ static int draw(int animate)
    unsigned input_before=input_revision;
    app_input_only();
    if(input_before!=input_revision){forecast_valid=0;dirty=1;return 0;}
-   graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);
+   if(drums_visible){
+    memset(drum_forecast,0,sizeof drum_forecast);
+    uint32_t next=graph_frame+(graph_phase<graph_tick?graph_tick-graph_phase:0u);
+    unsigned count=sr_score_preview(&graph_snapshot,graph_future,384,16u-drum_position);
+    for(unsigned i=0;i<count;i++){
+     const sr_event *event=&graph_future[i];
+     if(event->role!=SR_DRUMS||(int32_t)(event->frame-next)<0)continue;
+     unsigned step=drum_position+1u+(event->frame-next)/graph_tick;
+     if(step>=16u)continue;
+     unsigned bit=event->note==36?1u:event->note==38?2u:4u;
+     drum_forecast[step]|=bit|(event->velocity>=95u?bit<<3u:0u);
+    }
+   }else graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);
    forecast_valid=1;
   }
  }
@@ -1033,11 +1048,14 @@ static int draw(int animate)
          uint16_t ink=(muted&(1u<<lane))?skin_dim():colors[role_ink[lane]];
          cv_text(8,y,&FONT_T,lanes[lane],ink);
          for(unsigned step=0;step<16;step++){
-           unsigned hit=steps[step]&(1u<<lane);
+           unsigned future=step>(current&15u);
+           unsigned flags=future?drum_forecast[step]:steps[step];
+           unsigned hit=flags&(1u<<lane);
            int x=29+step*12;
            if(step==(current&15u))cv_rect(x-1,y,11,13,skin_accent());
            cv_rect(x,y+2,9,9,hit?ink:skins[ui_theme][ui_background].border);
-           if(hit&&(steps[step]&(8u<<lane)))cv_line(x+1,y+4,x+7,y+4,skin_text());
+           if(hit&&future)cv_rect(x+2,y+4,5,5,bg);
+           if(hit&&(flags&(8u<<lane)))cv_line(x+1,y+4,x+7,y+4,skin_text());
          }
        }
      }
