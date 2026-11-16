@@ -98,5 +98,5 @@ int main(void)
     sr_set_scene(&engine, 8);
     sr_set_music_mode(&engine, SR_CINEMATIC);
     assert(engine.energy == .73f && engine.variation == 0.f);
-    fprintf(stderr, "PASS 252 complete score traversals, 32 isolated PCM cases and manual expression overrides\n");
+    fprintf(stderr, "PASS 264 complete score traversals, 32 isolated PCM cases and manual expression overrides\n");
 }

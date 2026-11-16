@@ -1255,7 +1255,7 @@ int app_expect(const char *what,int *got){
    *got=1;
    /* UI-local actions and the passive scanner are exercised in their own
     * panel and radio fixtures. Here verify engine-queued edits and labels. */
-   static const uint8_t local[]={38,39,40,41,42,52,56,58,59,66,68,69,80,81,90,91,92,108};
+   static const uint8_t local[]={38,39,40,41,42,52,56,58,59,66,68,69,80,81,90,91,92,108,147,148};
    for(unsigned i=0;i<sizeof parameter_routes/sizeof parameter_routes[0];i++){
      unsigned id=parameter_routes[i].id, skip=0;
      for(unsigned j=0;j<sizeof local;j++)skip|=id==local[j];
@@ -1429,9 +1429,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"sound_picker"))*got=sound_picker;
  else if(!strcmp(what,"air_track"))*got=engine.air_track;
  else if(!strcmp(what,"air_on"))*got=air_on;
- else if(!strcmp(what,"speaker")){*got=engine.speaker_enabled;return 1;}
- if(!strcmp(what,"drum_mutes")){*got=engine.drum_mutes;return 1;}
- if(!strcmp(what,"mix_focus"))*got=mix_focus;
+ else if(!strcmp(what,"mix_focus"))*got=mix_focus;
  else if(!strcmp(what,"mix_bus"))*got=mix_bus;
  else if(!strcmp(what,"mix_tab"))*got=mix_tab;
  else if(!strcmp(what,"volume_percent"))*got=(int)(engine.tracks[selected].volume*100.f+.5f);

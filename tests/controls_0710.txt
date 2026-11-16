@@ -1,0 +1,38 @@
+master 2048
+tap HOME
+wait 500
+turn PRESET -22
+wait 400
+turn PRESET 21
+wait 800
+expect scene 21
+turn ALGO 5
+turn SELECT 1
+turn K1 3
+turn K2 1
+wait 200
+expect ui_theme 3
+expect ui_background 1
+tap EDIT
+tap EDIT
+tap EDIT
+tap EDIT
+turn K2 1
+wait 1500
+expect speaker 1
+reboot
+expect speaker 1
+expect ui_theme 3
+expect ui_background 1
+tap ARP
+turn SELECT 4
+expect drum_tab 4
+turn K1 1
+turn K2 1
+turn K3 1
+wait 250
+expect drum_mutes 7
+turn K2 -1
+wait 100
+expect drum_mutes 5
+expect drops 0

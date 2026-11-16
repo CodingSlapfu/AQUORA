@@ -1,3 +1,9 @@
+# AQUORA v0.7.10 development
+
+The official rollback and development baseline is v0.7.9. See [v0.7.10 acceptance](release-0710/REQUIREMENTS.md) for current results and open release gates. The queue below is historical.
+
+---
+
 # Current official release: AQUORA 0.7.1
 
 Issues #48, #67 and #73 are completed in software and officially published; #66/#72 refinements are included. Read validation/release-071/REQUIREMENTS.md and PUBLICATION.json before interpreting older queue entries. Native/WASM/reproducibility/single-core/updater, current-site deployment and independent live hash audit passed. Reuse the immutable release; no physical listening gate remains for this authorized publication.
