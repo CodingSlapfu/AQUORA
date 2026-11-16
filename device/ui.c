@@ -376,6 +376,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 174:*name="AUTOPAN %";number=engine.fx_autopan;break;
  case 175:*name="WET FILTER %";number=engine.fx_filter;break;
  case 176:*name="BITCRUSH %";number=engine.fx_crush;break;
+ case 177:*name="FLANGER %";number=engine.fx_flanger;break;
+ case 178:*name="TREMOLO %";number=engine.fx_tremolo;break;
+ case 179:*name="SOFT DRIVE %";number=engine.fx_drive;break;
+ case 180:*name="STUTTER %";number=engine.fx_stutter;break;
  case 167:*name="HIT";return (engine.drum_pattern[drum_part]&(1u<<drum_edit_step))?"ON":"OFF";
  case 168:*name="LANE MODE";return (engine.drum_manual_mask&(1u<<drum_part))?"MANUAL":"AUTO";
  case 163:*name="CHORUS %";number=engine.vocal_chorus;break;
@@ -797,8 +801,10 @@ static void mixer_focus_strip(int band)
 static void mixer_band(int band)
 {
  if(band==1&&(mix_tab==1||mix_tab==2)){
-   limited_text(8,1,224,&FONT_B,mix_tab==1?(mix_fx_detail==2?"TEXTURE FX":mix_fx_detail?"SPACE FX":"MASTER FX"):"RESET MIX",skin_accent());
-   limited_text(8,27,224,&FONT_XS,mix_tab==1?(mix_fx_detail==2?"FX: MASTER FX":mix_fx_detail?"FX: TEXTURE FX":"FX: SPACE FX"):mix_reset?"MIX RESET ARMED":"TURN K1 TO ARM",skin_text());return;
+   static const char *const sections[]={"MASTER FX","SPACE FX","MOTION FX","TEXTURE FX"};
+   static const char *const next[]={"FX: SPACE FX","FX: MOTION FX","FX: TEXTURE FX","FX: MASTER FX"};
+   limited_text(8,1,224,&FONT_B,mix_tab==1?sections[mix_fx_detail]:"RESET MIX",skin_accent());
+   limited_text(8,27,224,&FONT_XS,mix_tab==1?next[mix_fx_detail]:mix_reset?"MIX RESET ARMED":"TURN K1 TO ARM",skin_text());return;
  }
  if(mix_tab==0||mix_tab==3){mixer_overview(band);return;}
  if(mix_tab==4){

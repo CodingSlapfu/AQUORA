@@ -2,7 +2,12 @@ name: AQUORA v0.7.14 host performance and vocal audio
 on:
   push:
     branches: [aquora-v0.7.14-development]
-    paths: [.github/workflows/aquora-0714-performance.yml]
+    paths:
+      - device/dsp/engine.c
+      - device/kira_face/vocal_pose.h
+      - tests/mixer_texture_0714.c
+      - tests/vocal_portrait_0714.c
+      - .github/workflows/aquora-0714-performance.yml
 permissions:
   contents: read
   statuses: write

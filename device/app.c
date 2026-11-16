@@ -282,7 +282,7 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_MIX&&(mix_tab==1||mix_tab==2)){
    static const uint8_t reset_controls[]={52,0,0,0};
-   static const uint8_t fx_controls[][4]={{11,12,50,51},{169,170,171,172},{173,174,175,176}};
+   static const uint8_t fx_controls[][4]={{11,12,50,51},{169,170,171,172},{173,174,177,178},{175,176,179,180}};
    return mix_tab==1?fx_controls[mix_fx_detail][knob]:reset_controls[knob];
  }
  if(page==PAGE_MIX&&mix_tab==5){static const uint8_t strip[]={13,24,29,28};return strip[knob];}
@@ -472,6 +472,10 @@ static void consume(void){
  case 174:engine.fx_autopan=bounded(engine.fx_autopan+d*5,0,100);break;
  case 175:engine.fx_filter=bounded(engine.fx_filter+d*5,0,100);break;
  case 176:engine.fx_crush=bounded(engine.fx_crush+d*5,0,100);break;
+ case 177:engine.fx_flanger=bounded(engine.fx_flanger+d*5,0,100);break;
+ case 178:engine.fx_tremolo=bounded(engine.fx_tremolo+d*5,0,100);break;
+ case 179:engine.fx_drive=bounded(engine.fx_drive+d*5,0,100);break;
+ case 180:engine.fx_stutter=bounded(engine.fx_stutter+d*5,0,100);break;
  case 167:{
    unsigned step=(unsigned)(d<0?-d:d)-1u;
    if(step<16u){
@@ -848,7 +852,7 @@ void app_input_only(void){
  if(press&(1u<<B_ENV))send(14,0);
  if(press&(1u<<B_FX)){
    if(page==PAGE_DRUMS&&drum_tab>=5&&!debug)send(162,0);
-   else if(page==PAGE_MIX&&mix_tab==1&&!debug){mix_fx_detail=(mix_fx_detail+1u)%3u;dirty=1;}
+   else if(page==PAGE_MIX&&mix_tab==1&&!debug){mix_fx_detail=(mix_fx_detail+1u)%4u;dirty=1;}
    else if(page==PAGE_MIX&&!debug){
      mix_tab=mix_tab==5?0:5;
      if(mix_focus>=SR_TRACKS)mix_focus=selected;

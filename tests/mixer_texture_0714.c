@@ -16,6 +16,10 @@ static void check_texture(unsigned effect)
     if(effect==2)engine.fx_autopan=100;
     if(effect==3)engine.fx_filter=100;
     if(effect==4)engine.fx_crush=100;
+    if(effect==5)engine.fx_flanger=100;
+    if(effect==6)engine.fx_tremolo=100;
+    if(effect==7)engine.fx_drive=100;
+    if(effect==8)engine.fx_stutter=100;
     float difference=0.f;
     for(unsigned frame=0;frame<32768;frame+=64){
         float mix[64*3]={0};
@@ -35,6 +39,6 @@ static void check_texture(unsigned effect)
 
 int main(void)
 {
-    for(unsigned effect=0;effect<=4;effect++)check_texture(effect);
-    puts("PASS independent bounded Mixer chorus, autopan, filtering and bitcrush");
+    for(unsigned effect=0;effect<=8;effect++)check_texture(effect);
+    puts("PASS independent bounded Mixer modulation and experimental effects");
 }
