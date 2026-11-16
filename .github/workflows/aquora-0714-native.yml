@@ -7,6 +7,7 @@ on:
       - .github/workflows/aquora-0714-native.yml
 permissions:
   contents: read
+  statuses: write
 concurrency:
   group: aquora-0714-native
   cancel-in-progress: true
@@ -51,3 +52,14 @@ jobs:
           name: aquora-0714-native-validation
           path: ${{ runner.temp }}/results/
           retention-days: 30
+      - name: Record native gate conclusion on source commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GATE: ${{ job.status }}
+        run: |
+          state=failure
+          if [ "$GATE" = success ]; then state=success; fi
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state="$state" -f context=aquora-0714/native \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

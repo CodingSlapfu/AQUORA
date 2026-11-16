@@ -5,6 +5,7 @@ on:
     paths: [.github/workflows/aquora-0714-performance.yml]
 permissions:
   contents: read
+  statuses: write
 jobs:
   performance:
     runs-on: ubuntu-24.04
@@ -19,13 +20,18 @@ jobs:
             cc -O2 "tests/$test.c" -lm -o "$RUNNER_TEMP/$test"
             "$RUNNER_TEMP/$test" 2>&1 | tee "$RUNNER_TEMP/results/$test.log"
           done
+      - name: Verify independent Mixer texture effects
+        run: |
+          set -euo pipefail
+          cc -O2 tests/mixer_texture_0714.c -lm -o "$RUNNER_TEMP/mixer_texture"
+          "$RUNNER_TEMP/mixer_texture" 2>&1 | tee "$RUNNER_TEMP/results/mixer_texture.log"
       - name: Exercise all three visualizers under audio worker pressure
         run: |
           set -euo pipefail
           bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
           python3 -m pip install Pillow==11.3.0
           cd "$RUNNER_TEMP/source"
-          portrait_source=$(grep -rl --include='*.c' '^void k9_face_render(' device/kira_face)
+          portrait_source=$(grep -rl --include='*.c' 'void k9_face_render(' device/kira_face)
           cc -O2 tests/vocal_portrait_0714.c "$portrait_source" -lm -o "$RUNNER_TEMP/vocal_portrait"
           "$RUNNER_TEMP/vocal_portrait" 2>&1 | tee "$RUNNER_TEMP/results/vocal_portrait.log"
           python3 vendor/fm1-base/tools/build.py device --host --release 0.7.14 2>&1 | tee "$RUNNER_TEMP/results/host.log"
@@ -36,3 +42,14 @@ jobs:
           name: aquora-0714-performance
           path: ${{ runner.temp }}/results/
           retention-days: 30
+      - name: Record gate conclusion on source commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GATE: ${{ job.status }}
+        run: |
+          state=failure
+          if [ "$GATE" = success ]; then state=success; fi
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state="$state" -f context=aquora-0714/audio-ui \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

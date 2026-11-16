@@ -66,6 +66,9 @@ typedef struct {
   uint8_t drums_enabled, drum_density, drum_kit, binaural_enabled;
   float master, reverb_amount, delay_amount, bed_level, current_energy;
   uint8_t fx_decay, fx_feedback, fx_damping, fx_width;
+  uint8_t fx_chorus, fx_autopan, fx_filter, fx_crush;
+  float fx_mod_phase, fx_chorus_now, fx_pan_now, fx_filter_now, fx_crush_now;
+  float fx_filter_low, fx_crush_hold;
   float fx_decay_now, fx_feedback_now, fx_damping_now, fx_width_now, fx_delay_low;
   float wind_lp, rain_lp, limiter, dc_x, dc_y, low_bass;
   float drum_level, drum_meter, kick_phase, kick_env, kick_previous, kick_attack, hand_phase, hand_env;
