@@ -1,17 +1,7 @@
 {
-  "owner": "work-0712-corrective",
-  "epoch": 17,
-  "released": true,
-  "expires": 0,
-  "checkpoint": "b59722f631503053f897951eba0b1ab762f80ddc",
-  "source": "8e85b326fe093d8c2978125a1aeddd5f387cc731",
-  "firmware_identity": "FM-1_73000712",
-  "firmware_sha256": "9a43d3220149e9cc6e2f3e36735fc7decc8f4dbeaed3166a7aa71dfcd31b062a",
-  "release_url": "https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.7.12",
-  "site_source": "2b2bdf266d4ac28984bb7cb1e3d9063f4a412279",
-  "site_version": 206,
-  "deployment_id": "appgdep_6afac5bca6b4819181ae9f1791f49ebc",
-  "live_url": "https://parallax8-studio.jminie66.chatgpt.site",
-  "verified_rollback_installers": 15,
-  "hardware_acceptance": "Pending owner testing after authorized publication"
+  "owner": "work-0713-d093e3906382",
+  "epoch": 18,
+  "released": false,
+  "expires": 1794828549,
+  "checkpoint": "b59722f631503053f897951eba0b1ab762f80ddc"
 }
