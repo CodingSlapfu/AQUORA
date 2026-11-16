@@ -83,6 +83,8 @@ static void fixed_reference_isolation(void)
 {
     sr_init(&a,731);
     sr_set_frequency(&a,4);
+    /* The reference bus is independent of muted instrument tracks. */
+    a.tone_level=0;
     a.bed_level=a.reverb_amount=a.delay_amount=0;
     a.sacred_mode=0;
     for(unsigned t=0;t<SR_TRACKS;t++)a.tracks[t].mute=1;
@@ -105,6 +107,8 @@ static void fixed_reference_isolation(void)
     assert(restarted>=526&&restarted<=529);
 
     a.tone_level=0;
+    /* Normal tone disable uses a click-free gain ramp, unlike STOP. */
+    for(unsigned i=0;i<64;i++)block(&a);
     assert(rising_crossings()==0);
     silence();
     printf("PASS isolated fixed-reference crossings: %u initial, %u after scene change, %u after restart\n",
