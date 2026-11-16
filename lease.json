@@ -1,7 +1,7 @@
 {
   "owner": "work-0714-pattern-editor",
   "epoch": 27,
-  "released": false,
-  "expires": 1794875714,
-  "checkpoint": "740ab8616de9fe7baf71cffe03dcc0c8f81ff780"
+  "released": true,
+  "expires": 1794872644,
+  "checkpoint": "349e8cc6ac380d4758302858b2a7a4573780c179"
 }
