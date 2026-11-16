@@ -47,3 +47,6 @@ A Work execution runner was again unavailable. Rather than retry it, a scoped Gi
 - This does **not** establish subjective kit quality on the physical FM-1, nor complete the user's requirement for independent 16-lane step editing/programming. No release, Sites deployment or new native package was created by this CI-only scoped change.
 
 Remaining: implement and persist complete 16-lane step edits, expanded mixer FX, end-to-end human singer/KIRA-9 sync, production performance, native + installer packaging, official v0.7.14 release and existing Sites update. Resume the latest branch HEAD; do not restart old work, or conflate the passing drum audio test with complete drum acceptance.
+### 512-byte bank persistence constraint for drum step editing
+
+The still-open full per-step editor cannot safely be implemented merely by appending arrays to the existing bank: `vendor/fm1-base/device/aquora_async_store.h` allocates `payload[512]` and rejects `len>512`; the current `device/arrangement.c` record is 480 bytes. Preserve the existing validated bank format and CRC/torn-write rollbacks; design explicit versioned compact steps or separate collision-safe persistent storage with migration tests. The new 19-kit PCM differentiation does not change bank schemas or count as completion of per-lane step editing.
