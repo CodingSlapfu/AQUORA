@@ -1,7 +1,7 @@
 {
-  "owner": "work-0714-resume-ef08536dfc44",
-  "epoch": 23,
-  "released": true,
-  "expires": 1794865669,
+  "owner": "chat-0714-transport-fixture",
+  "epoch": 24,
+  "released": false,
+  "expires": 1794869275,
   "checkpoint": "45d4e47ecc0c6072a355fc396b59a82d86d57b63"
 }
