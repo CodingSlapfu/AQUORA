@@ -52,7 +52,7 @@ typedef struct {
     uint16_t reserved;
     uint32_t crc4;
     uint8_t chord_mode,chord_gap,chord_inversion,chord_direction,rhythm_style,fill_character,air_mode,air_fx,air_depth,air_track;
-    uint16_t future;
+    uint16_t future; /* 0xA510 | BD/SD/HH mute bits, zero in legacy banks. */
     uint32_t crc5;
     sr_learn_phrase learned;
     uint8_t learn_strength;
@@ -168,6 +168,7 @@ static void arrangement_snapshot(arrangement *record)
     memset(record,0,sizeof(*record));
     unsigned irq=plat_lock();
     record->version=AQ_BANK_VERSION;
+    record->future=0xA510u|engine.drum_mutes;
     record->v2_crc=(engine.play_strength+1u)|((uint32_t)engine.play_feel<<7)|((uint32_t)engine.nature_style<<8)|((uint32_t)engine.evolve_pace<<10)|((uint32_t)engine.nature_level_manual<<12)|((uint32_t)(engine.nature_activity+1u)<<13)|((uint32_t)(engine.nature_distance+1u)<<16)|((uint32_t)engine.tone_level_manual<<19);
     record->legacy_crc=engine.sound_locks|((uint32_t)(engine.drum_presence+1u)<<10)|((uint32_t)(engine.play_grid&3u)<<17)|((uint32_t)(engine.play_grid>>2)<<28)|((uint32_t)engine.groove_mode<<19)|((uint32_t)(engine.groove_strength+1u)<<21);
 #define COPY_FIELD(field) record->field=engine.field;
@@ -254,6 +255,10 @@ static void arrangement_apply(const arrangement *record)
     unsigned strength=record->version==AQ_BANK_LEGACY?0:(record->legacy_crc>>21)&127u;
     engine.groove_mode=groove<=2?groove:0;
     engine.groove_strength=strength&&strength<=101?strength-1u:100;
+    engine.drum_mutes=record->version>=AQ_BANK_V5&&(record->future&0xFFF8u)==0xA510u?record->future&7u:0;
+    memset(engine.drum_steps,0,sizeof engine.drum_steps);
+    engine.drum_playhead=0;
+    for(unsigned part=0;part<3;part++)engine.drum_part_gain[part]=(engine.drum_mutes&(1u<<part))?0.f:1.f;
     engine.play_queued=0;
     engine.frequency_auto=record->frequency_auto;
     engine.lock_textures=record->lock_textures;

@@ -18,9 +18,9 @@ static inline __attribute__((always_inline)) float sr_limit_level(float level, f
 #define SR_TRACKS 8
 #define SR_VOICES 16
 #define SR_PATCHES 63
-#define SR_SCENES 21
+#define SR_SCENES 22
 #define SR_BEDS 14
-#define SR_FREQUENCIES 21
+#define SR_FREQUENCIES 22
 #define SR_DRUM_KITS 19
 #define SR_BEAT_PRESETS 8
 #ifdef __cplusplus
@@ -67,8 +67,12 @@ typedef struct {
   float wind_lp, rain_lp, limiter, dc_x, dc_y, low_bass;
   float drum_level, drum_meter, kick_phase, kick_env, kick_previous, kick_attack, hand_phase, hand_env;
   float shaker_env, shaker_lp, hand_noise_lp;
+  float drum_part_gain[3];
+  uint8_t drum_mutes, drum_steps[64], drum_playhead;
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;
+  float speaker_low, speaker_body, speaker_mix;
+  uint8_t speaker_enabled;
   float lock_phase;
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;

@@ -69,6 +69,22 @@ static float sand_field(float x,float y)
     return cross*(1.f-water_shape)+rings*water_shape;
 
 }
+/* Share one sampled field across all grains. Bilinear gradients replace
+ * four extra modal evaluations for each particle. */
+static float water_grid[31][31];
+static void sand_gradient(float x,float y,float *field,float *gx,float *gy)
+{
+    float u=fm_clampf((x+1.f)*15.f,0.f,29.999f);
+    float v=fm_clampf((y+1.f)*15.f,0.f,29.999f);
+    unsigned i=(unsigned)u,j=(unsigned)v;
+    u-=i;v-=j;
+    float a=water_grid[j][i],b=water_grid[j][i+1];
+    float c=water_grid[j+1][i],d=water_grid[j+1][i+1];
+    float top=a+(b-a)*u,bottom=c+(d-c)*u;
+    *field=top+(bottom-top)*v;
+    *gx=15.f*((b-a)+(d-c-b+a)*v);
+    *gy=15.f*(bottom-top);
+}
 static void resonance_job(void)
 {
     vis_output.node_count=0;
@@ -101,14 +117,15 @@ static void resonance_job(void)
     water_m+=(goal_m-water_m)*dt*.9f;
     water_n+=(goal_n-water_n)*dt*.9f;
     const float cy=120.f,sy=117.f;
+    for(unsigned j=0;j<=30;j++)for(unsigned i=0;i<=30;i++)
+      water_grid[j][i]=sand_field(i*(1.f/15.f)-1.f,j*(1.f/15.f)-1.f);
+    float particle_drive=nodal_level*.18f;
     for(unsigned i=0;i<512;i++){
-      float x=sand_x[i],y=sand_y[i],f=sand_field(x,y);
-      float gx=(sand_field(x+.008f,y)-sand_field(x-.008f,y))*62.5f;
-      float gy=(sand_field(x,y+.008f)-sand_field(x,y-.008f))*62.5f;
-      float drive=nodal_level*.18f;
+      float x=sand_x[i],y=sand_y[i],f,gx,gy;
+      sand_gradient(x,y,&f,&gx,&gy);
       float scatter=hit*.46f*visual_sin(vis_input.phase*3.f+i*17.f);
-      sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-12,12)*drive*dt+scatter*dt)*.77f;
-      sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-12,12)*drive*dt-scatter*dt)*.77f;
+      sand_vx[i]=(sand_vx[i]-fm_clampf(f*gx,-12,12)*particle_drive*dt+scatter*dt)*.77f;
+      sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-12,12)*particle_drive*dt-scatter*dt)*.77f;
       sand_x[i]=fm_clampf(x+sand_vx[i]*dt,-.99f,.99f);
       sand_y[i]=fm_clampf(y+sand_vy[i]*dt,-.99f,.99f);
       vis_output.sand[i][0]=120+(int)(sand_x[i]*117.f);
@@ -118,7 +135,7 @@ static void resonance_job(void)
       float px=(x-14.5f)/15.f,py=(y-14.5f)/15.f;
       float radius=fm_sqrtf(px*px+py*py);
       float ripple=visual_sin(radius*(75.f+complexity*20.f)-vis_input.phase*3.f);
-      float standing=sand_field(px,py);
+      float standing=.25f*(water_grid[y][x]+water_grid[y][x+1]+water_grid[y+1][x]+water_grid[y+1][x+1]);
       float light=nodal_level*(.45f+ripple*.18f+standing*.12f);
       vis_output.water_light[y][x]=(uint8_t)fm_clampf(light*15.f,0,15);
       /* Bright short water reflections, never an outline of the nodes. */

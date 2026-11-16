@@ -5,10 +5,10 @@ h=sys.argv[1];out=Path(sys.argv[2]);out.mkdir(parents=True,exist_ok=True)
 rows=[]
 for font in range(3):
  d=out/f'font{font}';d.mkdir(exist_ok=True)
- cmd=['master 2048','tap HOME','wait 700','turn ALGO 5','turn SELECT 1','spin K1 -2',f'spin K1 {font}','tap HOME']
- for scene in range(21):
-  cmd+=['turn PRESET -21' if scene==0 else 'turn PRESET 1','wait 800',f'shot intention{scene}.png']
- for page,tabs in [(1,12),(2,8),(3,6),(4,4),(5,5),(6,4)]:
+ cmd=['master 2048','tap HOME','wait 700','turn ALGO 5','turn SELECT 1','spin K3 -2',f'spin K3 {font}','tap HOME']
+ for scene in range(22):
+  cmd+=['turn PRESET -22' if scene==0 else 'turn PRESET 1','wait 800',f'shot intention{scene}.png']
+ for page,tabs in [(1,12),(2,8),(3,6),(4,5),(5,5),(6,4)]:
   cmd+=['tap HOME',f'turn ALGO {page}']
   for tab in range(tabs):
    if tab:cmd+=['tap EDIT']
@@ -26,4 +26,4 @@ for font in range(3):
  assert len({x.crop((35,48,233,208)).tobytes() for x in fs})>1,(font,'graph stalled')
  rows.append({'font':font,'screens':len(list(d.glob('*.png'))),'size':[240,240],'footer_invariant':True,'font_overflows':0})
 (out/'results.json').write_text(json.dumps(rows,indent=2)+'\n')
-print('PASS all three fonts, 21 intention selections, all pages/subpages, Performance, moving EVOLVE and invariant footer; exact 240x240')
+print('PASS all three fonts, 22 intention selections, all pages/subpages, Performance, moving EVOLVE and invariant footer; exact 240x240')

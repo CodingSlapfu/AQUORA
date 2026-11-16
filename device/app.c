@@ -116,7 +116,7 @@ extern void plat_aquora_key_duty(unsigned black,unsigned white);
 #endif
 static unsigned startup_chime=2;
 static unsigned lighting=2, keys_baseline=3, notes_lights=1, dance_lights=1;
-static unsigned fps_auto, frames, missed, shown_fps10, shown_missed;
+static unsigned frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
 static unsigned page_animation_ms;
@@ -139,7 +139,7 @@ typedef struct {
 typedef struct {
     uint32_t version;
     sr_motion motion[2];
-    uint8_t perfect_key, lighting, fps_auto;
+    uint8_t perfect_key, lighting, output_profile;
     uint8_t visual, theme, font_size, background;
     uint8_t air_fx, air_depth, active_bank, music_mode, motion_manual;
     uint8_t startup_sound;
@@ -169,7 +169,7 @@ static int save_preferences(void)
     settings.air_mode=engine.air_mode;settings.air_sensitivity=air_sensitivity;settings.air_invert=air_invert;settings.air_calibrated=air_sensor.calibrated;settings.air_far=air_sensor.reference;settings.air_near=air_sensor.near_reference;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
-    settings.lighting=0x80u|lighting|(keys_baseline<<2u)|(notes_lights<<4u)|(dance_lights<<5u);settings.fps_auto=fps_auto;
+    settings.lighting=0x80u|lighting|(keys_baseline<<2u)|(notes_lights<<4u)|(dance_lights<<5u);settings.output_profile=0x80u|engine.speaker_enabled; /* Legacy AUTO/20 stored 0 or 1. */
     settings.visual=visual_mode;settings.theme=ui_theme;
     settings.font_size=ui_font_size;settings.background=ui_background;
     settings.active_bank=bank_slot;settings.music_mode=engine.music_mode;settings.motion_manual=engine.motion_manual;
@@ -225,7 +225,7 @@ static int mix_visible(unsigned channel)
  case SR_BUS_NATURE:return engine.bed_level>0;
  case SR_BUS_SACRED:return engine.sacred_mode&&engine.sacred_level>0;
  case SR_BUS_REFERENCE:return engine.tone_level>0;
- case SR_BUS_BINAURAL:return engine.binaural_enabled&&engine.binaural_level>0;
+ case SR_BUS_BINAURAL:return !engine.speaker_enabled&&engine.binaural_enabled&&engine.binaural_level>0;
  default:return engine.reverb_amount>0||engine.delay_amount>0||engine.air_wet>0;
  }
 }
@@ -247,16 +247,16 @@ static void mix_select(int delta)
 static unsigned control_for(unsigned knob)
 {
  if(fullscreen)return knob==0?18:knob==1?145:0;
- if(debug)return knob==0?(debug==3?42:debug==1?57:0):0;
+ if(debug)return knob==0?(debug==3?42:0):0;
  if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128},{0,0,0,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
-   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0}};
+   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49}};
    return controls[drum_tab][knob];
  }
  if(page==PAGE_SETUP){
-   if(setup_tab==4)return knob==0?109:0;
+   if(setup_tab==4)return knob==0?109:knob==1?146:0;
    if(setup_tab==0&&display_subtab){
-     static const uint8_t appearance[]={91,38,109,57};
+     static const uint8_t appearance[]={147,148,91,38};
      return appearance[knob];
    }
    if(setup_tab==3)return knob==0?71:knob==1?72:0;
@@ -412,6 +412,13 @@ static void consume(void){
    if(!engine.keyboard_mode)engine.pending_key=engine.pending_physical_key=0;
    sr_set_perfect_key(&engine,1);
    break;
+ case 149:case 150:case 151:{
+   unsigned bit=1u<<(c.kind-149u);
+   if(d>0)engine.drum_mutes|=bit;
+   else if(d<0)engine.drum_mutes&=~bit;
+   break;
+ }
+ case 146:engine.speaker_enabled=switched(engine.speaker_enabled,d);break;
  case 49:t->mute=switched(t->mute,d);break;
  case 50:engine.auto_gain=switched(engine.auto_gain,d);break;
  case 51:engine.auto_level=switched(engine.auto_level,d);break;
@@ -513,13 +520,13 @@ void app_init(void)
            m.vibrato_rate>=5&&m.vibrato_rate<=80&&m.vibrato_depth<=50)engine.motion[i]=m;
       }
       engine.perfect_key=!!settings.perfect_key;
+      engine.speaker_enabled=settings.output_profile==0x81u;
       if(settings.lighting&0x80u){lighting=settings.lighting&3u;keys_baseline=(settings.lighting>>2u)&3u;notes_lights=(settings.lighting>>4u)&1u;dance_lights=(settings.lighting>>5u)&1u;}
       else {lighting=settings.lighting==2?0:2;keys_baseline=settings.lighting==0?3:0;notes_lights=settings.lighting!=2;dance_lights=settings.lighting==3;}
-      fps_auto=!!settings.fps_auto;
       if(settings.version>=0x41513033u){
         ui_theme=settings.theme<=4?settings.theme:0;
         ui_font_size=settings.font_size<=2?settings.font_size:1;
-        ui_background=0;
+        ui_background=settings.background==1;
         if(settings.version>=0x41513034u){
           engine.air_fx=settings.air_fx<=4?settings.air_fx:0;
           engine.air_depth=settings.air_depth<=100?settings.air_depth:100;
@@ -725,7 +732,7 @@ void app_input_only(void){
      group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
    }
    if(page==PAGE_AIR)air_tab=(air_tab+1)%4;
-   if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%4;
+   if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%5;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
      mix_tab=mix_tab>=4?0:mix_tab+1;mix_reset=0;}
@@ -733,7 +740,7 @@ void app_input_only(void){
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
- if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%4:0;page=PAGE_DRUMS;debug=0;}
+ if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%5:0;page=PAGE_DRUMS;debug=0;}
  if((press&(1u<<B_LFO))&&!(page==PAGE_MIX&&!debug&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(debug?27:28,0);
  /* SAVE has exactly one meaning on every page, including fullscreen. */
  if(press&(1u<<B_SAVE))arrangement_quick_save();
@@ -764,6 +771,7 @@ void app_input_only(void){
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
    }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
    else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3||mix_tab==5))mix_select(d);
+   else if(page==PAGE_DRUMS)drum_tab=bounded((int)drum_tab+d,0,4);
    else if(page==PAGE_SETUP&&setup_tab==2)save_info=bounded((int)save_info+d,0,2);
    else if(page==PAGE_SETUP&&setup_tab==0)display_subtab=bounded((int)display_subtab+d,0,1);
    else if(page!=PAGE_DRUMS){selected=bounded((int)selected+d,0,7);if(page==PAGE_PLAY)select_revision++;}
@@ -825,6 +833,8 @@ void app_input_only(void){
     else if(control==125){air_sensitivity=bounded((int)air_sensitivity+d*5,20,100);preferences_changed_now();}
     else if(control==126){air_invert=switched(air_invert,d);preferences_changed_now();}
     else if(control==109||(AQ_PERFORMANCE_MIDI&&control>=101&&control<=110)){send(control,d);preferences_changed_now();}
+    else if(control==147){ui_theme=bounded((int)ui_theme+d,0,4);preferences_changed_now();}
+    else if(control==148){ui_background=switched(ui_background,d);preferences_changed_now();}
     else if(control==38){visual_mode=bounded((int)visual_mode+d,0,2);preferences_changed_now();}
     else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);preferences_changed_now();bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
@@ -848,7 +858,6 @@ void app_input_only(void){
     else if(control==142){notes_lights=switched(notes_lights,d);preferences_changed_now();}
     else if(control==143){dance_lights=switched(dance_lights,d);preferences_changed_now();}
     else if(control==56){lighting=bounded((int)lighting+d,0,3);preferences_changed_now();}
-    else if(control==57){fps_auto=switched(fps_auto,d);preferences_changed_now();}
 
     else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
 
@@ -1130,7 +1139,7 @@ void app_frame(void)
     const char *pressure=getenv("AQUORA_TEST_CALLBACK_US");
     if(pressure)load=(unsigned)atoi(pressure); /* scheduling fixture only */
 #endif
-    unsigned visual_interval=aq_frame_interval(fps_auto,engine.running,
+    unsigned visual_interval=aq_frame_interval(engine.running,
                                                intro_active,load,xrun_delta);
     visual_interval_ms=visual_interval;
     /* Only pages with actually displayed live content schedule animation.
@@ -1140,7 +1149,7 @@ void app_frame(void)
     int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
     int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
     int live_air=page==PAGE_AIR&&(air_on||engine.air_target>.0001f||engine.air_wet>.0001f);
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||now-page_animation_ms<220u)&&elapsed>=visual_interval;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
     if(animate&&page==0){
       missed+=elapsed/FRAME_MIN_MS-1u;
 
@@ -1171,6 +1180,8 @@ int app_expect(const char *what,int *got){
    printf("CONTROL run=%u queue_p95_ms=%u queue_p99_ms=%u label_p95_ms=%u label_p99_ms=%u label_max_ms=%u poll_p99_ms=%u drops=%u\n",run,q.p95/100u,q.p99/100u,l.p95/100u,l.p99/100u,l.peak/100u,p.p99/100u,dropped);
   }*got=1;return 1;
  }
+ if(!strcmp(what,"speaker")){*got=engine.speaker_enabled;return 1;}
+ if(!strcmp(what,"drum_mutes")){*got=engine.drum_mutes;return 1;}
  if(!strcmp(what,"mix_focus")){*got=mix_focus;return 1;}
  if(!strcmp(what,"boot_starts")){*got=boot_starts;return 1;}
  if(!strcmp(what,"intensity")){*got=engine.energy*100.f+.5f;return 1;}
@@ -1244,7 +1255,7 @@ int app_expect(const char *what,int *got){
    *got=1;
    /* UI-local actions and the passive scanner are exercised in their own
     * panel and radio fixtures. Here verify engine-queued edits and labels. */
-   static const uint8_t local[]={38,39,40,41,42,52,56,57,58,59,66,68,69,80,81,90,91,92,108};
+   static const uint8_t local[]={38,39,40,41,42,52,56,58,59,66,68,69,80,81,90,91,92,108};
    for(unsigned i=0;i<sizeof parameter_routes/sizeof parameter_routes[0];i++){
      unsigned id=parameter_routes[i].id, skip=0;
      for(unsigned j=0;j<sizeof local;j++)skip|=id==local[j];
@@ -1370,7 +1381,6 @@ int app_expect(const char *what,int *got){
  }
  else if(!strcmp(what,"lighting"))*got=lighting;
  else if(!strcmp(what,"frame_interval"))*got=visual_interval_ms;
- else if(!strcmp(what,"fps_auto"))*got=fps_auto;
  else if(!strcmp(what,"performance_midi"))*got=AQ_PERFORMANCE_MIDI;
  else if(!strcmp(what,"midi_sync"))*got=midi.settings.sync;
  else if(!strcmp(what,"startup_chime"))*got=startup_chime;
@@ -1419,7 +1429,9 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"sound_picker"))*got=sound_picker;
  else if(!strcmp(what,"air_track"))*got=engine.air_track;
  else if(!strcmp(what,"air_on"))*got=air_on;
- else if(!strcmp(what,"mix_focus"))*got=mix_focus;
+ else if(!strcmp(what,"speaker")){*got=engine.speaker_enabled;return 1;}
+ if(!strcmp(what,"drum_mutes")){*got=engine.drum_mutes;return 1;}
+ if(!strcmp(what,"mix_focus"))*got=mix_focus;
  else if(!strcmp(what,"mix_bus"))*got=mix_bus;
  else if(!strcmp(what,"mix_tab"))*got=mix_tab;
  else if(!strcmp(what,"volume_percent"))*got=(int)(engine.tracks[selected].volume*100.f+.5f);

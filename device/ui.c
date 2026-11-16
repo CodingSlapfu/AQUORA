@@ -50,9 +50,9 @@ static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percu
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
  {{RGB(0,0,0),RGB(0,0,0),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
   {RGB(0,0,0),RGB(0,0,0),RGB(108,154,161),RGB(10,106,99),RGB(20,38,47),RGB(70,91,97)}},
- {{RGB(0,0,0),RGB(0,0,0),RGB(67,142,148),RGB(90,245,209),RGB(236,251,252),RGB(158,199,205)},
-  {RGB(0,0,0),RGB(0,0,0),RGB(66,146,136),RGB(12,121,121),RGB(14,53,56),RGB(66,99,102)}},
- {{RGB(0,0,0),RGB(0,0,0),RGB(62,95,189),RGB(58,247,247),RGB(243,247,255),RGB(162,178,220)},
+ {{RGB(0,0,0),RGB(0,0,0),RGB(144,63,170),RGB(255,94,240),RGB(236,251,252),RGB(158,199,205)},
+  {RGB(0,0,0),RGB(0,0,0),RGB(132,71,153),RGB(133,21,144),RGB(14,53,56),RGB(66,99,102)}},
+ {{RGB(0,0,0),RGB(0,0,0),RGB(26,89,229),RGB(63,168,255),RGB(243,247,255),RGB(162,178,220)},
   {RGB(0,0,0),RGB(0,0,0),RGB(98,126,203),RGB(10,91,177),RGB(24,35,73),RGB(88,98,137)}},
  {{RGB(0,0,0),RGB(0,0,0),RGB(157,88,48),RGB(255,186,85),RGB(255,244,219),RGB(225,182,145)},
   {RGB(0,0,0),RGB(0,0,0),RGB(201,130,91),RGB(169,70,40),RGB(69,38,29),RGB(116,73,53)}},
@@ -326,7 +326,6 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 95:*name="MANUAL AIR %";number=engine.air_target*100;break;
  case 91:{static const char *fonts[]={"Small","Medium","Large"};*name="FONT SIZE";return fonts[ui_font_size];}
 
- case 57:*name="VISUAL FPS";return fps_auto?"Auto / 20":"20 target";
  case 78:*name="NATURE MODE";return !engine.bed_type?"Off":(engine.sound_locks&SR_SOUND_NATURE)?"Manual":"Auto";
  case 80:*name="LED TEST";return onoff(led_test);
  case 81:if(led_step==NKEYS+NB){*name="LED SLOT";return "PLAY green";}*name=led_step<NKEYS?"KEY SLOT":"BUTTON SLOT";number=led_step<NKEYS?led_step+1:led_step-NKEYS+1;break;
@@ -348,6 +347,14 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 107:*name="USB MIDI OUT";return onoff(midi.settings.usb_out);
  case 108:*name="MIDI PANIC";return midi_panic_pending?"Flushing":"Turn right";
  case 110:*name="MIDI CONTROLS";return onoff(midi.settings.controls_out);
+ case 149:case 150:case 151:{
+   static const char *parts[]={"BD KICK","SD SNARE","HH HAT"};
+   unsigned part=id-149u;
+   *name=parts[part];return engine.drum_mutes&(1u<<part)?"Mute":"On";
+ }
+ case 146:*name="AUDIO OUTPUT";return engine.speaker_enabled?"FM-1 Speaker":"Headphones";
+ case 147:{static const char *names[]={"Lagoon","Orchid","Electric Blue","Amber","Indigo"};*name="THEME";return names[ui_theme];}
+ case 148:*name="BACKGROUND";return ui_background?"White":"Black";
  case 109:{static const char *m[]={"Off","Quiet","Normal"};*name="STARTUP SOUND";return m[startup_chime];}
 
  case 52:*name="RESET MIX";return mix_reset?"SEL RESET":"Turn to arm";
@@ -469,7 +476,7 @@ static void performance(int band)
  }
  if(band==0){
    cv_text(8,1,&FONT_B,"PERFORMANCE " APP_VERSION,skin_text());
-   cv_text(8,25,&FONT_XS,fps_auto?"K1 VISUAL FPS: AUTO (20 TARGET)":"K1 VISUAL FPS: 20 TARGET",skin_accent());
+   cv_text(8,25,&FONT_XS,"VISUAL TARGET: 20 FPS",skin_accent());
  }else if(band==1){
    label(8,0,"PLAY BLITS FPS x10",shown_fps10);
    label(127,0,"MISSED / 2s",shown_missed);
@@ -1008,14 +1015,31 @@ static int draw(int animate)
      }
    }else if(visual&&page==PAGE_DRUMS){
      if(band==1){
-       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS"};
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES"};
        cv_text(8,0,&FONT_B,tabs[drum_tab],ui_background?skin_text():colors[SR_DRUMS]);
-       limited_text(8,25,225,&FONT_XS,sr_drum_kits[engine.drum_kit].name,skin_text());
+       limited_text(8,25,146,&FONT_XS,sr_drum_kits[engine.drum_kit].name,skin_text());
+       limited_text(157,25,76,&FONT_T,"SELECT: TAB",skin_dim());
      }else{
-       label(8,0,"DENSITY",engine.drum_density);
-       label(91,0,"HIT %",engine.drum_hit);
-       label(163,0,"LEVEL %",engine.drum_level*100);
-       if(ui_font_size!=2)cv_text(8,33,&FONT_XS,"EDIT: TAB   PRESET: KIT",skin_text());
+       static const char *lanes[]={"BD","SD","HH"};
+       static const unsigned role_ink[]={SR_BASS,SR_DRUMS,SR_GUITAR};
+       uint8_t steps[16];
+       unsigned flags=plat_lock();
+       unsigned current=engine.drum_playhead;
+       unsigned muted=engine.drum_mutes;
+       memcpy(steps,engine.drum_steps+(current&~15u),sizeof steps);
+       plat_unlock(flags);
+       for(unsigned lane=0;lane<3;lane++){
+         int y=lane*16;
+         uint16_t ink=(muted&(1u<<lane))?skin_dim():colors[role_ink[lane]];
+         cv_text(8,y,&FONT_T,lanes[lane],ink);
+         for(unsigned step=0;step<16;step++){
+           unsigned hit=steps[step]&(1u<<lane);
+           int x=29+step*12;
+           if(step==(current&15u))cv_rect(x-1,y,11,13,skin_accent());
+           cv_rect(x,y+2,9,9,hit?ink:skins[ui_theme][ui_background].border);
+           if(hit&&(steps[step]&(8u<<lane)))cv_line(x+1,y+4,x+7,y+4,skin_text());
+         }
+       }
      }
    }else if(visual&&page==PAGE_SOUND&&sound_picker){
      if(band==1){
@@ -1103,8 +1127,8 @@ static int draw(int animate)
      else if(band==1)cv_text(8,3,&FONT_B,setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"AQUORA SANS / ABOUT":setup_tab?"BANKS":display_subtab?"DISPLAY / APPEARANCE":"LIGHTS / DISPLAY",skin_text());
      if(band==2){
        if(setup_tab>=4){
-         limited_text(8,0,224,&FONT_XS,"K1: OFF / QUIET / NORMAL",skin_text());
-         limited_text(8,32,224,&FONT_T,preferences_dirty?"STOP SAVES STARTUP SETTING":"PERFORMANCE MIDI NOT ENABLED",skin_dim());
+         limited_text(8,0,224,&FONT_XS,"K1: STARTUP   K2: AUDIO OUTPUT",skin_text());
+         limited_text(8,32,224,&FONT_T,engine.speaker_enabled?"SPEAKER MODE PAUSES BINAURAL":preferences_dirty?"STOP TO SAVE PREFERENCES":"STEREO HEADPHONE OUTPUT",skin_dim());
        }else if(setup_tab==2){
          cv_text(8,1,&FONT_B,"AQUORA " APP_VERSION,skin_text());
          limited_text(8,26,224,&FONT_XS,save_info==0?"SELECT: SAVE SUMMARY 1/3":save_info==1?"SELECT: FLASH TIMES 2/3":"SELECT: COUNTERS 3/3",skin_text());
@@ -1192,7 +1216,7 @@ static int draw(int animate)
        limited_text(8,25,224,&FONT_T,"PREFERENCE SAVED",skin_accent());
      else if(page!=0&&page!=PAGE_SOUND){
        unsigned section=page==PAGE_EVOLVE?song_tab:page==PAGE_MIX?(mix_tab==5?0:mix_tab):page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:page==PAGE_AIR?air_tab:0;
-       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?8:page==PAGE_MIX?5:page==PAGE_DRUMS?4:page==PAGE_SETUP?5:4;
+       unsigned total=page==PAGE_SOUND?sizeof(sound_groups):page==PAGE_EVOLVE?8:page==PAGE_MIX?5:page==PAGE_DRUMS?5:page==PAGE_SETUP?5:4;
        if(page==PAGE_SOUND)for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
        char pos[12];num(pos,section+1);int x=cv_text(8,25,&FONT_XS,"EDIT ",skin_accent());
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
