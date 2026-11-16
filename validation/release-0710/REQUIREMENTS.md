@@ -22,6 +22,8 @@
 
 Use `tools/prepare_next_source.sh` to recover the pinned vendor source and overlay this branch. Build with the pinned JieLi toolchain and SHA from `.github/workflows/aquora-079.yml`, passing `--release 0.7.10`. For a single-core control build, set `FM1B_CPU2=0`. Run the updater test from the recovered source so its vendor installer fixtures are available. Run `tests/audio_0710.c`, `tests/frame_policy_next.c`, `tests/controls_0710.txt`, the existing composition/bank tests, and the host LCD and performance suites before publishing.
 
+The host LCD, classic UI, worker fallback, pressure, input latency, LED, DSP, arrangement and bank suites passed. The Quick Find directory resolves all registered routes. Its legacy generic edit fixture still fails on the same 10 controls as v0.7.9: STRUM gap, AIR sensitivity/invert/music request, learn apply/clear, keys/notes/dance lighting, and fullscreen performance. The fixture sends engine actions directly, while some controls require a page-local input path or a specific operating mode. The new physical-control fixture passed independently for Fortune, themes, speaker preference persistence and three drum mutes.
+
 The first integrated native checkpoint is retained in the same directory with the checksums below. Its source is commit `116e489eccc920a3a75b7179c001face09d4d01a`. Later host-test-only changes do not enter the native callback.
 
 | Artifact | SHA-256 |
