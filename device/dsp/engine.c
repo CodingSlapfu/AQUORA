@@ -670,15 +670,15 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
     e->learned.count=e->capture.count=e->learn_pending=0;e->form_loop=0;e->motif_count=e->motif_cursor=0;e->response_pending=0;
     e->arrange_next=e->arrange_length=e->arrange_active=e->arrange_elapsed=0;
     e->song_seed=song_draw(seed,100u+e->music_mode);
-    song_tempo(e,e->song_seed);
     e->rng=song_draw(seed,12);
     e->drum_rng=song_draw(seed,13);
     e->nature_rng=song_draw(seed,90);
     e->phrase=0;
     make_motif(e,0);
     memcpy(e->motif_home,e->melody,sizeof e->melody);
-    song_expression(e,seed,1);
   }
+  song_tempo(e,sounds_only?song_draw(seed,203):e->song_seed);
+  song_expression(e,seed,1);
   apply_sound_profile(e,seed,sounds_only);
   apply_motion_profile(e);
   sr_plan_sections(e);
@@ -1589,7 +1589,8 @@ static void accompaniment(sr_engine *e,unsigned bar,unsigned chord)
  unsigned common=inner==next||inner==(next+2u)%7u||inner==(next+4u)%7u;
  sr_note_on(e,SR_DRONE,note,e->music_mode==SR_CINEMATIC?58:49,common?4.0f:3.15f);
  /* Open the voicing at a crest without layering another bass root. */
- if(song_section(e)==2u&&e->music_mode<=SR_CINEMATIC){
+ if((song_section(e)==2u&&e->current_energy>=.35f&&e->music_mode<=SR_CINEMATIC)||
+    (e->current_energy>.78f&&song_section(e)==4u)){
   unsigned upper=(chord+(inner==(chord+4u)%7u?2u:4u))%7u;
   int upper_note=tonic+12+scale[upper];
   while(upper_note<note+3)upper_note+=12;
@@ -1764,7 +1765,8 @@ static void piano_phrase(sr_engine *e,unsigned step,unsigned chord,int lead,int 
   sr_note_on(e,SR_PIANO,root+scale[chord],54+expression,piano_gate(e,pos,2.25f));
 
  const uint8_t *phrase=rhythm[mode][answer];
- unsigned count=mode==SR_NEOCLASSICAL?4u:3u;
+ unsigned count=mode==SR_NEOCLASSICAL||e->current_energy>=.78f?4u:3u;
+ if(e->current_energy<.32f)count=e->current_energy<.16f?1u:2u;
  for(unsigned i=0;i<count;i++){
   if(pos!=phrase[i])continue;
   if(mode!=SR_NEOCLASSICAL&&(lead>=0||(section==3u&&i==1u)))return;
@@ -1794,16 +1796,17 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   int tonic=sr_tonic(e),degree=motif_degree(e,s);
   unsigned draw=song_draw(seed,score_bar(e,s)*16u+pos);
   unsigned dynamic=6u+((draw>>4)&3u);
-  int expression=phrase_expression(s);
+  int expression=phrase_expression(s)+(int)(8.f*(e->current_energy-.5f));
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
   if(pos==0u)accompaniment(e,s/16u,chord);
-  pluck_answer(e,s,chord,degree);
+  if(e->current_energy>=.25f||(score_bar(e,s)&1u)==0u)pluck_answer(e,s,chord,degree);
   if(!learned_active(e)&&degree>=0)
     ornament(e,2,lead_pitch(e,degree),68-dynamic+expression,melody_duration(e,s),s,e->variation>0.f&&!e->freeze);
   piano_phrase(e,s,chord,degree,expression);
   if(!recorded_vocal_phrase(e,s,chord))choir_answer(e,s,chord);
-  if(pos==12u&&(song_section(e)==2u||song_section(e)==4u)){
+  if((pos==12u&&e->current_energy>.33f&&(song_section(e)==2u||song_section(e)==4u))||
+     (pos==15u&&e->current_energy>.83f&&song_section(e)==2u&&degree<0)){
     unsigned next=phrase_chord(e,s/16u+1u);
     unsigned inner=support_degree(e,chord,next,(chord+4u)%7u,0);
     sr_note_on(e,SR_HARMONY,tonic+24+scale[inner],44+expression,.85f);
@@ -1811,7 +1814,7 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
 }
 static void musical_detail(sr_engine *e,unsigned step)
 {
-  if(e->freeze||e->variation<=0.f)return;
+  if(e->freeze||e->variation<=0.f||e->current_energy<.2f)return;
   unsigned id=form_index(e,0);
   unsigned preparing=sr_section_remaining(e)==1u;
   int tonic=sr_tonic(e);const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
@@ -2215,9 +2218,12 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     left[t]=level*(.5f-.31f*track->pan);
     right[t]=level*(.5f+.31f*track->pan);
   }
+  float human_phrase=0.f;
   for(int j=0;j<SR_VOICES;j++){
     sr_voice *v=&e->voices[j];
     if(!v->active)continue;
+    if(v->sample_zone&&(left[SR_CHOIR]+right[SR_CHOIR])>0.f)
+      human_phrase=fmaxf(human_phrase,v->gate?fmaxf(.24f,v->env):v->env);
     if(!v->external&&e->frame_count-v->born>SR_RATE*30u&&v->release_coef<.003f){
       release_voice(e,v);v->remain=0;v->release_coef=.003f;e->watchdogs++;
     }
@@ -2300,6 +2306,23 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     }
     config->step=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
   }
+  /* Leave the sampled singer at its original gain. Duck only the
+   * competing live choir/pads and their FX sends, once per render block. */
+  float priority=clampf(human_phrase*3.f,0.f,1.f);
+  float coefficient=(float)frames*(priority>e->vocal_priority?.0010f:.00022f);
+  e->vocal_priority+=(priority-e->vocal_priority)*coefficient;
+  if(e->vocal_priority>.001f){
+    for(unsigned i=0;i<count;i++){
+      voice_config *voice=&active[i];
+      float reduction=voice->track==SR_CHOIR&&!voice->voice->sample_zone?.72f:
+        voice->track==SR_DRONE?.24f:0.f;
+      if(reduction==0.f)continue;
+      float gain=1.f-reduction*e->vocal_priority;
+      voice->left*=gain;
+      voice->right*=gain;
+      voice->send*=gain;
+    }
+  }else e->vocal_priority=0.f;
   float bass_hz=bass_pitch*.5f;
   if(e->sacred_mode==2)bass_hz=sacred_hz(e);
   if(bass_hz>0){

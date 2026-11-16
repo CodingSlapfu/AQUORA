@@ -110,7 +110,7 @@ typedef struct {
   uint16_t bird_left;
   float nature_peak;
   uint32_t note_ons, note_offs, watchdogs, drum_rng, optional_hits;
-  float sacred_hz_now, reference_hz_now, reference_gain_now;
+  float sacred_hz_now, reference_hz_now, reference_gain_now, vocal_priority;
   uint16_t stop_frames;
   float sacred_level, sacred_gain, sacred_harmonics, pitch_last[2], vibrato_phase[2];
   sr_motion motion[2];

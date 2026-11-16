@@ -269,7 +269,7 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
-   static const uint8_t ids[][4]={{58,59,60,61},{64,65,0,0},{82,19,83,84},{96,97,98,0},{132,133,134,135},{137,138,139,140},{144,0,0,0}};
+   static const uint8_t ids[][4]={{58,59,60,61},{64,65,160,161},{82,19,83,84},{96,97,98,0},{132,133,134,135},{137,138,139,140},{144,0,0,0}};
    return ids[song_tab-1][knob];
  }
  if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
@@ -403,7 +403,7 @@ static void consume(void){
  case 14:sr_set_tuning_432(&engine,switched(engine.tuning_432,d));break;
  case 15:t->mute=!t->mute;break;
  case 17:sr_set_drum_level(&engine,engine.drum_level+d*.02f);break;
- case 18:engine.expression_manual|=SR_MANUAL_ENERGY;engine.energy=adjust(engine.energy,d,.05f,1);break;
+ case 18:engine.energy=adjust(engine.energy,d,.05f,1);break;
  case 144:engine.response_enabled=switched(engine.response_enabled,d);if(!engine.response_enabled){engine.response_pending=0;if(!engine.learn_mode)engine.capture.count=0;}break;
  case 82:{
    static const float levels[]={0,.25f,.55f,.85f};
@@ -420,7 +420,7 @@ static void consume(void){
  case 22:engine.tone_level_manual=1;engine.tone_level=adjust(engine.tone_level,d,.001f,SR_FIXED_TONE_MAX);break;
  case 23:engine.binaural_level=adjust(engine.binaural_level,d,.005f,.10f);break;
  case 24:t->pan=fm_clampf(t->pan+d*.05f,-1,1);break;
- case 25:engine.motion_manual|=4u;engine.play_queued=0;engine.tick_length=bounded((int)engine.tick_length-d*80,5512,22050);break;
+ case 25:engine.play_queued=0;engine.tick_length=bounded((int)engine.tick_length-d*80,5512,22050);break;
  case 27:sr_set_perfect_key(&engine,!engine.perfect_key);break;
  case 28:if(d<0)engine.solo=SR_TRACKS;else engine.solo=d>0?c.track:engine.solo==c.track?SR_TRACKS:c.track;break;
  case 29:t->send=adjust(t->send,d,.05f,1);break;
@@ -455,6 +455,8 @@ static void consume(void){
    break;
  }
  case 158:engine.drum_solo=d>0?c.drum_part:SR_DRUM_PARTS;break;
+ case 160:if(d>0)engine.motion_manual|=4u;else engine.motion_manual&=~4u;break;
+ case 161:if(d>0)engine.expression_manual|=SR_MANUAL_ENERGY;else engine.expression_manual&=~SR_MANUAL_ENERGY;break;
  case 159:engine.drum_levels[c.drum_part]=bounded(engine.drum_levels[c.drum_part]+d*5,0,100);break;
  case 146:engine.speaker_enabled=switched(engine.speaker_enabled,d);break;
  case 49:t->mute=switched(t->mute,d);break;
@@ -967,7 +969,7 @@ void app_input_only(void){
     else if(control==91){ui_font_size=bounded((int)ui_font_size+d,0,2);preferences_changed_now();}
 
     else if(control==42)voice_slot=bounded((int)voice_slot+d,0,SR_VOICES-1);
-    else {send(control,bounded(d,-8,8));if(control==25||control==50||control==51||control==62||control==93||control==94||(control>=96&&control<157)||(control>=32&&control<=35))preferences_changed_now();}
+    else {send(control,bounded(d,-8,8));if(control==160||control==25||control==50||control==51||control==62||control==93||control==94||(control>=96&&control<157)||(control>=32&&control<=35))preferences_changed_now();}
     if(control>=120&&control<157)preferences_changed_now();
     if(control!=72){knob_focus=i;knob_until=plat_ms()+900;}
     dirty=1;
