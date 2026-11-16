@@ -18,3 +18,9 @@ A separate GitHub-connected correction was committed without changing firmware D
 - `6bcb3a27f33f0dec59b7335de0f0525869f2dd15`: add targeted workflow `.github/workflows/aquora-0714-transport.yml` for GitHub-hosted compilation and execution of the complete transport fixture. Workflow run: https://github.com/CodingSlapfu/AQUORA/actions/runs/43968874123.
 
 **Verification status:** The workflow was in progress when this handoff was written; do not treat it as a PASS without reading its actual result. No native firmware was rebuilt after the fixture-only correction, and no official release or installer deployment was performed. Existing open gates above remain open.
+
+### First GitHub Actions result and follow-up fixture correction
+
+- GitHub Actions run [43968874123](https://github.com/CodingSlapfu/AQUORA/actions/runs/43968874123) **compiled** the current transport harness and passed the previously failing fixed-reference isolation, then uncovered an additional **obsolete test assumption** at `tests/transport_hit.c:130`: the historical hard-coded expected frequencies array has 13 entries, but the engine has `SR_SCENES=22`; `sr_set_scene` can also automatically reduce/disable its tone level and the reference pitch slews smoothly.
+- Commit `ddf9023e54237ab63654713dacc89d4d987c4d0c` updates this test to hold reference-level settings constant, derive expected Hz from the actual `sr_scenes[scene].frequency` mapping for **all 22 intentions**, and allow the intentional frequency glide before stable-frequency measurement. It preserves reference, Sacred Bass, binaural and STOP assertions.
+- GitHub-hosted verification for this revision: https://github.com/CodingSlapfu/AQUORA/actions/runs/43969234311 . At documentation time this run's outcome was not yet confirmed. **Never report it passed without reading the workflow result.**
