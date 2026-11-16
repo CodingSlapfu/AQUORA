@@ -18,13 +18,13 @@ jobs:
         with:
           name: aquora-0714-native-validation
           github-token: ${{ github.token }}
-          run-id: 43981203002
+          run-id: 43983488787
           path: native
       - name: Verify native provenance and prepare source
         run: |
           set -euo pipefail
-          test "$(cat native/source-commit.txt)" = "2fc5b3cbd3ad337bd9712667a3f403249d495365"
-          git diff --exit-code "2fc5b3cbd3ad337bd9712667a3f403249d495365" HEAD -- device vendor tools
+          test "$(cat native/source-commit.txt)" = "512e02657d0778af82cd90dae894d95298e37cf2"
+          git diff --exit-code "512e02657d0778af82cd90dae894d95298e37cf2" HEAD -- device vendor tools
           (cd native && sha256sum -c --strict SHA256SUMS)
           bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
           python3 -m pip install Pillow==11.3.0
