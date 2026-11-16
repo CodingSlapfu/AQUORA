@@ -263,7 +263,8 @@ static unsigned form_index(const sr_engine *e,unsigned ahead);
 static unsigned section_harmony(unsigned section);
 static unsigned score_bar(const sr_engine *e,unsigned step)
 {
-  return e->form_loop*(e->loop_length/16u)+step/16u;
+  unsigned current=e->loop_pos?e->loop_pos-1u:e->sequence_step?e->loop_length-1u:0u;
+  return e->form_loop+step/16u-current/16u;
 }
 static void make_motif(sr_engine *e,int revisit)
 {
@@ -328,8 +329,7 @@ static unsigned phrase_chord(const sr_engine *e,unsigned bar)
   if(e->freeze||e->variation<=0.f)return progressions[identity][position];
   unsigned section=form_index(e,0);
   unsigned center=section_harmony(section);
-  unsigned phrase_bars=e->loop_length/16u;
-  unsigned bars_left=sr_section_remaining(e)*phrase_bars-bar%phrase_bars;
+  unsigned bars_left=sr_section_remaining(e);
   if(bars_left==1u){
     unsigned destination=section_harmony(form_index(e,1));
     if(family==4u)return 0;
@@ -713,7 +713,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   e->auto_gain=e->auto_level=1;
   e->chord_gap=190; e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
   e->learn_strength=2;e->drums_enabled=1;e->drum_level=1.f;e->drum_presence=100;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=SR_DENSITY_MAX;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
-  for(unsigned part=0;part<3;part++)e->drum_part_gain[part]=1.f;
+  for(unsigned part=0;part<3;part++)e->drum_part_gain[part]=e->slicer_gain[part]=1.f;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
   e->binaural_level=.035f;e->tone_level=.012f;e->energy=.5f;e->variation=.3f;e->carrier_now=220.f;e->beat_now=6.f;
   for(int t=0;t<SR_TRACKS;t++){
@@ -1004,7 +1004,8 @@ static unsigned groove_density(const sr_engine *e,unsigned step){
  unsigned density=level[sr_sections[current].pulse];
  if(sr_section_remaining(e)==1u&&!e->freeze){
   unsigned target=level[sr_sections[next].pulse];
-  density=(density*(e->loop_length-step)+target*step)/e->loop_length;
+  unsigned position=step&15u;
+  density=(density*(16u-position)+target*position)/16u;
  }
  return density<cap?density:cap;
 }
@@ -1334,7 +1335,7 @@ static unsigned transition_fill(sr_engine *e,unsigned step,int gesture)
  unsigned current=form_index(e,0),next=form_index(e,1);
  unsigned preparing=(sr_section_remaining(e)==1u)&&current!=next;
  unsigned style=current%5u;
- unsigned cadence=(step+1u==e->loop_length);
+ unsigned cadence=(step&15u)==15u;
  if(!gesture&&(!cadence||(!preparing&&(e->phrase+style)%5u!=4u)))return 0;
  unsigned count=gesture?3u:preparing?2u+sr_sections[next].pulse:2u;
  if(e->music_mode==SR_NEOCLASSICAL&&count>2u)count=2u;
@@ -1569,7 +1570,7 @@ static void musical_detail(sr_engine *e,unsigned step)
   }
   /* Suspended response resolves into the next crest, with low velocity
    * and current sounds/tails, never a reference-tone or key change. */
-  if(preparing&&step+4u==e->loop_length&&sr_sections[form_index(e,1)].family==2u){
+  if(preparing&&(step&15u)==12u&&sr_sections[form_index(e,1)].family==2u){
     unsigned chord=phrase_chord(e,step/16u)%7u;
     sr_note_on(e,SR_CHOIR,tonic+24+scale[(chord+2u)%7u],48,2.5f);
   }
@@ -1610,7 +1611,7 @@ static void trigger(sr_engine *e){
     requested=e->air_request;e->air_request=0;
     if(requested==1)e->evolve_next=1;
   }
-  if(!song_changed&&!e->loop_pos&&e->sequence_step&&!e->freeze){arrange_advance(e);plan_roles(e);}
+  if(!song_changed&&!(e->loop_pos&15u)&&e->sequence_step&&!e->freeze){arrange_advance(e,!e->loop_pos);plan_roles(e);}
   uint32_t absolute=e->sequence_step++;
   uint32_t s=e->loop_pos;
   unsigned idx=e->loop_pos++;
@@ -1842,6 +1843,22 @@ static inline __attribute__((always_inline)) void bus_meter(sr_engine *e,unsigne
   float peak=fabsf(value);
   if(peak>e->bus_meter[bus])e->bus_meter[bus]=peak;
 }
+static inline __attribute__((always_inline)) unsigned slicer_lane(unsigned role)
+{
+    return role<=SR_BASS?role:role==SR_DRUMS?2u:3u;
+}
+
+static inline __attribute__((always_inline)) unsigned slicer_pattern(const sr_engine *e)
+{
+    static const uint16_t patterns[4][3]={
+        {0x3377,0x7733,0x5777},{0x7fff,0x77ff,0x7f77},
+        {0x3777,0x7377,0x7b77},{0x3355,0x5733,0x5557}
+    };
+    unsigned function=song_section(e);
+    unsigned variation=(e->scene+function)%3u;
+    return patterns[e->music_mode][variation]|0x1111u;
+}
+
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 __attribute__((section(".ram_text"), noinline))
 #endif
@@ -1858,6 +1875,19 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   const float bed_target=sr_limit_level(e->bed_level,SR_NATURE_MAX);
   const float reference_level=sr_limit_level(e->tone_level,SR_FIXED_TONE_MAX);
   unsigned scope_track=e->scope_track;
+  unsigned gate_mask=e->slicer_mask;
+  unsigned slicer_beat=e->sequence_step?(e->sequence_step-1u)&15u:0u;
+  unsigned pattern=gate_mask&&e->running&&!locked?slicer_pattern(e):0xffffu;
+  float slicer_target[3];
+  for(unsigned lane=0;lane<3;lane++){
+    unsigned bit=1u<<((slicer_beat+(lane==0?2u:0u))&15u);
+    slicer_target[lane]=(gate_mask&(1u<<lane))&&!(pattern&bit)?
+      (e->music_mode==SR_CINEMATIC?.60f:.18f):1.f;
+  }
+  unsigned smooth_slicer=gate_mask||e->slicer_gain[0]!=1.f||
+    e->slicer_gain[1]!=1.f||e->slicer_gain[2]!=1.f;
+  float resonance=e->filter_resonance*(.78f/15.f);
+  float cutoff=e->filter_cutoff*(.22f/15.f);
   struct voice_config {
     sr_voice *voice;
     float cutoff, gain, step, left, right, send;
@@ -1947,7 +1977,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     config->fm_envelope=fm_operators[op].envelope;
     if(op>=SR_LEGACY_PATCHES)
       config->fm_depth*=.85f+.25f*v->peak;
-    config->cutoff=.028f+brightness*.24f;
+    config->cutoff=e->filter_cutoff?.008f+cutoff:.028f+brightness*.24f;
     float air_focus=(e->air_track>=SR_TRACKS||e->air_track==v->track)?e->air_wet*e->air_depth*.01f:0;
     if(e->air_fx==3)config->cutoff*=1.f-.88f*air_focus;
     config->gain=patch->gain;
@@ -2001,6 +2031,11 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
   for(size_t i=0;i<frames;i++){
     float l=0.f,r=0.f,mix=0.f,scope=0.f;
+    if(smooth_slicer)for(unsigned lane=0;lane<3;lane++){
+      float gain=e->slicer_gain[lane];
+      float target=slicer_target[lane];
+      if(gain!=target)e->slicer_gain[lane]=gain<target?clampf(gain+.008f,0.f,target):clampf(gain-.008f,target,1.f);
+    }
     unsigned air_hash=(e->frame_count+i)*0x9e3779b9u;
     float breath_noise=((float)((air_hash^(air_hash>>13))&1023u)-512.f)*(1.f/512.f);
     int capture=scope_track<SR_TRACKS&&((e->frame_count+i)&3u)==0;
@@ -2035,8 +2070,13 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
         s=s*(1.f-config->vocal)+config->vocal*sine(v->phase2);
       s+=config->breath*breath_noise;
       if(config->wave==SR_PLUCK)v->peak*=config->body_decay;
+      if(resonance>0.f){
+        s+=(v->filter-v->filter_tail)*resonance;
+        v->filter_tail+=(v->filter-v->filter_tail)*config->cutoff;
+      }
       v->filter+=(s-v->filter)*config->cutoff;
       float z=v->filter*v->env*config->gain+v->tail;
+      if(smooth_slicer&&config->track<=SR_BASS)z*=e->slicer_gain[slicer_lane(config->track)];
       v->tail*=.98f;
       l+=z*config->left;
       r+=z*config->right;
@@ -2060,6 +2100,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       continue;
     }
     float drums=drum_sample(e);
+    if(smooth_slicer)drums*=e->slicer_gain[2];
     if(e->air_track>=SR_TRACKS||e->air_track==SR_DRUMS){
       float focus=e->air_wet*e->air_depth*.01f;
       if(e->air_fx==3){e->drum_air_lp+=(drums-e->drum_air_lp)*.12f;drums+=(e->drum_air_lp-drums)*focus;}

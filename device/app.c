@@ -65,7 +65,7 @@ extern void plat_air_enable(int on);
 static unsigned quick_item;
 static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature",
  "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate","Nature Style","Evolution","Master FX","Track Routing"};
-static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14};
+static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14,16};
 
 static volatile unsigned intro_active;
 static unsigned intro_start, intro_samples, intro_master;
@@ -120,11 +120,11 @@ static unsigned frames, missed, shown_fps10, shown_missed;
 static unsigned last_xruns, xrun_delta, frame_us;
 static unsigned knob_focus, knob_until, redraw_ui_ms, shown_step;
 static unsigned page_animation_ms;
-enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=16 };
+enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=11, GROUP_KEYS=12, GROUP_COUNT=17 };
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,0},{32,33,34,35},{100,0,0,0},
- {37,17,10,9},{56,141,142,143},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123}
+ {37,17,10,9},{56,141,142,143},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123},{152,153,154,0}
 };
 static const uint8_t page_controls[4][4]={
  {18,145,22,5},{0,0,0,0},{0,20,25,46},{100,0,0,0}
@@ -335,6 +335,9 @@ static void consume(void){
   engine.external_clock_count=255;break;
  case 108:if(!midi_panic_pending)midi_panic_channel=midi.settings.tx_channel;midi_panic_pending=1;midi_panic();sr_midi_panic(&engine);break;
  case 110:midi.settings.controls_out=switched(midi.settings.controls_out,d);midi_cc_program=midi_cc_volume=midi_cc_pan=midi_cc_send=midi_cc_bend=-1;break;
+ case 152:engine.filter_cutoff=bounded((int)engine.filter_cutoff+d,0,15);break;
+ case 153:engine.filter_resonance=bounded((int)engine.filter_resonance+d,0,15);break;
+ case 154:engine.slicer_mask=bounded((int)engine.slicer_mask+d,0,7);break;
  case 137:arrange_browse=bounded((int)arrange_browse+d,0,7);break;
  case 138:{unsigned id=engine.arrange_next?engine.arrange_next-1u:sr_arrange_section(&engine,1);sr_arrange_queue(&engine,bounded((int)id+d,0,31),engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u);break;}
  case 139:{unsigned len=engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u;sr_arrange_queue(&engine,engine.arrange_next?engine.arrange_next-1u:sr_arrange_section(&engine,1),bounded((int)len+d,1,16));break;}
@@ -1012,7 +1015,7 @@ void app_frame(void)
     static uint32_t shown_form_key,shown_form_slot;
     if(page==PAGE_PLAY||page==PAGE_EVOLVE){
       unsigned flags=plat_lock();
-      uint32_t key=engine.form_key,slot=engine.form_loop/(2u+sr_scenes[engine.scene].energy%3u);
+      uint32_t key=engine.form_key,slot=engine.form_loop/(2u*(2u+sr_scenes[engine.scene].energy%3u));
       plat_unlock(flags);
       if(key!=shown_form_key||slot!=shown_form_slot){shown_form_key=key;shown_form_slot=slot;dirty=1;}
     }

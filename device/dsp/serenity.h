@@ -39,7 +39,7 @@ typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
 typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; uint8_t last_note; } sr_track;
-typedef struct { uint8_t active, track, gate, midi, key, external, channel, patch; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
+typedef struct { uint8_t active, track, gate, midi, key, external, channel, patch; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, filter_tail, attack_coef, release_coef; uint32_t remain, born; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {uint32_t frame,duration;uint8_t role,note,velocity,reserved;} sr_event;
 typedef struct {uint8_t count;uint8_t note[16],step[16],length[16];} sr_learn_phrase;
@@ -67,7 +67,8 @@ typedef struct {
   float wind_lp, rain_lp, limiter, dc_x, dc_y, low_bass;
   float drum_level, drum_meter, kick_phase, kick_env, kick_previous, kick_attack, hand_phase, hand_env;
   float shaker_env, shaker_lp, hand_noise_lp;
-  float drum_part_gain[3];
+  float drum_part_gain[3], slicer_gain[3];
+  uint8_t filter_cutoff, filter_resonance, slicer_mask;
   uint8_t drum_mutes, drum_steps[64], drum_playhead;
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;

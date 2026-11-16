@@ -45,7 +45,7 @@ static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS
 #define FONT_B (*ui_value_font())
 static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain","Woodland Brook","Distant Storm"};
-static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum"};
+static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum","Filter / Slicer"};
 /* Static panel palettes. Canvas is independently exact black or white. */
 static const struct {uint16_t canvas, panel, border, accent, text, dim;} skins[5][2]={
  {{RGB(0,0,0),RGB(0,0,0),RGB(37,86,90),RGB(119,255,225),RGB(238,248,243),RGB(153,196,194)},
@@ -222,7 +222,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 1:*name=engine.pending_scene?"NEXT INTENTION":"INTENTION";{
    static const char *short_name[]={"Miracles","Blessing","Energy Cleanse","Cell Renewal","Anxiety Release","Bliss","Positive Vibrations","Neuro-Freq Detox"};
    unsigned scene=engine.pending_scene?engine.pending_scene-1u:engine.scene;
-   return scene>=13?short_name[scene-13]:sr_scenes[scene].name;
+   return scene>=13&&scene-13<sizeof short_name/sizeof *short_name?short_name[scene-13]:sr_scenes[scene].name;
  }
  case 2:*name=selected==SR_DRUMS?"KIT":"PATCH";return patch_name();
  case 4:*name=engine.frequency_lock?"LOCK Hz":engine.frequency_auto?"AUTO Hz":"MANUAL Hz";return sr_frequencies[engine.frequency].name;
@@ -347,6 +347,12 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 107:*name="USB MIDI OUT";return onoff(midi.settings.usb_out);
  case 108:*name="MIDI PANIC";return midi_panic_pending?"Flushing":"Turn right";
  case 110:*name="MIDI CONTROLS";return onoff(midi.settings.controls_out);
+ case 152:*name="CUTOFF";if(!engine.filter_cutoff)return "Patch";number=engine.filter_cutoff;break;
+ case 153:*name="RESONANCE";number=engine.filter_resonance;break;
+ case 154:{
+   static const char *names[]={"Off","Lead","Bass","Lead + Bass","Drums","Lead + Drums","Bass + Drums","All 3"};
+   *name="AUTO SLICER";return names[engine.slicer_mask];
+ }
  case 149:case 150:case 151:{
    static const char *parts[]={"BD KICK","SD SNARE","HH HAT"};
    unsigned part=id-149u;
@@ -720,6 +726,31 @@ static void battery_glyph(void)
 static __typeof__(engine.timeline) graph_notes;
 static sr_engine graph_snapshot PLAT_POOL;
 static sr_event graph_future[384] PLAT_POOL;
+/* RGB565 is cached byte-for-byte. Trim unchanged rows at either end and
+ * submit at most one DMA window per band. A hash collision cannot hide pixels. */
+static uint16_t panel_pixels[240u*240u] PLAT_POOL;
+static unsigned panel_cached_bands;
+
+static unsigned submit_panel_band(unsigned band)
+{
+    enum { width=240, rows=48, stripe=8 };
+    uint16_t *previous=panel_pixels+band*width*rows;
+    unsigned first=0,last=rows,mask=1u<<band;
+    if(panel_cached_bands&mask){
+        while(first<last&&!memcmp(previous+first*width,cv_px+first*width,
+                                   stripe*width*sizeof *previous))first+=stripe;
+        if(first==last)return 0;
+        while(last-first>stripe&&!memcmp(previous+(last-stripe)*width,
+              cv_px+(last-stripe)*width,stripe*width*sizeof *previous))last-=stripe;
+    }
+    memcpy(previous+first*width,cv_px+first*width,(last-first)*width*sizeof *previous);
+    lcd_blit(0,band*rows+first,width,last-first,cv_px+first*width);
+#if APP_CANVAS_DOUBLE_BUFFER
+    cv_last_sent=cv_px;
+#endif
+    panel_cached_bands|=mask;
+    return 1;
+}
 static unsigned graph_future_count;
 static uint8_t drum_forecast[16];
 static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
@@ -867,7 +898,7 @@ static int draw(int animate)
   }
   graph_frame=engine.frame_count;graph_tick=engine.tick_length?engine.tick_length:1;graph_phase=engine.tick_phase;
   graph_now=sr_section_name(&engine,0);graph_next=sr_section_name(&engine,1);
-  graph_boundary=(sr_section_remaining(&engine)-1u)*engine.loop_length+engine.loop_length-engine.loop_pos;
+  graph_boundary=sr_section_remaining(&engine)*16u-(engine.loop_pos&15u);
   plat_unlock(flags);
   graph_scale=4.8f/(float)graph_tick;
   if(refresh){
@@ -1164,8 +1195,8 @@ static int draw(int animate)
         char text[12];num(text,ahead);
         int y=row*16;cv_text(6,y,&FONT_T,ahead==0?"NOW":ahead==1?"NEXT":text,ahead==1?skin_accent():skin_dim());
         limited_text(38,y,150,&FONT_T,sr_arrange_name(&engine,ahead),skin_text());
-        unsigned loops=ahead==0?sr_section_remaining(&engine):ahead==1&&engine.arrange_next?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u;
-        num(text,loops*engine.loop_length/16u);cv_text(195,y,&FONT_T,text,skin_accent());cv_text(218,y,&FONT_T,"b",skin_dim());
+        unsigned bars=ahead==0?sr_section_remaining(&engine):ahead==1&&engine.arrange_next?engine.arrange_length*(engine.loop_length/16u):2u*(2u+sr_scenes[engine.scene].energy%3u);
+        num(text,bars);cv_text(195,y,&FONT_T,text,skin_accent());cv_text(218,y,&FONT_T,"b",skin_dim());
        }
      }
    }else if(visual&&page==PAGE_EVOLVE&&song_tab==7){
@@ -1343,7 +1374,7 @@ static int draw(int animate)
      cv_text(205,25,&FONT_XS,tag,skin_dim());
    }
    if(band==0&&!intro_active&&!fullscreen)battery_glyph();
-   cv_blit(0,band*48);AQ_VIS_COUNT(ui_blits);
+   if(submit_panel_band(band))AQ_VIS_COUNT(ui_blits);
    /* Acknowledge the submitted control band, rather than charging later
     * optional graphics to label feedback. Physical DMA completion is a
     * separate device measurement, not represented by this counter. */

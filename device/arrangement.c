@@ -201,7 +201,8 @@ static void arrangement_snapshot(arrangement *record)
     record->auto_level=engine.auto_level;
     plat_unlock(irq);
     record->song_seed=engine.song_seed;record->music_mode=engine.music_mode;record->motion_manual=engine.motion_manual;
-    record->reserved=engine.expression_manual;
+    record->reserved=0x8000u|engine.expression_manual|((uint16_t)engine.filter_cutoff<<2u)|
+      ((uint16_t)engine.filter_resonance<<6u)|((uint16_t)engine.slicer_mask<<10u);
     record->version=AQ_BANK_V3;record->crc=arrangement_crc(record);
     record->version=AQ_BANK_V4;record->crc4=arrangement_crc(record);
 #define SAVE_OPTION(x) record->x=engine.x;
@@ -210,7 +211,7 @@ static void arrangement_snapshot(arrangement *record)
 #undef SAVE_OPTION
     if(engine.rhythm_pending)record->rhythm_style=engine.rhythm_pending-1u;
     record->version=AQ_BANK_V5;record->crc5=arrangement_crc(record);
-    record->reserved6=0x8000u|engine.response_enabled;
+    record->reserved6=0xC000u|engine.response_enabled; /* 0x4000 marks a bar-based form position. */
     record->learned=engine.learned;record->learn_strength=engine.learn_strength;record->form_loop=engine.form_loop;
     record->version=AQ_BANK_V6;record->crc6=arrangement_crc(record);
     record->arrange_next=engine.arrange_next;record->arrange_length=engine.arrange_length;
@@ -295,6 +296,11 @@ static void arrangement_apply(const arrangement *record)
     engine.song_seed=record->version>=AQ_BANK_V4?record->song_seed:record->rng;
     engine.music_mode=record->version>=AQ_BANK_V4?record->music_mode:SR_STANDARD;
     engine.expression_manual=record->version>=AQ_BANK_V4?(record->reserved&3u):0;
+    unsigned effects=record->version>=AQ_BANK_V4&&(record->reserved&0x8000u)?record->reserved:0u;
+    engine.filter_cutoff=(effects>>2u)&15u;
+    engine.filter_resonance=(effects>>6u)&15u;
+    engine.slicer_mask=(effects>>10u)&7u;
+    for(unsigned lane=0;lane<3;lane++)engine.slicer_gain[lane]=1.f;
     engine.motion_manual=record->version>=AQ_BANK_V4?record->motion_manual:sr_legacy_motion_manual(record->motion,record->scene);
     for(unsigned role=0;role<2;role++)
         if(!(engine.motion_manual&(1u<<role)))sr_motion_auto(&engine,role,1);
@@ -309,14 +315,14 @@ static void arrangement_apply(const arrangement *record)
     }
     engine.learn_mode=engine.capture.count=engine.learn_pending=0;
     engine.learned.count=0;engine.learn_strength=2;engine.form_loop=0;engine.response_pending=0;engine.response_enabled=record->version>=AQ_BANK_V6&&(record->reserved6&0x8000u)?record->reserved6&1u:0;engine.current_energy=engine.energy;
-    if(record->version>=AQ_BANK_V6){engine.learned=record->learned;engine.learn_strength=record->learn_strength;engine.form_loop=record->form_loop;}
+    if(record->version>=AQ_BANK_V6){engine.learned=record->learned;engine.learn_strength=record->learn_strength;engine.form_loop=(record->reserved6&0x4000u)?record->form_loop:record->form_loop*2u;}
     memset(engine.scheduled,0,sizeof engine.scheduled);engine.air_request=engine.rhythm_pending=0;
     engine.form_key=0;engine.arrange_next=engine.arrange_length=engine.arrange_active=engine.arrange_elapsed=0;
     sr_plan_sections(&engine);
     if(record->version>=AQ_BANK_V7){
       engine.arrange_next=record->arrange_next;engine.arrange_length=record->arrange_length;
       engine.arrange_active=record->arrange_active;engine.arrange_elapsed=record->arrange_elapsed;
-      if(record->arrange_current)engine.form_route[engine.form_loop/(2u+sr_scenes[engine.scene].energy%3u)%32u]=record->arrange_current-1u;
+      if(record->arrange_current)engine.form_route[engine.form_loop/(2u*(2u+sr_scenes[engine.scene].energy%3u))%32u]=record->arrange_current-1u;
     }
     engine.motif_count=engine.motif_cursor=0;
     if(record->version==AQ_BANK_VERSION){
