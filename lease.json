@@ -1,9 +1,9 @@
 {
   "owner": "work-0710-audio-split",
   "epoch": 14,
-  "released": false,
-  "expires": 1794806549,
-  "scope": "Integrated v0.7.10 LCD, arrangement clock and effects verified; official release held",
+  "released": true,
+  "expires": 1794803720,
+  "scope": "AQUORA v0.7.10 candidate verified and awaiting physical acceptance",
   "checkpoint": "e41d1b08a9f87f95b01ca3db9822e5feca5fd07b",
   "verified_artifact_backup": "8688878a4503eac16ce3411e23dcf87cca62c7c2",
   "site_source": "9382805e1a5dee211604426ca39c9c295368ad6f",
@@ -17,7 +17,8 @@
   "official_zip_sha256": "c4ee2eaef8f99c1c56456cad50a1d3d89c9c0f646b54994cd2632739cc820d96",
   "release_url": "https://github.com/CodingSlapfu/AQUORA/releases/tag/v0.7.9",
   "hardware_acceptance": "Owner listening, FM-1 timing, flash and rollback acceptance pending",
-  "next_development_checkpoint": "fcf1217ea285928b79e73b5385291127a3a563c5",
+  "next_development_checkpoint": "df9606b84d1c162135f45ee586428b771fe34dc8",
   "next_development_branch": "aquora-v0.7.10-integrated",
-  "next_native_sha256": "d5917d63e4493ec10117ecf8e56314a1d3b2aa4dde2b46e0694da180ce2f4b85"
+  "next_native_sha256": "45830308b438f197177d2a91086216e72414c08c53cf455c8509886070394611",
+  "next_candidate_zip_sha256": "84931582cb7a5e3e2733f78b2971a2992fe920053648aa8da1ef0f1925bbb0c6"
 }
