@@ -34,7 +34,7 @@ void sr_plan_sections(sr_engine *e){
  /* The large-scale milestones recur in every journey. The seeded scenes
   * between them develop and prepare those arrivals. */
  static const uint8_t landmarks[SR_MUSIC_MODES][4]={
-   {2,5,22,28}, {2,19,12,28}, {17,5,22,28}, {24,7,26,28}
+   {2,5,22,28}, {2,19,12,28}, {17,5,22,28}, {24,7,26,28}, {24,14,30,28}
  };
  unsigned cadence=0;
  for(unsigned n=0;n<16;n++)if(e->motif_home[n]>=0)cadence=e->motif_home[n];

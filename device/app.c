@@ -45,7 +45,7 @@ static unsigned preferences_saving, preferences_generation, preferences_saved_ms
 static unsigned preferences_snapshot_generation;
 #endif
 static unsigned ui_theme, ui_font_size=2, ui_background, preferences_dirty, preferences_changed;
-enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR };
+enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR, PAGE_VOCALS };
 static unsigned air_on, air_hold, air_poll, air_tab;
 static aq_air_sensor air_sensor;
 static aq_air_gesture air_gesture;
@@ -252,10 +252,12 @@ static void mix_select(int delta)
  if(mix_focus<SR_TRACKS)selected=mix_focus;
  else mix_bus=mix_focus-SR_TRACKS;
 }
+static unsigned vocal_tab;
 static unsigned control_for(unsigned knob)
 {
  if(fullscreen)return knob==0?18:knob==1?145:0;
  if(debug)return knob==0?(debug==3?42:0):0;
+ if(page==PAGE_VOCALS){static const uint8_t controls[2][4]={{155,156,13,28},{155,156,13,29}};return controls[vocal_tab][knob];}
  if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128},{0,0,0,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159}};
@@ -308,7 +310,7 @@ static void drums_enable(int enabled)
 }
 static int bounded(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
 static float adjust(float x,int d,float step,float hi){return fm_clampf(x+d*step,0,hi);}
-static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected,plat_ms(),drum_part};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
+static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_VOCALS?SR_CHOIR:page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected,plat_ms(),drum_part};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
 /* Latest absolute target wins even when the general command ring is full.
  * A single aligned word carries the target and its generation. */
 static unsigned shown_intention(void)
@@ -423,7 +425,7 @@ static void consume(void){
  case 22:engine.tone_level_manual=1;engine.tone_level=adjust(engine.tone_level,d,.001f,SR_FIXED_TONE_MAX);break;
  case 23:engine.binaural_level=adjust(engine.binaural_level,d,.005f,.10f);break;
  case 24:t->pan=fm_clampf(t->pan+d*.05f,-1,1);break;
- case 25:engine.play_queued=0;engine.tick_length=bounded((int)engine.tick_length-d*80,5512,22050);break;
+ case 25:engine.play_queued=0;sr_set_auto_tempo(&engine,0);engine.tick_length=bounded((int)engine.tick_length-d*80,4009,22050);break;
  case 27:sr_set_perfect_key(&engine,!engine.perfect_key);break;
  case 28:if(d<0)engine.solo=SR_TRACKS;else engine.solo=d>0?c.track:engine.solo==c.track?SR_TRACKS:c.track;break;
  case 29:t->send=adjust(t->send,d,.05f,1);break;
@@ -458,7 +460,7 @@ static void consume(void){
    break;
  }
  case 158:engine.drum_solo=d>0?c.drum_part:SR_DRUM_PARTS;break;
- case 160:if(d>0)engine.motion_manual|=4u;else engine.motion_manual&=~4u;break;
+ case 160:sr_set_auto_tempo(&engine,d<0);break;
  case 161:if(d>0)engine.expression_manual|=SR_MANUAL_ENERGY;else engine.expression_manual&=~SR_MANUAL_ENERGY;break;
  case 159:engine.drum_levels[c.drum_part]=bounded(engine.drum_levels[c.drum_part]+d*5,0,100);break;
  case 146:engine.speaker_enabled=switched(engine.speaker_enabled,d);break;
@@ -484,7 +486,7 @@ static void consume(void){
  case 128:if(d>0&&engine.running&&engine.air_mode&&engine.air_mode<4&&!engine.freeze)engine.air_request=engine.air_mode;break;
  case 131:engine.air_request=0;break;
  case 129:{unsigned next=bounded((int)(engine.rhythm_pending?engine.rhythm_pending-1u:engine.rhythm_style)+d,0,2);
-   if(engine.running)engine.rhythm_pending=next+1u;else engine.rhythm_style=next;break;}
+   if(engine.running)engine.rhythm_pending=next+1u;else sr_set_rhythm_style(&engine,next);break;}
  case 130:engine.fill_character=bounded(engine.fill_character+d,0,3);break;
  case 93:engine.air_fx=bounded(engine.air_fx+d,0,4);break;
  case 94:engine.air_depth=bounded(engine.air_depth+d*5,0,100);break;
@@ -612,7 +614,7 @@ void app_init(void)
     }else if(settings.version){engine.motion_manual=sr_legacy_motion_manual(engine.motion,SR_SCENES);for(unsigned t=0;t<2;t++)if(!(engine.motion_manual&(1u<<t)))sr_motion_auto(&engine,t,1); }
     if((settings.version==0x41513037u||(settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u)))&&settings.startup_sound<=2)startup_chime=settings.startup_sound;
     if(settings.version==0x41513040u&&prefs_size==(int)sizeof(settings)){
-      if(settings.tempo_ticks>=5512u&&settings.tempo_ticks<=22050u&&(settings.motion_manual&4u)){
+      if(settings.tempo_ticks>=4009u&&settings.tempo_ticks<=22050u&&(settings.motion_manual&4u)){
         engine.tick_length=settings.tempo_ticks;engine.motion_manual|=4u;
       }
       if(settings.drum_presence<=100u)engine.drum_presence=settings.drum_presence;
@@ -813,6 +815,7 @@ void app_input_only(void){
  }
  if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=mix_reset=0;send(44,0);}
  if((press&(1u<<B_SEL))&&page==PAGE_SETUP&&setup_tab==0){display_subtab=!display_subtab;dirty=1;}
+ else if((press&(1u<<B_SEL))&&page==PAGE_VOCALS)send(15,0);
  else if((press&(1u<<B_SEL))&&(page==PAGE_PLAY||page==PAGE_SOUND||(page==PAGE_MIX&&mix_tab!=2))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
  if((press&(1u<<B_SEL))&&page==PAGE_EVOLVE&&song_tab==0){selected=(selected+1u)%SR_TRACKS;dirty=1;}
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
@@ -836,6 +839,7 @@ void app_input_only(void){
      group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
    }
    if(page==PAGE_AIR)air_tab=(air_tab+1)%4;
+   if(page==PAGE_VOCALS)vocal_tab^=1u;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%6;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
@@ -863,7 +867,7 @@ void app_input_only(void){
    send(136,i|((physical_keys&(1u<<i))?0:32));
  oldkeys=k;
  int d=enc[0];
- if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_AIR);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
+ if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_VOCALS);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
  static unsigned role_page=~0u;
  if(page==PAGE_MIX&&role_page!=PAGE_MIX&&mix_tab!=4)mix_focus=selected;
  role_page=page;
@@ -1134,7 +1138,7 @@ void app_frame(void)
     if(!quick_started&&!quick_pending&&!preferences_saving&&preferences_dirty&&
        now-preferences_changed>=1200u)save_preferences();
     if(quick_finished_ms&&now-quick_finished_ms>=3000u){quick_finished_ms=0;dirty=1;}
-    unsigned scope_track=page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;
+    unsigned scope_track=page==PAGE_VOCALS&&vocal_tab?SR_CHOIR:page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;
     if(scope_track!=engine.scope_track){
       unsigned flags=plat_lock();
       engine.scope_track=scope_track;
@@ -1276,7 +1280,7 @@ void app_frame(void)
     int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
     int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
     int live_air=page==PAGE_AIR&&(air_on||engine.air_target>.0001f||engine.air_wet>.0001f);
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||(page==PAGE_VOCALS&&engine.running)||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
     if(animate&&page==0){
       if(elapsed>=FRAME_MIN_MS)missed+=elapsed/FRAME_MIN_MS-1u;
 

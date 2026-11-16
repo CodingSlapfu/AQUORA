@@ -1,3 +1,4 @@
+#include "kira_face/face.h"
 _Static_assert(AQUORA_FONT_FAMILY==0x41515335u,"AQUORA Sans atlas required");
 static const char aquora_font_provenance[]="AQUORA Sans:" AQUORA_FONT_ATLAS_SHA256;
 /* SPDX-License-Identifier: MPL-2.0 */
@@ -71,7 +72,7 @@ static void label(int x,int y,const char *name,int value){
  limited_text(x,y+(ui_font_size==2?12:15),width,&FONT_B,v,skin_text());
 }
 static const char *role_names[SR_TRACKS]={
- "Lead","Bass","Pads","Harmony","Piano","Plucks","Choir","Drums"
+ "Lead","Bass","Pads","Harmony","Piano","Plucks","Vocals","Drums"
 };
 static const uint16_t colors[SR_TRACKS]={
   RGB(97,241,244),RGB(250,171,64),RGB(106,179,255),RGB(213,130,255),
@@ -150,7 +151,7 @@ static void geometry(int offset)
 }
 
 static const char *onoff(int enabled){return enabled?"ON":"OFF";}
-static const char *music_modes[]={"Standard","Cinematic","Neoclassical","Experimental Ambient"};
+static const char *music_modes[]={"Standard","Cinematic","Neoclassical","Experimental Ambient","IDM"};
 static const char *visual_name(void){static const char *n[]={"Original","Cymatics","Chladni"};return n[visual_mode];}
 static const char *patch_name(void)
 {
@@ -612,7 +613,6 @@ static void mixer_snapshot(void)
        (engine.isolate!=SR_ISOLATE_MIX&&engine.isolate!=SR_ISOLATE_TRACK1+voice->track))continue;
    float weight=voice->env*track->volume*engine.gain_trim[voice->track]*
        (voice->sample_zone?.27f:sr_patches[voice->patch].gain);
-   if(voice->track==SR_CHOIR&&!voice->sample_zone)weight*=1.f-.72f*engine.vocal_priority;
    if(voice->track==SR_DRONE)weight*=1.f-.24f*engine.vocal_priority;
    if(weight>.0002f){
      notes[total].pitch=engine.frequency_lock?sr_frequencies[engine.frequency].hz:
@@ -659,7 +659,7 @@ static void mixer_snapshot(void)
 
 static void mixer_console(int band)
 {
- static const char *names[]={"LEAD","BASS","PIANO","PLUCK","PADS","CHOIR","HARM","DRUMS"};
+ static const char *names[]={"LEAD","BASS","PIANO","PLUCK","PADS","VOCALS","HARM","DRUMS"};
  static const uint16_t neon[]={RGB(255,45,142),RGB(23,201,255),RGB(255,207,46),RGB(145,255,44),
    RGB(38,249,214),RGB(178,96,255),RGB(255,74,212),RGB(255,135,29)};
  int offset=band*48;
@@ -741,7 +741,7 @@ static void mixer_focus_strip(int band)
 {
  unsigned t=selected;
  const sr_track *tr=&engine.tracks[t];
- static const char *big[]={"LEAD","BASS","PADS","HARMONY","PIANO","PLUCKS","CHOIR","DRUMS"};
+ static const char *big[]={"LEAD","BASS","PADS","HARMONY","PIANO","PLUCKS","VOCALS","DRUMS"};
  if(band==1){
    limited_text(9,1,200,ui_font_size==2?&FONT_M:&FONT_B,big[t],skin_accent());
    cv_text(8,31,&FONT_XS,tr->mute?"MUTE":engine.solo==t?"SOLO":"CHANNEL STRIP",skin_text());
@@ -1119,7 +1119,7 @@ static int draw(int animate)
    if(input_revision-display_inputs!=select_revision-display_selections){display_strip=0;dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
-   int visual=intro_active||fullscreen||band==1||band==2||water_visible||(drums_visible&&band>0)||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
+   int visual=page==PAGE_VOCALS||intro_active||fullscreen||band==1||band==2||water_visible||(drums_visible&&band>0)||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
     * palette is chosen once, not per pixel; normal UI still follows user
@@ -1200,6 +1200,64 @@ static int draw(int animate)
        visual_title(188,9,44,14,keys[sr_tonic(&engine)%12]);
        visual_title(8,27,176,14,graph_next);
        visual_title(188,27,44,14,bpm);
+     }
+   }
+   else if(page==PAGE_SOUND&&group==16&&!sound_picker&&band>=1&&band<=2){
+     unsigned pattern=sr_slicer_pattern(&engine);
+     unsigned position=(engine.loop_pos+15u)&15u;
+     if(band==1){
+       graph_text(8,4,"SLICER / LIVE GATE",skin_text());
+       graph_text(8,25,engine.slicer_mask?"ACTIVE TRACK GATES":"BYPASS",skin_dim());
+     }else{
+       for(unsigned i=0;i<16;i++){
+         const int x=8+(int)i*14;
+         const int open=(pattern>>i)&1u;
+         cv_rect(x,open?5:31,11,open?37:11,engine.slicer_mask?skin_accent():skin_dim());
+         if(engine.running&&i==position)cv_rect(x,44,11,3,skin_text());
+       }
+     }
+   }
+   else if(page==PAGE_VOCALS){
+     const sr_track *track=&engine.tracks[SR_CHOIR];
+     if(!vocal_tab&&band<4){
+       k9_face pose={0};
+       float envelope=0;
+       unsigned flags=plat_lock();
+       if(engine.vocals_enabled&&!track->mute&&(engine.solo>=SR_TRACKS||engine.solo==SR_CHOIR)){
+         for(unsigned i=0;i<SR_VOICES;i++){
+           const sr_voice *voice=&engine.voices[i];
+           if(voice->active&&voice->sample_zone&&voice->env>envelope){
+             envelope=voice->env;
+             pose.mouth=1+(voice->sample_zone-1u)%3u;
+             pose.brow=voice->midi>68?2:0;
+           }
+         }
+       }
+       plat_unlock(flags);
+       if(track->meter>.0003f){
+         pose.open=(uint16_t)(fm_clampf(envelope*3.f,0,1)*58.f);
+         pose.jaw=pose.open/10u;
+         pose.neck=pose.open/15u;
+       }
+       pose.blink=plat_ms()%3900u<100u?255:0;
+       k9_face_render(cv_px,48u*band,48,&pose);
+     }else if(vocal_tab&&band>=1&&band<=3){
+       int16_t samples[128];
+       unsigned flags=plat_lock(),start=engine.scope_write;
+       for(unsigned i=0;i<128;i++)samples[i]=engine.scope[(start+i)&127u];
+       plat_unlock(flags);
+       int previous=120-band*48;
+       for(unsigned i=0;i<128;i++){
+         int y=120-band*48-(int)samples[i]/460;
+         cv_line(7+(int)i*225/128,previous,7+(int)(i+1)*225/128,y,RGB(203,112,255));
+         previous=y;
+       }
+     }
+     if(band==0)graph_text(7,3,vocal_tab?"VOCALS / SIGNAL":"VOCALS / KIRA-9",RGB(228,182,255));
+     if(band==4){
+       graph_text(8,2,track->mute?"MUTED":engine.vocals_enabled?"VOCALS ON":"VOCALS OFF",RGB(228,182,255));
+       graph_text(126,2,vocal_tab?"EDIT 2/2":"EDIT 1/2",RGB(228,182,255));
+       graph_text(8,20,vocal_tab?"ON   ACTIVITY   GAIN   SEND":"ON   ACTIVITY   GAIN   SOLO",RGB(225,248,255));
      }
    }
    else if(water_visible){

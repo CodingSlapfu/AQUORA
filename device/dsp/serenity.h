@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 enum {SR_BUS_NATURE, SR_BUS_SACRED, SR_BUS_REFERENCE, SR_BUS_BINAURAL, SR_BUS_FX, SR_BUS_COUNT};
-enum {SR_STANDARD, SR_CINEMATIC, SR_NEOCLASSICAL, SR_EXPERIMENTAL, SR_MUSIC_MODES};
+enum {SR_STANDARD, SR_CINEMATIC, SR_NEOCLASSICAL, SR_EXPERIMENTAL, SR_IDM, SR_MUSIC_MODES};
 enum {SR_MANUAL_ENERGY=1u, SR_MANUAL_VARIATION=2u};
 typedef enum {SR_LEAD, SR_BASS, SR_DRONE, SR_HARMONY, SR_PIANO, SR_GUITAR, SR_CHOIR, SR_DRUMS} sr_role;
 enum {SR_ISOLATE_MIX, SR_ISOLATE_TRACK1, SR_ISOLATE_FIXED=SR_TRACKS+1,
@@ -163,6 +163,9 @@ void sr_init(sr_engine *e, uint32_t seed);
 void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only);
 void sr_select_nature(sr_engine *e, uint32_t seed);
 void sr_set_scene(sr_engine *e, uint8_t scene);
+unsigned sr_slicer_pattern(const sr_engine *e);
+void sr_set_auto_tempo(sr_engine *e, int automatic);
+void sr_set_rhythm_style(sr_engine *e, unsigned style);
 void sr_set_music_mode(sr_engine *e,uint8_t mode);
 unsigned sr_legacy_motion_manual(const sr_motion *motion,unsigned scene);
 void sr_motion_auto(sr_engine *e,unsigned role,int automatic);
