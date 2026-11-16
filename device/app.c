@@ -915,7 +915,7 @@ void app_input_only(void){
     }
     if(page==PAGE_DRUMS&&drum_tab==6&&!debug&&!fullscreen){
       if(i==1){drum_edit_step=bounded((int)drum_edit_step+d,0,15);dirty=1;continue;}
-      if(i==2)d=d>0?(int)drum_edit_step+1:-(int)drum_edit_step-1;
+      if(i==2){send(167,d>0?(int)drum_edit_step+1:-(int)drum_edit_step-1);dirty=1;continue;}
     }
     if(!control)continue;
     if(control==71)quick_item=bounded((int)quick_item+d,0,QUICK_COUNT-1u);

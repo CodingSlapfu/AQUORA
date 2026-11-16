@@ -1,0 +1,53 @@
+name: AQUORA v0.7.14 native and UI validation
+on:
+  push:
+    branches: [aquora-v0.7.14-development]
+    paths:
+      - device/**
+      - .github/workflows/aquora-0714-native.yml
+permissions:
+  contents: read
+concurrency:
+  group: aquora-0714-native
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare source and pinned JieLi compiler
+        run: |
+          set -euo pipefail
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          mkdir -p "$RUNNER_TEMP/results" "$RUNNER_TEMP/jieli"
+          python3 -m pip install Pillow==11.3.0
+          curl --fail --location --max-time 180 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
+          echo "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd  $RUNNER_TEMP/jieli.tar.xz" | sha256sum -c --strict
+          tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
+      - name: Build and reproduce native checkpoint
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          export AC79_SDK="$PWD/vendor/ac79-package-files"
+          export JIELI_TOOLCHAIN="$RUNNER_TEMP/jieli/jieli-linux-toolchains-20260730.1"
+          python3 vendor/fm1-base/tools/build.py device --release 0.7.14 2>&1 | tee "$RUNNER_TEMP/results/native.log"
+          grep -F FM-1_73000714 "$RUNNER_TEMP/results/native.log"
+          cp device/build/sound-healing-0.7.14.fwsc "$RUNNER_TEMP/results/"
+          python3 vendor/fm1-base/tools/build.py device --release 0.7.14 2>&1 | tee "$RUNNER_TEMP/results/repro.log"
+          cmp device/build/sound-healing-0.7.14.fwsc "$RUNNER_TEMP/results/sound-healing-0.7.14.fwsc"
+          (cd "$RUNNER_TEMP/results" && sha256sum sound-healing-0.7.14.fwsc > SHA256SUMS)
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/results/source-commit.txt"
+      - name: Compile host UI and render vocal and drum pages
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.14 2>&1 | tee "$RUNNER_TEMP/results/host.log"
+          printf 'master 2048\nwait 3000\ntap HOME\nturn ALGO 7\nwait 500\nshot vocals.png\ntap HOME\nturn ALGO 3\nwait 200\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\nwait 200\nshot drums.png\nexpect drops 0\n' > "$RUNNER_TEMP/results/ui.script"
+          device/build/host/sound-healing_host "$RUNNER_TEMP/results/ui.script" "$RUNNER_TEMP/results" 2>&1 | tee "$RUNNER_TEMP/results/ui.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-0714-native-validation
+          path: ${{ runner.temp }}/results/
+          retention-days: 30

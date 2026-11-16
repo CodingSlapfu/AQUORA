@@ -1115,6 +1115,31 @@ static int draw(int animate)
  static const uint8_t control_first[5]={3,4,0,1,2};
  int water_visible=page==PAGE_MIX&&(mix_tab==0||mix_tab==3)&&!debug&&!intro_active&&!fullscreen;
  if(water_visible&&!display_strip&&(animate||dirty))mixer_snapshot();
+ /* Bind one audio observation to every portrait band in this frame. */
+ static k9_face vocal_pose;
+ if(page==PAGE_VOCALS&&!vocal_tab&&!display_strip&&(animate||dirty)){
+   vocal_pose=(k9_face){0};
+   float envelope=0.f;
+   unsigned flags=plat_lock();
+   const sr_track *track=&engine.tracks[SR_CHOIR];
+   if(engine.vocals_enabled&&!track->mute&&track->meter>.0003f&&
+      (engine.solo>=SR_TRACKS||engine.solo==SR_CHOIR)&&
+      (engine.isolate==SR_ISOLATE_MIX||engine.isolate==SR_ISOLATE_TRACK1+SR_CHOIR)){
+     for(unsigned i=0;i<SR_VOICES;i++){
+       const sr_voice *voice=&engine.voices[i];
+       if(voice->active&&voice->sample_zone&&voice->env>envelope){
+         envelope=voice->env;
+         vocal_pose.mouth=1+(voice->sample_zone-1u)%3u;
+         vocal_pose.brow=voice->midi>68?2:0;
+       }
+     }
+   }
+   plat_unlock(flags);
+   vocal_pose.open=(uint16_t)(fm_clampf(envelope*3.f,0,1)*58.f);
+   vocal_pose.jaw=vocal_pose.open/10u;
+   vocal_pose.neck=vocal_pose.open/15u;
+   vocal_pose.blink=plat_ms()%3900u<100u?255:0;
+ }
  for(;display_strip<5;display_strip++){
    int band=display_first?control_first[display_strip]:display_strip;
    /* Input dispatch must not wait for a complete animated LCD frame. Poll
@@ -1226,27 +1251,7 @@ static int draw(int animate)
    else if(page==PAGE_VOCALS){
      const sr_track *track=&engine.tracks[SR_CHOIR];
      if(!vocal_tab&&band<4){
-       k9_face pose={0};
-       float envelope=0;
-       unsigned flags=plat_lock();
-       if(engine.vocals_enabled&&!track->mute&&(engine.solo>=SR_TRACKS||engine.solo==SR_CHOIR)){
-         for(unsigned i=0;i<SR_VOICES;i++){
-           const sr_voice *voice=&engine.voices[i];
-           if(voice->active&&voice->sample_zone&&voice->env>envelope){
-             envelope=voice->env;
-             pose.mouth=1+(voice->sample_zone-1u)%3u;
-             pose.brow=voice->midi>68?2:0;
-           }
-         }
-       }
-       plat_unlock(flags);
-       if(track->meter>.0003f){
-         pose.open=(uint16_t)(fm_clampf(envelope*3.f,0,1)*58.f);
-         pose.jaw=pose.open/10u;
-         pose.neck=pose.open/15u;
-       }
-       pose.blink=plat_ms()%3900u<100u?255:0;
-       k9_face_render(cv_px,48u*band,48,&pose);
+       k9_face_render(cv_px,48u*band,48,&vocal_pose);
      }else if(vocal_tab==1&&band>=1&&band<=3){
        int16_t samples[128];
        unsigned flags=plat_lock(),start=engine.scope_write;
