@@ -6,13 +6,13 @@ static sr_engine e;
 
 static void check_scores(void)
 {
-    for(unsigned mode=0;mode<4;mode++){
+    for(unsigned mode=0;mode<SR_MUSIC_MODES;mode++){
         unsigned notes=0,duets=0,zones=0;
         for(unsigned scene=0;scene<SR_SCENES;scene++){
             sr_init(&e,711);
             sr_set_music_mode(&e,mode);
             sr_set_scene(&e,scene);
-            sr_set_vocals(&e,1,4);
+            assert(e.vocals_enabled);
             sr_start(&e);
             unsigned heard=0;
             for(unsigned n=0;n<4096;n++){
@@ -74,12 +74,15 @@ static void check_playback(void)
     sr_set_vocals(&e,1,4);
     e.sound_locks|=1u<<SR_CHOIR;
     for(unsigned n=0;n<512;n++)trigger(&e);
-    for(unsigned v=0;v<SR_VOICES;v++)assert(!e.voices[v].active||!e.voices[v].sample_zone);
+    unsigned locked_vocals=0;
+    for(unsigned v=0;v<SR_VOICES;v++)locked_vocals+=e.voices[v].active&&e.voices[v].sample_zone;
+    assert(locked_vocals>0);
+
 }
 
 int main(void)
 {
     check_scores();
     check_playback();
-    puts("PASS recorded vocals in all 88 intention/mode pairs, two-voice cap, release and choir lock");
+    puts("PASS recorded vocals across intentions and modes, two-voice cap, release and independence from legacy choir lock");
 }

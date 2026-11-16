@@ -79,7 +79,6 @@ typedef struct {
   uint8_t speaker_enabled,vocals_enabled,vocal_presence;
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune;
   uint16_t vocal_fx_pos,vocal_fx_history;
-  int16_t vocal_fx_buffer[8192];
   float vocal_fx_left,vocal_fx_right,vocal_fx_input;
   uint32_t vocal_fx_tail;
   float lock_phase;
@@ -126,6 +125,7 @@ typedef struct {
   uint32_t fx_ticks;
   uint8_t voice_limit,deadline_high,deadline_low;
   int16_t reverb[4][1789]; int16_t delay[16384];
+  int16_t vocal_fx_buffer[8192];
   uint16_t rev_pos[4], delay_pos, rev_history, delay_history;
   float reverb_wet, delay_wet;
   uint8_t loop_length, loop_pos, pending_length, keyboard_mode, tonic_override, pending_key, pending_physical_key;

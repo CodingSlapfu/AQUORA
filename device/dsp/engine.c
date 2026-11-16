@@ -826,6 +826,8 @@ static void clear_transport(sr_engine *e)
     memset(e->rev_pos,0,sizeof(e->rev_pos));
     e->delay_pos=0;
     e->rev_history=e->delay_history=0;
+    e->vocal_fx_pos=e->vocal_fx_history=e->vocal_fx_tail=0;
+    e->vocal_fx_left=e->vocal_fx_right=e->vocal_fx_input=0.f;
     e->reverb_wet=e->delay_wet=0;
     e->fx_mask=0;
     e->lock_phase=0;
@@ -2489,6 +2491,14 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
   const float bed_target=sr_limit_level(e->bed_level,SR_NATURE_MAX);
   const float reference_level=sr_limit_level(e->tone_level,SR_FIXED_TONE_MAX);
   float resonance=e->filter_resonance*(.78f/15.f);
+  int vocal_fx=!e->tracks[SR_CHOIR].mute&&e->vocals_enabled&&
+      (e->solo>=SR_TRACKS||e->solo==SR_CHOIR)&&
+      (full||source==SR_ISOLATE_TRACK1+SR_CHOIR)&&
+      (e->vocal_chorus||e->vocal_reverb||e->vocal_delay);
+  if(!vocal_fx){
+    e->vocal_fx_tail=0;e->vocal_fx_history=0;
+    e->vocal_fx_left=e->vocal_fx_right=e->vocal_fx_input=0.f;
+  }
   /* Track meters are display-only. Decay once per render chunk. */
   float meter_decay=1.f-(float)frames*.00097f;
   for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
@@ -2557,7 +2567,7 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
       l+=z*config->left;
       r+=z*config->right;
       mix+=z*config->send;
-      if(v->sample_zone)vocal+=z*(config->left+config->right)*.5f;
+      if(vocal_fx&&v->sample_zone)vocal+=z*(config->left+config->right)*.5f;
       if(capture&&scope_track==config->track)scope+=z*(config->left+config->right);
       float raw=fabsf(z);
       float mag=raw*(config->left+config->right);
@@ -2576,11 +2586,7 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
       dry[3*i]=l;dry[3*i+1]=r;dry[3*i+2]=0;
       continue;
     }
-    if(!e->tracks[SR_CHOIR].mute&&e->vocals_enabled&&
-       (e->solo>=SR_TRACKS||e->solo==SR_CHOIR)&&
-       (full||source==SR_ISOLATE_TRACK1+SR_CHOIR))
-      vocal_effects(e,vocal,e->frame_count+i,&l,&r);
-    else {e->vocal_fx_tail=0;e->vocal_fx_history=0;e->vocal_fx_input=0;}
+    if(vocal_fx)vocal_effects(e,vocal,e->frame_count+i,&l,&r);
     float drums=drum_sample(e);
     if(smooth_slicer)drums*=e->slicer_gain[2];
     if(e->air_track>=SR_TRACKS||e->air_track==SR_DRUMS){
