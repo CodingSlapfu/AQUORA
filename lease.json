@@ -1,8 +1,8 @@
 {
-  "owner": "work-aquora-0710-94ff9e52bafa",
-  "epoch": 11,
-  "released": true,
-  "expires": 1794797959,
+  "owner": "work-0710-resume",
+  "epoch": 12,
+  "released": false,
+  "expires": 1794802199,
   "scope": "AQUORA v0.7.10 development checkpoint verified; official publication held",
   "checkpoint": "e41d1b08a9f87f95b01ca3db9822e5feca5fd07b",
   "verified_artifact_backup": "8688878a4503eac16ce3411e23dcf87cca62c7c2",
