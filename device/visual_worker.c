@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0
- * Visualization geometry runs on CPU0 and yields to the audio IRQ.
- * The second core mailbox is reserved for the FM audio worker. */
+ * CPU1 may prepare geometry while CPU0 services controls and audio.
+ * The panel sees only a completed snapshot. */
 #if defined(PLAT_HOST) && FM1B_CPU2
 static int host_worker_on,host_worker_reason;
 int plat_cpu2_set(int on){const char *m=getenv("FM1_WORKER_TEST");host_worker_on=on && !(m&&!strcmp(m,"off"));return host_worker_on?0:-1;}
@@ -35,7 +35,10 @@ static struct {
     float onset[SR_TRACKS];
     float meter[SR_TRACKS];
 } vis_input __attribute__((aligned(64)));
-static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[512][4];uint16_t node_count;int16_t sand[512][2];uint8_t water_light[30][30];} vis_output __attribute__((aligned(64)));
+typedef struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[512][4];uint16_t node_count;int16_t sand[512][2];uint8_t water_light[30][30];} visual_result;
+static visual_result vis_output __attribute__((aligned(64)));
+static visual_result vis_work __attribute__((aligned(64)));
+static unsigned visual_pending, visual_started;
 static float vis_sine[128];
 static unsigned worker_wait_us,worker_fallbacks,worker_completed,visual_last_ms;
 static float original_phase,original_activity;
@@ -86,7 +89,7 @@ static void sand_gradient(float x,float y,float *field,float *gx,float *gy)
 }
 static void resonance_job(void)
 {
-    vis_output.node_count=0;
+    vis_work.node_count=0;
     if(!sand_ready){
       unsigned seed=0x41515541u;
       for(unsigned i=0;i<512;i++){
@@ -125,8 +128,8 @@ static void resonance_job(void)
       sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-12,12)*particle_drive*dt-scatter*dt)*.77f;
       sand_x[i]=fm_clampf(x+sand_vx[i]*dt,-.99f,.99f);
       sand_y[i]=fm_clampf(y+sand_vy[i]*dt,-.99f,.99f);
-      vis_output.sand[i][0]=120+(int)(sand_x[i]*117.f);
-      vis_output.sand[i][1]=(int)(cy+sand_y[i]*sy);
+      vis_work.sand[i][0]=120+(int)(sand_x[i]*117.f);
+      vis_work.sand[i][1]=(int)(cy+sand_y[i]*sy);
     }
     sand_axis light_axes[30];
     float light_positions[30],light_squares[30];
@@ -142,13 +145,13 @@ static void resonance_job(void)
       float ripple=visual_sin(radius*(75.f+complexity*20.f)-vis_input.phase*3.f);
       float standing=sand_field(light_squares[x],light_squares[y],light_axes[x],light_axes[y]);
       float light=nodal_level*(.45f+ripple*.18f+standing*.12f);
-      vis_output.water_light[y][x]=(uint8_t)fm_clampf(light*15.f,0,15);
+      vis_work.water_light[y][x]=(uint8_t)fm_clampf(light*15.f,0,15);
       /* Bright short water reflections, never an outline of the nodes. */
-      if(nodal_level>.004f&&x%2u==0&&y%2u==0&&vis_output.node_count<256){
-        int16_t *p=vis_output.nodes[vis_output.node_count++];
+      if(nodal_level>.004f&&x%2u==0&&y%2u==0&&vis_work.node_count<256){
+        int16_t *p=vis_work.nodes[vis_work.node_count++];
         unsigned glint=(x*37u+y*73u)^((x+y)*17u);
         p[0]=x*8+1+(glint&3u);
-        p[2]=p[0]+1+(vis_output.water_light[y][x]>7?4:1);
+        p[2]=p[0]+1+(vis_work.water_light[y][x]>7?4:1);
         p[1]=(int)(cy+py*sy+(int)((glint>>3)&7u)-3+nodal_level*ripple*3.f);
         if(p[1]<0)p[1]=0;if(p[1]>239)p[1]=239;
         p[3]=p[1];
@@ -225,7 +228,7 @@ static void chladni_job(void)
     }
     plate_grid[j][i]=rect*(1.f-plate_blend)+(radial+now*.65f)*plate_blend;
   }
-  vis_output.node_count=0;
+  vis_work.node_count=0;
   const float cy=120.f,sy=112.f;
   for(unsigned i=0;i<512;i++){
     float x=sand_x[i],y=sand_y[i],f=plate_sample(x,y);
@@ -236,8 +239,8 @@ static void chladni_job(void)
     sand_vy[i]=(sand_vy[i]-fm_clampf(f*gy,-6,6)*plate_activity*.0040f-impulse)*.78f;
     sand_x[i]=fm_clampf(x+sand_vx[i],-.98f,.98f);
     sand_y[i]=fm_clampf(y+sand_vy[i],-.98f,.98f);
-    vis_output.sand[i][0]=120+(int)(sand_x[i]*112.f);
-    vis_output.sand[i][1]=(int)(cy+sand_y[i]*sy);
+    vis_work.sand[i][0]=120+(int)(sand_x[i]*112.f);
+    vis_work.sand[i][1]=(int)(cy+sand_y[i]*sy);
   }
   /* Marching cells join interpolated zero crossings into continuous thin
    * nodal curves. Ambiguous saddles use deterministic paired crossings. */
@@ -253,8 +256,8 @@ static void chladni_job(void)
       float gy=y+dy[edge]+at*((int)dy[next]-(int)dy[edge]);
       px[count]=120+(int)((gx-12.f)*(112.f/12.f));py[count]=(int)(cy+(gy-12.f)*(sy/12.f));count++;
     }
-    for(unsigned edge=0;edge+1<count&&vis_output.node_count<512;edge+=2){
-      int16_t *p=vis_output.nodes[vis_output.node_count++];
+    for(unsigned edge=0;edge+1<count&&vis_work.node_count<512;edge+=2){
+      int16_t *p=vis_work.nodes[vis_work.node_count++];
       p[0]=px[edge];p[1]=py[edge];p[2]=px[edge+1];p[3]=py[edge+1];
     }
   }
@@ -276,22 +279,56 @@ static void visual_job(uint32_t unused)
       }else resonance_job();
     }
     else for(unsigned t=0;t<SR_TRACKS;t++){
-      vis_output.count[t]=33;
+      vis_work.count[t]=33;
       unsigned phase=vis_input.phase+t*16+vis_input.event[t]*5;
       float pulse=vis_input.meter[t]*154.f+vis_input.onset[t]*10.f;
       float radius=48.f+t*7.f+(pulse>20.f?20.f:pulse);
       for(unsigned j=0;j<=32;j++){
         unsigned a=j*4;
         float petal=radius*(.82f+.18f*vis_sine[(3*a+phase)&127]);
-        vis_output.xy[t][j][0]=120+(int)(petal*vis_sine[(a+phase)&127]);
-        vis_output.xy[t][j][1]= 120+(int)(petal*vis_sine[(2*a+phase)&127]);
+        vis_work.xy[t][j][0]=120+(int)(petal*vis_sine[(a+phase)&127]);
+        vis_work.xy[t][j][1]= 120+(int)(petal*vis_sine[(2*a+phase)&127]);
       }
     }
-    vis_output.busy_us=(plat_ticks24()-begin)/24;
+    vis_work.busy_us=(plat_ticks24()-begin)/24;
+}
+
+static void discard_visual_job(void)
+{
+    visual_pending=0;
+    /* A stopped core can leave partial particle state. Reinitialize before
+     * the next local frame while retaining the last completed panel image. */
+    sand_ready=0;
+}
+static void stop_visual_worker(void)
+{
+    plat_cpu2_set(0);
+    if(visual_pending)discard_visual_job();
+}
+static void poll_visual_worker(void)
+{
+#if FM1B_CPU2 && !defined(AQUORA_EXPERIMENTAL_FM_WORKER)
+    if(!visual_pending)return;
+    if(plat_cpu2_busy()){
+      if(plat_ms()-visual_started<45u)return;
+      stop_visual_worker();
+      worker_fallbacks++;
+      return;
+    }
+    if(plat_cpu2_wait()==0){
+      vis_output=vis_work;
+      worker_completed++;
+      visual_pending=0;
+    }else{
+      worker_fallbacks++;
+      discard_visual_job();
+    }
+#endif
 }
 
 static void prepare_geometry(void)
 {
+    if(visual_pending)return;
     AQ_VIS_COUNT(geometry_jobs);
     unsigned now=plat_ms(),dt=visual_last_ms?now-visual_last_ms:50u;visual_last_ms=now;
     if(dt>100u)dt=100u;
@@ -330,6 +367,18 @@ static void prepare_geometry(void)
       if(original_activity>.0001f)original_phase+=dt*(.006f+.030f*original_activity);
       vis_input.phase=(unsigned)original_phase;
     }
-    /* Keep the mailbox reserved for audio. Graphics runs between audio IRQs. */
+#if FM1B_CPU2 && !defined(AQUORA_EXPERIMENTAL_FM_WORKER)
+#ifndef PLAT_HOST
+    if(aq_flash_busy_base)return;
+#endif
+    if(plat_cpu2_on()&&plat_cpu2_run(visual_job,0)){
+      AQ_VIS_COUNT(worker_jobs);
+      visual_pending=1;
+      visual_started=now;
+      poll_visual_worker();
+      return;
+    }
+#endif
     visual_job(0);
+    vis_output=vis_work;
 }

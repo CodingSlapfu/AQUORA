@@ -10,6 +10,7 @@ static sr_engine engine PLAT_POOL;
 static int16_t pcm[APP_BLOCK*2] PLAT_POOL;
 typedef struct {int kind,value; unsigned track, captured_ms;} command;
 static command queue[64];
+static volatile unsigned intention_request,intention_applied;
 static volatile unsigned qread,qwrite,state_revision,command_enqueued,command_applied;
 static unsigned displayed_revision, input_revision, select_revision;
 static unsigned dropped,page,selected,group,oldkeys,oldbuttons,lastdraw,dirty=1,debug;
@@ -301,8 +302,27 @@ static void drums_enable(int enabled)
 static int bounded(int v,int lo,int hi){return v<lo?lo:v>hi?hi:v;}
 static float adjust(float x,int d,float step,float hi){return fm_clampf(x+d*step,0,hi);}
 static void send(int kind,int value){unsigned next=(qwrite+1)&63;if(next==qread){dropped++;return;}queue[qwrite]=(command){kind,value,page==PAGE_DRUMS&&kind!=3?SR_DRUMS:selected,plat_ms()};__asm__ volatile("":::"memory");qwrite=next;command_enqueued++;}
+/* Latest absolute target wins even when the general command ring is full.
+ * A single aligned word carries the target and its generation. */
+static unsigned shown_intention(void)
+{
+ unsigned request=intention_request;
+ return request!=intention_applied?request%32u:engine.scene;
+}
+static void select_intention(int delta)
+{
+ unsigned irq=plat_lock();
+ unsigned prior=shown_intention();
+ unsigned target=bounded((int)prior+delta,0,SR_SCENES-1);
+ if(target!=prior){
+   intention_request=((intention_request&~31u)+32u)|target;
+   dirty=1;
+ }
+ plat_unlock(irq);
+}
 #include "usb_midi.h"
 static void consume(void){
+ unsigned request=intention_request;
  unsigned stop=stop_generation;
  unsigned play=requested_play;
  unsigned interrupted=stop!=applied_stop;
@@ -491,6 +511,11 @@ static void consume(void){
  case 35:if(c.track<=SR_BASS)engine.motion_manual|=1u<<c.track;if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
  }
  }
+ if(request!=intention_applied){
+   sr_set_scene(&engine,request%32u);
+   intention_applied=request;
+   state_revision++;
+ }
  engine.play_released|=engine.play_queued&~physical_keys;
  for(unsigned i=0;i<SR_VOICES;i++){
    sr_voice *v=&engine.voices[i];
@@ -599,6 +624,7 @@ void app_init(void)
     evolve_step=0;
     memset(evolve_events,0,sizeof evolve_events);
     memset(evolve_history,0,sizeof evolve_history);
+    intention_request=intention_applied=0;
     qread=qwrite=command_enqueued=command_applied=0;
     quick_started=quick_pending=quick_timeout=quick_finished_ms=0;
     requested_play=stop_generation=applied_stop=physical_keys=0;
@@ -621,7 +647,7 @@ void app_panic(void)
     intro_gain=0;
     output_gain=0;
 }
-#if FM1B_CPU2
+#if FM1B_CPU2 && defined(AQUORA_EXPERIMENTAL_FM_WORKER)
 static unsigned audio_callback_start;
 static int fm_audio_available(void)
 {
@@ -657,7 +683,7 @@ static const sr_fm_worker audio_fm_worker={fm_audio_available,fm_audio_start,fm_
 void app_render(int32_t *lr,uint32_t n,uint32_t master)
 {
     unsigned begin=plat_ticks24();
-#if FM1B_CPU2
+#if FM1B_CPU2 && defined(AQUORA_EXPERIMENTAL_FM_WORKER)
     audio_callback_start=begin;
     sr_set_fm_worker(&audio_fm_worker);
 #endif
@@ -718,6 +744,7 @@ void app_input_only(void){
      last_control_ms=now;
      blocked_keys|=k;
      dirty=1;
+     if(enc[2])select_intention(enc[2]);
    }
    oldkeys=k;
    return;
@@ -753,7 +780,7 @@ void app_input_only(void){
  if((press&(1u<<B_SEL))&&page==PAGE_EVOLVE&&song_tab==0){selected=(selected+1u)%SR_TRACKS;dirty=1;}
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
- if(press&(1u<<B_REC)){unsigned irq=plat_lock();plat_cpu2_set(0);plat_unlock(irq);}
+ if(press&(1u<<B_REC))stop_visual_worker();
  if(press&(1u<<B_ENV))send(14,0);
  if(press&(1u<<B_FX)){
    if(page==PAGE_MIX&&!debug){
@@ -818,7 +845,7 @@ void app_input_only(void){
    knob_until=0;dirty=1;
  }
  d=enc[2];
- if(d){send(1,bounded(d,-8,8));dirty=1;}
+ if(d)select_intention(d);
  for(unsigned i=0;i<4;i++){
     d=enc[3+i];
     unsigned control=control_for(i);
@@ -1170,6 +1197,7 @@ void app_frame(void)
       fade=age>=2000u?0:age<=1200u?4:4-(age-1200u)/200u;
     }
     if(fade!=battery_fade){battery_fade=fade;battery_dirty=1;}
+    poll_visual_worker();
     if(now-redraw_ui_ms<FRAME_MIN_MS)return;
     unsigned elapsed=now-lastdraw;
     /* Never latch a frozen image: reduce optional cadence under sustained

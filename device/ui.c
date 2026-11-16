@@ -228,9 +228,9 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  sr_motion *motion=&engine.motion[selected<=SR_BASS?selected:0];
  int number=0;
  switch(id){
- case 1:*name=engine.pending_scene?"NEXT INTENTION":"INTENTION";{
+ case 1:*name="INTENTION";{
    static const char *short_name[]={"Miracles","Blessing","Energy Cleanse","Cell Renewal","Anxiety Release","Bliss","Positive Vibrations","Neuro-Freq Detox"};
-   unsigned scene=engine.pending_scene?engine.pending_scene-1u:engine.scene;
+   unsigned scene=shown_intention();
    return scene>=13&&scene-13<sizeof short_name/sizeof *short_name?short_name[scene-13]:sr_scenes[scene].name;
  }
  case 2:*name=selected==SR_DRUMS?"KIT":"PATCH";return patch_name();
@@ -740,24 +740,26 @@ static sr_event graph_future[384] PLAT_POOL;
 static uint16_t panel_pixels[240u*240u] PLAT_POOL;
 static unsigned panel_cached_bands;
 
-static unsigned submit_panel_band(unsigned band)
+static unsigned submit_panel_band(unsigned band,int full_motion)
 {
     enum { width=240, rows=48, stripe=8 };
     uint16_t *previous=panel_pixels+band*width*rows;
     unsigned first=0,last=rows,mask=1u<<band;
-    if(panel_cached_bands&mask){
+    if(full_motion){
+        panel_cached_bands&=~mask;
+    }else if(panel_cached_bands&mask){
         while(first<last&&!memcmp(previous+first*width,cv_px+first*width,
                                    stripe*width*sizeof *previous))first+=stripe;
         if(first==last)return 0;
         while(last-first>stripe&&!memcmp(previous+(last-stripe)*width,
               cv_px+(last-stripe)*width,stripe*width*sizeof *previous))last-=stripe;
     }
-    memcpy(previous+first*width,cv_px+first*width,(last-first)*width*sizeof *previous);
+    if(!full_motion)memcpy(previous+first*width,cv_px+first*width,(last-first)*width*sizeof *previous);
     lcd_blit(0,band*rows+first,width,last-first,cv_px+first*width);
 #if APP_CANVAS_DOUBLE_BUFFER
     cv_last_sent=cv_px;
 #endif
-    panel_cached_bands|=mask;
+    if(!full_motion)panel_cached_bands|=mask;
     return 1;
 }
 static unsigned graph_future_count;
@@ -782,21 +784,21 @@ static void visual_title(int x,int y,int width,int height,const char *text)
 }
 static void fullscreen_labels(void)
 {
- unsigned scene=engine.pending_scene?engine.pending_scene-1u:engine.scene;
+ unsigned scene=shown_intention();
  unsigned mode=engine.pending_mode?engine.pending_mode-1u:engine.music_mode;
  visual_title(8,3,224,23,sr_scenes[scene].name);
  visual_title(8,26,190,17,music_modes[mode]);
- if(engine.pending_scene||engine.pending_mode)visual_title(189,27,44,14,"QUEUED");
+ if(engine.pending_mode)visual_title(189,27,44,14,"QUEUED");
 }
 static void intention_mode_header(void){
- unsigned scene=engine.pending_scene?engine.pending_scene-1u:engine.scene;
+ unsigned scene=shown_intention();
  unsigned mode=engine.pending_mode?engine.pending_mode-1u:engine.music_mode;
- int width=engine.pending_scene||engine.pending_mode?183:198;
+ int width=engine.pending_mode?183:198;
  limited_text(8,0,width,fit_font(sr_scenes[scene].name,width,25),
               sr_scenes[scene].name,skin_text());
  limited_text(8,26,188,fit_font(music_modes[mode],188,18),
               music_modes[mode],skin_accent());
- if(engine.pending_scene||engine.pending_mode)
+ if(engine.pending_mode)
    limited_text(196,6,37,&FONT_T,"QUEUED",skin_accent());
 }
 static void evolve_graph(unsigned band){
@@ -1285,7 +1287,7 @@ static int draw(int animate)
        x=cv_text(x,25,&FONT_XS,pos,skin_text());x=cv_text(x,25,&FONT_XS,"/",skin_dim());num(pos,total);x=cv_text(x,25,&FONT_XS,pos,skin_text());
        limited_text(x+3,25,232-x,&FONT_XS,page==PAGE_MIX&&mix_tab==5?"SEL MUTE / LFO SOLO":"NEXT SECTION",skin_text());
      }
-     if(page==PAGE_PLAY&&(engine.pending_scene||engine.pending_mode))
+     if(page==PAGE_PLAY&&(engine.pending_mode))
        limited_text(107,2,125,&FONT_T,"NEXT BEAT",skin_accent());
 
    }else if(page==PAGE_SETUP&&setup_tab==2){
@@ -1388,7 +1390,8 @@ static int draw(int animate)
      cv_text(205,25,&FONT_XS,tag,skin_dim());
    }
    if(band==0&&!intro_active&&!fullscreen)battery_glyph();
-   if(submit_panel_band(band))AQ_VIS_COUNT(ui_blits);
+   if(submit_panel_band(band,animate&&(intro_active||
+      (page==PAGE_PLAY&&band>0&&(fullscreen||band<3)))))AQ_VIS_COUNT(ui_blits);
    /* Acknowledge the submitted control band, rather than charging later
     * optional graphics to label feedback. Physical DMA completion is a
     * separate device measurement, not represented by this counter. */

@@ -259,6 +259,7 @@ static const uint8_t intention_score[SR_SCENES][3]={
 };
 static uint32_t song_draw(uint32_t seed,uint32_t stream);
 static unsigned song_section(const sr_engine *e);
+static void plan_roles(sr_engine *e);
 static unsigned form_index(const sr_engine *e,unsigned ahead);
 static unsigned section_harmony(unsigned section);
 static unsigned score_bar(const sr_engine *e,unsigned step)
@@ -305,10 +306,19 @@ static void make_motif(sr_engine *e,int revisit)
 static void develop_motif(sr_engine *e){
   memcpy(e->melody,e->motif_home,sizeof e->melody);
   if((e->phrase&3u)==0u)return;
-  /* Keep the opening and cadence intact. Change just one answering note. */
-  unsigned at=(e->phrase&1u)?10u:6u;
-  int d=e->melody[at];
-  if(d>=0){d+=(e->phrase&2u)?-1:1;e->melody[at]=(int8_t)(d<0?0:d>6?6:d);}
+  /* Develop the answer that was actually composed. Preserve its opening
+   * pickup and final cadence even when the intention uses another rhythm. */
+  unsigned answer[14],count=0;
+  for(unsigned i=1;i<15;i++)if(e->melody[i]>=0)answer[count++]=i;
+  if(count<3u)return;
+  unsigned at=answer[1u+song_draw(e->song_seed,e->phrase/4u+614u)%(count-2u)];
+  int direction=(e->phrase&2u)?-1:1;
+  int degree=e->melody[at]+direction;
+  e->melody[at]=(int8_t)(degree<0?0:degree>6?6:degree);
+  if((e->phrase&3u)==3u&&at+1u<answer[count-1u]&&e->melody[at+1u]<0){
+    e->melody[at+1u]=e->melody[at];
+    e->melody[at]=-1;
+  }
 }
 uint8_t sr_tonic(const sr_engine *e)
 {
@@ -644,17 +654,17 @@ void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only)
 
 void sr_set_scene(sr_engine *e,uint8_t scene){
   if(scene>=SR_SCENES)return;
-  if(e->running&&!e->profile_applying){e->pending_scene=scene+1u;return;}
   e->pending_scene=0;
   e->play_queued=0;e->air_request=0;
   memset(e->scheduled,0,sizeof e->scheduled);
   memset(e->ornaments,0,sizeof e->ornaments);
   if(e->running)for(int i=0;i<SR_VOICES;i++){
     sr_voice *v=&e->voices[i];
-    if(!v->key&&!v->external){release_voice(e,v);v->remain=0;v->release_coef=.0012f;}
+    if(!v->key&&!v->external){release_voice(e,v);v->remain=0;v->release_coef=.0015f;}
   }
   e->scene=scene;
   e->phrase=e->form_loop=e->loop_pos=0;
+  e->sequence_step=e->learn_origin=0;
   e->arrange_next=e->arrange_length=e->arrange_active=e->arrange_elapsed=0;
   e->learned.count=e->capture.count=e->learn_pending=0;
   e->motif_count=e->motif_cursor=e->response_pending=e->evolve_next=0;
@@ -669,6 +679,8 @@ void sr_set_scene(sr_engine *e,uint8_t scene){
   make_motif(e,1);
   memcpy(e->motif_home,e->melody,sizeof e->melody);
   sr_plan_sections(e);
+  plan_roles(e);
+  if(e->running&&!e->external_sync&&!e->profile_applying)e->tick_phase=e->tick_length;
   retune_keys(e);
 }
 void sr_set_music_mode(sr_engine *e,uint8_t mode)
