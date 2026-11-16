@@ -1,7 +1,7 @@
 {
   "owner": "chat-0714-drum-editor",
   "epoch": 26,
-  "released": false,
+  "released": true,
   "expires": 1794873600,
-  "checkpoint": "4abb529333e0cff8b69f7617096da4b8ee296428"
+  "checkpoint": "740ab8616de9fe7baf71cffe03dcc0c8f81ff780"
 }
