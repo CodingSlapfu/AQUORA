@@ -820,6 +820,17 @@ static unsigned timeline_slot(sr_engine *e){
  return slot;
 }
 
+/* Control patch loudness after AUTO LEVEL. Using the nominal gain as
+ * the correction would let AUTO LEVEL counteract most of the change. */
+static inline __attribute__((always_inline)) float calibrated_patch_gain(unsigned patch)
+{
+    static const float legacy_trim[24]={
+        1.f,1.f,1.f,1.f,.76f,1.f,.73f,1.f,1.f,.74f,1.f,1.f,
+        1.f,1.f,1.f,1.f,.65f,1.f,1.f,.78f,.66f,.64f,.81f,.82f
+    };
+    return sr_patches[patch].gain*(patch<24u?legacy_trim[patch]:1.f);
+}
+
 static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats){
   if((!e->running&&!e->preview_frames&&!e->midi_suppress)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
   int slot=-1;float quiet=1.e9f;
@@ -830,7 +841,7 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
     if(score<quiet){quiet=score;slot=i;}
   }
   if(slot<0)return 0;
-  sr_voice *v=&e->voices[slot];release_voice(e,v);e->note_ons++;float tail=v->active?v->filter*v->env*sr_patches[v->patch].gain:0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;v->patch=e->tracks[track].patch;
+  sr_voice *v=&e->voices[slot];release_voice(e,v);e->note_ons++;float tail=v->active?v->filter*v->env*calibrated_patch_gain(v->patch):0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;v->patch=e->tracks[track].patch;
   const sr_patch *p=&sr_patches[e->tracks[track].patch];
   e->tracks[track].last_note=midi;
   v->born=e->frame_count;v->freq=sr_note_frequency(e,midi);v->pitch=v->freq;v->midi=midi;
@@ -1859,26 +1870,53 @@ static inline __attribute__((always_inline)) unsigned slicer_pattern(const sr_en
     return patterns[e->music_mode][variation]|0x1111u;
 }
 
+/* CPU0 is the sole writer of engine, MIDI, filter state and mix buses. The
+ * secondary core sees only explicit oscillator inputs and its private output. */
+typedef struct {
+  sr_voice *voice;
+  float cutoff, gain, step, left, right, send;
+  float fm_ratio, fm_depth, fm_envelope, body_decay, breath, vocal;
+  sr_wave wave;
+  uint8_t track;
+} voice_config;
+typedef struct {
+  voice_config active[SR_VOICES];
+  float left[SR_TRACKS],right[SR_TRACKS],send[SR_TRACKS],slicer_target[3];
+  float bass_hz,target_bass;
+  unsigned count,scope_track,smooth_slicer;
+} voice_block;
+typedef struct {
+  float phase,mod_phase,increment,step,ratio,depth,index_envelope;
+  float env,peak,attack,decay,vocal;
+} fm_input;
+enum { FM_JOB_VOICES=SR_VOICES/2+1, FM_JOB_FRAMES=64 };
+typedef struct {
+  fm_input inputs[FM_JOB_VOICES];
+  float samples[FM_JOB_FRAMES][FM_JOB_VOICES];
+  unsigned count,frames;
+} fm_job;
+static fm_job remote_fm,local_fm;
+static const sr_fm_worker *fm_worker;
+
+void sr_set_fm_worker(const sr_fm_worker *worker){fm_worker=worker;}
+
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 __attribute__((section(".ram_text"), noinline))
 #endif
-static void render_samples(sr_engine *e,float *dry,size_t frames){
-  float left[SR_TRACKS], right[SR_TRACKS], send[SR_TRACKS];
+static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
+  float *left=block->left,*right=block->right,*send=block->send;
   int locked=e->frequency_lock;
-  float lock_hz=locked?sr_frequencies[e->frequency].hz:0;
   int audition=!locked&&e->nature_audition>0;
   unsigned preview=e->preview_frames&&!e->running;
   unsigned source=audition?SR_ISOLATE_NATURE:preview?SR_ISOLATE_TRACK1+e->preview_role:e->isolate;
   e->nature_peak*=1.f-(float)frames*.0005f;
   for(unsigned b=0;b<SR_BUS_COUNT;b++)e->bus_meter[b]*=1.f-(float)frames*.0005f;
   int full=source==SR_ISOLATE_MIX;
-  const float bed_target=sr_limit_level(e->bed_level,SR_NATURE_MAX);
-  const float reference_level=sr_limit_level(e->tone_level,SR_FIXED_TONE_MAX);
   unsigned scope_track=e->scope_track;
   unsigned gate_mask=e->slicer_mask;
   unsigned slicer_beat=e->sequence_step?(e->sequence_step-1u)&15u:0u;
   unsigned pattern=gate_mask&&e->running&&!locked?slicer_pattern(e):0xffffu;
-  float slicer_target[3];
+  float *slicer_target=block->slicer_target;
   for(unsigned lane=0;lane<3;lane++){
     unsigned bit=1u<<((slicer_beat+(lane==0?2u:0u))&15u);
     slicer_target[lane]=(gate_mask&(1u<<lane))&&!(pattern&bit)?
@@ -1886,15 +1924,8 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
   }
   unsigned smooth_slicer=gate_mask||e->slicer_gain[0]!=1.f||
     e->slicer_gain[1]!=1.f||e->slicer_gain[2]!=1.f;
-  float resonance=e->filter_resonance*(.78f/15.f);
   float cutoff=e->filter_cutoff*(.22f/15.f);
-  struct voice_config {
-    sr_voice *voice;
-    float cutoff, gain, step, left, right, send;
-    float fm_ratio, fm_depth, fm_envelope, body_decay, breath, vocal;
-    sr_wave wave;
-    uint8_t track;
-  } active[SR_VOICES];
+  voice_config *active=block->active;
   unsigned count=0;
   float bass_envelope=0,bass_pitch=0;
   uint32_t bass_age=0xffffffffu;
@@ -1941,7 +1972,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
       uint32_t age=e->frame_count-v->born;
       if(age<=bass_age){bass_age=age;bass_pitch=v->pitch;}
     }
-    struct voice_config *config=&active[count++];
+    voice_config *config=&active[count++];
     sr_track *track=&e->tracks[v->track];
     const sr_patch *patch=&sr_patches[v->patch];
     config->voice=v;
@@ -1980,7 +2011,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     config->cutoff=e->filter_cutoff?.008f+cutoff:.028f+brightness*.24f;
     float air_focus=(e->air_track>=SR_TRACKS||e->air_track==v->track)?e->air_wet*e->air_depth*.01f:0;
     if(e->air_fx==3)config->cutoff*=1.f-.88f*air_focus;
-    config->gain=patch->gain;
+    config->gain=calibrated_patch_gain(v->patch);
     config->left=left[v->track];
     config->right=right[v->track];
     if(e->air_mode==4){float swell=1.f+.12f*air_focus;config->left*=swell;config->right*=swell;}
@@ -2026,6 +2057,73 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
    * Reference mode remains an explicitly selected continuous tone. */
   float target_bass=e->sacred_mode&&bass_hz>=38.f&&e->running?
       e->sacred_level*(e->sacred_mode==2?1.f:clampf(bass_envelope*2.f,0,1)):0;
+  block->count=count;
+  block->bass_hz=bass_hz;
+  block->target_bass=target_bass;
+  block->scope_track=scope_track;
+  block->smooth_slicer=smooth_slicer;
+}
+
+static inline __attribute__((always_inline)) float fm_sample(float phase,float mod_phase,
+                                                         float index,float vocal)
+{
+    float mod=sine(mod_phase);
+    float sample=sine(phase+index*mod+1.f);
+    return vocal>0.f?sample*(1.f-vocal)+vocal*mod:sample;
+}
+
+#if defined(SR_DEVICE) && !defined(PLAT_HOST)
+__attribute__((section(".ram_text"), noinline))
+#endif
+static void fm_job_render(fm_job *job)
+{
+    for(unsigned a=0;a<job->count;a++){
+        fm_input input=job->inputs[a];
+        for(unsigned i=0;i<job->frames;i++){
+            input.env+=(input.peak-input.env)*input.attack;
+            input.increment+=input.step;
+            input.phase+=input.increment;
+            if(input.phase>=1.f)input.phase-=1.f;
+            input.mod_phase+=input.increment*input.ratio;
+            if(input.mod_phase>=1.f)input.mod_phase-=1.f;
+            float index=input.depth*(1.f-input.index_envelope*(1.f-input.env));
+            job->samples[i][a]=fm_sample(input.phase,input.mod_phase,index,input.vocal);
+            input.peak*=input.decay;
+        }
+        job->inputs[a]=input;
+    }
+}
+
+/* Called through a function pointer from XIP, with the same SRAM oscillator
+ * kernel used on both cores. No worker job points into the audio stack. */
+static void (*volatile synthesize_fm)(fm_job *)=fm_job_render;
+static void remote_fm_render(uint32_t unused)
+{
+    (void)unused;
+    synthesize_fm(&remote_fm);
+}
+
+#if defined(SR_DEVICE) && !defined(PLAT_HOST)
+__attribute__((section(".ram_text"), noinline))
+#endif
+static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t frames,
+                       const uint8_t *precomputed)
+{
+  const float *left=block->left,*right=block->right,*send=block->send;
+  const voice_config *active=block->active;
+  unsigned count=block->count,scope_track=block->scope_track;
+  unsigned smooth_slicer=block->smooth_slicer;
+  const float *slicer_target=block->slicer_target;
+  float bass_hz=block->bass_hz,target_bass=block->target_bass;
+  int locked=e->frequency_lock;
+  float lock_hz=locked?sr_frequencies[e->frequency].hz:0.f;
+  int audition=!locked&&e->nature_audition>0;
+  unsigned preview=e->preview_frames&&!e->running;
+  unsigned source=audition?SR_ISOLATE_NATURE:preview?SR_ISOLATE_TRACK1+e->preview_role:e->isolate;
+  int full=source==SR_ISOLATE_MIX;
+  const float bed_target=sr_limit_level(e->bed_level,SR_NATURE_MAX);
+  const float reference_level=sr_limit_level(e->tone_level,SR_FIXED_TONE_MAX);
+  float resonance=e->filter_resonance*(.78f/15.f);
   /* Track meters are display-only. Decay once per render chunk. */
   float meter_decay=1.f-(float)frames*.00097f;
   for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
@@ -2041,7 +2139,7 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     int capture=scope_track<SR_TRACKS&&((e->frame_count+i)&3u)==0;
     float locked_sample=locked?advance(&e->lock_phase,lock_hz):0;
     for(unsigned a=0;a<count;a++){
-      const struct voice_config *config=&active[a];
+      const voice_config *config=&active[a];
       sr_voice *v=config->voice;
       if(!v->active)continue;
       if(v->remain>0&&--v->remain==0&&v->gate){
@@ -2059,15 +2157,20 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
         if(capture&&scope_track==config->track)scope+=z*(config->left+config->right);
         continue;
       }
-      v->increment+=config->step;
-      v->phase+=v->increment;
-      if(v->phase>=1.f)v->phase-=1.f;
-      v->phase2+=v->increment*config->fm_ratio;
-      if(v->phase2>=1.f)v->phase2-=1.f;
-      float index=config->fm_depth*(1.f-config->fm_envelope*(1.f-v->env));
-      float s=sine(v->phase+index*sine(v->phase2)+1.f);
-      if(config->vocal>0.f)
-        s=s*(1.f-config->vocal)+config->vocal*sine(v->phase2);
+      unsigned cached=precomputed?precomputed[a]:0u;
+      float s;
+      if(cached){
+        s=cached>FM_JOB_VOICES?local_fm.samples[i][cached-FM_JOB_VOICES-1u]:
+          remote_fm.samples[i][cached-1u];
+      }else{
+        v->increment+=config->step;
+        v->phase+=v->increment;
+        if(v->phase>=1.f)v->phase-=1.f;
+        v->phase2+=v->increment*config->fm_ratio;
+        if(v->phase2>=1.f)v->phase2-=1.f;
+        float index=config->fm_depth*(1.f-config->fm_envelope*(1.f-v->env));
+        s=fm_sample(v->phase,v->phase2,index,config->vocal);
+      }
       s+=config->breath*breath_noise;
       if(config->wave==SR_PLUCK)v->peak*=config->body_decay;
       if(resonance>0.f){
@@ -2171,6 +2274,56 @@ static void render_samples(sr_engine *e,float *dry,size_t frames){
     if(full||source==SR_ISOLATE_SACRED){l+=sacred*.6f;r+=sacred*.6f;if(!(i&7u))bus_meter(e,SR_BUS_SACRED,sacred*.6f);}
     dry[3*i]=l; dry[3*i+1]=r; dry[3*i+2]=mix;
   }
+  if(precomputed)for(unsigned a=0;a<count;a++){
+    unsigned cached=precomputed[a];
+    if(!cached)continue;
+    const fm_input *result=cached>FM_JOB_VOICES?&local_fm.inputs[cached-FM_JOB_VOICES-1u]:
+        &remote_fm.inputs[cached-1u];
+    sr_voice *voice=active[a].voice;
+    voice->phase=result->phase;
+    voice->phase2=result->mod_phase;
+    voice->increment=result->increment;
+  }
+}
+
+static void (*volatile prepare_block)(sr_engine *,voice_block *,size_t)=prepare_voices;
+static void (*volatile mix_block)(sr_engine *,const voice_block *,float *,size_t,const uint8_t *)=mix_voices;
+
+static void render_samples(sr_engine *e,float *dry,size_t frames)
+{
+    voice_block block;
+    uint8_t route[SR_VOICES]={0};
+    prepare_block(e,&block,frames);
+    const sr_fm_worker *worker=fm_worker;
+    if(!worker||!worker->available()||e->frequency_lock||frames<32||frames>FM_JOB_FRAMES||block.count<4){
+        mix_block(e,&block,dry,frames,0);
+        return;
+    }
+    remote_fm.count=local_fm.count=0;
+    remote_fm.frames=local_fm.frames=frames;
+    for(unsigned a=0;a<block.count;a++){
+        const voice_config *c=&block.active[a];
+        sr_voice *v=c->voice;
+        /* Key-off and release tails stay local so event order and lifecycle
+         * cannot diverge across the cores. */
+        if(!v->gate||(v->remain&&v->remain<=frames))continue;
+        unsigned local=local_fm.count<remote_fm.count+2u;
+        fm_job *job=local?&local_fm:&remote_fm;
+        unsigned slot=job->count++;
+        job->inputs[slot]=(fm_input){v->phase,v->phase2,v->increment,c->step,c->fm_ratio,
+            c->fm_depth,c->fm_envelope,v->env,v->peak,v->attack_coef,
+            c->wave==SR_PLUCK?c->body_decay:1.f,c->vocal};
+        route[a]=(uint8_t)(slot+1u+(local?FM_JOB_VOICES:0u));
+    }
+    if(local_fm.count<2||!worker->start(remote_fm_render,0)){
+        mix_block(e,&block,dry,frames,0);
+        return;
+    }
+    synthesize_fm(&local_fm);
+    /* One readiness check, never a wait on an outstanding audio job. */
+    if(!worker->finish())
+        for(unsigned a=0;a<block.count;a++)if(route[a]<=FM_JOB_VOICES)route[a]=0;
+    mix_block(e,&block,dry,frames,route);
 }
 
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)

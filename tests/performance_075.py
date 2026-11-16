@@ -6,7 +6,7 @@ for visual in range(3):
  for worker in ['ok','off','bad','late']:
   for pressure in [0,5900]:
    d=out/f'{visual}-{worker}-{pressure}';d.mkdir(exist_ok=True)
-   cmd=['master 2048','tap HOME','wait 700','turn ALGO 5','turn SELECT 1',f'spin K2 {visual}','tap HOME','spin K2 1','wait 300','expect fullscreen 1','expect reset_visual_counters 1']
+   cmd=['master 2048','tap HOME','wait 700','turn ALGO 5','turn SELECT 1',f'spin K4 {visual}',f'expect visual {visual}','tap HOME','spin K2 1','wait 300','expect fullscreen 1','expect reset_visual_counters 1']
    for n in range(8):cmd+=['wait 100','expect perf_sample 1',f'shot f{n}.png']
    cmd+=['spin PRESET 1','wait 800','expect fullscreen 1','expect drops 0']
    p=d/'script.txt';p.write_text('\n'.join(cmd)+'\n');q=subprocess.run([h,str(p.resolve()),str(d.resolve())],capture_output=True,text=True,env=dict(os.environ,AQUORA_TEST_SEED='1',FM1_WORKER_TEST=worker,AQUORA_TEST_CALLBACK_US=str(pressure)))

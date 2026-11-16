@@ -5,7 +5,7 @@ for running in [0,1]:
  for visual in range(3):
   for worker in ['ok','off','late','bad']:
    d=out/f'{running}-{visual}-{worker}';d.mkdir(exist_ok=True)
-   cmd=['master 2048','tap HOME','wait 700','turn ALGO 5','turn SELECT 1',f'spin K2 {visual}','tap HOME']
+   cmd=['master 2048','tap HOME','wait 700','turn ALGO 5','turn SELECT 1',f'spin K4 {visual}',f'expect visual {visual}','tap HOME']
    if not running:cmd+=['tap PLAY']
    cmd+=['wait 1200',f'expect running {running}']
    for n in range(10):cmd+=['tap HOME','turn ALGO 1','tap EDIT','spin K1 1','spin K2 1','spin K2 -1','turn SELECT 1','tap ARP','spin K2 1','spin K2 -1','tap HOME']

@@ -185,6 +185,15 @@ static void limited_text(int x,int y,int width,const felucca_font_t *font,const 
  text[length]=0;
  cv_text(x,y,font,text,color);
 }
+static void edit_hint(int x,int y,unsigned current,unsigned total)
+{
+ char position[20]="EDIT ";
+ num(position+5,current+1u);
+ unsigned end=ui_len(position);
+ position[end++]='/';
+ num(position+end,total);
+ limited_text(x,y,232-x,fit_font(position,232-x,16),position,skin_dim());
+}
 static void sidebar_text(int x,int y,int width,const char *s,uint16_t ink)
 {
  unsigned start=0;
@@ -498,10 +507,10 @@ static void performance(int band)
    label(127,0,"AUDIO+FX % BUDGET",(audio_stats.mean+fx_stats.mean)*100/5805);
    char v[12];num(v,plat_xruns());if(ui_font_size!=2)cv_text(66,15,&FONT_B,v,skin_text());
  }else if(band==4){
-   if(ui_font_size==2){label(8,0,"WORK us",vis_output.busy_us);label(127,0,"FALLBACK",worker_fallbacks);}
+   if(ui_font_size==2){label(8,0,"FM BLOCKS",worker_completed);label(127,0,"FALLBACK",worker_fallbacks);}
    else{
-   cv_text(8,0,&FONT_XS,plat_cpu2_on()?"CORE 1 GEOMETRY / CORE 0 AUDIO":"CORE 0 / SINGLE-CORE FALLBACK",skin_text());
-   label(8,12,"WORK / WAIT us",vis_output.busy_us);
+   cv_text(8,0,&FONT_XS,plat_cpu2_on()?"CORE 1 FM / CORE 0 MIX":"CORE 0 / SINGLE-CORE FALLBACK",skin_text());
+   label(8,12,"GEOM / WAIT us",vis_output.busy_us);
    char v[12];num(v,worker_wait_us);cv_text(66,27,&FONT_B,v,skin_text());
    label(127,12,"FALLBACK / BAD",worker_fallbacks);
    num(v,plat_cpu2_bad());cv_text(185,27,&FONT_B,v,skin_text());
@@ -1237,6 +1246,7 @@ static int draw(int animate)
      intention_mode_header();
    }else if(band==0&&page==PAGE_EVOLVE){
      cv_text(6+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,"EVOLVE",skin_accent());
+     edit_hint(155,2,song_tab,8);
      int x=cv_text(6,21,&FONT_T,"NOW ",skin_accent());
      limited_text(x,21,210-x,&FONT_XS,graph_now?graph_now:"Planning",skin_text());
      x=cv_text(6,35,&FONT_T,"NEXT ",skin_dim());
@@ -1249,13 +1259,17 @@ static int draw(int animate)
        cv_text(x,2,&FONT_XS,count,skin_accent());
        char meter[12];num(meter,engine.tracks[SR_DRUMS].meter*100);
        cv_text(181,2,&FONT_XS,meter,skin_text());cv_text(205,2,&FONT_XS,"%",skin_text());
-     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SOUND?groups[group]:page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==6?"ARRANGE / EDIT":song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
+     }else if(page==PAGE_SOUND){
+       limited_text(104,2,128,fit_font(groups[group],128,20),groups[group],skin_text());
+     }else if(page!=0&&ui_font_size!=2)limited_text(104,2,110,&FONT_XS,page==PAGE_SETUP?(setup_tab>=4?"STARTUP SOUND":setup_tab==3?"QUICK FIND":setup_tab==2?"ABOUT":setup_tab?"BANKS":(display_subtab?"APPEARANCE":"LIGHTS / DISPLAY")):page==2?(song_tab==6?"ARRANGE / EDIT":song_tab==5?"LEARN / EDIT":song_tab==4?"MUSIC MODE / EDIT":song_tab==3?"DEVELOPMENT / EDIT":song_tab==2?"GROOVE / EDIT":song_tab?"NEW SONG / EDIT":"LOOP / EDIT"):page==3?(mix_tab==0?"ALL CHANNELS":mix_tab==1?"MASTER FX":mix_tab==2?"RESET MIX":mix_tab==3?"ACTIVE CHANNELS":mix_tab==5?"CHANNEL STRIP":"BUS SHORTCUTS"):visual_name(),skin_text());
      char track[12];num(track,selected+1);
      if(page==PAGE_SOUND||page==PAGE_PLAY){
      cv_text(8,25,&FONT_XS,"SEL",skin_dim());
      cv_text(30,25,&FONT_XS,track,skin_text());
      limited_text(44,25,63,&FONT_XS,role_names[selected],skin_accent());
-     limited_text(109,25,90,&FONT_T,page==PAGE_PLAY?patch_name():"TRACK / EDIT",skin_text());
+     unsigned section=0;
+     for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)section=i;
+     edit_hint(141,25,section,sizeof(sound_groups));
      }
      if(0){
        cv_text(101,25,&FONT_XS,"PRE",skin_dim());

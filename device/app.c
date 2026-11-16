@@ -621,9 +621,46 @@ void app_panic(void)
     intro_gain=0;
     output_gain=0;
 }
+#if FM1B_CPU2
+static unsigned audio_callback_start;
+static int fm_audio_available(void)
+{
+#ifndef PLAT_HOST
+    if(aq_flash_busy_base)return 0;
+#endif
+    return plat_cpu2_on()&&!plat_cpu2_busy()&&
+           (unsigned)(plat_ticks24()-audio_callback_start)<4200u*24u;
+}
+static int fm_audio_start(void (*job)(uint32_t),uint32_t arg)
+{
+    int launched=plat_cpu2_run(job,arg);
+    if(launched)AQ_VIS_COUNT(worker_jobs);
+    return launched;
+}
+static int fm_audio_finish(void)
+{
+    unsigned start=plat_ticks24();
+    /* Keep both the per-job spin and total callback admission bounded.
+     * A stuck worker is held before CPU0 uses the local oscillator path. */
+    while(plat_cpu2_busy()&&(unsigned)(plat_ticks24()-start)<60u*24u&&
+          (unsigned)(plat_ticks24()-audio_callback_start)<4400u*24u){}
+    worker_wait_us=(plat_ticks24()-start)/24u;
+    AQ_VIS_COUNT(worker_waits);
+    if(!plat_cpu2_busy()&&plat_cpu2_wait()==0){worker_completed++;return 1;}
+    plat_cpu2_set(0);
+    worker_fallbacks++;
+    return 0;
+}
+static const sr_fm_worker audio_fm_worker={fm_audio_available,fm_audio_start,fm_audio_finish};
+#endif
+
 void app_render(int32_t *lr,uint32_t n,uint32_t master)
 {
     unsigned begin=plat_ticks24();
+#if FM1B_CPU2
+    audio_callback_start=begin;
+    sr_set_fm_worker(&audio_fm_worker);
+#endif
     consume();
     if(n>APP_BLOCK)n=APP_BLOCK;
     midi_audio_before();
@@ -716,7 +753,7 @@ void app_input_only(void){
  if((press&(1u<<B_SEL))&&page==PAGE_EVOLVE&&song_tab==0){selected=(selected+1u)%SR_TRACKS;dirty=1;}
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
- if(press&(1u<<B_REC))plat_cpu2_set(0);
+ if(press&(1u<<B_REC)){unsigned irq=plat_lock();plat_cpu2_set(0);plat_unlock(irq);}
  if(press&(1u<<B_ENV))send(14,0);
  if(press&(1u<<B_FX)){
    if(page==PAGE_MIX&&!debug){

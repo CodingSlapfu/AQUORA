@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0
- * Optional core-1 geometry job. Audio never submits or waits for worker jobs.
- * Inputs are frozen through completion; fallback holds a failed worker before reuse. */
+ * Visualization geometry runs on CPU0 and yields to the audio IRQ.
+ * The second core mailbox is reserved for the FM audio worker. */
 #if defined(PLAT_HOST) && FM1B_CPU2
 static int host_worker_on,host_worker_reason;
 int plat_cpu2_set(int on){const char *m=getenv("FM1_WORKER_TEST");host_worker_on=on && !(m&&!strcmp(m,"off"));return host_worker_on?0:-1;}
@@ -37,12 +37,12 @@ static struct {
 } vis_input __attribute__((aligned(64)));
 static struct {int16_t xy[SR_TRACKS][33][2];uint8_t count[SR_TRACKS];unsigned busy_us;int16_t nodes[512][4];uint16_t node_count;int16_t sand[512][2];uint8_t water_light[30][30];} vis_output __attribute__((aligned(64)));
 static float vis_sine[128];
-static unsigned worker_wait_us,worker_fallbacks,visual_last_ms;
+static unsigned worker_wait_us,worker_fallbacks,worker_completed,visual_last_ms;
 static float original_phase,original_activity;
 
 static void visual_init(void)
 {
-    worker_wait_us=worker_fallbacks=visual_last_ms=0;original_phase=original_activity=0;
+    worker_wait_us=worker_fallbacks=worker_completed=visual_last_ms=0;original_phase=original_activity=0;
     for(unsigned i=0;i<128;i++)vis_sine[i]=fm_sinf(i*(6.28318530718f/128.f));
 }
 
@@ -330,12 +330,6 @@ static void prepare_geometry(void)
       if(original_activity>.0001f)original_phase+=dt*(.006f+.030f*original_activity);
       vis_input.phase=(unsigned)original_phase;
     }
-    plat_cpu2_sync();
-    unsigned begin=plat_ticks24();
-    if(plat_cpu2_run(visual_job,0)){
-      AQ_VIS_COUNT(worker_jobs);AQ_VIS_COUNT(worker_waits);
-      if(plat_cpu2_wait()!=0){worker_fallbacks++;visual_job(0);}
-    }else visual_job(0);
-    worker_wait_us=(plat_ticks24()-begin)/24;
-    plat_cpu2_sync();
+    /* Keep the mailbox reserved for audio. Graphics runs between audio IRQs. */
+    visual_job(0);
 }

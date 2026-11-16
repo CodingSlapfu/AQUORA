@@ -124,6 +124,15 @@ typedef struct {
   struct { uint16_t phase; uint8_t midi, velocity; float beats; } ornaments[4];
 } sr_engine;
 
+/* finish returns 1 for completed output or retires the outstanding job
+ * before returning 0. available excludes other mailbox users. */
+typedef struct {
+  int (*available)(void);
+  int (*start)(void (*job)(uint32_t),uint32_t);
+  int (*finish)(void);
+} sr_fm_worker;
+void sr_set_fm_worker(const sr_fm_worker *worker);
+
 extern const sr_patch sr_patches[SR_PATCHES];
 extern const sr_scene sr_scenes[SR_SCENES];
 extern const sr_frequency sr_frequencies[SR_FREQUENCIES];
