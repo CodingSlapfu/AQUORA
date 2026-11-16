@@ -789,7 +789,9 @@ void sr_init(sr_engine *e,uint32_t seed){
     lut_ready=1;
   }
   e->auto_gain=e->auto_level=1;
-  e->chord_gap=190; e->master=.78f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
+  e->chord_gap=190; e->master=.78f;
+  e->fx_decay=e->fx_feedback=e->fx_width=50;
+  e->fx_decay_now=.89f;e->fx_feedback_now=.46f;e->fx_width_now=1.f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
   e->vocals_enabled=1;e->learn_strength=2;e->drums_enabled=1;e->drum_level=1.f;e->drum_presence=100;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=SR_DENSITY_MAX;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   for(unsigned part=0;part<3;part++)e->drum_part_gain[part]=e->slicer_gain[part]=1.f;
   e->binaural_enabled=0;e->binaural_carrier=220.f;e->binaural_rate=6.f;
@@ -828,7 +830,7 @@ static void clear_transport(sr_engine *e)
     e->rev_history=e->delay_history=0;
     e->vocal_fx_pos=e->vocal_fx_history=e->vocal_fx_tail=0;
     e->vocal_fx_left=e->vocal_fx_right=e->vocal_fx_input=0.f;
-    e->reverb_wet=e->delay_wet=0;
+    e->reverb_wet=e->delay_wet=e->fx_delay_low=0;
     e->fx_mask=0;
     e->lock_phase=0;
     e->preview_frames=0;
@@ -2153,7 +2155,7 @@ static inline __attribute__((always_inline)) float fx(sr_engine *e,unsigned mask
   float wet=0.f;
   if(mask&1u)for(int i=0;i<4;i++){
     uint16_t p=e->rev_pos[i];float delayed=e->rev_history>=rv_len[i]?(float)e->reverb[i][p]*(1.f/32768.f):0;
-    float next=clampf(dry*.34f+delayed*.89f,-.97f,.97f);
+    float next=clampf(dry*.34f+delayed*e->fx_decay_now,-.97f,.97f);
     e->reverb[i][p]=(int16_t)(next*32767.f);
     e->rev_pos[i]=(uint16_t)(p+1u==rv_len[i]?0:p+1u);wet+=delayed*.25f;
   }
@@ -2166,10 +2168,11 @@ static inline __attribute__((always_inline)) float fx(sr_engine *e,unsigned mask
   unsigned read=(p+16384u-period)&16383u;
   d=e->delay_history>=period?(float)e->delay[read]*(1.f/32768.f):0;
   if(e->delay_history<16384)e->delay_history++;
-  float next=clampf(dry*.63f+d*.46f,-.97f,.97f);
+  e->fx_delay_low+=(d-e->fx_delay_low)*.12f;
+  float next=clampf(dry*.63f+(d+(e->fx_delay_low-d)*e->fx_damping_now)*e->fx_feedback_now,-.97f,.97f);
   e->delay[p]=(int16_t)(next*32767.f);e->delay_pos=(uint16_t)((p+1u)&16383u);
   }
-  *wide=(wet*.56f-d*.12f)*e->reverb_wet;
+  *wide=(wet*.56f-d*.12f)*e->reverb_wet*e->fx_width_now;
   return wet*e->reverb_wet+d*e->delay_wet;
 }
 static inline __attribute__((always_inline)) int16_t sampleout(float v){
@@ -2742,7 +2745,15 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
   if(e->air_fx==0||e->air_fx==2)reverb+=(.8f-reverb)*air;
   float delay=e->delay_amount*depth;
   if(e->air_fx==1||e->air_fx==2)delay+=(.7f-delay)*air;
+  float decay=.89f+((int)e->fx_decay-50)*.0016f;
+  float feedback=.46f+((int)e->fx_feedback-50)*.006f;
+  float damping=e->fx_damping*.01f;
+  float stereo=e->fx_width*.02f;
   for(size_t i=0;i<frames;i++){
+    e->fx_decay_now+=(decay-e->fx_decay_now)*.002f;
+    e->fx_feedback_now+=(feedback-e->fx_feedback_now)*.002f;
+    e->fx_damping_now+=(damping-e->fx_damping_now)*.002f;
+    e->fx_width_now+=(stereo-e->fx_width_now)*.002f;
     e->reverb_wet+=(reverb-e->reverb_wet)*.002f;
     e->delay_wet+=(delay-e->delay_wet)*.002f;
     float width=0;
