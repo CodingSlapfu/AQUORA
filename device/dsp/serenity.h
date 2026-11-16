@@ -22,6 +22,7 @@ static inline __attribute__((always_inline)) float sr_limit_level(float level, f
 #define SR_BEDS 14
 #define SR_FREQUENCIES 22
 #define SR_DRUM_KITS 19
+enum { SR_DRUM_PARTS=16 };
 #define SR_BEAT_PRESETS 8
 #ifdef __cplusplus
 extern "C" {
@@ -148,7 +149,6 @@ extern const sr_patch sr_patches[SR_PATCHES];
 extern const sr_scene sr_scenes[SR_SCENES];
 extern const sr_frequency sr_frequencies[SR_FREQUENCIES];
 extern const sr_drum_kit sr_drum_kits[SR_DRUM_KITS];
-enum { SR_DRUM_PARTS=16 };
 extern const char *const sr_drum_parts[SR_DRUM_PARTS];
 extern const uint8_t sr_drum_notes[SR_DRUM_PARTS];
 extern const float sr_binaural_presets[SR_BEAT_PRESETS];
