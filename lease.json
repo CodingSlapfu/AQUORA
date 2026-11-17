@@ -1,7 +1,7 @@
 {
-  "owner": "work-0714-ambient-effects",
-  "epoch": 29,
-  "released": true,
-  "expires": 1794876293,
+  "owner": "work-0714-final-publication",
+  "epoch": 30,
+  "released": false,
+  "expires": 1794881108,
   "checkpoint": "c8f550fb5ba4289c25ee02a2c22ef6998523ed6e"
 }
