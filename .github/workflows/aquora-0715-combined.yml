@@ -1,0 +1,23 @@
+name: AQUORA combined vocals, FX, drums and Cymatics
+on:
+  push:
+    branches: [aquora-vocal-controls]
+    paths: [.github/workflows/aquora-0715-combined.yml]
+permissions:
+  contents: read
+jobs:
+  combined:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6ef3f3e44a42309f472033e0aa249d610ac9301c
+      - run: |
+          set -euo pipefail
+          python3 -m pip install Pillow==11.3.0
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.15
+          mkdir -p "$RUNNER_TEMP/combined"
+          printf '%s\n' 'master 2048' 'wait 3000' 'tap HOME' 'turn ALGO 3' 'tap EDIT' 'expect mix_tab 1' 'tap FX' 'tap FX' 'tap FX' 'tap FX' 'spin K1 8' 'spin K2 8' 'spin K3 8' 'tap HOME' 'turn ALGO 7' 'expect page 7' 'spin K2 3' 'tap EDIT' 'spin K1 8' 'spin K2 8' 'spin K3 8' 'tap FX' 'expect running 1' 'expect drums 1' 'tap HOME' 'turn ALGO 5' 'turn SELECT 1' 'spin K4 1' 'expect visual 1' 'tap HOME' 'wait 8000' 'expect running 1' 'expect drops 0' 'expect control_metrics 1' > "$RUNNER_TEMP/combined/panel.txt"
+          AQUORA_TEST_SEED=1 FM1_WORKER_TEST=late AQUORA_TEST_CALLBACK_US=5400 device/build/host/sound-healing_host "$RUNNER_TEMP/combined/panel.txt" "$RUNNER_TEMP/combined"
