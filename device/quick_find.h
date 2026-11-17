@@ -20,7 +20,6 @@ static void open_parameter(unsigned index)
         sound_picker=0;
         if((!tab&&selected==SR_DRUMS)||(tab==6&&selected>SR_BASS))selected=SR_LEAD;
         break;
-    case PAGE_AIR:air_tab=tab;break;
     case PAGE_EVOLVE:song_tab=tab;break;
     case PAGE_MIX:mix_tab=tab;if(tab==5)mix_focus=selected;break;
     case PAGE_DRUMS:drum_tab=tab;break;
