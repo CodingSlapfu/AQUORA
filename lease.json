@@ -1,7 +1,7 @@
 {
   "owner": "work-0714-ambient-effects",
   "epoch": 29,
-  "released": false,
-  "expires": 1794879638,
-  "checkpoint": "db5a6239f35e697d4330dc5f86213fa8059a1434"
+  "released": true,
+  "expires": 1794876293,
+  "checkpoint": "c8f550fb5ba4289c25ee02a2c22ef6998523ed6e"
 }
