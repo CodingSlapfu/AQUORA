@@ -1,7 +1,7 @@
 {
   "owner": "work-0720-testing-installer",
   "epoch": 32,
-  "released": false,
-  "expires": 1794900278,
-  "checkpoint": "3ecd2a0794bb26e496e6380732ee4f27af43b661"
+  "released": true,
+  "expires": 1794898809,
+  "checkpoint": "e7de43785cabdda2b1eab728716587ac85ae2678"
 }
