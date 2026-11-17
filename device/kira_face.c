@@ -36,7 +36,7 @@ void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *
  else if(f->gaze)layer(pixels,y0,height,3,f->gaze>0?1:-1,0);
  unsigned mouth=4;
  if(f->mouth!=4&&f->open>2){
-  mouth=f->mouth==3?7:f->mouth==2?6:f->mouth==5?8:5;
+  mouth=f->mouth==3?7:f->mouth==2||f->mouth==6?6:f->mouth==5?8:5;
  }else if(f->cheek==1)mouth=9;
  layer(pixels,y0,height,mouth,0,0);
  if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,0,1);

@@ -21,6 +21,26 @@ static double impulse(unsigned effect)
     return energy;
 }
 
+static void verify_auto_profiles(void)
+{
+    sr_init(&engine,714);
+    sr_set_vocals(&engine,1,4);
+    engine.music_mode=SR_STANDARD;
+    for(unsigned n=0;n<400;n++)vocal_production(&engine,64);
+    float standard=engine.vocal_room_now;
+    engine.music_mode=SR_CINEMATIC;
+    for(unsigned n=0;n<400;n++)vocal_production(&engine,64);
+    assert(engine.vocal_room_now>standard+15.f);
+    engine.vocal_fx_manual=2;
+    engine.vocal_reverb=30;
+    for(unsigned n=0;n<400;n++)vocal_production(&engine,64);
+    assert(fabsf(engine.vocal_room_now-30.f)<.01f);
+    engine.vocal_fx_send=0;
+    for(unsigned n=0;n<400;n++)vocal_production(&engine,64);
+    assert(fabsf(engine.vocal_send_now-.65f)<.01f);
+    puts("PASS vocal profiles, manual room lock and processed minimum send");
+}
+
 int main(void)
 {
     for(unsigned effect=0;effect<3;effect++)assert(impulse(effect)>0.0001);
@@ -34,5 +54,6 @@ int main(void)
     float dry=voice->freq;
     engine.vocal_tune=100;
     assert(vocal_pitch_target(&engine,voice)!=dry);
+    verify_auto_profiles();
     puts("PASS independent vocal impulse responses, bypass and chromatic pitch correction");
 }

@@ -21,6 +21,32 @@ static void verify_canvas_palette(void)
     }
 }
 
+static void verify_recorded_word(void)
+{
+    int16_t pcm[512];
+    sr_init(&engine,719);
+    sr_set_vocals(&engine,1,4);
+    engine.running=engine.external_sync=1;
+    engine.isolate=SR_ISOLATE_TRACK1+SR_CHOIR;
+    engine.master=.8f;
+    sr_voice *word=recorded_note(&engine,73,VOCAL_DAY_ZONE,100,1.25f);
+    assert(word&&word->remain>SR_RATE);
+    unsigned mouth_mask=0, repeated=0, audible=0;
+    float position=0;
+    for(unsigned block=0;block<640;block++){
+        sr_render(&engine,pcm,256);
+        k9_face pose=k9_recorded_vocal_pose(&engine);
+        if(pose.mouth)mouth_mask|=1u<<pose.mouth;
+        repeated+=word->active&&word->gate&&word->phase<position;
+        position=word->phase;
+        for(unsigned i=0;i<512;i++)audible+=pcm[i]>100||pcm[i]<-100;
+    }
+    assert((mouth_mask&0x70u)==0x70u);
+    assert(repeated&&audible>2000&&!word->active);
+    assert(!k9_recorded_vocal_pose(&engine).mouth);
+    puts("PASS real sung word onset, vowel hold, release, PCM and timed mouth poses");
+}
+
 static void verify_phrase(void)
 {
     int16_t pcm[512];
@@ -58,6 +84,7 @@ static void verify_hidden(void)
 int main(void)
 {
     verify_canvas_palette();
+    verify_recorded_word();
     const k9_face closed={0};
     for(unsigned y=0;y<240;y+=48)k9_face_render(neutral+y*240,y,48,&closed);
     sr_init(&engine,714);

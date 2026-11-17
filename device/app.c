@@ -409,7 +409,7 @@ static void consume(void){
  case 25:engine.play_queued=0;sr_set_auto_tempo(&engine,0);engine.tick_length=bounded((int)engine.tick_length-d*80,4009,22050);break;
  case 27:sr_set_perfect_key(&engine,!engine.perfect_key);break;
  case 28:if(d<0)engine.solo=SR_TRACKS;else engine.solo=d>0?c.track:engine.solo==c.track?SR_TRACKS:c.track;break;
- case 29:t->send=adjust(t->send,d,.05f,1);break;
+ case 29:engine.track_send_manual|=1u<<c.track;t->send=adjust(t->send,d,.05f,1);break;
  case 30:engine.sacred_level=adjust(engine.sacred_level,d,.01f,.20f);break;
  case 31:engine.sacred_mode=bounded(engine.sacred_mode+d,0,2);break;
  case 32:if(c.track<=SR_BASS)engine.motion_manual|=1u<<c.track;if(c.track<=SR_BASS)engine.motion[c.track].glide_mode=bounded(engine.motion[c.track].glide_mode+d,0,2);break;
@@ -441,10 +441,25 @@ static void consume(void){
    break;
  }
  case 158:engine.drum_solo=d>0?c.drum_part:SR_DRUM_PARTS;break;
- case 163:engine.vocal_chorus=bounded(engine.vocal_chorus+d*5,0,100);break;
- case 164:engine.vocal_reverb=bounded(engine.vocal_reverb+d*5,0,100);break;
+ case 163:
+   if(!(engine.vocal_fx_manual&1u)&&engine.vocal_chorus_now>0.f)
+     engine.vocal_chorus=(uint8_t)(engine.vocal_chorus_now+.5f);
+   engine.vocal_fx_manual|=1u;
+   engine.vocal_chorus=bounded(engine.vocal_chorus+d*5,0,100);
+   break;
+ case 164:
+   if(!(engine.vocal_fx_manual&2u)&&engine.vocal_room_now>0.f)
+     engine.vocal_reverb=(uint8_t)(engine.vocal_room_now+.5f);
+   engine.vocal_fx_manual|=2u;
+   engine.vocal_reverb=bounded(engine.vocal_reverb+d*5,0,100);
+   break;
  case 166:engine.vocal_tune=bounded(engine.vocal_tune+d*5,0,100);break;
- case 165:engine.vocal_delay=bounded(engine.vocal_delay+d*5,0,100);break;
+ case 165:
+   if(!(engine.vocal_fx_manual&4u)&&engine.vocal_echo_now>0.f)
+     engine.vocal_delay=(uint8_t)(engine.vocal_echo_now+.5f);
+   engine.vocal_fx_manual|=4u;
+   engine.vocal_delay=bounded(engine.vocal_delay+d*5,0,100);
+   break;
  case 169:engine.fx_decay=bounded(engine.fx_decay+d*5,0,100);break;
  case 170:engine.fx_feedback=bounded(engine.fx_feedback+d*5,0,100);break;
  case 171:engine.fx_damping=bounded(engine.fx_damping+d*5,0,100);break;
@@ -524,6 +539,7 @@ static void consume(void){
    engine.solo=SR_TRACKS;
    engine.reverb_amount=.32f;engine.delay_amount=.18f;
    engine.auto_gain=engine.auto_level=1;
+   engine.track_send_manual=0;
    for(unsigned i=0;i<SR_TRACKS;i++){
      sr_track *track=&engine.tracks[i];
      track->volume=i==SR_BASS?.88f:i==SR_DRUMS?1.f:.68f;
@@ -1256,6 +1272,10 @@ int app_expect(const char *what,int *got){
   }*got=1;return 1;
  }
  if(!strcmp(what,"vocals")){*got=engine.vocals_enabled;return 1;}
+ if(!strcmp(what,"vocal_live")){*got=engine.vocal_face_peak*engine.master>.0005f;return 1;}
+ if(!strcmp(what,"vocal_level")){*got=engine.vocal_level;return 1;}
+ if(!strcmp(what,"vocal_fx_send")){*got=engine.vocal_fx_send;return 1;}
+ if(!strcmp(what,"slicer_style")){*got=engine.slicer_style;return 1;}
  if(!strcmp(what,"vocal_presence")){*got=engine.vocal_presence;return 1;}
  if(!strcmp(what,"speaker")){*got=engine.speaker_enabled;return 1;}
  if(!strcmp(what,"drum_part")){*got=drum_part;return 1;}

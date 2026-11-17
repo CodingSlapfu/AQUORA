@@ -318,6 +318,7 @@ static void arrangement_apply(const arrangement *record)
     for(unsigned i=0;i<SR_TRACKS;i++){
         engine.tracks[i].volume=record->track[i].volume;
         engine.tracks[i].pan=record->track[i].pan;
+        engine.track_send_manual|=1u<<i;
         engine.tracks[i].send=record->track[i].send;
         engine.tracks[i].patch=record->track[i].patch;
         engine.tracks[i].mute=record->track[i].mute;

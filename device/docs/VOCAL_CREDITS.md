@@ -15,3 +15,20 @@ Edits include mono resampling to 11,025 Hz, segment selection, DC correction, le
 | f4_long_straight_a | `4491c79131c68b10ec77aacf015339c1fa8bb795d3810e4383adbf8aa2679e73` | `6262df9eea3e4f08b43d983f9dfb86ca51cb460d5fb390ce6a5a90686aeef147` |
 | f4_long_straight_o | `6f22e12f8e2833cc88654d3c0c605c0ec6a3ed27e04490def5b8f0534931d636` | `08eb1433c8e1d6c0f117d56931cc36142233b266bfd6cff9b7c0c8cd95b041fe` |
 | f5_long_straight_u | `d6cf7a184f0aaad8d964191f4a6bce2b8631f31a7da2b33943847ca5205cc69d` | `5940b8207339a4b4f051b190b07c7eff1700ba02f72b5e43ddc4047b8b36ee00` |
+
+## Recorded word pilot
+
+The word **“day”** is sung by Katy and recorded by digifishmusic. The
+[Freesound recording](https://freesound.org/people/digifishmusic/sounds/40617/)
+is licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The source is the public high-quality preview, SHA-256
+`24824a09753d6d69166499c4e423929dc1d8506c32dfef3afb762b0798b46528`.
+
+AQUORA uses a shortened performance of the word. The mono audio was resampled
+to 11,025 Hz, trimmed to the onset and final diphthong, pitch-aligned at the
+splice, crossfaded and quantized to signed 8-bit PCM. The edited sample SHA-256
+is `5d882da9280d3aff23e0f9d591a77251c839dab355cec3e16d4786189aa7be3d`.
+The firmware picks the pitch and gate, sustains the recorded vowel, and plays
+the original edited tail after release. The portrait follows source positions
+for the brief onset, sustained vowel and closing diphthong. This first lexical
+sample is used for selected Featured-presence cadences alongside wordless singing.

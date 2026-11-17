@@ -376,10 +376,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 183:*name="DUCKING %";number=engine.fx_duck;break;
  case 167:*name="HIT";return (engine.drum_pattern[drum_part]&(1u<<drum_edit_step))?"ON":"OFF";
  case 168:*name="LANE MODE";return (engine.drum_manual_mask&(1u<<drum_part))?"MANUAL":"AUTO";
- case 163:*name="CHORUS %";number=engine.vocal_chorus;break;
- case 164:*name="REVERB %";number=engine.vocal_reverb;break;
+ case 163:*name="CHORUS %";if(!(engine.vocal_fx_manual&1u))return "Auto";number=engine.vocal_chorus;break;
+ case 164:*name="REVERB %";if(!(engine.vocal_fx_manual&2u))return "Auto";number=engine.vocal_reverb;break;
  case 166:*name="TUNE %";number=engine.vocal_tune;break;
- case 165:*name="ECHO %";number=engine.vocal_delay;break;
+ case 165:*name="ECHO %";if(!(engine.vocal_fx_manual&4u))return "Auto";number=engine.vocal_delay;break;
  case 185:*name="VOCAL LEVEL";number=engine.vocal_level;break;
  case 186:*name="VOCAL FX SEND";number=engine.vocal_fx_send;break;
  case 155:*name="RECORDED VOCALS";return engine.vocals_enabled?"On":"Off";
