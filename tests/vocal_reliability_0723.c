@@ -31,7 +31,7 @@ static void stress(void)
 {
     setup();
     unsigned heard=0;
-    for(unsigned change=0;change<420;change++){
+    for(unsigned change=0;change<1200;change++){
         sr_set_scene(&e,change%SR_SCENES);
         sr_set_music_mode(&e,(change/SR_SCENES)%SR_MUSIC_MODES);
         e.freeze=(change&1u);
@@ -88,6 +88,7 @@ static void stress(void)
             assert(0);
         }
         heard++;
+        if(heard%200u==0u){printf("Vocal stress %u/1200 PCM windows passed\n",heard);fflush(stdout);}
     }
     unsigned recovering=e.vocal_recovered;
     sr_set_scene(&e,0);
@@ -110,6 +111,14 @@ int main(void)
     assert(recorded_note(&e,64,VOCAL_YOU_ZONE,100,2.f));
     sr_set_scene(&e,1);
     assert(recorded_vocal_phrase(&e,0,0));
+    setup();
+    e.vocal_play=2;
+    sr_midi_note(&e,SR_CHOIR,0,60,100);
+    sr_midi_note(&e,SR_CHOIR,0,64,100);
+    assert(recorded_vocal_phrase(&e,0,0));
+    assert(audio_window(SR_RATE));
+    assert(e.vocal_reclaimed>0);
+    sr_midi_panic(&e);
     stress();
     puts("PASS frozen arrangement keeps singer and scene changes reuse released sample slots");
 }

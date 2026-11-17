@@ -2,14 +2,14 @@
  * Row-addressed immutable ROM art; no heap, decompression buffer or DSP changes. */
 #include "kira_face/face.h"
 #include "kira_face/character023.h"
-static void layer(uint16_t *p,unsigned y0,unsigned height,unsigned region,int dx,int dy){
+static void layer(uint16_t *p,unsigned y0,unsigned height,unsigned region,int dx,int dy,int tilt){
  const uint16_t *r=k9_art_regions[region];
  for(unsigned row=0;row<r[3];row++){
   int y=(int)r[1]+(int)row+dy;if(y<(int)y0||y>=(int)(y0+height)||y<0||y>=240)continue;
   unsigned pos=k9_art_rows[r[4]+row],used=0;
   while(used<r[2]){
    unsigned n=k9_art_data[pos++];uint16_t color=k9_art_data[pos++];color|=(uint16_t)k9_art_data[pos++]<<8;
-   for(unsigned j=0;j<n;j++){int x=(int)r[0]+(int)used+(int)j+dx;if(x>=0&&x<240)p[(y-y0)*240+x]=color;}used+=n;
+   for(unsigned j=0;j<n;j++){int x=(int)r[0]+(int)used+(int)j+dx+((int)r[1]+(int)row-120)*tilt/128;if(x>=0&&x<240)p[(y-y0)*240+x]=color;}used+=n;
   }
  }
 }
@@ -25,26 +25,36 @@ static void plate(uint16_t *p,unsigned y0,unsigned height,int left,int top,int w
 }
 void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *f){
  if(y0>=240||!height)return;if(height>240-y0)height=240-y0;
- layer(pixels,y0,height,0,0,0);
+ unsigned background=k9_art_rows[0];
+ uint16_t color=k9_art_data[background+1u]|((uint16_t)k9_art_data[background+2u]<<8u);
+ for(unsigned i=0;i<height*240u;i++)pixels[i]=color;
+ int dx=f->head_x,dy=f->head_y;
+ layer(pixels,y0,height,0,dx,dy,f->tilt);
  /* Art-derived lids preserve eyelashes/anatomy. Half-lid is used on both
   * sides of the blink. Emotional eye state follows the engine's real pose. */
- if(f->blink>190)layer(pixels,y0,height,2,0,0);
- else if(f->blink>65||f->lid>=3)layer(pixels,y0,height,1,0,0);
- else if(f->brow<0||f->cheek==3)layer(pixels,y0,height,3,0,0);
+ if(f->blink>190)layer(pixels,y0,height,2,dx,dy,f->tilt);
+ else if(f->blink>65||f->lid>=3)layer(pixels,y0,height,1,dx,dy,f->tilt);
+ else if(f->brow<0||f->cheek==3)layer(pixels,y0,height,3,dx,dy,f->tilt);
  /* Small eye tracking moves the registered eye patch by at most one pixel.
   * Head, skin silhouette and cybernetic neck never wobble with the audio. */
- else if(f->gaze)layer(pixels,y0,height,3,f->gaze>0?1:-1,0);
+ else if(f->gaze)layer(pixels,y0,height,3,dx+(f->gaze>0?1:-1),dy,f->tilt);
  unsigned mouth=4;
  if(f->mouth!=4&&f->open>2){
   mouth=f->mouth==3?7:f->mouth==2||f->mouth==6?6:f->mouth==5?8:5;
  }else if(f->cheek==1)mouth=9;
- layer(pixels,y0,height,mouth,0,0);
- if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,0,1);
- if(f->neck)plate(pixels,y0,height,109,195,24,29,f->neck>0?1:-1,0);
- if(f->module&&y0<=212u&&y0+height>212u){
-   unsigned dot=(212u-y0)*240u+121u;
-   pixels[dot]=f->module==2u?0x8f7fu:0x4b18u;
-   pixels[dot+1u]=0x4b18u;
+ layer(pixels,y0,height,mouth,dx,dy,f->tilt);
+ if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,dx,dy+1);
+ if(f->neck)plate(pixels,y0,height,109,195,24,29,dx+(f->neck>0?1:-1),dy);
+ if(f->module){
+   static const uint8_t lamps[][2]={{121,212},{54,102},{184,99}};
+   uint16_t glow=f->module==2u?0x8f7fu:0x4b18u;
+   for(unsigned lamp=0;lamp<3;lamp++){
+     int y=lamps[lamp][1]+dy;
+     int x=lamps[lamp][0]+dx+((int)lamps[lamp][1]-120)*f->tilt/128;
+     for(int row=-1;row<=1;row++)for(int col=-1;col<=1;col++)
+       if(y+row>=(int)y0&&y+row<(int)(y0+height)&&x+col>=0&&x+col<240)
+         pixels[(y+row-(int)y0)*240+x+col]=glow;
+   }
  }
 }
 

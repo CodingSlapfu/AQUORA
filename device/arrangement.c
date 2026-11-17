@@ -329,6 +329,12 @@ static void arrangement_apply(const arrangement *record)
         engine.tracks[i].release=release<8?release:release-16;
     }
     engine.song_seed=record->version>=AQ_BANK_V4?record->song_seed:record->rng;
+    memset(engine.vocal_hook,0,sizeof engine.vocal_hook);
+    memset(engine.vocal_hook_vowel,0,sizeof engine.vocal_hook_vowel);
+    memset(engine.vocal_hook_attack,0,sizeof engine.vocal_hook_attack);
+    engine.vocal_entry_pending=engine.vocals_enabled;
+    engine.vocal_auto_ready=0;
+    engine.vocal_reprise=0;
     engine.music_mode=record->version>=AQ_BANK_V4?record->music_mode:SR_STANDARD;
     engine.expression_manual=record->version>=AQ_BANK_V4?(record->reserved&3u):0;
     unsigned effects=record->version>=AQ_BANK_V4&&(record->reserved&0x8000u)?record->reserved:0u;

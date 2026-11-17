@@ -400,6 +400,11 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 165:*name="ECHO %";if(!(engine.vocal_fx_manual&4u))return "Auto";number=engine.vocal_delay;break;
  case 185:*name="VOCAL LEVEL";number=engine.vocal_level;break;
  case 186:*name="VOCAL FX SEND";number=engine.vocal_fx_send;break;
+ case 231:{
+   static const char *const voices[]={"AUTO","AH","OOH","OH","EE","EH","UH","HUM",
+     "DO-RE-MI","LA-LA","NA-NA","SCAT","WORDS","OH-AH HOOK","OH-AH","OO-EE","AY-OH","EH-OH","MM-OOH"};
+   *name="VOICE";return voices[engine.vocal_articulation];
+ }
  case 155:*name="RECORDED VOCALS";return engine.vocals_enabled?"On":"Off";
  case 156:{static const char *names[]={"Sparse","Gentle","Present","Featured"};*name="VOCAL PRESENCE";return names[engine.vocal_presence?engine.vocal_presence-1u:1u];}
  case 157:*name="PART MUTE";return engine.drum_mutes&(1u<<drum_part)?"Mute":"On";

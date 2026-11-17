@@ -26,10 +26,12 @@ static void check_scores(void)
                     active++;
                     if(v->born!=e.frame_count)continue;
                     assert(v->track==SR_CHOIR);
-                    assert(v->phase2>(v->sample_zone==VOCAL_YOU_ZONE+1u?.15f:.16f)&&v->phase2<.38f);
+                    unsigned zone=v->sample_zone-1u;
+                    float root=zone<VOCAL_DAY_ZONE?vocal_zones[zone].hz:vocal_words[zone-VOCAL_DAY_ZONE].hz;
+                    assert(fabsf(v->phase2-v->freq*(VOCAL_RATE/(float)SR_RATE)/root)<.00001f);
                     zones|=1u<<(v->sample_zone-1u);
                     if(v->vocal_turn_rate>0.f){
-                        assert((v->sample_zone-1u)%3u==2u);
+                        assert(v->sample_zone<=VOCAL_ZONES);
                         assert(v->vocal_turn_first!=1.f && v->vocal_turn_second!=v->vocal_turn_first);
                         assert(v->remain>5u*e.tick_length);
                         turns++;

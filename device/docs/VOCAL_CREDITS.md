@@ -39,3 +39,32 @@ First sung word excerpted from *You said you loved me, oh, you lied (Cleaned wit
 
 - Preview SHA-256: `58a706a4d73443bbac5c03e59571a89a4d2f14a8b396b9ed39e56952a796cb6a`
 - Edited PCM SHA-256: `0dd9b3f7af903bbd9a274b01d01de53e4c6e707cba049c8ef6c406e2bbe9f6b4`
+
+## v0.7.23 recorded extensions and articulation
+
+| Unit | Recording and license | Edit |
+| --- | --- | --- |
+| EH / EE | VocalSet, female f4 sustained e/i, CC BY 4.0, same pinned mirror above | Mono 11025 Hz, steady segment, normalization, matched sustain loop, fades and signed 8-bit PCM |
+| HUM | PSsoundproject, “woman humming,” CC0, https://freesound.org/people/PSsoundproject/sounds/183565/ | A closed-mouth hummed segment, pitched and looped |
+| LOVE | Ehved, “female singing name of love,” CC0, https://freesound.org/people/Ehved/sounds/566926/ | Sung LOVE excerpt at 8.78–9.84 seconds, retaining attack and final consonant |
+| BABY | TheScarlettWitch89, “Midnight_Baby,” CC BY 3.0, https://freesound.org/people/TheScarlettWitch89/sounds/432783/ | Spoken BABY excerpt at 1.24–2.04 seconds adapted to pitched playback and final-vowel sustain |
+| ME | TheScarlettWitch89 / Erokia, same “You said you loved me” source above, CC BY 3.0 | Sung ME excerpt at 1.34–2.32 seconds, retaining nasal entrance and sustained vowel |
+
+DAY and YOU retain their prior samples and credits. Source WAV edit hashes,
+PCM hashes, pitch calibration and exact segment/loop coordinates are in
+device/dsp/vocal_extensions.json. The generator at
+device/tools/build_vocal_extensions.py reproduces the tables from those
+decoded source recordings.
+
+AH, OH, OOH, EH and EE use distinct human recordings. Humming uses a recorded
+closed-mouth voice. UH is an approximation made by darkening recorded EH.
+DO/RE/MI, LA, NA, BA, DA and HA use recorded vowel bodies with synthesized
+or filtered soft consonant entrances. These syllables are approximations.
+OH/AH, OO/EE, AY/OH, EH/OH and MM/OOH transitions crossfade separately pitched
+recorded vowels. AY uses an EE-to-OH approximation. BABY is derived from speech,
+and its conversion is less natural than the sung word units.
+
+Automatic lexical arrangements include BABY–LOVE–YOU, YOU–LOVE–ME and
+LOVE–YOU. DAY can appear alone at a cadence. The small vocabulary does not
+support arbitrary lyrics or recorded intention names. Physical FM-1
+intelligibility and musical acceptance remain to be checked.

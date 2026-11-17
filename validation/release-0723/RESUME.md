@@ -21,3 +21,27 @@ Tests
 
 Next tasks
 Expand recorded/approximated vowel and syllable articulation and coherent per-song styles, source licensed extra words and humming, strengthen vocal effects, implement expressive head/module performance, then final regression/reproducible native/WASM build and testing installer deployment. Physical FM-1 confirmation of the owner's shutdown symptom remains required.
+
+
+Second implementation milestone
+- Added recorded EH/EE and genuine humming, sung LOVE and ME, and a speech-derived pitched BABY unit. Existing DAY/YOU tables retained.
+- Added a Voice articulation selector to Vocal Play Along, with 18 explicit vowel, syllable and diphthong options plus AUTO. UH and soft consonants are documented approximations.
+- Six seeded per-song vocal characters, section-aware delivery, three supported multiword templates, and remembered hook vowel/onset recall.
+- Stronger baseline room/echo/chorus, tempo-divided delay, longer tails and bounded combined feedback. Manual FX overrides retained.
+- Added small groove-driven head nods/tilts, eyelid expression and three larger cybernetic indicator lights using the original artwork and palette.
+- Restored the instrumental FM choir independently of the sampled singer. Added harmony-following choir answers, role-aware warmth/filtering and a bounded IDM hat ratchet at section transitions.
+- Protect new instrumental note entrances against immediate voice stealing.
+- Two held external vocal notes no longer prevent automatic singing in AUTO+PLAY ALONG. Released/sample-slot reclamation retains a residual crossfade.
+- App control consumption rearms vocals immediately when a control removes an intentional blocker, including changes shorter than a musical step. Saved-bank application clears old vocal hook identity and rearms entry without changing bank schema.
+
+Verified evidence to date
+- 1200 control-change windows, more than one simulated hour, passed direct-vocal plus isolated final-PCM checks.
+- 18 articulation options produced distinct audible PCM; all six primary identities appeared across song seeds, with stable identity and recalled hook articulation.
+- 24 host cases with maximum vocal FX, three visualizers, four worker states and two pressure fixtures passed, with vocal audio present and no dropped input commands.
+- Native extended build fits flash and SRAM. Final reproducibility, full composition traversal, final binary/WASM hashes and existing installer publication are being completed.
+- Four-bank arrangement/migration tests and full 16-voice mixed-load tests passed.
+- Word, vowel, humming and syllable provenance/limitations are documented in device/docs/VOCAL_CREDITS.md.
+
+Physical FM-1 listening, vocal-shutdown reproduction, real callback deadlines,
+encoder/display responsiveness and speech-derived BABY naturalness remain owner
+acceptance items. Recorded intention-name vocabulary is unavailable.

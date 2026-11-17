@@ -11,7 +11,7 @@ static double impulse(unsigned effect)
     if(effect==1)engine.vocal_reverb=80;
     if(effect==2)engine.vocal_delay=80;
     double energy=0;
-    for(unsigned frame=0;frame<SR_RATE*3u;frame++){
+    for(unsigned frame=0;frame<SR_RATE*12u;frame++){
         float left=0,right=0;
         vocal_effects(&engine,frame<8?.12f:0.f,frame,&left,&right);
         assert(fabsf(left)<1.f&&fabsf(right)<1.f);

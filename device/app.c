@@ -242,7 +242,7 @@ static unsigned control_for(unsigned knob)
    {165,210+VF_TIME,210+VF_FEEDBACK,210+VF_TONE},
    {163,210+VF_RATE,210+VF_PHASER,210+VF_FLANGER},
    {210+VF_VIB_RATE,210+VF_VIB_DEPTH,210+VF_VIB_WAIT,210+VF_GLIDE},
-   {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{210+VF_SHIMMER,210+VF_FLANGE_RATE,210+VF_FLANGE_FEEDBACK,210+VF_CHORUS_DEPTH},{190,0,0,230}};return controls[vocal_tab][knob];}
+   {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{210+VF_SHIMMER,210+VF_FLANGE_RATE,210+VF_FLANGE_FEEDBACK,210+VF_CHORUS_DEPTH},{190,231,0,230}};return controls[vocal_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
    return controls[drum_tab][knob];
@@ -325,6 +325,7 @@ static void consume(void){
  if(c.kind!=200||(((uint32_t)c.value>>8)&255u)!=0xf8)state_revision++;
  measure(&control_queue_timing[!!engine.running],(plat_ms()-c.captured_ms)*100u);
  command_applied++;
+ unsigned vocal_before=sr_vocal_status(&engine);
  if(c.kind>=210u&&c.kind<210u+VF_COUNT){
    unsigned param=c.kind-210u,bit=1u<<param;
    int old=(engine.vocal_param_lock&bit)?engine.vocal_param[param]:(int)(engine.vocal_param_now[param]+.5f);
@@ -370,6 +371,12 @@ static void consume(void){
    if(d){sr_set_vocals(&engine,d>0,engine.vocal_presence);if(d>0){engine.vocal_entry_pending=1;engine.vocal_reprise=1;}}
    break;
  case 230:if(d>0){engine.vocal_param_lock=engine.vocal_fx_manual=0;engine.vocal_tune=0;}break;
+ case 231:
+   engine.vocal_articulation=bounded(engine.vocal_articulation+d,0,18);
+   memset(engine.vocal_hook_vowel,0,sizeof engine.vocal_hook_vowel);
+   memset(engine.vocal_hook_attack,0,sizeof engine.vocal_hook_attack);
+   engine.vocal_entry_pending=engine.vocals_enabled;
+   break;
  case 190:engine.vocal_play=bounded(engine.vocal_play+d,0,2);break;
  case 154:engine.slicer_mask=bounded((int)engine.slicer_mask+d,0,15);break;
  case 137:arrange_browse=bounded((int)arrange_browse+d,0,7);break;
@@ -572,6 +579,10 @@ static void consume(void){
  case 44:engine.isolate=SR_ISOLATE_MIX;engine.nature_audition=0;break;
  case 43:engine.isolate=bounded(engine.isolate+d,SR_ISOLATE_MIX,SR_ISOLATE_FX);break;
  case 35:if(c.track<=SR_BASS)engine.motion_manual|=1u<<c.track;if(c.track<=SR_BASS)engine.motion[c.track].vibrato_depth=bounded(engine.motion[c.track].vibrato_depth+d,0,50);break;
+ }
+ if(vocal_before!=SR_VOCAL_READY&&sr_vocal_status(&engine)==SR_VOCAL_READY){
+   engine.vocal_entry_pending=1;
+   engine.vocal_auto_ready=0;
  }
  }
  if(request!=intention_applied){
@@ -1295,6 +1306,7 @@ int app_expect(const char *what,int *got){
  if(!strcmp(what,"vocals")){*got=engine.vocals_enabled;return 1;}
  if(!strcmp(what,"vocal_status")){*got=sr_vocal_status(&engine);return 1;}
  if(!strcmp(what,"vocal_starts")){*got=engine.vocal_started;return 1;}
+ if(!strcmp(what,"vocal_heard")){*got=engine.vocal_audio_frames>0;return 1;}
  if(!strcmp(what,"vocal_audio_frames")){*got=engine.vocal_audio_frames;return 1;}
  if(!strcmp(what,"vocal_live")){*got=engine.vocal_face_peak*engine.master>.0005f;return 1;}
  if(!strcmp(what,"vocal_level")){*got=engine.vocal_level;return 1;}

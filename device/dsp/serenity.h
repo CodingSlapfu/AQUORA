@@ -43,7 +43,7 @@ typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
 typedef struct { uint8_t patch, mute; int8_t tone, attack, release; float volume, pan, meter, send; uint32_t events; uint8_t last_note; } sr_track;
-typedef struct { uint8_t active, track, gate, midi, key, external, channel, patch, sample_zone; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, filter_tail, attack_coef, release_coef; uint32_t remain, born; float vocal_turn_first, vocal_turn_second, vocal_turn_rate; } sr_voice;
+typedef struct { uint8_t active, track, gate, midi, key, external, channel, patch, sample_zone, vocal_consonant, vocal_vowel_to; float tail, pitch, increment, freq, phase, phase2, env, peak, filter, filter_tail, attack_coef, release_coef; uint32_t remain, born; float vocal_turn_first, vocal_turn_second, vocal_turn_rate, vocal_morph_rate, vocal_other_phase; } sr_voice;
 typedef struct { uint16_t glide_ms; uint8_t glide_mode, vibrato_depth, vibrato_rate; } sr_motion;
 typedef struct {uint32_t frame,duration;uint8_t role,note,velocity,reserved;} sr_event;
 typedef struct {uint8_t count;uint8_t note[16],step[16],length[16];} sr_learn_phrase;
@@ -93,8 +93,8 @@ typedef struct {
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;
   float speaker_low, speaker_body, speaker_mix;
-  uint8_t speaker_enabled,vocals_enabled,vocal_presence,vocal_play;
-  uint8_t vocal_hook[3],vocal_reprise,vocal_auto_ready;
+  uint8_t speaker_enabled,vocals_enabled,vocal_presence,vocal_play,vocal_articulation;
+  uint8_t vocal_hook[3],vocal_hook_vowel[3],vocal_hook_attack[3],vocal_reprise,vocal_auto_ready;
   uint32_t vocal_started,vocal_rejected,vocal_reclaimed,vocal_recovered,vocal_audio_frames;
   float vocal_direct_peak;
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune,vocal_fx_manual;
