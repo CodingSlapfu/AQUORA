@@ -44,7 +44,7 @@ static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_
 static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_L:&FONT_B;}
 #define FONT_XS (*ui_caption_font())
 #define FONT_B (*ui_value_font())
-static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","AIR"};
+static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","","VOCALS"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain","Woodland Brook","Distant Storm"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum","Filter / Slicer","Recorded Vocals"};
 /* Static panel palettes. Canvas is independently exact black or white. */
@@ -279,12 +279,6 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 60:*name="TRACK LOCK";return onoff(engine.sound_locks&(1u<<selected));
  case 64:{static const char *m[]={"Intention","Straight","Swing"};*name="GROOVE";return m[engine.groove_mode];}
  case 65:*name="STRENGTH %";number=engine.groove_strength;break;
- case 66:*name="AIR RADIO";
-   if(!FM1B_BLE_CENTRAL)return "Unavailable";
-   return aq_air_state(&air_sensor,air_on,plat_ble_state(),plat_ms());
- case 67:*name="AIR FX FOCUS";return engine.air_track<SR_TRACKS?role_names[engine.air_track]:"All tracks";
- case 68:*name="CALIBRATE";return !air_sensor.calibrated?"Right: Far":air_sensor.calibrated==1?"Right: Near":"Left: Reset";
-
  case 71:
    *name="QUICK FIND";
    if(quick_item<QUICK_CATEGORIES)return quick_names[quick_item];
@@ -294,7 +288,6 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
      return parameter;
    }
  case 72:*name="OPEN";return "Turn right";
- case 69:*name="AIR HOLD";return onoff(air_hold);
  case 75:*name="BRIGHTNESS";number=engine.tracks[selected].tone;break;
  case 76:*name="ATTACK";number=engine.tracks[selected].attack;break;
  case 77:*name="RELEASE";number=engine.tracks[selected].release;break;
@@ -314,14 +307,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 121:*name="STRUM GAP ms";if(engine.chord_mode!=2)return "STRUM only";number=engine.chord_gap;break;
  case 122:{static const char *v[]={"Auto","Root","First","Second"};*name="INVERSION";return v[engine.chord_inversion];}
  case 123:{static const char *v[]={"Down / Auto","Down","Up","Alternate"};*name="DIRECTION";return v[engine.chord_direction];}
- case 124:{static const char *v[]={"FX","Next Evolution","Drum Fill","Harmony","Energy Swell"};*name="AIR ACTION";return v[engine.air_mode];}
- case 125:*name="SENSITIVITY %";number=air_sensitivity;break;
- case 126:*name="INVERT AIR";return onoff(air_invert);
- case 128:*name="MUSIC REQUEST";return !engine.running?"PLAY required":engine.air_request?"Queued / phrase":engine.air_result>=128?"Blocked / locks":engine.air_result?"Applied":"Right: trigger";
  case 129:{static const char *v[]={"Intention / Auto","Experimental IDM","Ambient Broken"};*name=engine.rhythm_pending?"NEXT RHYTHM":"RHYTHM STYLE";return v[engine.rhythm_pending?engine.rhythm_pending-1u:engine.rhythm_style];}
  case 130:{static const char *v[]={"Auto","Gentle","Experimental","Off"};*name="TRANSITIONS";return v[engine.fill_character];}
- case 93:{static const char *effects[]={"Reverb Bloom","Echo Throw","Bloom + Echo","Tone Sweep","Soft Pulse"};*name="AIR FX";return effects[engine.air_fx];}
- case 94:*name="AIR DEPTH %";number=engine.air_depth;break;
  case 137:*name="BROWSE PLAN";num(buffer,arrange_browse);return buffer;
  case 138:*name="QUEUE NEXT";return sr_arrange_name(&engine,1);
  case 139:*name="LENGTH LOOPS";num(buffer,engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u);return buffer;
@@ -333,7 +320,6 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 96:*name=engine.pending_mode?"NEXT BEAT MODE":"MUSIC MODE";return music_modes[engine.pending_mode?engine.pending_mode-1u:engine.music_mode];
  case 97:*name="LEAD MOTION";return engine.motion_manual&1u?"MANUAL":"AUTO";
  case 98:*name="BASS MOTION";return engine.motion_manual&2u?"MANUAL":"AUTO";
- case 95:*name="MANUAL AIR %";number=engine.air_target*100;break;
  case 91:{static const char *fonts[]={"Small","Medium","Large"};*name="FONT SIZE";return fonts[ui_font_size];}
 
  case 78:*name="NATURE MODE";return !engine.bed_type?"Off":(engine.sound_locks&SR_SOUND_NATURE)?"Manual":"Auto";
@@ -1292,44 +1278,6 @@ static int draw(int animate)
      }
    }else if(visual&&page==PAGE_MIX&&mix_tab==5){
      mixer_focus_strip(band);
-   }else if(visual&&page==PAGE_AIR){
-     unsigned now=plat_ms();
-     unsigned live=air_on&&aq_air_live(&air_sensor,now);
-     if(band==1){
-       limited_text(8,0,226,&FONT_B,air_tab==3?"AIR / DIAGNOSTICS":air_tab==2?"AIR / MUSIC GESTURES":air_tab?"AIR / FX MAPPING":"AIR / LIVE SIGNAL",skin_text());
-       const char *state=aq_air_state(&air_sensor,air_on,plat_ble_state(),now);
-       limited_text(8,24,226,&FONT_XS,state,live?skin_accent():skin_dim());
-     }else if(air_tab==3&&band==3){label(8,0,"IDLE NOISE",air_sensor.noise);label(87,0,"SPAN",aq_air_span(&air_sensor));label(183,0,"CONF",air_sensor.confidence);
-     }else if(air_tab==3&&band==4){label(8,0,"AGE ms",now-air_sensor.last_signal);label(87,0,"REJECTED",air_sensor.rejected);label(183,0,"STABLE %",air_sensor.last_value);
-     }else if(band==2){
-       unsigned value=(unsigned)(engine.air_wet*100.f+.5f);
-       if(value>100)value=100;
-       char line[72],numtext[12];
-       unsigned pos=0;
-       const char *tag="RAW ";while(*tag)line[pos++]=*tag++;
-       num(numtext,air_sensor.raw);for(const char*q=numtext;*q;q++)line[pos++]=*q;
-       tag="  SMOOTH ";while(*tag)line[pos++]=*tag++;
-       num(numtext,(int)(air_sensor.filtered+.5f));for(const char*q=numtext;*q;q++)line[pos++]=*q;
-       tag="  PKT/s ";while(*tag)line[pos++]=*tag++;
-       num(numtext,air_packet_rate);for(const char*q=numtext;*q;q++)line[pos++]=*q;
-       line[pos]=0;limited_text(8,0,224,&FONT_XS,line,skin_dim());
-       cv_text(8,20,&FONT_XS,"AIR %",skin_dim());num(numtext,value);
-       cv_text(52,20,&FONT_XS,numtext,skin_accent());
-       char wet[32],v[12];unsigned at=0;
-       const char *wet_tag=engine.air_fx>=3?"APPLIED ":engine.air_fx==1?"ECHO ":"REV ";while(*wet_tag)wet[at++]=*wet_tag++;
-       num(v,(int)(engine.air_fx>=3?engine.air_wet*engine.air_depth:(engine.air_fx==1?engine.delay_wet:engine.reverb_wet)*100.f));
-       for(const char *q=v;*q;q++)wet[at++]=*q;wet[at++]='%';
-       if(engine.air_fx==2){wet[at++]=' ';wet[at++]='D';wet[at++]=' ';
-        num(v,(int)(engine.delay_wet*100.f));for(const char*q=v;*q;q++)wet[at++]=*q;wet[at++]='%';}
-       wet[at]=0;limited_text(86,20,146,&FONT_XS,wet,skin_text());
-       cv_line(7,43,230,43,skin_dim());
-       if(value)cv_rect(8,39,(int)(value*222u/100u),4,skin_accent());
-     }else{
-       label(8,0,"RAW RSSI",air_sensor.raw);
-       label(87,0,"SMOOTH RSSI",(int)(air_sensor.filtered+.5f));
-       label(183,0,"LAST PKTS",air_packets);
-       limited_text(8,33,226,&FONT_XS,air_tab==2?(engine.air_request?"WAVE QUEUED / NEXT PHRASE":engine.air_result>=128?"BLOCKED / MUTE, OFF OR VOICES":engine.air_result?"MUSICAL ACTION APPLIED":air_gesture.stage==2?"DETECTED / RELEASE HAND":"NEAR THEN FAR / RIGHT: TEST"):air_tab?"K3: MANUAL AIR / EDIT: SENSOR":"K3 FAR / NEAR; LEFT RESET",skin_text());
-     }
    }else if(visual&&page==PAGE_DRUMS){
      static const char *lanes[]={"Kick","Snare","Cl Hat","Kick 2","Clap","Op Hat","Ped Hat","Rim","Snare 2","Low Tom","Hi Tom","Crash","Ride","Shaker","Conga","Bell"};
      for(unsigned lane=0;lane<SR_DRUM_PARTS;lane++){
@@ -1540,8 +1488,8 @@ static int draw(int animate)
      if(preferences_saved_ms&&plat_ms()-preferences_saved_ms<1800u&&page==PAGE_SETUP)
        limited_text(173,25,59,&FONT_T,"SAVED",skin_accent());
      if(page!=0&&page!=PAGE_SOUND){
-       unsigned section=page==PAGE_MIX?mix_tab:page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:air_tab;
-       unsigned total=page==PAGE_MIX?5:page==PAGE_DRUMS?7:page==PAGE_SETUP?5:4;
+       unsigned section=page==PAGE_MIX?mix_tab:page==PAGE_DRUMS?drum_tab:page==PAGE_SETUP?setup_tab:vocal_tab;
+       unsigned total=page==PAGE_MIX?5:page==PAGE_DRUMS?7:page==PAGE_SETUP?5:2;
        if(page==PAGE_MIX&&mix_tab==5){
          limited_text(8,25,224,&FONT_T,"EDIT: MIX 1/5   SEL MUTE / LFO SOLO",skin_accent());
        }else{

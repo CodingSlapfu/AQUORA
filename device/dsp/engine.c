@@ -1919,8 +1919,7 @@ static void musical_detail(sr_engine *e,unsigned step)
   }
 }
 static void trigger(sr_engine *e){
-  unsigned requested=0;
-  /* Continuous expression changes future notes on the musical grid. */
+    /* Continuous expression changes future notes on the musical grid. */
   e->current_energy+=clampf(e->energy-e->current_energy,-.08f,.08f);
   /* The separate mode control remains quantized. Intention selection is
    * committed by the app at the audio callback boundary. */
@@ -1949,10 +1948,6 @@ static void trigger(sr_engine *e){
       }
     }
   }
-  if(!e->loop_pos&&e->air_request&&!e->freeze&&e->sequence_step){
-    requested=e->air_request;e->air_request=0;
-    if(requested==1)e->evolve_next=1;
-  }
   if(!song_changed&&!(e->loop_pos&15u)&&e->sequence_step&&!e->freeze){arrange_advance(e,!e->loop_pos);plan_roles(e);}
   uint32_t absolute=e->sequence_step++;
   uint32_t s=e->loop_pos;
@@ -1973,12 +1968,7 @@ static void trigger(sr_engine *e){
     plan_roles(e);
   }
   int k=motif_degree(e,idx);
-  if(requested){
-    unsigned performed=requested==1?1:requested==2?transition_fill(e,s,1):chord_voice(e,s,1);
-    e->air_result=(uint8_t)(performed?requested:128u+requested);
-    if(performed)e->air_actions++;
-  }
-  if((s&15u)==0&&requested!=3)chord_phrase(e,s);
+  if((s&15u)==0)chord_phrase(e,s);
   transition_fill(e,s,0);
   int learned=learned_index(e,s);
   if(learned>=0&&k>=0)sr_note_on(e,SR_LEAD,lead_pitch(e,k),74,e->learned.length[learned]*.25f);
@@ -2287,7 +2277,6 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     if(e->vibrato_phase[t]>=1)e->vibrato_phase[t]-=1;
     vibrato[t]=m->vibrato_depth?sine(e->vibrato_phase[t])*m->vibrato_depth*.0005776f:0;
   }
-  e->air_wet+=(e->air_target-e->air_wet)*((float)frames*.0004f);
   for(int t=0;t<SR_TRACKS;t++){
     sr_track *track=&e->tracks[t];
     float level=(track->mute||(e->solo<SR_TRACKS&&e->solo!=t))?0:track->volume;
@@ -2302,10 +2291,6 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     if(!locked)level*=e->gain_trim[t];
     if(t==SR_DRUMS)level*=1.f+((int)e->drum_presence-50)*.006f;
     float send_level=track->send;
-    if(e->air_track==SR_TRACKS)
-      send_level+=(1.f-send_level)*e->air_wet*(e->air_depth*.01f);
-    else if(e->air_track==t)
-      send_level+=.5f*e->air_wet*(e->air_depth*.01f); /* shared FX bus: audible role focus */
     send[t]=level*send_level;
     if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
     left[t]=level*(.5f-.31f*track->pan);
@@ -2362,16 +2347,9 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     if(op>=SR_LEGACY_PATCHES)
       config->fm_depth*=.85f+.25f*v->peak;
     config->cutoff=e->filter_cutoff?.008f+cutoff:.028f+brightness*.24f;
-    float air_focus=(e->air_track>=SR_TRACKS||e->air_track==v->track)?e->air_wet*e->air_depth*.01f:0;
-    if(e->air_fx==3)config->cutoff*=1.f-.88f*air_focus;
     config->gain=v->sample_zone?.27f:calibrated_patch_gain(v->patch);
     config->left=left[v->track];
     config->right=right[v->track];
-    if(e->air_mode==4){float swell=1.f+.12f*air_focus;config->left*=swell;config->right*=swell;}
-    if(e->air_fx==4){
-      float pulse=1.f-air_focus*(.22f+.22f*sine((e->frame_count%(SR_RATE/4u))*(4.f/SR_RATE)));
-      config->left*=pulse;config->right*=pulse;
-    }
     config->send=send[v->track]*.5f;
     float modulation=0;
     if(v->track<=SR_BASS){
@@ -2636,12 +2614,6 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
     if(vocal_fx)vocal_effects(e,vocal,e->frame_count+i,&l,&r);
     float drums=drum_sample(e);
     if(smooth_slicer)drums*=e->slicer_gain[2];
-    if(e->air_track>=SR_TRACKS||e->air_track==SR_DRUMS){
-      float focus=e->air_wet*e->air_depth*.01f;
-      if(e->air_fx==3){e->drum_air_lp+=(drums-e->drum_air_lp)*.12f;drums+=(e->drum_air_lp-drums)*focus;}
-      if(e->air_fx==4)drums*=1.f-.35f*focus*e->kick_env;
-      if(e->air_mode==4)drums*=1.f+.08f*focus;
-    }
     if(capture){
       if(scope_track==SR_DRUMS)scope=drums*(left[SR_DRUMS]+right[SR_DRUMS]);
       e->scope[e->scope_write]=sampleout(scope);
@@ -2776,10 +2748,7 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
   int audible=e->isolate==SR_ISOLATE_MIX||e->isolate==SR_ISOLATE_FX;
   float depth=(e->sound_locks&SR_SOUND_FX)?1.f:.7f+.3f*e->current_energy;
   float reverb=e->reverb_amount*depth;
-  float air=e->air_wet*(e->air_depth*.01f);
-  if(e->air_fx==0||e->air_fx==2)reverb+=(.8f-reverb)*air;
   float delay=e->delay_amount*depth;
-  if(e->air_fx==1||e->air_fx==2)delay+=(.7f-delay)*air;
   float decay=.89f+((int)e->fx_decay-50)*.0016f;
   float feedback=.46f+((int)e->fx_feedback-50)*.006f;
   float damping=e->fx_damping*.01f;
@@ -3040,9 +3009,8 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   unsigned fading=e->stop_frames;
   unsigned audition=e->nature_audition;
   render_block(e,dry,n);
-  unsigned air_active=e->air_depth&&e->air_wet>.00001f;
-  unsigned reverb=e->reverb_amount>0||e->reverb_wet>.00001f||(air_active&&e->air_fx!=1);
-  unsigned delay=e->delay_amount>0||e->delay_wet>.00001f||(air_active&&e->air_fx!=0);
+  unsigned reverb=e->reverb_amount>0||e->reverb_wet>.00001f;
+  unsigned delay=e->delay_amount>0||e->delay_wet>.00001f;
   unsigned short_delay=e->fx_chorus||e->fx_flanger||e->fx_stutter||
       e->fx_chorus_now+e->fx_flanger_now+e->fx_stutter_now>.0001f;
   unsigned shimmer=e->fx_shimmer||e->fx_shimmer_now>.0001f;

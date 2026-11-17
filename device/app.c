@@ -2,7 +2,6 @@
  * Original Sound Healing application. Audio owns engine state; UI produces a bounded queue. */
 #include "serenity.h"
 #include "fastmath.h"
-#include "air_sensor.h"
 #include "midi_core.h"
 #include "frame_policy.h"
 #include "lighting_policy.h"
@@ -45,28 +44,13 @@ static unsigned preferences_saving, preferences_generation, preferences_saved_ms
 static unsigned preferences_snapshot_generation;
 #endif
 static unsigned ui_theme, ui_font_size=2, ui_background, preferences_dirty, preferences_changed;
-enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_AIR, PAGE_VOCALS };
-static unsigned air_on, air_hold, air_poll, air_tab;
-static aq_air_sensor air_sensor;
-static aq_air_gesture air_gesture;
-static unsigned air_sensitivity=70,air_invert;
+enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_VOCALS=7 };
 static unsigned boot_armed,boot_starts;
 #ifndef PLAT_HOST
 extern uint32_t plat_aquora_boot_seed(void);
 #endif
-static unsigned air_packets, air_packet_window, air_packet_rate, air_last_packet_ms, air_packet_total;
-static unsigned air_window_start;
-#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-static unsigned air_sent,air_calibrated_source;
-extern unsigned plat_air_source_id(void);
-extern unsigned plat_air_source_rejected(void);
-#endif
-#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-extern unsigned plat_air_sample(unsigned *packets);
-extern void plat_air_enable(int on);
-#endif
 static unsigned quick_item;
-static const char *quick_names[]={"Drums","Mixer","Motion","Groove","AIR","Banks","Performance","Play Along","FX / Nature",
+static const char *quick_names[]={"Drums","Mixer","Motion","Groove","Vocals","Banks","Performance","Play Along","FX / Nature",
  "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate","Nature Style","Evolution","Master FX","Track Routing"};
 static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14,16,17};
 
@@ -167,18 +151,13 @@ static int save_preferences(void)
     unsigned flags=plat_lock();
     settings.vocals=0xa0u|engine.vocals_enabled|(engine.vocal_presence<<1u);
     settings.auto_mix=0x80u|engine.auto_gain|(engine.auto_level<<1u);
-    settings.version=0x41513040u;settings.tempo_ticks=engine.tick_length;settings.drum_presence=engine.drum_presence;settings.air_noise=air_sensor.noise;
-#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-    settings.air_source=air_calibrated_source;
-#endif
-    settings.air_mode=engine.air_mode;settings.air_sensitivity=air_sensitivity;settings.air_invert=air_invert;settings.air_calibrated=air_sensor.calibrated;settings.air_far=air_sensor.reference;settings.air_near=air_sensor.near_reference;
+    settings.version=0x41513040u;settings.tempo_ticks=engine.tick_length;settings.drum_presence=engine.drum_presence;
     settings.motion[0]=engine.motion[0];settings.motion[1]=engine.motion[1];
     settings.perfect_key=engine.perfect_key;
     settings.lighting=0x80u|lighting|(keys_baseline<<2u)|(notes_lights<<4u)|(dance_lights<<5u);settings.output_profile=0x80u|engine.speaker_enabled; /* Legacy AUTO/20 stored 0 or 1. */
     settings.visual=visual_mode;settings.theme=ui_theme;
     settings.font_size=ui_font_size;settings.background=ui_background;
     settings.active_bank=bank_slot;settings.music_mode=engine.music_mode;settings.motion_manual=engine.motion_manual;
-    settings.air_fx=engine.air_fx;settings.air_depth=engine.air_depth;
     plat_unlock(flags);
     settings.startup_sound=startup_chime;
 #ifdef PLAT_HOST
@@ -231,7 +210,7 @@ static int mix_visible(unsigned channel)
  case SR_BUS_SACRED:return engine.sacred_mode&&engine.sacred_level>0;
  case SR_BUS_REFERENCE:return engine.tone_level>0;
  case SR_BUS_BINAURAL:return !engine.speaker_enabled&&engine.binaural_enabled&&engine.binaural_level>0;
- default:return engine.reverb_amount>0||engine.delay_amount>0||engine.air_wet>0;
+ default:return engine.reverb_amount>0||engine.delay_amount>0;
  }
 }
 static const uint8_t mix_order[]={SR_LEAD,SR_BASS,SR_PIANO,SR_GUITAR,SR_DRONE,SR_CHOIR,SR_HARMONY,SR_DRUMS};
@@ -258,7 +237,6 @@ static unsigned control_for(unsigned knob)
  if(fullscreen)return knob==0?18:knob==1?145:0;
  if(debug)return knob==0?(debug==3?42:0):0;
  if(page==PAGE_VOCALS){static const uint8_t controls[2][4]={{155,156,13,29},{163,164,165,166}};return controls[vocal_tab][knob];}
- if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128},{0,0,0,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
    return controls[drum_tab][knob];
@@ -507,25 +485,16 @@ static void consume(void){
  case 60:if(d>0)engine.sound_locks|=1u<<c.track;else engine.sound_locks&=~(1u<<c.track);break;
  case 64:engine.groove_mode=bounded(engine.groove_mode+d,0,2);break;
  case 65:engine.groove_strength=bounded(engine.groove_strength+d*5,0,100);break;
- case 67:engine.air_track=bounded(engine.air_track+d,0,SR_TRACKS);break;
- case 70:engine.air_target=bounded(d,0,100)*.01f;break;
  case 120:engine.chord_mode=bounded(engine.chord_mode+d,0,3);memset(engine.scheduled,0,sizeof engine.scheduled);break;
  case 121:if(engine.chord_mode==2)engine.chord_gap=bounded(engine.chord_gap+d*10,120,220);break;
  case 122:engine.chord_inversion=bounded(engine.chord_inversion+d,0,3);break;
  case 123:engine.chord_direction=bounded(engine.chord_direction+d,0,3);break;
- case 124:engine.air_mode=bounded(engine.air_mode+d,0,4);engine.air_request=0;break;
- case 127:if(engine.running&&!engine.freeze&&!engine.air_request)engine.air_request=bounded(d,1,3);break;
- case 128:if(d>0&&engine.running&&engine.air_mode&&engine.air_mode<4&&!engine.freeze)engine.air_request=engine.air_mode;break;
- case 131:engine.air_request=0;break;
  case 129:{unsigned next=bounded((int)(engine.rhythm_pending?engine.rhythm_pending-1u:engine.rhythm_style)+d,0,2);
    if(engine.running)engine.rhythm_pending=next+1u;else sr_set_rhythm_style(&engine,next);break;}
  case 130:engine.fill_character=bounded(engine.fill_character+d,0,3);break;
- case 93:engine.air_fx=bounded(engine.air_fx+d,0,4);break;
- case 94:engine.air_depth=bounded(engine.air_depth+d*5,0,100);break;
  case 96:sr_set_music_mode(&engine,bounded((engine.pending_mode?engine.pending_mode-1u:engine.music_mode)+d,0,SR_MUSIC_MODES-1));break;
  case 97:sr_motion_auto(&engine,SR_LEAD,d<0);break;
  case 98:sr_motion_auto(&engine,SR_BASS,d<0);break;
- case 95:engine.air_target=adjust(engine.air_target,d,.05f,1);break;
  case 75:case 76:case 77:
    if(c.track<SR_DRUMS){
      int8_t *edit=c.kind==75?&t->tone:c.kind==76?&t->attack:&t->release;
@@ -614,22 +583,7 @@ void app_init(void)
         ui_theme=settings.theme<=4?settings.theme:0;
         ui_font_size=settings.font_size<=2?settings.font_size:1;
         ui_background=settings.background==1;
-        if(settings.version>=0x41513034u){
-          engine.air_fx=settings.air_fx<=4?settings.air_fx:0;
-          engine.air_depth=settings.air_depth<=100?settings.air_depth:100;
-        }
       }
-    }
-    if((settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u))){
-      engine.air_mode=settings.air_mode<=4?settings.air_mode:0;
-      air_sensitivity=settings.air_sensitivity>=20&&settings.air_sensitivity<=100?settings.air_sensitivity:70;
-      air_invert=!!settings.air_invert;
-      air_sensor.reference=settings.air_far;air_sensor.near_reference=settings.air_near;
-      air_sensor.calibrated=settings.air_calibrated<=2?settings.air_calibrated:0;
-      air_sensor.noise=(settings.version==0x41513039u||settings.version==0x41513040u)&&settings.air_noise?settings.air_noise:3;
-#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-      air_calibrated_source=(settings.version==0x41513039u||settings.version==0x41513040u)?settings.air_source:0;
-#endif
     }
     arrangement_init();
     quick_pending=quick_started=quick_has_save=quick_finished_ms=0;
@@ -688,10 +642,8 @@ void app_init(void)
     quick_started=quick_pending=quick_timeout=quick_finished_ms=0;
     requested_play=stop_generation=applied_stop=physical_keys=0;
     page=selected=group=debug=display_subtab=drum_part=0;
-    mix_tab=mix_reset=mix_focus=mix_bus=song_tab=song_arm=setup_tab=drum_tab=air_tab=save_info=0;
+    mix_tab=mix_reset=mix_focus=mix_bus=song_tab=song_arm=setup_tab=drum_tab=save_info=0;
     preferences_dirty=preferences_changed=0;
-    air_packet_window=air_packet_rate=air_packet_total=air_last_packet_ms=0;
-    air_window_start=plat_ms();
     oldkeys=oldbuttons=blocked_keys=voice_slot=knob_until=redraw_ui_ms=0;
     dirty=1;
 }
@@ -873,7 +825,6 @@ void app_input_only(void){
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
      group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
    }
-   if(page==PAGE_AIR)air_tab=(air_tab+1)%4;
    if(page==PAGE_VOCALS)vocal_tab^=1u;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%7;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
@@ -902,7 +853,7 @@ void app_input_only(void){
    send(136,i|((physical_keys&(1u<<i))?0:32));
  oldkeys=k;
  int d=enc[0];
- if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_VOCALS);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
+ if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_VOCALS);if(page==6)page=d>0?PAGE_VOCALS:PAGE_SETUP;sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
  static unsigned role_page=~0u;
  if(page==PAGE_MIX&&role_page!=PAGE_MIX&&mix_tab!=4)mix_focus=selected;
  role_page=page;
@@ -944,7 +895,7 @@ void app_input_only(void){
       case 1:page=PAGE_MIX;mix_tab=0;break;
       case 2:page=PAGE_SOUND;group=6;sound_picker=0;break;
       case 3:page=PAGE_EVOLVE;song_tab=2;break;
-      case 4:page=PAGE_AIR;break;
+      case 4:page=PAGE_VOCALS;vocal_tab=0;break;
       case 5:page=PAGE_SETUP;setup_tab=1;break;
       case 6:debug=1;break;
       case 7:page=PAGE_SOUND;group=GROUP_KEYS;sound_picker=0;break;
@@ -962,29 +913,7 @@ void app_input_only(void){
       case 19:page=PAGE_MIX;mix_tab=1;break;
       case 20:page=PAGE_MIX;mix_tab=5;mix_focus=selected;break;
       }
-    }else if(control==66){
-#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-      air_on=d>0;
-      air_packets=air_sent=air_hold=0;
-      air_packet_window=air_packet_rate=air_packet_total=air_last_packet_ms=0;
-      air_window_start=plat_ms();
-      unsigned far=air_sensor.reference,near=air_sensor.near_reference,cal=air_sensor.calibrated,noise=air_sensor.noise;
-      air_sensor=(aq_air_sensor){0};air_sensor.reference=far;air_sensor.near_reference=near;air_sensor.calibrated=cal;air_sensor.noise=noise;
-      air_gesture=(aq_air_gesture){0};
-      if(!air_on){send(70,0);send(131,0);}
-      plat_air_enable(air_on);
-#endif
-    }else if(control==68){
-      if(d>0&&air_on&&aq_air_calibrate(&air_sensor,plat_ms())){
-#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-        air_calibrated_source=plat_air_source_id();
-#endif
-        preferences_changed_now();
-      }
-      if(d<0){air_sensor.calibrated=0;air_sensor.near_reference=0;send(70,0);}
-    }else if(control==69)air_hold=d>0;
-    else if(control==125){air_sensitivity=bounded((int)air_sensitivity+d*5,20,100);preferences_changed_now();}
-    else if(control==126){air_invert=switched(air_invert,d);preferences_changed_now();}
+    }
     else if(control==109||(AQ_PERFORMANCE_MIDI&&control>=101&&control<=110)){send(control,d);preferences_changed_now();}
     else if(control==147){ui_theme=bounded((int)ui_theme+d,0,4);preferences_changed_now();}
     else if(control==148){ui_background=switched(ui_background,d);preferences_changed_now();}
@@ -1177,7 +1106,7 @@ void app_frame(void)
     if(!quick_started&&!quick_pending&&!preferences_saving&&preferences_dirty&&
        now-preferences_changed>=1200u)save_preferences();
     if(quick_finished_ms&&now-quick_finished_ms>=3000u){quick_finished_ms=0;dirty=1;}
-    unsigned scope_track=page==PAGE_VOCALS&&vocal_tab==1?SR_CHOIR:page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;
+    unsigned scope_track=page==PAGE_SOUND&&!sound_picker&&!debug&&group==0?selected:SR_TRACKS;
     if(scope_track!=engine.scope_track){
       unsigned flags=plat_lock();
       engine.scope_track=scope_track;
@@ -1216,32 +1145,6 @@ void app_frame(void)
         evolve_history[step&63u]=(uint8_t)events;AQ_VIS_COUNT(history_updates);
         evolve_step=step;
       }
-    }
-    if(air_on&&now-air_poll>=40u){
-      air_poll=now;
-#if FM1B_BLE_CENTRAL && !defined(PLAT_HOST)
-      unsigned raw=plat_air_sample(&air_packets);
-      air_packet_window+=air_packets;
-      air_packet_total+=air_packets;
-      if(air_packets)air_last_packet_ms=now;
-      unsigned target=aq_air_update(&air_sensor,raw,air_packets,now);
-      unsigned live=aq_air_live(&air_sensor,now)&&air_sensor.calibrated==2&&aq_air_span(&air_sensor)>=aq_air_min_span(&air_sensor);
-      if(air_sensor.calibrated==2&&air_calibrated_source!=plat_air_source_id()){
-        live=0;target=0;air_sensor.calibration_error=4;
-      }
-      unsigned gesture_target=target;
-      if(air_invert&&live)target=100-target;
-      if(aq_air_gesture_update(&air_gesture,gesture_target,live,air_packets,now,air_sensitivity)&&engine.air_mode&&engine.air_mode<4)
-        send(127,engine.air_mode);
-      if((!air_hold||!live)&&target!=air_sent){send(70,target);air_sent=target;}
-#endif
-      if(now-air_window_start>=2000u){
-        unsigned span=now-air_window_start;
-        air_packet_rate=span?air_packet_window*1000u/span:0;
-        air_packet_window=0;
-        air_window_start=now;
-      }
-      if(page==PAGE_AIR)dirty=1;
     }
     if(now-window_ms>=2000){
       timing audio,fx,callback;
@@ -1318,8 +1221,7 @@ void app_frame(void)
     int live_sound=page==PAGE_SOUND&&!sound_picker&&(engine.running||engine.preview_frames||engine.external_audio);
     int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
     int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
-    int live_air=page==PAGE_AIR&&(air_on||engine.air_target>.0001f||engine.air_wet>.0001f);
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||(page==PAGE_VOCALS&&(engine.running||engine.preview_frames))||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||(page==PAGE_VOCALS&&(engine.running||engine.preview_frames))||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
     if(animate&&page==0){
       if(elapsed>=FRAME_MIN_MS)missed+=elapsed/FRAME_MIN_MS-1u;
 
@@ -1399,9 +1301,6 @@ int app_expect(const char *what,int *got){
  if(!strcmp(what,"rhythm_pending")){*got=engine.rhythm_pending;return 1;}
  if(!strcmp(what,"rhythm_style")){*got=engine.rhythm_style;return 1;}
  if(!strcmp(what,"fill_character")){*got=engine.fill_character;return 1;}
- if(!strcmp(what,"air_mode")){*got=engine.air_mode;return 1;}
- if(!strcmp(what,"air_actions")){*got=engine.air_actions;return 1;}
- if(!strcmp(what,"air_request")){*got=engine.air_request;return 1;}
  const sr_track *track=&engine.tracks[selected];
  if(!strcmp(what,"auto_gain"))*got=engine.auto_gain;
  else if(!strcmp(what,"auto_level"))*got=engine.auto_level;
@@ -1487,9 +1386,9 @@ int app_expect(const char *what,int *got){
    else{*got=!memcmp(remembered,engine.melody,sizeof remembered)&&!memcmp(home,engine.motif_home,sizeof home);for(unsigned t=0;t<8;t++)if((engine.sound_locks&(1u<<t))&&engine.tracks[t].patch!=patches[t])*got=0;}
  }
  else if(!strcmp(what,"route_unique")){
-   unsigned saved_page=page,saved_group=group,saved_song=song_tab,saved_mix=mix_tab,saved_setup=setup_tab,saved_sub=display_subtab,saved_drum=drum_tab,saved_air=air_tab,saved_debug=debug,saved_focus=mix_focus;
+   unsigned saved_page=page,saved_group=group,saved_song=song_tab,saved_mix=mix_tab,saved_setup=setup_tab,saved_sub=display_subtab,saved_drum=drum_tab,saved_debug=debug,saved_focus=mix_focus;
    *got=1;debug=0;mix_focus=0;
-   for(unsigned p=PAGE_SOUND;p<=PAGE_AIR;p++){
+   for(unsigned p=PAGE_SOUND;p<=PAGE_SETUP;p++){
      unsigned seen[128]={0};page=p;
      unsigned count=p==PAGE_SOUND?sizeof(sound_groups):p==PAGE_EVOLVE?7:p==PAGE_MIX?6:p==PAGE_DRUMS?3:p==PAGE_SETUP?6:2;
      for(unsigned tab=0;tab<count;tab++){
@@ -1498,14 +1397,13 @@ int app_expect(const char *what,int *got){
        if(p==PAGE_MIX)mix_tab=tab;
        if(p==PAGE_DRUMS)drum_tab=tab;
        if(p==PAGE_SETUP){setup_tab=tab==4?0:tab>=5?tab-1:tab;display_subtab=tab==4;}
-       if(p==PAGE_AIR)air_tab=tab;
        for(unsigned k=0;k<4;k++){
          unsigned id=control_for(k);printf("ROUTE %u %u %u %u\n",p,tab,k,id);
          if(id&&id!=99&&id!=100&&id<128&&seen[id]++)*got=0;
        }
      }
    }
-   page=saved_page;group=saved_group;song_tab=saved_song;mix_tab=saved_mix;setup_tab=saved_setup;display_subtab=saved_sub;drum_tab=saved_drum;air_tab=saved_air;debug=saved_debug;mix_focus=saved_focus;dirty=1;
+   page=saved_page;group=saved_group;song_tab=saved_song;mix_tab=saved_mix;setup_tab=saved_setup;display_subtab=saved_sub;drum_tab=saved_drum;debug=saved_debug;mix_focus=saved_focus;dirty=1;
  }
  else if(!strcmp(what,"geometry_jobs"))*got=geometry_jobs;
  else if(!strcmp(what,"history_updates"))*got=history_updates;
@@ -1578,8 +1476,6 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"usb_unplug")){midi_test_online=0;*got=1;}
  else if(!strcmp(what,"usb_replug")){midi_test_online=1;*got=1;}
 
- else if(!strcmp(what,"air_rate"))*got=air_packet_rate;
- else if(!strcmp(what,"air_packets_total"))*got=air_packet_total;
  else if(!strcmp(what,"ui_theme"))*got=ui_theme;
  else if(!strcmp(what,"ui_font"))*got=ui_font_size;
  else if(!strcmp(what,"ui_background"))*got=ui_background;
@@ -1597,13 +1493,7 @@ int app_expect(const char *what,int *got){
  }
  else if(!strcmp(what,"groove_mode"))*got=engine.groove_mode;
  else if(!strcmp(what,"groove_strength"))*got=engine.groove_strength;
- else if(!strcmp(what,"air_fx"))*got=engine.air_fx;
- else if(!strcmp(what,"air_depth"))*got=engine.air_depth;
- else if(!strcmp(what,"air_percent"))*got=engine.air_target*100.f+.5f;
- else if(!strcmp(what,"air_tab"))*got=air_tab;
  else if(!strcmp(what,"sound_picker"))*got=sound_picker;
- else if(!strcmp(what,"air_track"))*got=engine.air_track;
- else if(!strcmp(what,"air_on"))*got=air_on;
  else if(!strcmp(what,"mix_focus"))*got=mix_focus;
  else if(!strcmp(what,"mix_bus"))*got=mix_bus;
  else if(!strcmp(what,"mix_tab"))*got=mix_tab;
