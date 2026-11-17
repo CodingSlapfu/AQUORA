@@ -13,6 +13,14 @@ jobs:
           cc -O2 tests/vocal_audition.c -lm -o "$RUNNER_TEMP/vocal-audition"
           "$RUNNER_TEMP/vocal-audition"
       - run: |
+          python3 -m pip install Pillow==11.3.0
           bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
           cd "$RUNNER_TEMP/source"
           python3 vendor/fm1-base/tools/build.py device --host --release 0.7.14
+          mkdir -p "$RUNNER_TEMP/vocal-ui"
+          printf 'master 2048\nwait 3000\ntap HOME\nturn ALGO 7\nexpect page 7\nexpect running 1\ntap FX\ntap EDIT\nwait 400\nexpect running 1\nshot vocal-effects.png\ntap EDIT\nwait 400\nshot vocals.png\nexpect drops 0\n' > "$RUNNER_TEMP/vocal-ui/script.txt"
+          device/build/host/sound-healing_host "$RUNNER_TEMP/vocal-ui/script.txt" "$RUNNER_TEMP/vocal-ui"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aquora-vocal-ui
+          path: ${{ runner.temp }}/vocal-ui
