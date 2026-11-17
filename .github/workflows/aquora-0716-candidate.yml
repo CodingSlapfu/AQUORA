@@ -4,6 +4,8 @@ on:
     branches: [aquora-vocal-controls]
     paths:
       - device/**
+      - tests/vocal*.c
+      - tests/recorded_vocals_0711.c
       - .github/workflows/aquora-0716-candidate.yml
 permissions:
   contents: read
