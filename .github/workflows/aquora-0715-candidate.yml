@@ -23,10 +23,12 @@ jobs:
           set -euo pipefail
           cc -O2 tests/vocal_portrait_0714.c device/kira_face.c -lm -o "$RUNNER_TEMP/portrait"
           "$RUNNER_TEMP/portrait"
-          for t in vocal_audition mixer_texture_0714 transport_hit; do
-            cc -O2 "tests/$t.c" -lm -o "$RUNNER_TEMP/$t"
+          for t in vocal_audition mixer_texture_0714 drum_patterns_0714 drum_kits_0714; do
+            cc -O2 -Idevice/dsp "tests/$t.c" -lm -o "$RUNNER_TEMP/$t"
             "$RUNNER_TEMP/$t"
           done
+          cc -O2 -Idevice/dsp tests/transport_hit.c device/dsp/engine.c -lm -o "$RUNNER_TEMP/transport"
+          "$RUNNER_TEMP/transport"
       - name: Prepare source and pinned JieLi compiler
         run: |
           set -euo pipefail
