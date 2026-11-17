@@ -20,6 +20,8 @@ static void check_texture(unsigned effect)
     if(effect==6)engine.fx_tremolo=100;
     if(effect==7)engine.fx_drive=100;
     if(effect==8)engine.fx_stutter=100;
+    if(effect==9)engine.fx_shimmer=100;
+    if(effect==10)engine.fx_granular=100;
     float difference=0.f;
     for(unsigned frame=0;frame<32768;frame+=64){
         float mix[64*3]={0};
@@ -37,8 +39,52 @@ static void check_texture(unsigned effect)
     if(effect)assert(difference>1.f);
 }
 
+static void check_granular_hold(void)
+{
+    sr_init(&engine,714);
+    engine.fx_granular=100;
+    float mix[64*3];
+    for(unsigned block=0;block<80;block++){
+        memset(mix,0,sizeof mix);
+        if(block<16)
+            for(unsigned i=0;i<64;i++)mix[3*i+2]=i<32?.26f:-.26f;
+        apply_fx(&engine,mix,64);
+    }
+    assert(engine.fx_grain_written==1024);
+    float held=0;
+    for(unsigned i=0;i<64;i++)held+=fabsf(mix[i*3]);
+    assert(held>.5f);
+    engine.fx_granular=0;
+    for(unsigned block=0;block<128;block++){
+        memset(mix,0,sizeof mix);
+        apply_fx(&engine,mix,64);
+    }
+    assert(engine.fx_grain_written==0&&fabsf(mix[0])<.0001f);
+}
+
+static void check_ducking(void)
+{
+    sr_init(&engine,714);
+    engine.fx_duck=100;
+    float mix[64*3];
+    for(unsigned block=0;block<64;block++){
+        memset(mix,0,sizeof mix);
+        for(unsigned i=0;i<64;i++)mix[i*3]=mix[i*3+1]=.6f;
+        apply_fx(&engine,mix,64);
+        assert(mix[0]==.6f&&mix[1]==.6f);
+    }
+    assert(engine.fx_duck_gain<.2f);
+    for(unsigned block=0;block<800;block++){
+        memset(mix,0,sizeof mix);
+        apply_fx(&engine,mix,64);
+    }
+    assert(engine.fx_duck_gain>.98f);
+}
+
 int main(void)
 {
-    for(unsigned effect=0;effect<=8;effect++)check_texture(effect);
+    for(unsigned effect=0;effect<=10;effect++)check_texture(effect);
+    check_granular_hold();
+    check_ducking();
     puts("PASS independent bounded Mixer modulation and experimental effects");
 }

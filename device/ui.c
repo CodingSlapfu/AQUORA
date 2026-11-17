@@ -380,6 +380,9 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 178:*name="TREMOLO %";number=engine.fx_tremolo;break;
  case 179:*name="SOFT DRIVE %";number=engine.fx_drive;break;
  case 180:*name="STUTTER %";number=engine.fx_stutter;break;
+ case 181:*name="SHIMMER %";number=engine.fx_shimmer;break;
+ case 182:*name="FREEZE %";number=engine.fx_granular;break;
+ case 183:*name="DUCKING %";number=engine.fx_duck;break;
  case 167:*name="HIT";return (engine.drum_pattern[drum_part]&(1u<<drum_edit_step))?"ON":"OFF";
  case 168:*name="LANE MODE";return (engine.drum_manual_mask&(1u<<drum_part))?"MANUAL":"AUTO";
  case 163:*name="CHORUS %";number=engine.vocal_chorus;break;
@@ -801,8 +804,8 @@ static void mixer_focus_strip(int band)
 static void mixer_band(int band)
 {
  if(band==1&&(mix_tab==1||mix_tab==2)){
-   static const char *const sections[]={"MASTER FX","SPACE FX","MOTION FX","TEXTURE FX"};
-   static const char *const next[]={"FX: SPACE FX","FX: MOTION FX","FX: TEXTURE FX","FX: MASTER FX"};
+   static const char *const sections[]={"MASTER FX","SPACE FX","MOTION FX","TEXTURE FX","AMBIENT FX"};
+   static const char *const next[]={"FX: SPACE FX","FX: MOTION FX","FX: TEXTURE FX","FX: AMBIENT FX","FX: MASTER FX"};
    limited_text(8,1,224,&FONT_B,mix_tab==1?sections[mix_fx_detail]:"RESET MIX",skin_accent());
    limited_text(8,27,224,&FONT_XS,mix_tab==1?next[mix_fx_detail]:mix_reset?"MIX RESET ARMED":"TURN K1 TO ARM",skin_text());return;
  }

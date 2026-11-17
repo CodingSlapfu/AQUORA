@@ -791,6 +791,7 @@ void sr_init(sr_engine *e,uint32_t seed){
   e->auto_gain=e->auto_level=1;
   e->chord_gap=190; e->master=.78f;
   e->fx_decay=e->fx_feedback=e->fx_width=50;
+  e->fx_duck_gain=1.f;
   e->fx_decay_now=.89f;e->fx_feedback_now=.46f;e->fx_width_now=1.f; e->reverb_amount=.32f; e->delay_amount=.18f; e->bed_level=.18f;
   e->vocals_enabled=1;e->learn_strength=2;e->drums_enabled=1;e->drum_level=1.f;e->drum_presence=100;e->groove_strength=100;e->air_track=SR_TRACKS;e->air_depth=100;e->drum_density=SR_DENSITY_MAX;e->drum_hit=25;e->drum_rng=e->rng^0x6a09e667u;e->drum_kit=0;
   for(unsigned part=0;part<3;part++)e->drum_part_gain[part]=e->slicer_gain[part]=1.f;
@@ -833,6 +834,8 @@ static void clear_transport(sr_engine *e)
     e->reverb_wet=e->delay_wet=e->fx_delay_low=0;
     e->fx_filter_low=e->fx_crush_hold=e->vocal_face_peak=0.f;
     e->fx_repeat_left=0;
+    e->fx_grain_written=e->fx_grain_phase=e->fx_shimmer_phase=0;
+    e->fx_duck_env=0.f;e->fx_duck_gain=1.f;
     e->fx_mask=0;
     e->lock_phase=0;
     e->preview_frames=0;
@@ -2153,11 +2156,11 @@ static inline __attribute__((always_inline)) float bed(sr_engine *e,float *side)
   *side=(event*pan*.34f+air*(swell-.55f)*.018f)*stereo;
   return value+event*.24f*stereo;
 }
-static inline __attribute__((always_inline)) float fx(sr_engine *e,unsigned mask,float dry,float *wide){
+static inline __attribute__((always_inline)) float fx(sr_engine *e,unsigned mask,float dry,float shimmer,float *wide){
   float wet=0.f;
   if(mask&1u)for(int i=0;i<4;i++){
     uint16_t p=e->rev_pos[i];float delayed=e->rev_history>=rv_len[i]?(float)e->reverb[i][p]*(1.f/32768.f):0;
-    float next=clampf(dry*.34f+delayed*e->fx_decay_now,-.97f,.97f);
+    float next=clampf((dry+shimmer)*.34f+delayed*e->fx_decay_now,-.97f,.97f);
     e->reverb[i][p]=(int16_t)(next*32767.f);
     e->rev_pos[i]=(uint16_t)(p+1u==rv_len[i]?0:p+1u);wet+=delayed*.25f;
   }
@@ -2774,6 +2777,13 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
   float texture_level=e->fx_chorus_now+e->fx_pan_now+e->fx_filter_now+e->fx_crush_now+
                       e->fx_flanger_now+e->fx_tremolo_now+e->fx_drive_now+e->fx_stutter_now;
   int texture=chorus||pan||filter||crush||flange||trem||drive||stutter||texture_level>.0001f;
+  float shimmer=e->fx_shimmer*.01f, granular=e->fx_granular*.01f, duck=e->fx_duck*.01f;
+  int shimmer_active=shimmer||e->fx_shimmer_now>.0001f;
+  int granular_active=granular||e->fx_granular_now>.0001f;
+  int duck_active=duck||e->fx_duck_now>.0001f;
+  if(!granular_active)e->fx_grain_written=e->fx_grain_phase=0;
+  if(!duck_active){e->fx_duck_env=0.f;e->fx_duck_gain=1.f;}
+  if(shimmer_active)reverb=fmaxf(reverb,shimmer*.48f);
   for(size_t i=0;i<frames;i++){
     e->fx_decay_now+=(decay-e->fx_decay_now)*.002f;
     e->fx_feedback_now+=(feedback-e->fx_feedback_now)*.002f;
@@ -2782,7 +2792,40 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
     e->reverb_wet+=(reverb-e->reverb_wet)*.002f;
     e->delay_wet+=(delay-e->delay_wet)*.002f;
     float width=0;
-    float wet=fx(e,mask,dry[3*i+2],&width);
+    float shifted=0.f;
+    if(shimmer_active){
+      e->fx_shimmer_now+=(shimmer-e->fx_shimmer_now)*.002f;
+      /* Two offset read heads advance twice as fast as the ring writes.
+         A triangular crossfade hides their wrap, and the shifted signal
+         feeds only the reverb input, outside the delay feedback loop. */
+      unsigned phase=e->fx_shimmer_phase;
+      unsigned offset=(phase+512u)&1023u;
+      float blend=(phase<512u?phase:1024u-phase)*(1.f/512.f);
+      if(e->delay_history>=1120u){
+        unsigned a=(e->delay_pos+16384u-1120u+phase)&16383u;
+        unsigned b=(e->delay_pos+16384u-1120u+offset)&16383u;
+        shifted=(e->delay[a]*blend+e->delay[b]*(1.f-blend))*(.68f/32768.f)*e->fx_shimmer_now;
+      }
+      e->fx_shimmer_phase=(phase+1u)&1023u;
+    }
+    float wet=fx(e,mask,dry[3*i+2],shifted,&width);
+    if(granular_active){
+      if(granular&&e->fx_grain_written<1024u){
+        e->fx_grain[e->fx_grain_written++]=sampleout(dry[3*i+2]);
+      }else if(e->fx_grain_written==1024u){
+        e->fx_granular_now+=(granular-e->fx_granular_now)*.002f;
+        /* Hold the captured send. Overlap two windowed 512-frame grains
+           drawn from different offsets in the snapshot. */
+        unsigned p=e->fx_grain_phase;
+        unsigned q=(p+256u)&511u;
+        float w=(p<256u?p:512u-p)*(1.f/256.f);
+        float a=e->fx_grain[p]*w*(.55f/32768.f);
+        float b=e->fx_grain[512u+q]*(1.f-w)*(.55f/32768.f);
+        wet+=(a+b)*e->fx_granular_now;
+        width+=(a-b)*(.35f*e->fx_granular_now);
+        e->fx_grain_phase=(p+1u)&511u;
+      }
+    }
     if(texture){
       e->fx_chorus_now+=(chorus-e->fx_chorus_now)*.002f;
       e->fx_pan_now+=(pan-e->fx_pan_now)*.002f;
@@ -2848,6 +2891,18 @@ static void apply_fx(sr_engine *e,float *dry,size_t frames)
         width*=gain;
       }
       width+=wet*sweep*.85f*e->fx_pan_now;
+    }
+    if(duck_active){
+      e->fx_duck_now+=(duck-e->fx_duck_now)*.002f;
+      if(!(i&7u)){
+        float key=fmaxf(fabsf(dry[3*i]),fabsf(dry[3*i+1]));
+        float coef=key>e->fx_duck_env?.08f:.0012f;
+        e->fx_duck_env+=(key-e->fx_duck_env)*coef;
+      }
+      float gain=1.f-.84f*e->fx_duck_now*clampf(e->fx_duck_env*7.f,0.f,1.f);
+      e->fx_duck_gain+=(gain-e->fx_duck_gain)*.006f;
+      wet*=e->fx_duck_gain;
+      width*=e->fx_duck_gain;
     }
     if(audible){
       if(!(i&7u))bus_meter(e,SR_BUS_FX,fmaxf(fabsf(wet+width),fabsf(wet-width)));
@@ -2976,13 +3031,16 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   unsigned delay=e->delay_amount>0||e->delay_wet>.00001f||(air_active&&e->air_fx!=0);
   unsigned short_delay=e->fx_chorus||e->fx_flanger||e->fx_stutter||
       e->fx_chorus_now+e->fx_flanger_now+e->fx_stutter_now>.0001f;
-  unsigned fx_mask=(reverb?1u:0u)|((reverb||delay||short_delay)?2u:0u);
+  unsigned shimmer=e->fx_shimmer||e->fx_shimmer_now>.0001f;
+  unsigned freeze=e->fx_granular||e->fx_granular_now>.0001f;
+  unsigned fx_mask=((reverb||shimmer)?1u:0u)|((reverb||delay||short_delay||shimmer)?2u:0u);
+  if(!freeze)e->fx_grain_written=e->fx_grain_phase=0;
   if(e->fx_mask&~fx_mask){
     if(!(fx_mask&1)){e->rev_history=0;memset(e->rev_pos,0,sizeof(e->rev_pos));e->reverb_wet=0;}
     if(!(fx_mask&2)){e->delay_history=0;e->delay_pos=0;e->delay_wet=0;e->fx_repeat_left=0;}
   }
   e->fx_mask=(uint8_t)fx_mask;
-  if(fx_mask&&!e->frequency_lock&&!audition&&!e->preview_frames){
+  if((fx_mask||freeze)&&!e->frequency_lock&&!audition&&!e->preview_frames){
     uint32_t begin=e->clock_ticks?e->clock_ticks():0;
     process_fx(e,dry,n);
     if(e->clock_ticks)e->fx_ticks+=e->clock_ticks()-begin;

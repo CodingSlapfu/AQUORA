@@ -68,6 +68,10 @@ typedef struct {
   uint8_t fx_decay, fx_feedback, fx_damping, fx_width;
   uint8_t fx_chorus, fx_autopan, fx_filter, fx_crush;
   uint8_t fx_flanger, fx_tremolo, fx_drive, fx_stutter;
+  uint8_t fx_shimmer, fx_granular, fx_duck;
+  float fx_shimmer_now, fx_granular_now, fx_duck_now, fx_duck_env, fx_duck_gain;
+  uint16_t fx_shimmer_phase, fx_grain_written, fx_grain_phase;
+  int16_t fx_grain[1024];
   float fx_mod_phase, fx_chorus_now, fx_pan_now, fx_filter_now, fx_crush_now;
   float fx_flanger_now, fx_tremolo_now, fx_drive_now, fx_stutter_now;
   float fx_filter_low, fx_crush_hold;
