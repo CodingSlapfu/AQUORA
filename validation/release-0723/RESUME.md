@@ -45,3 +45,18 @@ Verified evidence to date
 Physical FM-1 listening, vocal-shutdown reproduction, real callback deadlines,
 encoder/display responsiveness and speech-derived BABY naturalness remain owner
 acceptance items. Recorded intention-name vocabulary is unavailable.
+
+
+Release candidate verified
+- Native source implementation commit 2e18c9ac1beb94159963698aeed3ed8b26fdf0b0.
+- Final dual-core package reproduced byte-for-byte. 611496 bytes, FM-1_73000723, SHA-256 010c572435e29a31403ce340d3a803fb9c050f7324a690c9aa1c9ad089c54ba8.
+- Native image 535860 bytes, data+BSS 82540/98304, pool 318684/344064.
+- Forced single-core build compiled, stored separately.
+- Matching WASM SHA-256 bc28d59f5a2c664113d20cd112e57bf8a70fbe73b5169ca54a9004a738ab4bf9.
+- Full composition/stem matrix, V10/V9 drum banks, mixed load and three updater paths passed.
+- See ACCEPTANCE.md for the requirement table and explicit audio/hardware limitations.
+
+Next operation is publication of the prepared existing-site testing route at
+/testing/0.7.23/install/ and matching /testing/0.7.23/emu/. Do not repeat
+completed builds or successful tests. Stable v0.7.14 and testing v0.7.22
+are rollback routes. No new stable release is authorized.

@@ -1,0 +1,2 @@
+PASS 84 current bank snapshots restore exact committed routes, new patch47, explicit OFF auto mixing, learned phrase and form position after reinitialization
+PASS all 16 manual lanes, 64-step playback, four V10 bank round trips, V9 migration and corrupt payload rejection

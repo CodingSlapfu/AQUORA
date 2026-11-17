@@ -1,0 +1,7 @@
+  ok page == 6
+  ok slicer_style == 4
+  ok page == 7
+  ok vocal_status == 0
+  ok running == 1
+  ok drops == 0
+host: 15840 ms simulated, 539 blits, render 6.0% of real time (host CPU)
