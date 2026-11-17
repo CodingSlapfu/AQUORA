@@ -42,3 +42,14 @@ void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *
  if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,0,1);
  if(f->neck)plate(pixels,y0,height,109,195,24,29,f->neck>0?1:-1,0);
 }
+
+void k9_face_render_canvas(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *pose)
+{
+ if(y0>=240||!height)return;
+ if(height>240-y0)height=240-y0;
+ k9_face_render(pixels,y0,height,pose);
+ for(unsigned i=0;i<240u*height;i++){
+   uint16_t color=pixels[i];
+   pixels[i]=(uint16_t)((color>>8u)|(color<<8u));
+ }
+}

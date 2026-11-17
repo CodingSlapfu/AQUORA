@@ -345,9 +345,14 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 110:*name="MIDI CONTROLS";return onoff(midi.settings.controls_out);
  case 152:*name="CUTOFF";if(!engine.filter_cutoff)return "Patch";number=engine.filter_cutoff;break;
  case 153:*name="RESONANCE";number=engine.filter_resonance;break;
+ case 187:{
+   static const char *const styles[]={"AUTO","SMOOTH PULSE","RHYTHMIC GATE","GROOVE CHOP",
+                                     "IDM GLITCH","TRIPLET SYNC","STUTTER FILL","CINEMATIC"};
+   *name="STYLE";return styles[engine.slicer_style];
+ }
  case 154:{
    static const char *names[]={"Off","Lead","Bass","Lead + Bass","Drums","Lead + Drums","Bass + Drums","All 3"};
-   *name="AUTO SLICER";return names[engine.slicer_mask];
+   *name="GATE TRACKS";return names[engine.slicer_mask];
  }
  case 149:case 150:case 151:{
    static const char *parts[]={"BD KICK","SD SNARE","HH HAT"};
@@ -375,6 +380,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 164:*name="REVERB %";number=engine.vocal_reverb;break;
  case 166:*name="TUNE %";number=engine.vocal_tune;break;
  case 165:*name="ECHO %";number=engine.vocal_delay;break;
+ case 185:*name="VOCAL LEVEL";number=engine.vocal_level;break;
+ case 186:*name="VOCAL FX SEND";number=engine.vocal_fx_send;break;
  case 155:*name="RECORDED VOCALS";return engine.vocals_enabled?"On":"Off";
  case 156:{static const char *names[]={"Sparse","Gentle","Present","Featured"};*name="VOCAL PRESENCE";return names[engine.vocal_presence?engine.vocal_presence-1u:1u];}
  case 157:*name="PART MUTE";return engine.drum_mutes&(1u<<drum_part)?"Mute":"On";
@@ -1224,7 +1231,9 @@ static int draw(int animate)
      unsigned position=(engine.loop_pos+15u)&15u;
      if(band==1){
        graph_text(8,4,"SLICER / LIVE GATE",skin_text());
-       graph_text(8,25,engine.slicer_mask?"ACTIVE TRACK GATES":"BYPASS",skin_dim());
+       char value[16];const char *name;
+       graph_text(8,25,knob_value(187,&name,value),skin_dim());
+       graph_text(130,25,knob_value(154,&name,value),skin_dim());
      }else{
        for(unsigned i=0;i<16;i++){
          const int x=8+(int)i*14;
@@ -1236,15 +1245,7 @@ static int draw(int animate)
    }
    else if(page==PAGE_VOCALS){
      const sr_track *track=&engine.tracks[SR_CHOIR];
-     if(!vocal_tab&&band<4){
-       k9_face_render(cv_px,48u*band,48,&vocal_pose);
-       /* Standalone KIRA art is packed as canonical RGB565. Convert the
-          portrait through the same format as the LCD canvas primitives. */
-       for(unsigned i=0;i<240u*48u;i++){
-         unsigned c=cv_px[i];
-         cv_px[i]=RGB(((c>>11)&31u)<<3,((c>>5)&63u)<<2,(c&31u)<<3);
-       }
-     }
+     if(!vocal_tab&&band<4)k9_face_render_canvas(cv_px,48u*band,48,&vocal_pose);
      if(band==0){
        limited_text(8,1,226,&FONT_XS,vocal_tab?"VOCAL EFFECTS":"KIRA-9 VOCALS",RGB(228,182,255));
        if(vocal_tab)limited_text(8,24,224,&FONT_XS,"EDIT: VOCALS   FX: AUDITION",skin_text());

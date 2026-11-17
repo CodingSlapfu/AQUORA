@@ -13,4 +13,7 @@ typedef struct {
  * heap. */
 void k9_face_render(uint16_t *pixels, unsigned y0, unsigned height,
                     const k9_face *pose);
+/* The FM-1 canvas stores RGB565 most significant byte first. */
+void k9_face_render_canvas(uint16_t *pixels, unsigned y0, unsigned height,
+                           const k9_face *pose);
 #endif

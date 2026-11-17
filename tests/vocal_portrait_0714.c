@@ -7,6 +7,20 @@
 static sr_engine engine;
 static uint16_t neutral[240*240], rendered[240*240];
 
+static void verify_canvas_palette(void)
+{
+    k9_face pose={0};
+    for(unsigned y=0;y<240;y+=48){
+        k9_face_render(neutral+y*240,y,48,&pose);
+        k9_face_render_canvas(rendered+y*240,y,48,&pose);
+    }
+    const unsigned char *bytes=(const unsigned char *)rendered;
+    for(unsigned i=0;i<240u*240u;i++){
+        assert(bytes[2u*i]==(neutral[i]>>8u));
+        assert(bytes[2u*i+1u]==(neutral[i]&255u));
+    }
+}
+
 static void verify_phrase(void)
 {
     int16_t pcm[512];
@@ -43,6 +57,7 @@ static void verify_hidden(void)
 
 int main(void)
 {
+    verify_canvas_palette();
     const k9_face closed={0};
     for(unsigned y=0;y<240;y+=48)k9_face_render(neutral+y*240,y,48,&closed);
     sr_init(&engine,714);

@@ -81,7 +81,7 @@ typedef struct {
   float drum_level, drum_meter, kick_phase, kick_env, kick_previous, kick_attack, hand_phase, hand_env;
   float shaker_env, shaker_lp, hand_noise_lp;
   float drum_part_gain[3], slicer_gain[3];
-  uint8_t filter_cutoff, filter_resonance, slicer_mask;
+  uint8_t filter_cutoff, filter_resonance, slicer_mask, slicer_style;
   uint16_t drum_mutes, drum_active;
   uint16_t drum_manual_mask, drum_pattern[SR_DRUM_PARTS];
   uint32_t drum_steps[64], drum_phase[13];
@@ -92,7 +92,8 @@ typedef struct {
   float speaker_low, speaker_body, speaker_mix;
   uint8_t speaker_enabled,vocals_enabled,vocal_presence;
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune;
-  float vocal_face_peak;
+  uint8_t vocal_level,vocal_fx_send,vocal_entry_pending;
+  float vocal_level_smoothed,vocal_face_peak;
   uint8_t vocal_face_zone, vocal_face_midi;
   uint16_t vocal_fx_pos,vocal_fx_history;
   float vocal_fx_left,vocal_fx_right,vocal_fx_input;

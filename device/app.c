@@ -111,7 +111,7 @@ enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,0},{32,33,34,35},{100,0,0,0},
- {37,17,10,9},{56,141,142,143},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123},{152,153,154,0},{155,156,0,0}
+ {37,17,10,9},{56,141,142,143},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123},{152,153,154,187},{155,156,0,0}
 };
 static const uint8_t page_controls[4][4]={
  {18,145,22,5},{0,0,0,0},{0,20,25,46},{100,0,0,0}
@@ -236,7 +236,7 @@ static unsigned control_for(unsigned knob)
 {
  if(fullscreen)return knob==0?18:knob==1?145:0;
  if(debug)return knob==0?(debug==3?42:0):0;
- if(page==PAGE_VOCALS){static const uint8_t controls[2][4]={{155,156,13,29},{163,164,165,166}};return controls[vocal_tab][knob];}
+ if(page==PAGE_VOCALS){static const uint8_t controls[2][4]={{155,156,185,186},{163,164,165,166}};return controls[vocal_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
    return controls[drum_tab][knob];
@@ -345,8 +345,11 @@ static void consume(void){
  case 110:midi.settings.controls_out=switched(midi.settings.controls_out,d);midi_cc_program=midi_cc_volume=midi_cc_pan=midi_cc_send=midi_cc_bend=-1;break;
  case 152:engine.filter_cutoff=bounded((int)engine.filter_cutoff+d,0,15);break;
  case 153:engine.filter_resonance=bounded((int)engine.filter_resonance+d,0,15);break;
+ case 185:engine.vocal_level=bounded(engine.vocal_level+d*5,0,100);break;
+ case 186:engine.vocal_fx_send=bounded(engine.vocal_fx_send+d*5,0,100);break;
  case 155:sr_set_vocals(&engine,switched(engine.vocals_enabled,d),engine.vocal_presence);break;
  case 156:sr_set_vocals(&engine,engine.vocals_enabled,bounded((int)engine.vocal_presence+d,1,4));break;
+ case 187:engine.slicer_style=bounded((int)engine.slicer_style+d,0,7);break;
  case 154:engine.slicer_mask=bounded((int)engine.slicer_mask+d,0,7);break;
  case 137:arrange_browse=bounded((int)arrange_browse+d,0,7);break;
  case 138:{unsigned id=engine.arrange_next?engine.arrange_next-1u:sr_arrange_section(&engine,1);sr_arrange_queue(&engine,bounded((int)id+d,0,31),engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u);break;}
