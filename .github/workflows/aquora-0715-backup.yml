@@ -23,7 +23,7 @@ jobs:
       - name: Back up the verified FWSC on a dedicated Git branch
         env:
           SOURCE: 6ef3f3e44a42309f472033e0aa249d610ac9301c
-          SHA256: 04fef2404bd75f1085ea8538d61f98fddc85a24dee98afa8319abcca28756615
+          SHA256: ab55f88dc9d74526253c558f9b67d30b36665834a81e8251ab4168e128d49cef
           BACKUP_BRANCH: aquora-v0.7.15-testing-backup
         run: |
           set -euo pipefail
