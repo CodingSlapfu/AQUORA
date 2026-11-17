@@ -46,6 +46,7 @@ int main(void)
     const k9_face closed={0};
     for(unsigned y=0;y<240;y+=48)k9_face_render(neutral+y*240,y,48,&closed);
     sr_init(&engine,714);
+    sr_set_vocals(&engine,1,4);
     engine.master=.8f;
     engine.running=1;
     engine.external_sync=1;
