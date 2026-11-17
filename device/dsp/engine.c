@@ -1748,12 +1748,25 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
  unsigned target=phrase_chord(e,step/16u+1u);
  unsigned tone=support_degree(e,chord,target,(unsigned)call,pos!=opening);
- unsigned vowel=(form_index(e,0)+e->scene+(pos==answer?2u:pos==sustain))%3u;
+ /* Recorded zones are A, O, U in each register. */
+ unsigned vowel=pos==opening?2u:pos==sustain?0u:((bar+e->scene)&1u);
  unsigned zone=vowel+(mode==SR_CINEMATIC||((bar+pos)&1u)?3u:0u);
  unsigned velocity=(pos==answer?60u:73u)+4u*e->vocal_presence;
  float held=pos==opening?1.42f:pos==answer?.98f:1.18f;
  if(section==3u&&pos==opening)held=2.45f;
- int emitted=!!recorded_note(e,sr_tonic(e)+scale[tone],zone,velocity,held);
+ sr_voice *lead=recorded_note(e,sr_tonic(e)+scale[tone],zone,velocity,held);
+ if(lead&&pos==opening&&e->vocal_presence>=3u&&((bar+e->scene)&1u)==0u){
+   /* Move through two nearby scale tones on the same vowel and land
+      back on the chord tone before the response. Keep the sample phase. */
+   int direction=tone>=2u?-1:1;
+   int first=scale[(int)tone+direction]-scale[tone];
+   int second=scale[(int)tone+2*direction]-scale[tone];
+   float reference=sr_note_frequency(e,60);
+   lead->vocal_turn_first=sr_note_frequency(e,60+first)/reference;
+   lead->vocal_turn_second=sr_note_frequency(e,60+second)/reference;
+   lead->vocal_turn_rate=1.f/(float)lead->remain;
+ }
+ int emitted=lead!=0;
  if(pos==sustain&&section==2u&&e->vocal_presence>=2u&&mode!=SR_EXPERIMENTAL){
    unsigned harmony=tone==chord?(chord+2u)%7u:chord;
    emitted|=!!recorded_note(e,sr_tonic(e)+scale[harmony],zone<3u?zone+3u:zone-3u,
@@ -2382,7 +2395,16 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
       float age=(e->frame_count-v->born)*(1.f/SR_RATE);
       float depth=clampf((age-.22f)*2.1f,0.f,1.f);
       float rate=4.8f+.23f*((v->sample_zone-1u)%3u);
-      config->step=v->phase2*(1.f+.0098f*depth*sine(age*rate));
+      float turn=1.f;
+      if(v->vocal_turn_rate>0.f){
+        float progress=(float)(e->frame_count-v->born)*v->vocal_turn_rate;
+        float lift=clampf((progress-.23f)*26.f,0.f,1.f);
+        float move=clampf((progress-.44f)*26.f,0.f,1.f);
+        float settle=clampf((progress-.66f)*22.f,0.f,1.f);
+        turn=1.f+(1.f-settle)*(lift*(v->vocal_turn_first-1.f)+
+                              move*(v->vocal_turn_second-v->vocal_turn_first));
+      }
+      config->step=v->phase2*turn*(1.f+.0098f*depth*sine(age*rate));
     }else config->step=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
   }
   /* Leave the sampled singer at its original gain. Duck only the

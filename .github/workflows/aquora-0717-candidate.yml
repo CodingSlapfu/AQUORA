@@ -1,4 +1,4 @@
-name: AQUORA v0.7.16 native and UI validation
+name: AQUORA v0.7.17 native and UI validation
 on:
   push:
     branches: [aquora-vocal-controls]
@@ -6,13 +6,13 @@ on:
       - device/**
       - tests/vocal*.c
       - tests/recorded_vocals_0711.c
-      - .github/workflows/aquora-0716-candidate.yml
+      - .github/workflows/aquora-0717-candidate.yml
 permissions:
   contents: read
   actions: read
   statuses: write
 concurrency:
-  group: aquora-0716-native
+  group: aquora-0717-native
   cancel-in-progress: true
 jobs:
   native:
@@ -46,25 +46,25 @@ jobs:
           cd "$RUNNER_TEMP/source"
           export AC79_SDK="$PWD/vendor/ac79-package-files"
           export JIELI_TOOLCHAIN="$RUNNER_TEMP/jieli/jieli-linux-toolchains-20260730.1"
-          python3 vendor/fm1-base/tools/build.py device --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/native.log"
-          grep -F FM-1_73000716 "$RUNNER_TEMP/results/native.log"
-          cp device/build/sound-healing-0.7.16.fwsc "$RUNNER_TEMP/results/"
-          python3 vendor/fm1-base/tools/build.py device --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/repro.log"
-          cmp device/build/sound-healing-0.7.16.fwsc "$RUNNER_TEMP/results/sound-healing-0.7.16.fwsc"
-          (cd "$RUNNER_TEMP/results" && sha256sum sound-healing-0.7.16.fwsc > SHA256SUMS)
+          python3 vendor/fm1-base/tools/build.py device --release 0.7.17 2>&1 | tee "$RUNNER_TEMP/results/native.log"
+          grep -F FM-1_73000717 "$RUNNER_TEMP/results/native.log"
+          cp device/build/sound-healing-0.7.17.fwsc "$RUNNER_TEMP/results/"
+          python3 vendor/fm1-base/tools/build.py device --release 0.7.17 2>&1 | tee "$RUNNER_TEMP/results/repro.log"
+          cmp device/build/sound-healing-0.7.17.fwsc "$RUNNER_TEMP/results/sound-healing-0.7.17.fwsc"
+          (cd "$RUNNER_TEMP/results" && sha256sum sound-healing-0.7.17.fwsc > SHA256SUMS)
           printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/results/source-commit.txt"
       - name: Compile host UI and render vocal and drum pages
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/source"
-          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/host.log"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.17 2>&1 | tee "$RUNNER_TEMP/results/host.log"
           python3 tests/latency_075.py "$PWD/device/build/host/sound-healing_host" "$RUNNER_TEMP/results/latency"
           printf 'master 2048\nwait 3000\ntap HOME\nturn ALGO 7\nwait 500\nshot vocals.png\ntap HOME\nturn ALGO 3\nwait 200\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\nwait 200\nshot drums.png\nexpect drops 0\n' > "$RUNNER_TEMP/results/ui.script"
           device/build/host/sound-healing_host "$RUNNER_TEMP/results/ui.script" "$RUNNER_TEMP/results" 2>&1 | tee "$RUNNER_TEMP/results/ui.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: aquora-0716-native-validation
+          name: aquora-0717-native-validation
           path: ${{ runner.temp }}/results/
           retention-days: 30
       - name: Record native gate conclusion on source commit
@@ -76,7 +76,7 @@ jobs:
           state=failure
           if [ "$GATE" = success ]; then state=success; fi
           gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
-            -f state="$state" -f context=aquora-0716/native \
+            -f state="$state" -f context=aquora-0717/native \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
   installer:
@@ -89,7 +89,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
-          name: aquora-0716-native-validation
+          name: aquora-0717-native-validation
           path: native
       - name: Verify native provenance and prepare source
         run: |
@@ -103,7 +103,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/results"
           cd "$RUNNER_TEMP/source"
-          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/host.log"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.17 2>&1 | tee "$RUNNER_TEMP/results/host.log"
           printf 'master 2048\nwait 3000\ntap ARP\nwait 200\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\nwait 300\nexpect drum_tab 6\nshot drum-steps.png\nexpect drops 0\n' > "$RUNNER_TEMP/results/drum.script"
           device/build/host/sound-healing_host "$RUNNER_TEMP/results/drum.script" "$RUNNER_TEMP/results" 2>&1 | tee "$RUNNER_TEMP/results/drum.log"
       - name: Compile matching browser firmware and stage installer
@@ -116,9 +116,9 @@ jobs:
           ./emsdk activate 3.1.64
           source ./emsdk_env.sh
           cd "$RUNNER_TEMP/source"
-          python3 vendor/fm1-base/tools/build.py device --web --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/wasm.log"
+          python3 vendor/fm1-base/tools/build.py device --web --release 0.7.17 2>&1 | tee "$RUNNER_TEMP/results/wasm.log"
           node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
-          python3 vendor/fm1-base/tools/make_site.py device "$GITHUB_WORKSPACE/native/sound-healing-0.7.16.fwsc" 0.7.16 "$RUNNER_TEMP/results/installer"
+          python3 vendor/fm1-base/tools/make_site.py device "$GITHUB_WORKSPACE/native/sound-healing-0.7.17.fwsc" 0.7.17 "$RUNNER_TEMP/results/installer"
           python3 - "$RUNNER_TEMP/results/installer/install/index.html" <<'PY'
           import hashlib, json, re, sys
           from pathlib import Path
@@ -127,10 +127,10 @@ jobs:
           match = re.search(r'const meta = (\{.*?\});', html)
           assert match
           meta = json.loads(match[1])
-          assert meta['product'] == 'FM-1_73000716' and meta['version'] == '0.7.16'
+          assert meta['product'] == 'FM-1_73000717' and meta['version'] == '0.7.17'
           firmware = p.parent / meta['pkg']
           from os import environ
-          verified = Path(environ['GITHUB_WORKSPACE']) / 'native/sound-healing-0.7.16.fwsc'
+          verified = Path(environ['GITHUB_WORKSPACE']) / 'native/sound-healing-0.7.17.fwsc'
           assert firmware.read_bytes() == verified.read_bytes()
           meta['sha256'] = hashlib.sha256(firmware.read_bytes()).hexdigest()
           html = html[:match.start(1)] + json.dumps(meta) + html[match.end(1):]
@@ -146,10 +146,10 @@ jobs:
           p.write_text(html)
           print('Verified staged SHA-256', meta['sha256'])
           PY
-          node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/installer/install/index.html" "$GITHUB_WORKSPACE/native/sound-healing-0.7.16.fwsc"
+          node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/installer/install/index.html" "$GITHUB_WORKSPACE/native/sound-healing-0.7.17.fwsc"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: aquora-0716-staged-installer
+          name: aquora-0717-staged-installer
           path: ${{ runner.temp }}/results/
           retention-days: 30

@@ -7,7 +7,7 @@ static sr_engine e;
 static void check_scores(void)
 {
     for(unsigned mode=0;mode<SR_MUSIC_MODES;mode++){
-        unsigned notes=0,duets=0,zones=0;
+        unsigned notes=0,duets=0,zones=0,turns=0;
         for(unsigned scene=0;scene<SR_SCENES;scene++){
             sr_init(&e,711);
             sr_set_music_mode(&e,mode);
@@ -28,6 +28,12 @@ static void check_scores(void)
                     assert(v->track==SR_CHOIR);
                     assert(v->phase2>.16f&&v->phase2<.38f);
                     zones|=1u<<(v->sample_zone-1u);
+                    if(v->vocal_turn_rate>0.f){
+                        assert((v->sample_zone-1u)%3u==2u);
+                        assert(v->vocal_turn_first!=1.f && v->vocal_turn_second!=v->vocal_turn_first);
+                        assert(v->remain>5u*e.tick_length);
+                        turns++;
+                    }
                     new_notes++;
                 }
                 assert(active<=2u);
@@ -37,7 +43,7 @@ static void check_scores(void)
             assert(heard>0);
             notes+=heard;
         }
-        assert(notes>50&&zones!=0);
+        assert(notes>50&&(zones&0x09u)&&(zones&0x24u)&&turns>0);
         if(mode!=SR_EXPERIMENTAL)assert(duets>0);
         printf("Mode %u: %u recorded notes, %u simultaneous harmonies, zones 0x%x\n",
                mode,notes,duets,zones);
