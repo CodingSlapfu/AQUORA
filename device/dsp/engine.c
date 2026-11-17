@@ -1728,32 +1728,53 @@ static sr_voice *recorded_note(sr_engine *e,int note,unsigned zone,unsigned velo
  return voice;
 }
 
-static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
+/* Follow the existing per-song section route. Presence changes verse
+ * density while a crest and reprise keep the same recognizable hook. */
+static unsigned featured_vocal_section(const sr_engine *e,unsigned step)
 {
  if(!e->vocals_enabled||!e->vocal_presence||e->frequency_lock||e->freeze||
+    !e->tracks[SR_CHOIR].volume||e->tracks[SR_CHOIR].mute||
+    (e->isolate!=SR_ISOLATE_MIX&&e->isolate!=SR_ISOLATE_TRACK1+SR_CHOIR)||
     (e->solo<SR_TRACKS&&e->solo!=SR_CHOIR))return 0;
+ unsigned bar=score_bar(e,step);
+ unsigned family=song_section(e);
+ unsigned id=form_index(e,0);
+ if(!family||family==3u)return 0;
+ if(id==9u)return (bar&1u)?1u:0u; /* Bridge: alternate voice and band. */
+ if(family==2u||family==4u)return e->vocal_presence>=2u?2u:(bar&1u?0u:2u);
+ return (bar&3u)<e->vocal_presence?1u:0u;
+}
 
+static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
+{
+ unsigned part=featured_vocal_section(e,step);
+ if(!part)return 0;
  unsigned section=song_section(e),bar=score_bar(e,step),pos=step&15u,mode=e->music_mode;
- unsigned window=(bar+e->scene+mode)&3u;
- if(window>=e->vocal_presence) return 0;
  unsigned opening=0u, answer=6u, sustain=11u;
- if(section==3u&&e->vocal_presence<4u)return 0;
- if(pos!=opening&&pos!=sustain&&(pos!=answer||e->vocal_presence<3u||section==3u))return 0;
+ if(pos!=opening&&pos!=sustain&&(pos!=answer||part!=2u||e->vocal_presence<3u))return 0;
 
  int call=(int)chord;
- for(unsigned back=1;back<=4u&&back<=step;back++){
-   int degree=motif_degree(e,step-back);
-   if(degree>=0){call=degree;break;}
+ if(part==2u){
+   /* Reprises and climaxes quote the original song theme, even after
+      the instrumental motif has developed. Cadences keep a chord tone. */
+   unsigned hook_step=pos==opening?0u:pos==answer?4u:8u;
+   if(e->motif_home[hook_step]>=0)call=e->motif_home[hook_step];
+ }else{
+   for(unsigned back=1;back<=4u&&back<=step;back++){
+     int degree=motif_degree(e,step-back);
+     if(degree>=0){call=degree;break;}
+   }
  }
  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
  unsigned target=phrase_chord(e,step/16u+1u);
- unsigned tone=support_degree(e,chord,target,(unsigned)call,pos!=opening);
+ unsigned tone=pos==sustain&&sr_section_remaining(e)==1u?chord:
+     support_degree(e,chord,target,(unsigned)call,0);
  /* Recorded zones are A, O, U in each register. */
  unsigned vowel=pos==opening?2u:pos==sustain?0u:((bar+e->scene)&1u);
  unsigned zone=vowel+(mode==SR_CINEMATIC||((bar+pos)&1u)?3u:0u);
- unsigned velocity=(pos==answer?60u:73u)+4u*e->vocal_presence;
- float held=pos==opening?1.42f:pos==answer?.98f:1.18f;
- if(section==3u&&pos==opening)held=2.45f;
+ unsigned velocity=(pos==answer?63u:part==2u?81u:72u)+4u*e->vocal_presence;
+ float held=pos==opening?(part==2u?1.42f:1.78f):pos==answer?.74f:1.05f;
+ if(pos==sustain&&sr_section_remaining(e)==1u)held=1.27f;
  sr_voice *lead=recorded_note(e,sr_tonic(e)+scale[tone],zone,velocity,held);
  if(lead&&pos==opening&&e->vocal_presence>=3u&&((bar+e->scene)&1u)==0u){
    /* Move through two nearby scale tones on the same vowel and land
@@ -1902,11 +1923,21 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
   if(pos==0u)accompaniment(e,s/16u,chord);
-  if(e->current_energy>=.25f||(score_bar(e,s)&1u)==0u)pluck_answer(e,s,chord,degree);
-  if(!learned_active(e)&&degree>=0)
-    ornament(e,2,lead_pitch(e,degree),68-dynamic+expression,melody_duration(e,s),s,e->variation>0.f&&!e->freeze);
-  piano_phrase(e,s,chord,degree,expression);
-  recorded_vocal_phrase(e,s,chord);
+  unsigned vocal_section=featured_vocal_section(e,s);
+  if(vocal_section){
+    recorded_vocal_phrase(e,s,chord);
+    /* The voice yields a beat before the cadence. The band answers there
+       instead of queuing ornamental lead notes over the held vowels. */
+    if(pos==9u)pluck_answer(e,s,chord,-1);
+    if(pos==10u&&!learned_active(e)&&degree>=0)
+      sr_note_on(e,SR_LEAD,lead_pitch(e,degree),56+expression,.21f);
+    if(pos==0u||pos==8u)piano_phrase(e,s,chord,-1,expression-6);
+  }else{
+    if(e->current_energy>=.25f||(score_bar(e,s)&1u)==0u)pluck_answer(e,s,chord,degree);
+    if(!learned_active(e)&&degree>=0)
+      ornament(e,2,lead_pitch(e,degree),68-dynamic+expression,melody_duration(e,s),s,e->variation>0.f&&!e->freeze);
+    piano_phrase(e,s,chord,degree,expression);
+  }
   if((pos==12u&&e->current_energy>.33f&&(song_section(e)==2u||song_section(e)==4u))||
      (pos==15u&&e->current_energy>.83f&&song_section(e)==2u&&degree<0)){
     unsigned next=phrase_chord(e,s/16u+1u);
@@ -2363,7 +2394,8 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     if(op>=SR_LEGACY_PATCHES)
       config->fm_depth*=.85f+.25f*v->peak;
     config->cutoff=e->filter_cutoff?.008f+cutoff:.028f+brightness*.24f;
-    config->gain=v->sample_zone?.27f:calibrated_patch_gain(v->patch);
+    config->gain=v->sample_zone?.53f:calibrated_patch_gain(v->patch);
+    if(v->sample_zone&&!e->filter_cutoff)config->cutoff=.38f;
     config->left=left[v->track];
     config->right=right[v->track];
     config->send=send[v->track]*.5f;
@@ -2407,15 +2439,21 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
       config->step=v->phase2*turn*(1.f+.0098f*depth*sine(age*rate));
     }else config->step=(v->pitch*(1+modulation)*(1.f/SR_RATE)-v->increment)*reciprocal;
   }
-  /* Leave the sampled singer at its original gain. Duck only the
-   * competing live choir/pads and their FX sends, once per render block. */
+  /* Give the featured singer room in the midrange while leaving the
+   * bass and drums in place. Follow the note envelope for smooth release. */
   float priority=clampf(human_phrase*3.f,0.f,1.f);
   float coefficient=(float)frames*(priority>e->vocal_priority?.0010f:.00022f);
   e->vocal_priority+=(priority-e->vocal_priority)*coefficient;
   if(e->vocal_priority>.001f){
     for(unsigned i=0;i<count;i++){
       voice_config *voice=&active[i];
-      float reduction=voice->track==SR_DRONE?.24f:0.f;
+      if(voice->voice->sample_zone)continue;
+      float reduction=0.f;
+      switch(voice->track){
+        case SR_LEAD:case SR_GUITAR:reduction=.59f;break;
+        case SR_DRONE:case SR_CHOIR:reduction=.43f;break;
+        case SR_PIANO:case SR_HARMONY:reduction=.30f;break;
+      }
       if(reduction==0.f)continue;
       float gain=1.f-reduction*e->vocal_priority;
       voice->left*=gain;
@@ -2611,7 +2649,12 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
         v->filter_tail+=(v->filter-v->filter_tail)*config->cutoff;
       }
       v->filter+=(s-v->filter)*config->cutoff;
-      float z=v->filter*v->env*config->gain+v->tail;
+      float z=v->filter*v->env*config->gain;
+      if(v->sample_zone){
+        float peak=fabsf(z);
+        if(peak>.12f)z*=.40f+.072f/peak;
+      }
+      z+=v->tail;
       if(smooth_slicer&&config->track<=SR_BASS)z*=e->slicer_gain[slicer_lane(config->track)];
       v->tail*=.98f;
       l+=z*config->left;
