@@ -29,7 +29,8 @@ jobs:
           set -euo pipefail
           test "$(cat "$RUNNER_TEMP/native/source-commit.txt")" = "$SOURCE"
           test "$(git rev-parse HEAD)" = "$SOURCE"
-          test -z "$(git ls-remote --heads origin "refs/heads/$BACKUP_BRANCH")"
+          git fetch origin "refs/heads/$BACKUP_BRANCH"
+          test "$(git rev-parse FETCH_HEAD)" = "$SOURCE"
           path=validation/release-0714/assets
           mkdir -p "$path"
           cp "$RUNNER_TEMP/native/sound-healing-0.7.14.fwsc" "$path/AQUORA-0.7.14.fwsc"
