@@ -1367,6 +1367,20 @@ void sr_preview_sound(sr_engine *e,unsigned role)
   }else sr_note_on(e,role,(uint8_t)(sr_tonic(e)+(role==SR_BASS?0:24)),72,1.3f);
 }
 
+void sr_audition_vocal(sr_engine *e)
+{
+  const sr_track *vocal=&e->tracks[SR_CHOIR];
+  if(!e->vocals_enabled||vocal->mute||vocal->volume<=0.f||
+     e->frequency_lock||e->stop_frames||e->nature_audition||
+     (e->solo<SR_TRACKS&&e->solo!=SR_CHOIR)||
+     (e->isolate!=SR_ISOLATE_MIX&&e->isolate!=SR_ISOLATE_TRACK1+SR_CHOIR))return;
+  if(!e->running){
+    sr_preview_sound(e,SR_CHOIR);
+    return;
+  }
+  sr_note_on(e,SR_CHOIR,(uint8_t)(sr_tonic(e)+24),96,1.1f);
+}
+
 void sr_audition_drum(sr_engine *e,unsigned lane)
 {
   if(lane>=SR_DRUM_PARTS||e->frequency_lock||e->tracks[SR_DRUMS].mute)return;

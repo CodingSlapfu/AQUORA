@@ -205,6 +205,7 @@ void sr_set_binaural(sr_engine *e, uint8_t enabled);
 void sr_set_binaural_rate(sr_engine *e, float difference_hz);
 void sr_set_binaural_carrier(sr_engine *e, float carrier_hz);
 void sr_audition_drum(sr_engine *e,unsigned lane);
+void sr_audition_vocal(sr_engine *e);
 void sr_preview_sound(sr_engine *e, unsigned role);
 void sr_set_track_patch(sr_engine *e, uint8_t track, uint8_t patch);
 void sr_set_loop_length(sr_engine *e, uint8_t length);

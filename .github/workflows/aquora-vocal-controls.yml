@@ -1,0 +1,18 @@
+name: AQUORA vocal audition and host UI
+on:
+  push:
+    branches: [aquora-vocal-controls]
+permissions:
+  contents: read
+jobs:
+  vocals:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cc -O2 tests/vocal_audition.c -lm -o "$RUNNER_TEMP/vocal-audition"
+          "$RUNNER_TEMP/vocal-audition"
+      - run: |
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.14

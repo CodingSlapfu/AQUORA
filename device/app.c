@@ -257,7 +257,7 @@ static unsigned control_for(unsigned knob)
 {
  if(fullscreen)return knob==0?18:knob==1?145:0;
  if(debug)return knob==0?(debug==3?42:0):0;
- if(page==PAGE_VOCALS){static const uint8_t controls[3][4]={{155,156,13,28},{155,156,13,29},{163,164,165,166}};return controls[vocal_tab][knob];}
+ if(page==PAGE_VOCALS){static const uint8_t controls[2][4]={{155,156,13,29},{163,164,165,166}};return controls[vocal_tab][knob];}
  if(page==PAGE_AIR){static const uint8_t controls[][4]={{66,67,68,69},{93,94,95,0},{124,125,126,128},{0,0,0,0}};return controls[air_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
@@ -491,6 +491,7 @@ static void consume(void){
  }
  case 168:if(d>0)engine.drum_manual_mask|=1u<<c.drum_part;else if(d<0)engine.drum_manual_mask&=~(1u<<c.drum_part);break;
  case 162:sr_audition_drum(&engine,c.drum_part);break;
+ case 184:if(!interrupted)sr_audition_vocal(&engine);break;
  case 160:sr_set_auto_tempo(&engine,d<0);break;
  case 161:if(d>0)engine.expression_manual|=SR_MANUAL_ENERGY;else engine.expression_manual&=~SR_MANUAL_ENERGY;break;
  case 159:engine.drum_levels[c.drum_part]=bounded(engine.drum_levels[c.drum_part]+d*5,0,100);break;
@@ -854,7 +855,8 @@ void app_input_only(void){
  if(press&(1u<<B_REC))stop_visual_worker();
  if(press&(1u<<B_ENV))send(14,0);
  if(press&(1u<<B_FX)){
-   if(page==PAGE_DRUMS&&drum_tab>=5&&!debug)send(162,0);
+   if(page==PAGE_VOCALS&&!debug)send(184,0);
+   else if(page==PAGE_DRUMS&&drum_tab>=5&&!debug)send(162,0);
    else if(page==PAGE_MIX&&mix_tab==1&&!debug){mix_fx_detail=(mix_fx_detail+1u)%5u;dirty=1;}
    else if(page==PAGE_MIX&&!debug){
      mix_tab=mix_tab==5?0:5;
@@ -872,7 +874,7 @@ void app_input_only(void){
      group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
    }
    if(page==PAGE_AIR)air_tab=(air_tab+1)%4;
-   if(page==PAGE_VOCALS)vocal_tab=(vocal_tab+1u)%3u;
+   if(page==PAGE_VOCALS)vocal_tab^=1u;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%7;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
@@ -1317,7 +1319,7 @@ void app_frame(void)
     int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
     int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
     int live_air=page==PAGE_AIR&&(air_on||engine.air_target>.0001f||engine.air_wet>.0001f);
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||(page==PAGE_VOCALS&&engine.running)||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||live_air||(page==PAGE_VOCALS&&(engine.running||engine.preview_frames))||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
     if(animate&&page==0){
       if(elapsed>=FRAME_MIN_MS)missed+=elapsed/FRAME_MIN_MS-1u;
 

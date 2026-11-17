@@ -1250,22 +1250,12 @@ static int draw(int animate)
    }
    else if(page==PAGE_VOCALS){
      const sr_track *track=&engine.tracks[SR_CHOIR];
-     if(!vocal_tab&&band<4){
-       k9_face_render(cv_px,48u*band,48,&vocal_pose);
-     }else if(vocal_tab==1&&band>=1&&band<=3){
-       int16_t samples[128];
-       unsigned flags=plat_lock(),start=engine.scope_write;
-       for(unsigned i=0;i<128;i++)samples[i]=engine.scope[(start+i)&127u];
-       plat_unlock(flags);
-       int previous=120-band*48;
-       for(unsigned i=0;i<128;i++){
-         int y=120-band*48-(int)samples[i]/460;
-         cv_line(7+(int)i*225/128,previous,7+(int)(i+1)*225/128,y,RGB(203,112,255));
-         previous=y;
-       }
+     if(!vocal_tab&&band<4)k9_face_render(cv_px,48u*band,48,&vocal_pose);
+     if(band==0){
+       limited_text(8,1,226,&FONT_XS,vocal_tab?"VOCAL EFFECTS":"KIRA-9 VOCALS",RGB(228,182,255));
+       if(vocal_tab)limited_text(8,24,224,&FONT_XS,"EDIT: VOCALS   FX: AUDITION",skin_text());
      }
-     if(band==0)graph_text(7,3,vocal_tab==2?"VOCALS / EFFECTS":vocal_tab?"VOCALS / SIGNAL":"VOCALS / KIRA-9",RGB(228,182,255));
-     if(vocal_tab==2&&band==2){
+     if(vocal_tab&&band==2){
        for(unsigned k=0;k<4;k++){
          char buf[16];const char *name;
          const char *value=knob_value(control_for(k),&name,buf);
@@ -1274,9 +1264,15 @@ static int draw(int animate)
        }
      }
      if(band==4){
-       graph_text(8,2,track->mute?"MUTED":engine.vocals_enabled?"VOCALS ON":"VOCALS OFF",RGB(228,182,255));
-       graph_text(126,2,vocal_tab==2?"EDIT 3/3":vocal_tab?"EDIT 2/3":"EDIT 1/3",RGB(228,182,255));
-       graph_text(8,20,vocal_tab==2?"CHORUS   ROOM   ECHO   TUNE":vocal_tab?"ON   ACTIVITY   GAIN   SEND":"ON   ACTIVITY   GAIN   SOLO",RGB(225,248,255));
+       if(!vocal_tab)for(unsigned k=0;k<4;k++){
+         static const char *const names[]={"VOCALS","PRESENCE","LEVEL","FX SEND"};
+         char buf[16];const char *name;
+         const char *value=knob_value(control_for(k),&name,buf);
+         if(k==0&&track->mute)value="Muted";
+         limited_text(6+59*k,1,57,&FONT_T,names[k],skin_dim());
+         limited_text(6+59*k,14,57,&FONT_T,value,skin_text());
+       }
+       limited_text(7,31,226,&FONT_T,vocal_tab?"SELECT: MUTE / UNMUTE":"FX: AUDITION  EDIT: FX  SEL: MUTE",RGB(228,182,255));
      }
    }
    else if(water_visible){
