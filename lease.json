@@ -1,7 +1,7 @@
 {
-  "owner": "work-0714-final-publication",
-  "epoch": 31,
-  "released": true,
-  "expires": 1794882131,
-  "checkpoint": "c8f550fb5ba4289c25ee02a2c22ef6998523ed6e"
+  "owner": "work-0720-testing-installer",
+  "epoch": 32,
+  "released": false,
+  "expires": 1794900278,
+  "checkpoint": "3ecd2a0794bb26e496e6380732ee4f27af43b661"
 }
