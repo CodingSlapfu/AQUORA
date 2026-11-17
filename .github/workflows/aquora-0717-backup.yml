@@ -1,0 +1,46 @@
+name: AQUORA v0.7.17 verified asset backup
+on:
+  push:
+    branches: [aquora-vocal-controls]
+    paths: [.github/workflows/aquora-0717-backup.yml]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 898b6f0934cffc3713bf7053d5654b3f853b24c0
+      - uses: actions/download-artifact@v4
+        with:
+          name: aquora-0717-native-validation
+          github-token: ${{ github.token }}
+          run-id: 44010283307
+          path: ${{ runner.temp }}/native
+      - name: Back up the verified FWSC on a dedicated Git branch
+        env:
+          SOURCE: 898b6f0934cffc3713bf7053d5654b3f853b24c0
+          SHA256: 004c6739aab33b455ce954482d06031558899648392133239002e21676039a5d
+          BACKUP_BRANCH: aquora-v0.7.17-testing-backup
+        run: |
+          set -euo pipefail
+          test "$(cat "$RUNNER_TEMP/native/source-commit.txt")" = "$SOURCE"
+          test "$(git rev-parse HEAD)" = "$SOURCE"
+          git fetch origin "refs/heads/$BACKUP_BRANCH"
+          test "$(git rev-parse FETCH_HEAD)" = "$SOURCE"
+          path=validation/release-0717/assets
+          mkdir -p "$path"
+          cp "$RUNNER_TEMP/native/sound-healing-0.7.17.fwsc" "$path/AQUORA-0.7.17.fwsc"
+          printf '%s  AQUORA-0.7.17.fwsc\n' "$SHA256" > "$path/SHA256SUMS"
+          (cd "$path" && sha256sum --check --strict SHA256SUMS)
+          git config user.name 'AQUORA GitHub Actions'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$path"
+          git commit -m 'Back up verified AQUORA FM-1_73000717 candidate'
+          git push origin "HEAD:refs/heads/$BACKUP_BRANCH"
+          git fetch origin "refs/heads/$BACKUP_BRANCH"
+          test "$(git rev-parse FETCH_HEAD)" = "$(git rev-parse HEAD)"
+          git cat-file blob "FETCH_HEAD:$path/AQUORA-0.7.17.fwsc" | sha256sum
