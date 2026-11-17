@@ -1189,7 +1189,7 @@ static void play_key(sr_engine *e,uint8_t track,unsigned key,unsigned tap)
     unsigned zone=e->vocal_play?key%3u+(note>66u?3u:0u):0u;
     unsigned consonant=0,transition=0;
     if(e->vocal_articulation)zone=vocal_articulation(e->vocal_articulation,key,&consonant,&transition);
-    sr_voice *voice=track==SR_CHOIR?recorded_live_note(e,note,zone,96,1.f):
+    sr_voice *voice=track==SR_CHOIR&&e->vocals_enabled&&e->vocal_play?recorded_live_note(e,note,zone,96,1.f):
         note_on(e,track,note,96,1.f);
     if(voice){
       voice->vocal_consonant=consonant;
