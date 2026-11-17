@@ -52,7 +52,7 @@ extern uint32_t plat_aquora_boot_seed(void);
 static unsigned quick_item;
 static const char *quick_names[]={"Drums","Mixer","Motion","Groove","Vocals","Banks","Performance","Play Along","FX / Nature",
  "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate","Nature Style","Evolution","Master FX","Track Routing"};
-static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14,16,17};
+static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14,16};
 
 static volatile unsigned intro_active;
 static unsigned intro_start, intro_samples, intro_master;
@@ -234,9 +234,14 @@ static void mix_select(int delta)
 static unsigned vocal_tab, mix_fx_detail;
 static unsigned control_for(unsigned knob)
 {
- if(fullscreen)return knob==0?18:knob==1?145:0;
+ if(fullscreen){static const uint8_t controls[]={138,188,18,189};return controls[knob];}
  if(debug)return knob==0?(debug==3?42:0):0;
- if(page==PAGE_VOCALS){static const uint8_t controls[2][4]={{155,156,185,186},{163,164,165,166}};return controls[vocal_tab][knob];}
+ if(page==PAGE_VOCALS){static const uint8_t controls[7][4]={
+   {155,156,185,186},{164,210+VF_DECAY,210+VF_DAMPING,210+VF_WIDTH},
+   {165,210+VF_TIME,210+VF_FEEDBACK,210+VF_TONE},
+   {163,210+VF_RATE,210+VF_PHASER,210+VF_FLANGER},
+   {210+VF_VIB_RATE,210+VF_VIB_DEPTH,210+VF_VIB_WAIT,210+VF_GLIDE},
+   {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{190,0,0,226}};return controls[vocal_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
    return controls[drum_tab][knob];
@@ -319,6 +324,13 @@ static void consume(void){
  if(c.kind!=200||(((uint32_t)c.value>>8)&255u)!=0xf8)state_revision++;
  measure(&control_queue_timing[!!engine.running],(plat_ms()-c.captured_ms)*100u);
  command_applied++;
+ if(c.kind>=210u&&c.kind<210u+VF_COUNT){
+   unsigned param=c.kind-210u,bit=1u<<param;
+   int old=(engine.vocal_param_lock&bit)?engine.vocal_param[param]:(int)(engine.vocal_param_now[param]+.5f);
+   engine.vocal_param[param]=bounded(old+d*5,0,100);
+   engine.vocal_param_lock|=bit;
+   continue;
+ }
  switch(c.kind){
  case 200:midi_receive_audio((uint32_t)c.value);play=requested_play;break;
  case 201:midi_panic();sr_midi_panic(&engine);
@@ -350,7 +362,15 @@ static void consume(void){
  case 155:sr_set_vocals(&engine,switched(engine.vocals_enabled,d),engine.vocal_presence);break;
  case 156:sr_set_vocals(&engine,engine.vocals_enabled,bounded((int)engine.vocal_presence+d,1,4));break;
  case 187:engine.slicer_style=bounded((int)engine.slicer_style+d,0,7);break;
- case 154:engine.slicer_mask=bounded((int)engine.slicer_mask+d,0,7);break;
+ case 188:
+   if(d){engine.energy=adjust(engine.energy,d,.10f,1);sr_arrange_queue(&engine,d>0?20u:10u,1);}
+   break;
+ case 189:
+   if(d){sr_set_vocals(&engine,d>0,engine.vocal_presence);if(d>0){engine.vocal_entry_pending=1;engine.vocal_reprise=1;}}
+   break;
+ case 226:if(d>0){engine.vocal_param_lock=engine.vocal_fx_manual=0;engine.vocal_tune=0;}break;
+ case 190:engine.vocal_play=bounded(engine.vocal_play+d,0,2);break;
+ case 154:engine.slicer_mask=bounded((int)engine.slicer_mask+d,0,15);break;
  case 137:arrange_browse=bounded((int)arrange_browse+d,0,7);break;
  case 138:{unsigned id=engine.arrange_next?engine.arrange_next-1u:sr_arrange_section(&engine,1);sr_arrange_queue(&engine,bounded((int)id+d,0,31),engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u);break;}
  case 139:{unsigned len=engine.arrange_length?engine.arrange_length:2u+sr_scenes[engine.scene].energy%3u;sr_arrange_queue(&engine,engine.arrange_next?engine.arrange_next-1u:sr_arrange_section(&engine,1),bounded((int)len+d,1,16));break;}
@@ -844,7 +864,7 @@ void app_input_only(void){
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
      group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
    }
-   if(page==PAGE_VOCALS)vocal_tab^=1u;
+   if(page==PAGE_VOCALS)vocal_tab=(vocal_tab+1u)%7u;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%7;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */

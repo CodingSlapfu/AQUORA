@@ -345,13 +345,31 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 110:*name="MIDI CONTROLS";return onoff(midi.settings.controls_out);
  case 152:*name="CUTOFF";if(!engine.filter_cutoff)return "Patch";number=engine.filter_cutoff;break;
  case 153:*name="RESONANCE";number=engine.filter_resonance;break;
+ case 226:*name="RESET FX";return "AUTO >";
+ case 210: case 211: case 212: case 213: case 214: case 215: case 216: case 217: case 218: case 219: case 220: case 221: case 222: case 223: case 224: case 225:{
+   static const char *const labels[]={"DECAY","DAMP","WIDTH","TIME","FEEDBACK","TONE",
+     "RATE","PHASER","FLANGER","VIB RATE","VIB DEPTH","VIB ONSET","GLIDE",
+     "PRESENCE","COMP","MAKEUP"};
+   unsigned param=id-210u;
+   *name=labels[param];
+   if(!(engine.vocal_param_lock&(1u<<param)))return "Auto";
+   number=engine.vocal_param[param];break;
+ }
+ case 188:*name="BUILD";return sr_arrange_name(&engine,1);
+ case 189:*name="VOCAL HOOK";return engine.vocals_enabled?"ON":"OFF";
+ case 190:{
+   static const char *const modes[]={"AUTO","PLAY ALONG","AUTO + PLAY"};
+   *name="VOCAL MODE";return modes[engine.vocal_play];
+ }
  case 187:{
    static const char *const styles[]={"AUTO","SMOOTH PULSE","RHYTHMIC GATE","GROOVE CHOP",
                                      "IDM GLITCH","TRIPLET SYNC","STUTTER FILL","CINEMATIC"};
    *name="STYLE";return styles[engine.slicer_style];
  }
  case 154:{
-   static const char *names[]={"Off","Lead","Bass","Lead + Bass","Drums","Lead + Drums","Bass + Drums","All 3"};
+   static const char *names[]={"OFF","LEAD","BASS","LEAD+BASS","DRUMS","LEAD+DRUM",
+     "BASS+DRUM","BAND","VOCALS","VOX+LEAD","VOX+BASS","VOX+L+B",
+     "VOX+DRUM","VOX+L+D","VOX+B+D","ALL"};
    *name="GATE TRACKS";return names[engine.slicer_mask];
  }
  case 149:case 150:case 151:{
@@ -1131,7 +1149,8 @@ static int draw(int animate)
    unsigned flags=plat_lock();
    vocal_pose=k9_recorded_vocal_pose(&engine);
    plat_unlock(flags);
-   vocal_pose.blink=plat_ms()%3900u<100u?255:0;
+   unsigned blink=plat_ms()%3959u;
+   vocal_pose.blink=blink<75u?255:blink<130u?130:0;
  }
  for(;display_strip<5;display_strip++){
    int band=display_first?control_first[display_strip]:display_strip;
@@ -1247,8 +1266,11 @@ static int draw(int animate)
      const sr_track *track=&engine.tracks[SR_CHOIR];
      if(!vocal_tab&&band<4)k9_face_render_canvas(cv_px,48u*band,48,&vocal_pose);
      if(band==0){
-       limited_text(8,1,226,&FONT_XS,vocal_tab?"VOCAL EFFECTS":"KIRA-9 VOCALS",RGB(228,182,255));
-       if(vocal_tab)limited_text(8,24,224,&FONT_XS,"EDIT: VOCALS   FX: AUDITION",skin_text());
+       static const char *const title[]={"KIRA-9 VOCALS","VOCAL FX 1/5 SPACE",
+         "VOCAL FX 2/5 ECHO","VOCAL FX 3/5 MODULATION","VOCAL FX 4/5 EXPRESSION",
+         "VOCAL FX 5/5 TONE + TUNING","VOCAL PLAY ALONG"};
+       limited_text(8,1,226,&FONT_XS,title[vocal_tab],RGB(228,182,255));
+       if(vocal_tab)limited_text(8,24,224,&FONT_XS,"EDIT: NEXT   FX: AUDITION",skin_text());
      }
      if(vocal_tab&&band==2){
        for(unsigned k=0;k<4;k++){
@@ -1267,7 +1289,7 @@ static int draw(int animate)
          limited_text(6+59*k,1,57,&FONT_T,names[k],skin_dim());
          limited_text(6+59*k,14,57,&FONT_T,value,skin_text());
        }
-       limited_text(7,31,226,&FONT_T,vocal_tab?"SELECT: MUTE / UNMUTE":"FX: AUDITION  EDIT: FX  SEL: MUTE",RGB(228,182,255));
+       limited_text(7,31,226,&FONT_T,vocal_tab?"EDIT: NEXT   SELECT: MUTE":"FX: AUDITION  EDIT: FX  SEL: MUTE",RGB(228,182,255));
      }
    }
    else if(water_visible){

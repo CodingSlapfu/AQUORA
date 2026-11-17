@@ -36,6 +36,9 @@ enum {SR_ISOLATE_MIX, SR_ISOLATE_TRACK1, SR_ISOLATE_FIXED=SR_TRACKS+1,
       SR_ISOLATE_SACRED, SR_ISOLATE_BINAURAL, SR_ISOLATE_NATURE, SR_ISOLATE_FX};
 typedef enum {SR_SINE, SR_TRI, SR_HOLLOW, SR_REED, SR_PLUCK, SR_CHOIR_WAVE} sr_wave;
 typedef struct { const char *name; sr_wave wave; float attack, release, brightness, gain; } sr_patch;
+enum { VF_DECAY,VF_DAMPING,VF_WIDTH,VF_TIME,VF_FEEDBACK,VF_TONE,
+       VF_RATE,VF_PHASER,VF_FLANGER,VF_VIB_RATE,VF_VIB_DEPTH,VF_VIB_WAIT,
+       VF_GLIDE,VF_PRESENCE,VF_COMP,VF_MAKEUP,VF_COUNT };
 typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance, tonic, frequency; } sr_scene;
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
@@ -80,7 +83,7 @@ typedef struct {
   float wind_lp, rain_lp, limiter, dc_x, dc_y, low_bass;
   float drum_level, drum_meter, kick_phase, kick_env, kick_previous, kick_attack, hand_phase, hand_env;
   float shaker_env, shaker_lp, hand_noise_lp;
-  float drum_part_gain[3], slicer_gain[3];
+  float drum_part_gain[3], slicer_gain[4];
   uint8_t filter_cutoff, filter_resonance, slicer_mask, slicer_style;
   uint16_t drum_mutes, drum_active;
   uint16_t drum_manual_mask, drum_pattern[SR_DRUM_PARTS];
@@ -90,7 +93,8 @@ typedef struct {
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;
   float speaker_low, speaker_body, speaker_mix;
-  uint8_t speaker_enabled,vocals_enabled,vocal_presence;
+  uint8_t speaker_enabled,vocals_enabled,vocal_presence,vocal_play;
+  uint8_t vocal_hook[3],vocal_reprise;
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune,vocal_fx_manual;
   uint8_t vocal_level,vocal_fx_send,vocal_entry_pending,vocal_call;
   uint8_t track_send_manual;
@@ -101,6 +105,10 @@ typedef struct {
   float vocal_fx_left,vocal_fx_right,vocal_fx_input;
   float vocal_room_now,vocal_echo_now,vocal_chorus_now,vocal_send_now;
   uint32_t vocal_fx_tail;
+  uint16_t vocal_param_lock;
+  uint8_t vocal_param[VF_COUNT];
+  float vocal_param_now[VF_COUNT];
+  float vocal_fx_tone,vocal_phaser_in,vocal_phaser_out,vocal_fx_phase,vocal_pitch_last;
   float lock_phase;
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;

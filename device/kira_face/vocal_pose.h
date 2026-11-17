@@ -23,6 +23,8 @@ static inline k9_face k9_recorded_vocal_pose(const sr_engine *e)
     if(pose.mouth==4u)pose.open=pose.jaw=0;
     pose.neck=pose.open/17u+(e->vocal_face_sustain&&pose.open>=16u);
     pose.brow=(e->vocal_face_midi>68?2:0)+pitch_motion;
+    pose.gaze=e->vocal_face_sustain?0:(e->vocal_face_pitch_ratio>1.06f?1:
+              e->vocal_face_pitch_ratio<.94f?-1:0);
     return pose;
 }
 #endif

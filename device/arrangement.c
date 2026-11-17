@@ -334,8 +334,8 @@ static void arrangement_apply(const arrangement *record)
     unsigned effects=record->version>=AQ_BANK_V4&&(record->reserved&0x8000u)?record->reserved:0u;
     engine.filter_cutoff=(effects>>2u)&15u;
     engine.filter_resonance=(effects>>6u)&15u;
-    engine.slicer_mask=(effects>>10u)&7u;
-    for(unsigned lane=0;lane<3;lane++)engine.slicer_gain[lane]=1.f;
+    engine.slicer_mask=(effects>>10u)&15u;
+    for(unsigned lane=0;lane<4;lane++)engine.slicer_gain[lane]=1.f;
     engine.motion_manual=record->version>=AQ_BANK_V4?record->motion_manual:sr_legacy_motion_manual(record->motion,record->scene);
     for(unsigned role=0;role<2;role++)
         if(!(engine.motion_manual&(1u<<role)))sr_motion_auto(&engine,role,1);
