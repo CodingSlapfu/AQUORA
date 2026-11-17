@@ -1,0 +1,153 @@
+name: AQUORA v0.7.16 native and UI validation
+on:
+  push:
+    branches: [aquora-vocal-controls]
+    paths:
+      - device/**
+      - .github/workflows/aquora-0716-candidate.yml
+permissions:
+  contents: read
+  actions: read
+  statuses: write
+concurrency:
+  group: aquora-0716-native
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check audition, portrait, Mixer FX and transport
+        run: |
+          set -euo pipefail
+          cc -O2 tests/vocal_portrait_0714.c device/kira_face.c -lm -o "$RUNNER_TEMP/portrait"
+          "$RUNNER_TEMP/portrait"
+          for t in vocal_audition recorded_vocals_0711 vocal_fx_0714 mixer_texture_0714 drum_patterns_0714 drum_kits_0714; do
+            cc -O2 -Idevice/dsp "tests/$t.c" -lm -o "$RUNNER_TEMP/$t"
+            "$RUNNER_TEMP/$t"
+          done
+          cc -O2 -Idevice/dsp tests/transport_hit.c device/dsp/engine.c -lm -o "$RUNNER_TEMP/transport"
+          "$RUNNER_TEMP/transport"
+      - name: Prepare source and pinned JieLi compiler
+        run: |
+          set -euo pipefail
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          mkdir -p "$RUNNER_TEMP/results" "$RUNNER_TEMP/jieli"
+          python3 -m pip install Pillow==11.3.0
+          curl --fail --location --max-time 180 -o "$RUNNER_TEMP/jieli.tar.xz" https://jl-update.oss-cn-shenzhen.aliyuncs.com/jieli-linux-toolchains-20260730.1.tar.xz
+          echo "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd  $RUNNER_TEMP/jieli.tar.xz" | sha256sum -c --strict
+          tar --no-same-owner -xf "$RUNNER_TEMP/jieli.tar.xz" -C "$RUNNER_TEMP/jieli"
+      - name: Build and reproduce native checkpoint
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          export AC79_SDK="$PWD/vendor/ac79-package-files"
+          export JIELI_TOOLCHAIN="$RUNNER_TEMP/jieli/jieli-linux-toolchains-20260730.1"
+          python3 vendor/fm1-base/tools/build.py device --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/native.log"
+          grep -F FM-1_73000716 "$RUNNER_TEMP/results/native.log"
+          cp device/build/sound-healing-0.7.16.fwsc "$RUNNER_TEMP/results/"
+          python3 vendor/fm1-base/tools/build.py device --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/repro.log"
+          cmp device/build/sound-healing-0.7.16.fwsc "$RUNNER_TEMP/results/sound-healing-0.7.16.fwsc"
+          (cd "$RUNNER_TEMP/results" && sha256sum sound-healing-0.7.16.fwsc > SHA256SUMS)
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/results/source-commit.txt"
+      - name: Compile host UI and render vocal and drum pages
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/host.log"
+          python3 tests/latency_075.py "$PWD/device/build/host/sound-healing_host" "$RUNNER_TEMP/results/latency"
+          printf 'master 2048\nwait 3000\ntap HOME\nturn ALGO 7\nwait 500\nshot vocals.png\ntap HOME\nturn ALGO 3\nwait 200\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\nwait 200\nshot drums.png\nexpect drops 0\n' > "$RUNNER_TEMP/results/ui.script"
+          device/build/host/sound-healing_host "$RUNNER_TEMP/results/ui.script" "$RUNNER_TEMP/results" 2>&1 | tee "$RUNNER_TEMP/results/ui.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-0716-native-validation
+          path: ${{ runner.temp }}/results/
+          retention-days: 30
+      - name: Record native gate conclusion on source commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GATE: ${{ job.status }}
+        run: |
+          state=failure
+          if [ "$GATE" = success ]; then state=success; fi
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state="$state" -f context=aquora-0716/native \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+  installer:
+    needs: native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: aquora-0716-native-validation
+          path: native
+      - name: Verify native provenance and prepare source
+        run: |
+          set -euo pipefail
+          test "$(cat native/source-commit.txt)" = "$GITHUB_SHA"
+          (cd native && sha256sum -c --strict SHA256SUMS)
+          bash tools/prepare_next_source.sh "$RUNNER_TEMP/source"
+          python3 -m pip install Pillow==11.3.0
+      - name: Render and verify the drum step editor
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/results"
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --host --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/host.log"
+          printf 'master 2048\nwait 3000\ntap ARP\nwait 200\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\ntap EDIT\nwait 300\nexpect drum_tab 6\nshot drum-steps.png\nexpect drops 0\n' > "$RUNNER_TEMP/results/drum.script"
+          device/build/host/sound-healing_host "$RUNNER_TEMP/results/drum.script" "$RUNNER_TEMP/results" 2>&1 | tee "$RUNNER_TEMP/results/drum.log"
+      - name: Compile matching browser firmware and stage installer
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/results"
+          git clone --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          cd "$RUNNER_TEMP/emsdk"
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+          source ./emsdk_env.sh
+          cd "$RUNNER_TEMP/source"
+          python3 vendor/fm1-base/tools/build.py device --web --release 0.7.16 2>&1 | tee "$RUNNER_TEMP/results/wasm.log"
+          node -e 'new WebAssembly.Module(require("fs").readFileSync(process.argv[1]))' device/build/emu/app.wasm
+          python3 vendor/fm1-base/tools/make_site.py device "$GITHUB_WORKSPACE/native/sound-healing-0.7.16.fwsc" 0.7.16 "$RUNNER_TEMP/results/installer"
+          python3 - "$RUNNER_TEMP/results/installer/install/index.html" <<'PY'
+          import hashlib, json, re, sys
+          from pathlib import Path
+          p = Path(sys.argv[1])
+          html = p.read_text()
+          match = re.search(r'const meta = (\{.*?\});', html)
+          assert match
+          meta = json.loads(match[1])
+          assert meta['product'] == 'FM-1_73000716' and meta['version'] == '0.7.16'
+          firmware = p.parent / meta['pkg']
+          from os import environ
+          verified = Path(environ['GITHUB_WORKSPACE']) / 'native/sound-healing-0.7.16.fwsc'
+          assert firmware.read_bytes() == verified.read_bytes()
+          meta['sha256'] = hashlib.sha256(firmware.read_bytes()).hexdigest()
+          html = html[:match.start(1)] + json.dumps(meta) + html[match.end(1):]
+          hook = '    if (productOf(pkg) !== meta.product)'
+          assert html.count(hook) == 1
+          assert html.count('let writing = false;') == 1
+          html = html.replace('let writing = false;', '''async function candidateHashOk(raw) {
+            const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", raw)), b => b.toString(16).padStart(2, "0")).join("");
+            return hash === meta.sha256;
+          }
+          let writing = false;''')
+          html = html.replace(hook, '    if (!await candidateHashOk(pkg)) { sayK("badpkg"); return; }\n' + hook)
+          p.write_text(html)
+          print('Verified staged SHA-256', meta['sha256'])
+          PY
+          node tests/installer_hash_070.mjs "$RUNNER_TEMP/results/installer/install/index.html" "$GITHUB_WORKSPACE/native/sound-healing-0.7.16.fwsc"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aquora-0716-staged-installer
+          path: ${{ runner.temp }}/results/
+          retention-days: 30

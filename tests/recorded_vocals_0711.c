@@ -12,7 +12,8 @@ static void check_scores(void)
             sr_init(&e,711);
             sr_set_music_mode(&e,mode);
             sr_set_scene(&e,scene);
-            assert(e.vocals_enabled);
+            assert(!e.vocals_enabled && e.vocal_presence==4);
+            sr_set_vocals(&e,1,4);
             sr_start(&e);
             unsigned heard=0;
             for(unsigned n=0;n<4096;n++){

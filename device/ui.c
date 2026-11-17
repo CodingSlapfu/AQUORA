@@ -372,7 +372,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 167:*name="HIT";return (engine.drum_pattern[drum_part]&(1u<<drum_edit_step))?"ON":"OFF";
  case 168:*name="LANE MODE";return (engine.drum_manual_mask&(1u<<drum_part))?"MANUAL":"AUTO";
  case 163:*name="CHORUS %";number=engine.vocal_chorus;break;
- case 164:*name="ROOM %";number=engine.vocal_reverb;break;
+ case 164:*name="REVERB %";number=engine.vocal_reverb;break;
  case 166:*name="TUNE %";number=engine.vocal_tune;break;
  case 165:*name="ECHO %";number=engine.vocal_delay;break;
  case 155:*name="RECORDED VOCALS";return engine.vocals_enabled?"On":"Off";
@@ -1236,7 +1236,15 @@ static int draw(int animate)
    }
    else if(page==PAGE_VOCALS){
      const sr_track *track=&engine.tracks[SR_CHOIR];
-     if(!vocal_tab&&band<4)k9_face_render(cv_px,48u*band,48,&vocal_pose);
+     if(!vocal_tab&&band<4){
+       k9_face_render(cv_px,48u*band,48,&vocal_pose);
+       /* Standalone KIRA art is packed as canonical RGB565. Convert the
+          portrait through the same format as the LCD canvas primitives. */
+       for(unsigned i=0;i<240u*48u;i++){
+         unsigned c=cv_px[i];
+         cv_px[i]=RGB(((c>>11)&31u)<<3,((c>>5)&63u)<<2,(c&31u)<<3);
+       }
+     }
      if(band==0){
        limited_text(8,1,226,&FONT_XS,vocal_tab?"VOCAL EFFECTS":"KIRA-9 VOCALS",RGB(228,182,255));
        if(vocal_tab)limited_text(8,24,224,&FONT_XS,"EDIT: VOCALS   FX: AUDITION",skin_text());
