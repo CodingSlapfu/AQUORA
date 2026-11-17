@@ -44,7 +44,7 @@ static unsigned preferences_saving, preferences_generation, preferences_saved_ms
 static unsigned preferences_snapshot_generation;
 #endif
 static unsigned ui_theme, ui_font_size=2, ui_background, preferences_dirty, preferences_changed;
-enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_VOCALS=7 };
+enum { PAGE_PLAY, PAGE_SOUND, PAGE_EVOLVE, PAGE_MIX, PAGE_DRUMS, PAGE_SETUP, PAGE_GATE, PAGE_VOCALS };
 static unsigned boot_armed,boot_starts;
 #ifndef PLAT_HOST
 extern uint32_t plat_aquora_boot_seed(void);
@@ -52,7 +52,7 @@ extern uint32_t plat_aquora_boot_seed(void);
 static unsigned quick_item;
 static const char *quick_names[]={"Drums","Mixer","Motion","Groove","Vocals","Banks","Performance","Play Along","FX / Nature",
  "Patch Shape","Frequency","Binaural","Sacred Bass","New Song","Display / LEDs","About","Source Isolate","Nature Style","Evolution","Master FX","Track Routing"};
-static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14,16};
+static const uint8_t sound_groups[]={0,6,15,1,2,3,5,7,12,11,13,14};
 
 static volatile unsigned intro_active;
 static unsigned intro_start, intro_samples, intro_master;
@@ -236,6 +236,7 @@ static unsigned control_for(unsigned knob)
 {
  if(fullscreen){static const uint8_t controls[]={138,188,18,189};return controls[knob];}
  if(debug)return knob==0?(debug==3?42:0):0;
+ if(page==PAGE_GATE)return sound_controls[16][knob];
  if(page==PAGE_VOCALS){static const uint8_t controls[8][4]={
    {155,156,185,186},{164,210+VF_DECAY,210+VF_DAMPING,210+VF_WIDTH},
    {165,210+VF_TIME,210+VF_FEEDBACK,210+VF_TONE},
@@ -892,7 +893,7 @@ void app_input_only(void){
    send(136,i|((physical_keys&(1u<<i))?0:32));
  oldkeys=k;
  int d=enc[0];
- if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_VOCALS);if(page==6)page=d>0?PAGE_VOCALS:PAGE_SETUP;sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
+ if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_VOCALS);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
  static unsigned role_page=~0u;
  if(page==PAGE_MIX&&role_page!=PAGE_MIX&&mix_tab!=4)mix_focus=selected;
  role_page=page;
@@ -1260,7 +1261,7 @@ void app_frame(void)
     int live_sound=page==PAGE_SOUND&&!sound_picker&&(engine.running||engine.preview_frames||engine.external_audio);
     int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
     int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||(page==PAGE_VOCALS&&(engine.running||engine.preview_frames))||(page==PAGE_DRUMS&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||(page==PAGE_VOCALS&&(engine.running||engine.preview_frames))||((page==PAGE_DRUMS||page==PAGE_GATE)&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
     if(animate&&page==0){
       if(elapsed>=FRAME_MIN_MS)missed+=elapsed/FRAME_MIN_MS-1u;
 
@@ -1292,6 +1293,9 @@ int app_expect(const char *what,int *got){
   }*got=1;return 1;
  }
  if(!strcmp(what,"vocals")){*got=engine.vocals_enabled;return 1;}
+ if(!strcmp(what,"vocal_status")){*got=sr_vocal_status(&engine);return 1;}
+ if(!strcmp(what,"vocal_starts")){*got=engine.vocal_started;return 1;}
+ if(!strcmp(what,"vocal_audio_frames")){*got=engine.vocal_audio_frames;return 1;}
  if(!strcmp(what,"vocal_live")){*got=engine.vocal_face_peak*engine.master>.0005f;return 1;}
  if(!strcmp(what,"vocal_level")){*got=engine.vocal_level;return 1;}
  if(!strcmp(what,"vocal_fx_send")){*got=engine.vocal_fx_send;return 1;}

@@ -94,7 +94,9 @@ typedef struct {
   float binaural_phase_l, binaural_phase_r;
   float speaker_low, speaker_body, speaker_mix;
   uint8_t speaker_enabled,vocals_enabled,vocal_presence,vocal_play;
-  uint8_t vocal_hook[3],vocal_reprise;
+  uint8_t vocal_hook[3],vocal_reprise,vocal_auto_ready;
+  uint32_t vocal_started,vocal_rejected,vocal_reclaimed,vocal_recovered,vocal_audio_frames;
+  float vocal_direct_peak;
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune,vocal_fx_manual;
   uint8_t vocal_level,vocal_fx_send,vocal_entry_pending,vocal_call;
   uint8_t track_send_manual;
@@ -207,6 +209,9 @@ void sr_set_frequency(sr_engine *e, uint8_t frequency);
 void sr_set_perfect_key(sr_engine *e, uint8_t enabled);
 void sr_set_tuning_432(sr_engine *e, uint8_t enabled);
 void sr_set_drums(sr_engine *e, uint8_t enabled);
+enum {SR_VOCAL_READY,SR_VOCAL_OFF,SR_VOCAL_STOPPED,SR_VOCAL_LOCKED,
+      SR_VOCAL_LEVEL,SR_VOCAL_MUTED,SR_VOCAL_SOLO,SR_VOCAL_ISOLATED,SR_VOCAL_MANUAL};
+unsigned sr_vocal_status(const sr_engine *e);
 void sr_set_vocals(sr_engine *e,unsigned enabled,unsigned presence);
 float sr_patch_preview(const sr_track *track,float phase);
 float sr_patch_envelope(const sr_track *track,float seconds,int releasing);

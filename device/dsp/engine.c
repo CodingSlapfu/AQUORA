@@ -6,7 +6,7 @@
 #define fabsf(x) ((x)<0.f?-(x):(x))
 #define fmaxf(a,b) ((a)>(b)?(a):(b))
 #define floorf fm_floorf
-#define isfinite(x) (fm_fabsf(x) <= 3.402823466e38f)
+#define isfinite(x) ((x)>=-3.402823466e38f&&(x)<=3.402823466e38f)
 extern void *memset(void *, int, size_t);
 extern void *memcpy(void *, const void *, size_t);
 #else
@@ -1760,13 +1760,27 @@ static sr_voice *recorded_note(sr_engine *e,int note,unsigned zone,unsigned velo
  if(!e->vocals_enabled||zone>VOCAL_YOU_ZONE)return 0;
  unsigned occupied=0;
  for(unsigned i=0;i<SR_VOICES;i++)occupied+=e->voices[i].active&&e->voices[i].sample_zone!=0;
- if(occupied>=2u)return 0;
+ float interrupted_tail=0.f;
+ if(occupied>=2u){
+   sr_voice *released=0;
+   for(unsigned i=0;i<SR_VOICES;i++){
+     sr_voice *candidate=&e->voices[i];
+     if(candidate->active&&candidate->sample_zone&&!candidate->gate&&
+        (!released||candidate->env<released->env))released=candidate;
+   }
+   if(!released){e->vocal_rejected++;return 0;}
+   interrupted_tail=released->filter*released->env*.72f+released->tail;
+   released->active=0;
+   e->vocal_reclaimed++;
+ }
  int root=zone<3u||zone==VOCAL_YOU_ZONE?60:72;
  while(note>root+6)note-=12;
  while(note<root-6)note+=12;
  sr_voice *voice=note_on(e,SR_CHOIR,note,velocity,beats);
  if(!voice)return 0;
  voice->sample_zone=zone+1u;
+ voice->tail+=interrupted_tail;
+ e->vocal_started++;
  voice->freq=vocal_pitch_target(e,voice);
  voice->pitch=voice->freq;
  if(e->vocal_param_now[VF_GLIDE]>=1.f&&e->vocal_pitch_last>0.f){
@@ -1783,9 +1797,22 @@ static sr_voice *recorded_note(sr_engine *e,int note,unsigned zone,unsigned velo
 
 /* Follow the existing per-song section route. Presence changes verse
  * density while a crest and reprise keep the same recognizable hook. */
+unsigned sr_vocal_status(const sr_engine *e)
+{
+ if(!e->vocals_enabled)return SR_VOCAL_OFF;
+ if(!e->running&&!e->preview_frames&&!e->external_audio)return SR_VOCAL_STOPPED;
+ if(e->frequency_lock)return SR_VOCAL_LOCKED;
+ if(!e->vocal_level)return SR_VOCAL_LEVEL;
+ if(e->tracks[SR_CHOIR].mute)return SR_VOCAL_MUTED;
+ if(e->solo<SR_TRACKS&&e->solo!=SR_CHOIR)return SR_VOCAL_SOLO;
+ if(e->isolate!=SR_ISOLATE_MIX&&e->isolate!=SR_ISOLATE_TRACK1+SR_CHOIR)return SR_VOCAL_ISOLATED;
+ if(e->vocal_play==1u&&!e->vocal_reprise)return SR_VOCAL_MANUAL;
+ return SR_VOCAL_READY;
+}
+
 static unsigned featured_vocal_section(const sr_engine *e,unsigned step)
 {
- if(!e->vocals_enabled||!e->vocal_presence||(e->vocal_play==1u&&!e->vocal_reprise)||e->frequency_lock||e->freeze||
+ if(!e->vocals_enabled||!e->vocal_presence||(e->vocal_play==1u&&!e->vocal_reprise)||e->frequency_lock||
     !e->vocal_level||e->tracks[SR_CHOIR].mute||
     (e->isolate!=SR_ISOLATE_MIX&&e->isolate!=SR_ISOLATE_TRACK1+SR_CHOIR)||
     (e->solo<SR_TRACKS&&e->solo!=SR_CHOIR))return 0;
@@ -2068,6 +2095,9 @@ static void trigger(sr_engine *e){
       e->profile_applying=0;
     }
   }
+  unsigned eligible=sr_vocal_status(e)==SR_VOCAL_READY;
+  if(eligible&&!e->vocal_auto_ready)e->vocal_entry_pending=1;
+  e->vocal_auto_ready=eligible;
   response_tick(e);
   if(!e->loop_pos){
     if(e->learn_pending&&!e->freeze){e->learned=e->capture;e->capture.count=0;e->learn_pending=0;e->learn_origin=e->sequence_step;}
@@ -2504,6 +2534,15 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
   for(int j=0;j<SR_VOICES;j++){
     sr_voice *v=&e->voices[j];
     if(!v->active)continue;
+    if(v->sample_zone&&(!isfinite(v->phase)||!isfinite(v->phase2)||
+       !isfinite(v->env)||!isfinite(v->pitch)||v->sample_zone>VOCAL_YOU_ZONE+1u||
+       (v->gate&&!v->remain))){
+      release_voice(e,v);
+      v->active=0;
+      e->vocal_recovered++;
+      e->vocal_entry_pending=e->vocals_enabled;
+      continue;
+    }
     if(v->sample_zone&&vocal_level>0.f)
       human_phrase=fmaxf(human_phrase,(v->gate?fmaxf(.24f,v->env):v->env)*vocal_level);
     if(!v->external&&e->frame_count-v->born>SR_RATE*30u&&v->release_coef<.003f){
@@ -2802,6 +2841,7 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
   float meter_decay=1.f-(float)frames*.00097f;
   for(int t=0;t<SR_TRACKS;t++)e->tracks[t].meter*=meter_decay;
   float vocal_pose_peak=0.f;
+  float vocal_direct_peak=0.f;
   for(size_t i=0;i<frames;i++){
     float l=0.f,r=0.f,mix=0.f,repeats=0.f,scope=0.f,vocal=0.f;
     if(smooth_slicer)for(unsigned lane=0;lane<4;lane++){
@@ -2894,6 +2934,10 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
       if(vocal_fx&&v->sample_zone)vocal+=z*(config->left+config->right)*.5f;
       if(capture&&scope_track==config->track)scope+=z*(config->left+config->right);
       float raw=fabsf(z);
+      if(v->sample_zone&&vocal_visible){
+        float direct=raw*(config->left+config->right);
+        if(direct>vocal_direct_peak)vocal_direct_peak=direct;
+      }
       float mag=raw*(config->left+config->right);
       sr_track *track=&e->tracks[config->track];
       if(mag>track->meter)track->meter=mag;
@@ -2986,6 +3030,8 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
     dry[4*i]=l; dry[4*i+1]=r; dry[4*i+2]=mix; dry[4*i+3]=repeats+nature*.2f;
   }
   e->vocal_face_peak=vocal_pose_peak;
+  e->vocal_direct_peak=vocal_direct_peak;
+  if(vocal_direct_peak>.0001f)e->vocal_audio_frames+=(uint32_t)frames;
   if(precomputed)for(unsigned a=0;a<count;a++){
     unsigned cached=precomputed[a];
     if(!cached)continue;
@@ -3275,7 +3321,7 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
    for(unsigned v=0;v<SR_VOICES;v++)if(e->voices[v].active&&e->voices[v].external)e->external_audio=1;
   }
   if(!e->external_audio&&!e->running&&!e->stop_frames&&!e->nature_audition&&!e->preview_frames){
-    e->vocal_face_peak=0.f;
+    e->vocal_face_peak=e->vocal_direct_peak=0.f;
     memset(out,0,frames*2*sizeof(*out));
     return;
   }

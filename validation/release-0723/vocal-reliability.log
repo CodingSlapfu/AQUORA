@@ -1,0 +1,2 @@
+PASS 420 setting-change windows with isolated output PCM and direct-vocal activity; 0 reclaimed tails, 1 invalid voices recovered
+PASS frozen arrangement keeps singer and scene changes reuse released sample slots

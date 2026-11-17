@@ -44,7 +44,7 @@ static const felucca_font_t *ui_caption_font(void){return ui_font_size==0?&FONT_
 static const felucca_font_t *ui_value_font(void){return ui_font_size==0?&FONT_XS:ui_font_size==2?&FONT_L:&FONT_B;}
 #define FONT_XS (*ui_caption_font())
 #define FONT_B (*ui_value_font())
-static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","","VOCALS"};
+static const char *pages[]={"PLAY","SOUND","EVOLVE","MIX","DRUMS","SETUP","GATE","VOCALS"};
 static const char *beds[]={"Off","Wind","Water","Rain","Forest","Ocean","Birds","Leaves","Florida Night","Twilight Meadow","Crystal Creek","Mountain Rain","Woodland Brook","Distant Storm"};
 static const char *groups[]={"Instrument","Nature","Frequency","Binaural","Percussion","Sacred Bass","Lead / Bass Motion","MIX SHORTCUT","Percussion HIT","Visualizer","Arrangement Banks","Source Isolate","Keyboard","Lock Textures","Nature Character","Chords / Strum","Filter / Slicer","Recorded Vocals"};
 /* Static panel palettes. Canvas is independently exact black or white. */
@@ -1162,7 +1162,7 @@ static int draw(int animate)
    if(input_revision-display_inputs!=select_revision-display_selections){display_strip=0;dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
-   int visual=page==PAGE_VOCALS||intro_active||fullscreen||band==1||band==2||water_visible||(drums_visible&&band>0)||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
+   int visual=page==PAGE_VOCALS||page==PAGE_GATE||intro_active||fullscreen||band==1||band==2||water_visible||(drums_visible&&band>0)||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
     * palette is chosen once, not per pixel; normal UI still follows user
@@ -1245,20 +1245,40 @@ static int draw(int animate)
        visual_title(188,27,44,14,bpm);
      }
    }
-   else if(page==PAGE_SOUND&&group==16&&!sound_picker&&band>=1&&band<=2){
+   else if(page==PAGE_GATE){
      unsigned pattern=sr_slicer_pattern(&engine);
-     unsigned position=(engine.loop_pos+15u)&15u;
-     if(band==1){
-       graph_text(8,4,"SLICER / LIVE GATE",skin_text());
+     unsigned position=engine.sequence_step?(engine.sequence_step-1u)&15u:0u;
+     unsigned open=(pattern>>position)&1u;
+     if(band==0){
+       limited_text(8,1,224,&FONT_XS,"GATE / SLICER",skin_text());
+       limited_text(8,25,224,&FONT_T,sr_scenes[engine.scene].name,skin_dim());
+     }else if(band==1){
        char value[16];const char *name;
-       graph_text(8,25,knob_value(187,&name,value),skin_dim());
-       graph_text(130,25,knob_value(154,&name,value),skin_dim());
-     }else{
+       graph_text(8,3,knob_value(187,&name,value),skin_accent());
+       limited_text(8,22,222,&FONT_T,knob_value(154,&name,value),skin_text());
+     }else if(band==2){
        for(unsigned i=0;i<16;i++){
-         const int x=8+(int)i*14;
-         const int open=(pattern>>i)&1u;
-         cv_rect(x,open?5:31,11,open?37:11,engine.slicer_mask?skin_accent():skin_dim());
-         if(engine.running&&i==position)cv_rect(x,44,11,3,skin_text());
+         int x=8+(int)i*14;
+         unsigned gate=(pattern>>i)&1u;
+         uint16_t color=engine.slicer_mask?skin_accent():skin_dim();
+         cv_rect(x,4,11,36,skin_dim());
+         cv_rect(x,gate?7:30,11,gate?30:7,color);
+         if(engine.running&&i==position){
+           cv_rect(x,0,11,3,skin_text());
+           cv_rect(x,43,11,3,skin_text());
+         }
+       }
+     }else if(band==3){
+       graph_text(8,2,!engine.slicer_mask?"BYPASS":engine.running?(open?"OPEN":"GATED"):"STOPPED",
+                  engine.running&&open?skin_accent():skin_dim());
+       limited_text(8,21,224,&FONT_T,sr_section_name(&engine,0),skin_text());
+       limited_text(8,35,224,&FONT_T,sr_section_name(&engine,1),skin_dim());
+     }else if(band==4){
+       for(unsigned k=0;k<4;k++){
+         char value[16];const char *name;
+         const char *current=knob_value(control_for(k),&name,value);
+         limited_text(6+59*k,3,57,&FONT_T,name,skin_dim());
+         limited_text(6+59*k,20,57,&FONT_T,current,skin_text());
        }
      }
    }
@@ -1271,6 +1291,15 @@ static int draw(int animate)
          "VOCAL FX 5/6 TONE + TUNING","VOCAL FX 6/6 SPATIAL","VOCAL PLAY ALONG"};
        limited_text(8,1,226,&FONT_XS,title[vocal_tab],RGB(228,182,255));
        if(vocal_tab)limited_text(8,24,224,&FONT_XS,"EDIT: NEXT   FX: AUDITION",skin_text());
+     }
+     if(vocal_tab==7u&&band==3){
+       static const char *const status[]={"READY","OFF","STOPPED","FREQUENCY LOCK",
+         "LEVEL ZERO","MUTED","OTHER TRACK SOLO","OTHER SOURCE ISOLATED","PLAY ALONG ONLY"};
+       limited_text(8,2,224,&FONT_XS,status[sr_vocal_status(&engine)],skin_text());
+       char value[16];
+       num(value,engine.vocal_started);
+       graph_text(8,25,"VOCAL STARTS",skin_dim());
+       graph_text(160,25,value,skin_accent());
      }
      if(vocal_tab&&band==2){
        for(unsigned k=0;k<4;k++){
