@@ -345,11 +345,11 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 110:*name="MIDI CONTROLS";return onoff(midi.settings.controls_out);
  case 152:*name="CUTOFF";if(!engine.filter_cutoff)return "Patch";number=engine.filter_cutoff;break;
  case 153:*name="RESONANCE";number=engine.filter_resonance;break;
- case 226:*name="RESET FX";return "AUTO >";
- case 210: case 211: case 212: case 213: case 214: case 215: case 216: case 217: case 218: case 219: case 220: case 221: case 222: case 223: case 224: case 225:{
+ case 230:*name="RESET FX";return "AUTO >";
+ case 210: case 211: case 212: case 213: case 214: case 215: case 216: case 217: case 218: case 219: case 220: case 221: case 222: case 223: case 224: case 225: case 226: case 227: case 228: case 229:{
    static const char *const labels[]={"DECAY","DAMP","WIDTH","TIME","FEEDBACK","TONE",
      "RATE","PHASER","FLANGER","VIB RATE","VIB DEPTH","VIB ONSET","GLIDE",
-     "PRESENCE","COMP","MAKEUP"};
+     "PRESENCE","COMP","MAKEUP","SHIMMER","FLG RATE","FLG FB","CHR DEPTH"};
    unsigned param=id-210u;
    *name=labels[param];
    if(!(engine.vocal_param_lock&(1u<<param)))return "Auto";
@@ -1266,9 +1266,9 @@ static int draw(int animate)
      const sr_track *track=&engine.tracks[SR_CHOIR];
      if(!vocal_tab&&band<4)k9_face_render_canvas(cv_px,48u*band,48,&vocal_pose);
      if(band==0){
-       static const char *const title[]={"KIRA-9 VOCALS","VOCAL FX 1/5 SPACE",
-         "VOCAL FX 2/5 ECHO","VOCAL FX 3/5 MODULATION","VOCAL FX 4/5 EXPRESSION",
-         "VOCAL FX 5/5 TONE + TUNING","VOCAL PLAY ALONG"};
+       static const char *const title[]={"KIRA-9 VOCALS","VOCAL FX 1/6 SPACE",
+         "VOCAL FX 2/6 ECHO","VOCAL FX 3/6 MODULATION","VOCAL FX 4/6 EXPRESSION",
+         "VOCAL FX 5/6 TONE + TUNING","VOCAL FX 6/6 SPATIAL","VOCAL PLAY ALONG"};
        limited_text(8,1,226,&FONT_XS,title[vocal_tab],RGB(228,182,255));
        if(vocal_tab)limited_text(8,24,224,&FONT_XS,"EDIT: NEXT   FX: AUDITION",skin_text());
      }

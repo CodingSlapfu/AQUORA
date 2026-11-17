@@ -41,6 +41,11 @@ void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *
  layer(pixels,y0,height,mouth,0,0);
  if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,0,1);
  if(f->neck)plate(pixels,y0,height,109,195,24,29,f->neck>0?1:-1,0);
+ if(f->module&&y0<=212u&&y0+height>212u){
+   unsigned dot=(212u-y0)*240u+121u;
+   pixels[dot]=f->module==2u?0x8f7fu:0x4b18u;
+   pixels[dot+1u]=0x4b18u;
+ }
 }
 
 void k9_face_render_canvas(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *pose)

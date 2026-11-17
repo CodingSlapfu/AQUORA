@@ -13,6 +13,10 @@ static uint32_t render_word(unsigned parameter,unsigned level)
     engine.isolate=SR_ISOLATE_TRACK1+SR_CHOIR;
     if(parameter<VF_COUNT){
         engine.vocal_param_lock=1u<<parameter;
+        if(parameter==VF_FLANGE_RATE||parameter==VF_FLANGE_FEEDBACK){
+            engine.vocal_param_lock|=1u<<VF_FLANGER;
+            engine.vocal_param[VF_FLANGER]=70;
+        }
         engine.vocal_param[parameter]=level;
     }
     for(unsigned i=0;i<320;i++)vocal_production(&engine,64);
@@ -60,5 +64,14 @@ int main(void)
         assert(block.slicer_target[0]==1.f&&block.slicer_target[1]==1.f&&block.slicer_target[2]==1.f);
         if(!(sr_slicer_pattern(&engine)&(1u<<step)))assert(block.slicer_target[3]<1.f);
     }
-    puts("PASS 16 vocal DSP control PCM responses, keyboard routing, recall and vocal-only gate target");
+    sr_init(&engine,721);
+    voice_block instrumental;
+    engine.current_energy=.7f;
+    for(unsigned i=0;i<250;i++)prepare_block(&engine,&instrumental,64);
+    assert(instrumental.echo_send[SR_GUITAR]>instrumental.send[SR_GUITAR]);
+    assert(instrumental.echo_send[SR_BASS]<instrumental.send[SR_BASS]*.4f);
+    engine.track_send_manual=1u<<SR_GUITAR;
+    for(unsigned i=0;i<250;i++)prepare_block(&engine,&instrumental,64);
+    assert(fabsf(instrumental.echo_send[SR_GUITAR]-instrumental.send[SR_GUITAR])<.001f);
+    puts("PASS 20 vocal DSP control PCM responses, keyboard routing, recall and vocal-only gate target");
 }

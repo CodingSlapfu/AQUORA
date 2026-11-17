@@ -32,3 +32,10 @@ The firmware picks the pitch and gate, sustains the recorded vowel, and plays
 the original edited tail after release. The portrait follows source positions
 for the brief onset, sustained vowel and closing diphthong. This first lexical
 sample is used for selected Featured-presence cadences alongside wordless singing.
+
+## “You” candidate
+
+First sung word excerpted from *You said you loved me, oh, you lied (Cleaned with reverb by Erokia)*, performed/uploaded by TheScarlettWitch89 and processed by Erokia. [Source recording, CC BY 3.0](https://freesound.org/people/TheScarlettWitch89/sounds/427201/). The public HQ preview was converted to mono at 11,025 Hz, trimmed to 0.226 seconds, phase-aligned for vowel looping, faded, and quantized to signed 8-bit PCM. Verify intelligibility on FM-1.
+
+- Preview SHA-256: `58a706a4d73443bbac5c03e59571a89a4d2f14a8b396b9ed39e56952a796cb6a`
+- Edited PCM SHA-256: `0dd9b3f7af903bbd9a274b01d01de53e4c6e707cba049c8ef6c406e2bbe9f6b4`

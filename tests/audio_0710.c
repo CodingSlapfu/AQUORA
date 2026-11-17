@@ -27,11 +27,11 @@ static void check_speaker(void)
     sr_init(&engine,67);
     engine.running=engine.binaural_enabled=1;
     engine.speaker_enabled=1;
-    static float dry[3*1024];
+    static float dry[4*1024];
     static int16_t out[2*1024];
     for(unsigned i=0;i<1024;i++){
-        dry[3*i]=.25f;
-        dry[3*i+1]=.125f;
+        dry[4*i]=.25f;
+        dry[4*i+1]=.125f;
     }
     for(unsigned j=0;j<8;j++)output_samples(&engine,dry,out,1024);
     assert(engine.speaker_mix==1.f);
@@ -61,7 +61,7 @@ static void check_effects(void)
     unsigned closed=0;
     while((pattern>>closed)&1u)closed++;
     engine.sequence_step=closed+1u;
-    static float dry[3*64];
+    static float dry[4*64];
     for(unsigned block=0;block<5;block++)render_samples(&engine,dry,64);
     assert(engine.slicer_gain[1]<.20f&&engine.slicer_gain[2]<.20f);
     engine.slicer_mask=0;

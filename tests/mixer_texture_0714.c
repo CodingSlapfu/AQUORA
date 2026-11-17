@@ -24,12 +24,12 @@ static void check_texture(unsigned effect)
     if(effect==10)engine.fx_granular=100;
     float difference=0.f;
     for(unsigned frame=0;frame<32768;frame+=64){
-        float mix[64*3]={0};
+        float mix[64*4]={0};
         for(unsigned i=0;i<64;i++)
-            mix[i*3+2]=(frame+i<4096u)?((i&16u)?.7f:-.7f):0.f;
+            mix[i*4+3]=mix[i*4+2]=(frame+i<4096u)?((i&16u)?.7f:-.7f):0.f;
         apply_fx(&engine,mix,64);
         for(unsigned i=0;i<64;i++)for(unsigned ch=0;ch<2;ch++){
-            float sample=mix[i*3+ch];
+            float sample=mix[i*4+ch];
             assert(isfinite(sample)&&fabsf(sample)<2.f);
             if(!effect)baseline[frame+i][ch]=sample;
             else difference+=fabsf(sample-baseline[frame+i][ch]);
@@ -43,16 +43,16 @@ static void check_granular_hold(void)
 {
     sr_init(&engine,714);
     engine.fx_granular=100;
-    float mix[64*3];
+    float mix[64*4];
     for(unsigned block=0;block<80;block++){
         memset(mix,0,sizeof mix);
         if(block<16)
-            for(unsigned i=0;i<64;i++)mix[3*i+2]=i<32?.26f:-.26f;
+            for(unsigned i=0;i<64;i++)mix[4*i+3]=mix[4*i+2]=i<32?.26f:-.26f;
         apply_fx(&engine,mix,64);
     }
     assert(engine.fx_grain_written==1024);
     float held=0;
-    for(unsigned i=0;i<64;i++)held+=fabsf(mix[i*3]);
+    for(unsigned i=0;i<64;i++)held+=fabsf(mix[i*4]);
     assert(held>.5f);
     engine.fx_granular=0;
     for(unsigned block=0;block<128;block++){
@@ -66,10 +66,10 @@ static void check_ducking(void)
 {
     sr_init(&engine,714);
     engine.fx_duck=100;
-    float mix[64*3];
+    float mix[64*4];
     for(unsigned block=0;block<64;block++){
         memset(mix,0,sizeof mix);
-        for(unsigned i=0;i<64;i++)mix[i*3]=mix[i*3+1]=.6f;
+        for(unsigned i=0;i<64;i++)mix[i*4]=mix[i*4+1]=.6f;
         apply_fx(&engine,mix,64);
         assert(mix[0]==.6f&&mix[1]==.6f);
     }

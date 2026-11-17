@@ -38,7 +38,7 @@ typedef enum {SR_SINE, SR_TRI, SR_HOLLOW, SR_REED, SR_PLUCK, SR_CHOIR_WAVE} sr_w
 typedef struct { const char *name; sr_wave wave; float attack, release, brightness, gain; } sr_patch;
 enum { VF_DECAY,VF_DAMPING,VF_WIDTH,VF_TIME,VF_FEEDBACK,VF_TONE,
        VF_RATE,VF_PHASER,VF_FLANGER,VF_VIB_RATE,VF_VIB_DEPTH,VF_VIB_WAIT,
-       VF_GLIDE,VF_PRESENCE,VF_COMP,VF_MAKEUP,VF_COUNT };
+       VF_GLIDE,VF_PRESENCE,VF_COMP,VF_MAKEUP,VF_SHIMMER,VF_FLANGE_RATE,VF_FLANGE_FEEDBACK,VF_CHORUS_DEPTH,VF_COUNT };
 typedef struct { const char *name; uint16_t bpm; uint8_t scale, energy, ambiance, tonic, frequency; } sr_scene;
 typedef struct { const char *name; float hz; } sr_frequency;
 typedef struct { const char *name; float kick, hand, shaker, root, skin, decay, brush; } sr_drum_kit;
@@ -98,17 +98,17 @@ typedef struct {
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune,vocal_fx_manual;
   uint8_t vocal_level,vocal_fx_send,vocal_entry_pending,vocal_call;
   uint8_t track_send_manual;
-  float track_send_now[SR_TRACKS];
+  float track_send_now[SR_TRACKS],track_echo_now[SR_TRACKS];
   float vocal_level_smoothed,vocal_face_peak,vocal_face_pitch_ratio;
   uint8_t vocal_face_mouth,vocal_face_midi,vocal_face_sustain;
   uint16_t vocal_fx_pos,vocal_fx_history;
   float vocal_fx_left,vocal_fx_right,vocal_fx_input;
   float vocal_room_now,vocal_echo_now,vocal_chorus_now,vocal_send_now;
   uint32_t vocal_fx_tail;
-  uint16_t vocal_param_lock;
+  uint32_t vocal_param_lock;
   uint8_t vocal_param[VF_COUNT];
   float vocal_param_now[VF_COUNT];
-  float vocal_fx_tone,vocal_phaser_in,vocal_phaser_out,vocal_fx_phase,vocal_pitch_last;
+  float vocal_fx_tone,vocal_phaser_in,vocal_phaser_out,vocal_fx_phase,vocal_flange_phase,vocal_pitch_last;
   float lock_phase;
   float bass_phase,tone_phase,transport_env,tone_level,carrier_now,beat_now;
   float energy,variation,bed_phase,bird_phase,bird_env;

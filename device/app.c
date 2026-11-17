@@ -236,12 +236,12 @@ static unsigned control_for(unsigned knob)
 {
  if(fullscreen){static const uint8_t controls[]={138,188,18,189};return controls[knob];}
  if(debug)return knob==0?(debug==3?42:0):0;
- if(page==PAGE_VOCALS){static const uint8_t controls[7][4]={
+ if(page==PAGE_VOCALS){static const uint8_t controls[8][4]={
    {155,156,185,186},{164,210+VF_DECAY,210+VF_DAMPING,210+VF_WIDTH},
    {165,210+VF_TIME,210+VF_FEEDBACK,210+VF_TONE},
    {163,210+VF_RATE,210+VF_PHASER,210+VF_FLANGER},
    {210+VF_VIB_RATE,210+VF_VIB_DEPTH,210+VF_VIB_WAIT,210+VF_GLIDE},
-   {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{190,0,0,226}};return controls[vocal_tab][knob];}
+   {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{210+VF_SHIMMER,210+VF_FLANGE_RATE,210+VF_FLANGE_FEEDBACK,210+VF_CHORUS_DEPTH},{190,0,0,230}};return controls[vocal_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
    return controls[drum_tab][knob];
@@ -368,7 +368,7 @@ static void consume(void){
  case 189:
    if(d){sr_set_vocals(&engine,d>0,engine.vocal_presence);if(d>0){engine.vocal_entry_pending=1;engine.vocal_reprise=1;}}
    break;
- case 226:if(d>0){engine.vocal_param_lock=engine.vocal_fx_manual=0;engine.vocal_tune=0;}break;
+ case 230:if(d>0){engine.vocal_param_lock=engine.vocal_fx_manual=0;engine.vocal_tune=0;}break;
  case 190:engine.vocal_play=bounded(engine.vocal_play+d,0,2);break;
  case 154:engine.slicer_mask=bounded((int)engine.slicer_mask+d,0,15);break;
  case 137:arrange_browse=bounded((int)arrange_browse+d,0,7);break;
@@ -864,7 +864,7 @@ void app_input_only(void){
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
      group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
    }
-   if(page==PAGE_VOCALS)vocal_tab=(vocal_tab+1u)%7u;
+   if(page==PAGE_VOCALS)vocal_tab=(vocal_tab+1u)%8u;
    if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%7;
    if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
    if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */

@@ -26,7 +26,7 @@ static void check_scores(void)
                     active++;
                     if(v->born!=e.frame_count)continue;
                     assert(v->track==SR_CHOIR);
-                    assert(v->phase2>.16f&&v->phase2<.38f);
+                    assert(v->phase2>(v->sample_zone==VOCAL_YOU_ZONE+1u?.15f:.16f)&&v->phase2<.38f);
                     zones|=1u<<(v->sample_zone-1u);
                     if(v->vocal_turn_rate>0.f){
                         assert((v->sample_zone-1u)%3u==2u);
