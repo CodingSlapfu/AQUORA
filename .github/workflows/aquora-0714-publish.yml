@@ -1,0 +1,87 @@
+name: AQUORA v0.7.14 official publication
+on:
+  push:
+    branches: [aquora-v0.7.14-development]
+    paths: [.github/workflows/aquora-0714-publish.yml]
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: aquora-official-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      AQUORA_SOURCE: e00569b443b71aa6fdcaf77f3442c5ab1bf97f4a
+      AQUORA_STAGE: 9cbb9e9020c94618bf792c057e45a23d5d1aeefe
+      AQUORA_LEASE_OWNER: work-0714-mixer-portrait
+      AQUORA_LEASE: 52bc61b77fca6d00776f89444ba7adab7c70262f
+      AQUORA_STAGE_RUN: '43984063880'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: aquora-0714-native-validation
+          github-token: ${{ github.token }}
+          run-id: 43983924168
+          path: native
+      - uses: actions/download-artifact@v4
+        with:
+          name: aquora-0714-staged-installer
+          github-token: ${{ github.token }}
+          run-id: ${{ env.AQUORA_STAGE_RUN }}
+          path: staged
+      - name: Verify source, green gates, binaries, and rollback
+        run: |
+          set -euo pipefail
+          for run in 43983924061 43983924087 43983924168 43983924263 "$AQUORA_STAGE_RUN"; do
+            endpoint="repos/$GITHUB_REPOSITORY/actions/runs/$run"
+            expected="$AQUORA_SOURCE"
+            if [ "$run" = "$AQUORA_STAGE_RUN" ]; then expected="$AQUORA_STAGE"; fi
+            test "$(gh api "$endpoint" --jq .conclusion)" = success
+            test "$(gh api "$endpoint" --jq .head_sha)" = "$expected"
+          done
+          test "$(cat native/source-commit.txt)" = "$AQUORA_SOURCE"
+          git diff --exit-code "$AQUORA_SOURCE" HEAD -- device vendor tools tests
+          (cd native && sha256sum -c --strict SHA256SUMS)
+          grep -F FM-1_73000714 native/native.log
+          python3 - <<'PY'
+          import json, re
+          from pathlib import Path
+          page = Path('staged/installer/install/index.html')
+          meta = json.loads(re.search(r'const meta = (\{.*?\});', page.read_text())[1])
+          assert meta['product'] == 'FM-1_73000714'
+          assert meta['version'] == '0.7.14'
+          native = Path('native/sound-healing-0.7.14.fwsc')
+          assert (page.parent / meta['pkg']).read_bytes() == native.read_bytes()
+          assert meta['sha256'] == Path('native/SHA256SUMS').read_text().split()[0]
+          PY
+          test "$(git rev-parse 'v0.7.13^{commit}')" = a46e113ffdccd6c04bfade632c1d76d263628f85
+          rollback=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.7.13" --jq '.assets[] | select(.name=="AQUORA-0.7.13.fwsc") | .digest')
+          test "$rollback" = sha256:9912e3bc8d5c5064741a1c15dedbea2215f8b500b9f6b484ec0ea3556fe519c8
+          mkdir -p official
+          cp native/sound-healing-0.7.14.fwsc official/AQUORA-0.7.14.fwsc
+          (cd official && sha256sum AQUORA-0.7.14.fwsc > OFFICIAL-SHA256SUMS.txt)
+          cp validation/release-0714/RELEASE_NOTES.md official/RELEASE_NOTES.md
+          printf '\nFirmware SHA-256 `%s`.\n' "$(cut -d ' ' -f 1 official/OFFICIAL-SHA256SUMS.txt)" >> official/RELEASE_NOTES.md
+      - name: Publish exact verified firmware
+        run: |
+          set -euo pipefail
+          python3 tools/ownership_lease.py check --resource aquora-publication --owner "$AQUORA_LEASE_OWNER" --token "$AQUORA_LEASE"
+          if gh release view v0.7.14 > /dev/null 2>&1; then
+            echo 'v0.7.14 already exists; refusing to replace it'
+            exit 1
+          fi
+          gh release create v0.7.14 official/AQUORA-0.7.14.fwsc official/OFFICIAL-SHA256SUMS.txt --draft --target "$AQUORA_SOURCE" --title 'AQUORA v0.7.14 — Mixer effects and recorded vocals' --notes-file official/RELEASE_NOTES.md
+          gh release download v0.7.14 --pattern AQUORA-0.7.14.fwsc --dir "${RUNNER_TEMP}/verify-draft"
+          cmp official/AQUORA-0.7.14.fwsc "${RUNNER_TEMP}/verify-draft/AQUORA-0.7.14.fwsc"
+          python3 tools/ownership_lease.py check --resource aquora-publication --owner "$AQUORA_LEASE_OWNER" --token "$AQUORA_LEASE"
+          gh release edit v0.7.14 --draft=false --latest
+          curl --fail --location --retry 4 --retry-all-errors --max-time 60 --output "${RUNNER_TEMP}/released.fwsc" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/v0.7.14/AQUORA-0.7.14.fwsc"
+          cmp official/AQUORA-0.7.14.fwsc "${RUNNER_TEMP}/released.fwsc"
+          sha256sum "${RUNNER_TEMP}/released.fwsc"
