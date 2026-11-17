@@ -70,3 +70,5 @@ The still-open full per-step editor cannot safely be implemented merely by appen
 ### Official publication attempt
 
 [Release workflow 43984315330](https://github.com/CodingSlapfu/AQUORA/actions/runs/43984315330) passed immutable input, native/staged byte equality, v0.7.13 rollback, and lease checks. GitHub then rejected release creation with HTTP 403, `Resource not accessible by integration`. The v0.7.14 release endpoint returned 404 after the attempt. Use the existing verified bytes with a GitHub account authorized to create Releases. No rebuild is needed.
+
+The durable [binary backup](https://github.com/CodingSlapfu/AQUORA/blob/6816df7fbd820286d8a7d6ed30f736ccab20c96a/validation/release-0714/assets/AQUORA-0.7.14.fwsc) is on `aquora-v0.7.14-verified-assets` at `6816df7fbd820286d8a7d6ed30f736ccab20c96a`. [Backup CI](https://github.com/CodingSlapfu/AQUORA/actions/runs/43984694877) fetched the pushed branch and reproduced the staged firmware SHA-256 from its remote blob. This is the exact package to upload when release creation is available. Deploy matching staged assets to the existing Site only after release and retain the v0.7.13 rollback path.
