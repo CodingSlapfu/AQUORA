@@ -1,0 +1,6 @@
+/firmware/sound-healing-0.7.27.fwsc cebfd1d88d746475fe8ca7540213af096035f601201ea83ba1c9705c7c8efe22
+/testing/0.7.27/emu/app.wasm eed13c1cfea581b0628c3f60c4a003b3ebee18851595fa5770f6d70d4baf3649
+/firmware/sound-healing-0.7.14.fwsc d3de83af71ba084c61dc88b1804e814200d7ae69439480d2aecfcb886d09ec6e
+/firmware/sound-healing-0.7.25.fwsc 96b6834b63d35a48b63077fd90fc091cff383b32e60ef8185365d92c006d0a22
+/firmware/sound-healing-0.7.26.fwsc b0b7132e6f554112126ee1ca23855934e1b815cee2d6902af3b97b92bbf308e2
+PASS public installer identity and checksum guard, matching emulator, current homepage links and stable installer
