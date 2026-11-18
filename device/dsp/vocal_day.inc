@@ -1,6 +1,7 @@
 /* Katy, recorded by digifishmusic, CC BY 4.0. See VOCAL_CREDITS.md. */
 enum {VOCAL_DAY_LENGTH=9599, VOCAL_DAY_LOOP=2309, VOCAL_DAY_RELEASE=5172, VOCAL_DAY_ATTACK=475};
 static const float vocal_day_hz=554.f;
+#ifdef SR_RAW_SAMPLE_REFERENCE
 static const int8_t vocal_day_flash[VOCAL_DAY_LENGTH]={
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,-1,0,0,1,0,
@@ -303,3 +304,4 @@ static const int8_t vocal_day_flash[VOCAL_DAY_LENGTH]={
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
+#endif

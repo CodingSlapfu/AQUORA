@@ -274,7 +274,42 @@ static inline __attribute__((always_inline)) int vocal_word_sample(unsigned word
   unsigned pair=(uint8_t)pcm[byte]|((unsigned)(uint8_t)pcm[byte+1u]<<8u);
   return human_word_levels[(pair>>(bit&7u))&31u];
 }
+#ifndef SR_RAW_SAMPLE_REFERENCE
+/* The compressed image is trusted, generated at build preparation and
+ * checked against the reference tables. Decode once, before audio starts. */
+static void unpack_sample_pcm(void *destination,unsigned length,
+                              const uint8_t *source,unsigned order)
+{
+  uint8_t *pcm=destination;
+  unsigned nibble=0,previous=0,older=0;
+  for(unsigned i=0;i<length;i++){
+    unsigned code=(source[nibble>>1u]>>((nibble&1u)*4u))&15u;
+    nibble++;
+    unsigned value;
+    if(code==15u){
+      unsigned lo=(source[nibble>>1u]>>((nibble&1u)*4u))&15u;
+      nibble++;
+      unsigned hi=(source[nibble>>1u]>>((nibble&1u)*4u))&15u;
+      nibble++;
+      value=lo|(hi<<4u);
+    }else{
+      unsigned predicted=order==1u?previous:2u*previous-older;
+      value=(predicted+code-7u)&255u;
+    }
+    pcm[i]=(uint8_t)value;
+    older=previous;
+    previous=value;
+  }
+}
+#include "sample_pcm_packed.inc"
+#endif
 static uint8_t vocal_pcm_ready;
+
+#if defined(__PI32V2__)
+static struct {
+  int16_t reverb[4][1789], delay[16384], vocal_fx[8192];
+} native_fx_buffers VOCAL_POOL;
+#endif
 
 static const uint16_t rv_len[4]={1061,1277,1453,1789};
 static const int8_t scale_notes[5][7] = {
@@ -857,6 +892,7 @@ void sr_set_vocals(sr_engine *e,unsigned enabled,unsigned presence)
 void sr_set_track_patch(sr_engine *e,uint8_t t,uint8_t patch){if(t<SR_TRACKS&&patch<SR_PATCHES)e->tracks[t].patch=patch;}
 void sr_init(sr_engine *e,uint32_t seed){
     if(!vocal_pcm_ready){
+#ifdef SR_RAW_SAMPLE_REFERENCE
       memcpy(vocal_pcm,vocal_flash,sizeof vocal_pcm);
       memcpy(vocal_day_pcm,vocal_day_flash,sizeof vocal_day_pcm);
       memcpy(vocal_you_pcm,vocal_you_flash,sizeof vocal_you_pcm);
@@ -868,10 +904,19 @@ void sr_init(sr_engine *e,uint32_t seed){
       memcpy(vocal_me_pcm,vocal_me_flash,sizeof vocal_me_pcm);
       memcpy(vocal_dreams_pcm,vocal_dreams_flash,sizeof vocal_dreams_pcm);
       memcpy(drum_pcm,drum_flash,sizeof drum_pcm);
+#else
+      SR_LOAD_SAMPLE_PCM();
+#endif
       vocal_pcm_ready=1;
     }
 
   memset(e,0,sizeof(*e));
+#if defined(__PI32V2__)
+    memset(&native_fx_buffers,0,sizeof native_fx_buffers);
+    e->reverb=native_fx_buffers.reverb;
+    e->delay=native_fx_buffers.delay;
+    e->vocal_fx_buffer=native_fx_buffers.vocal_fx;
+#endif
     e->vocal_presence=4;
     e->vocal_level=100;
     e->vocal_level_smoothed=e->vocal_auto_gain=1.f;
@@ -1687,8 +1732,8 @@ static float startup_vowel(unsigned frame)
     float fraction=pos-index;
     if(index>=VOCAL_LENGTH)index=loop+(index-loop)%(VOCAL_LENGTH-loop);
     unsigned next=index+1u<VOCAL_LENGTH?index+1u:loop;
-    float sample=vocal_flash[zone][index]+
-        (vocal_flash[zone][next]-vocal_flash[zone][index])*fraction;
+    float sample=vocal_pcm[zone][index]+
+        (vocal_pcm[zone][next]-vocal_pcm[zone][index])*fraction;
     float attack=clampf(age*(14.f/SR_RATE),0.f,1.f);
     float release=clampf((lengths[note]-age)*(3.8f/SR_RATE),0.f,1.f);
     mix+=sample*attack*release;

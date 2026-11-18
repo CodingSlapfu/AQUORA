@@ -1,5 +1,6 @@
 /* Original AQUORA percussion rendered by tools/generate_drum_waves.py. */
 enum { DRUM_WAVE_LENGTH = 2048 };
+#ifdef SR_RAW_SAMPLE_REFERENCE
 static const int8_t drum_flash[13][DRUM_WAVE_LENGTH] = {
  {
   0,2,2,10,12,23,39,34,38,51,42,53,66,53,71,64,70,74,70,70,75,80,90,78,91,79,84,96,85,93,91,76,
@@ -860,3 +861,4 @@ static const int8_t drum_flash[13][DRUM_WAVE_LENGTH] = {
   0,0,0,-1,-1,-1,-1,-1,-1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
  },
 };
+#endif

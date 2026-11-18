@@ -162,8 +162,14 @@ typedef struct {
   uint32_t (*clock_ticks)(void);
   uint32_t fx_ticks;
   uint8_t voice_limit,deadline_high,deadline_low;
+#if defined(__PI32V2__)
+  /* The hardware has one audio engine; score previews have no FX storage. */
+  int16_t (*reverb)[1789];
+  int16_t *delay, *vocal_fx_buffer;
+#else
   int16_t reverb[4][1789]; int16_t delay[16384];
   int16_t vocal_fx_buffer[8192];
+#endif
   uint16_t rev_pos[4], delay_pos, rev_history, delay_history;
   float reverb_wet, delay_wet;
   uint8_t loop_length, loop_pos, pending_length, keyboard_mode, tonic_override, pending_key, pending_physical_key;

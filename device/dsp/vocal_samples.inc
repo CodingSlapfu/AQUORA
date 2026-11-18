@@ -8,6 +8,7 @@ static const struct {unsigned loop; float hz;} vocal_zones[VOCAL_ZONES]={
   {3329u,525.26014f},
   {3332u,525.81201f},
 };
+#ifdef SR_RAW_SAMPLE_REFERENCE
 static const int8_t vocal_flash[VOCAL_ZONES][VOCAL_LENGTH]={
  {
   0,1,1,1,0,0,-2,-4,-3,-1,0,0,3,5,1,-3,-5,-11,-16,-19,-13,2,13,13,13,24,22,2,-11,-2,-1,-19,
@@ -1174,3 +1175,4 @@ static const int8_t vocal_flash[VOCAL_ZONES][VOCAL_LENGTH]={
   -8,-17,-27,-37,-43,-46,-44,-39,-29,-13,6,22,38,48,52,50,42,34,24,13,3,-8,-19,-30,-41,-50,-55,-55,-48,-34,-12,10,
  },
 };
+#endif

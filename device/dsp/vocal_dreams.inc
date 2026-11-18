@@ -1,5 +1,6 @@
 /* Original sung DREAMS by buggly, CC0. See docs/VOCAL_CREDITS.md. */
 enum {VOCAL_DREAMS_LENGTH=6836, VOCAL_DREAMS_LOOP=2340, VOCAL_DREAMS_RELEASE=3796, VOCAL_DREAMS_ATTACK=960};
+#ifdef SR_RAW_SAMPLE_REFERENCE
 static const int8_t vocal_dreams_flash[VOCAL_DREAMS_LENGTH]={
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -216,4 +217,5 @@ static const int8_t vocal_dreams_flash[VOCAL_DREAMS_LENGTH]={
   9,12,17,22,25,30,31,31,30,29,28,26,25,22,19,16,14,13,11,10,8,7,5,4,3,2,0,-3,-5,-7,-8,
   -10,-11,-12,-13,-14,-14,-14,-14,-13,-12,-11,-10,-8,-7,-6,-4,-2,0,1,2,2,3,3,3,3,3,2,2,1,0,0,
 };
+#endif
 static int8_t vocal_dreams_pcm[VOCAL_DREAMS_LENGTH] VOCAL_POOL;

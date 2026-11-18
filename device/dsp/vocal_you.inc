@@ -1,5 +1,6 @@
 /* TheScarlettWitch89 and Erokia, CC BY 3.0. See VOCAL_CREDITS.md. */
 enum {VOCAL_YOU_LENGTH=2491, VOCAL_YOU_LOOP=957, VOCAL_YOU_RELEASE=1664, VOCAL_YOU_ATTACK=410};
+#ifdef SR_RAW_SAMPLE_REFERENCE
 static const int8_t vocal_you_flash[VOCAL_YOU_LENGTH]={
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,-1,0,0,-3,-4,-3,-4,-6,-6,
   -3,-4,-5,-2,1,2,1,5,9,8,8,11,14,12,10,12,13,10,7,8,8,4,0,-1,-2,-7,-13,-14,-15,-20,-24,-22,
@@ -80,3 +81,4 @@ static const int8_t vocal_you_flash[VOCAL_YOU_LENGTH]={
   -1,-2,-4,-3,-5,-5,-7,-5,-4,-3,-4,-5,-4,-4,-2,1,1,0,0,1,1,3,2,1,4,4,5,3,2,2,2,3,
   3,0,0,-1,0,-1,0,-2,-3,-2,-2,-1,-3,-2,-2,0,0,0,0,-1,0,1,0,0,0,0,0,
 };
+#endif
