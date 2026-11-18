@@ -400,6 +400,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 165:*name="ECHO %";if(!(engine.vocal_fx_manual&4u))return "Auto";number=engine.vocal_delay;break;
  case 185:*name="VOCAL LEVEL";if(!engine.vocal_level_manual)return "Auto";number=engine.vocal_level;break;
  case 186:*name="VOICE PATCH";return engine.vocal_patch?sr_vocal_patch_names[engine.vocal_patch-1u]:"Auto";
+ case 232:{
+   static const char *const flows[]={"Auto","Half","Normal","Double"};
+   *name="VOCAL FLOW";return flows[engine.vocal_flow];
+ }
  case 231:{
    static const char *const voices[]={"AUTO","AH","OOH","OH","EE","EH","UH","HUM",
      "DO-RE-MI","LA-LA","NA-NA","SCAT","WORDS","OH-AH HOOK","OH-AH","OO-EE","AY-OH","EH-OH","MM-OOH"};
@@ -1328,7 +1332,7 @@ static int draw(int animate)
      if(band==0){
        static const char *const title[]={"KIRA-9 VOCALS","VOCAL FX 1/6 SPACE",
          "VOCAL FX 2/6 ECHO","VOCAL FX 3/6 MODULATION","VOCAL FX 4/6 EXPRESSION",
-         "VOCAL FX 5/6 TONE + TUNING","VOCAL FX 6/6 SPATIAL","VOCAL PLAY ALONG"};
+         "VOCAL FX 5/6 TONE + TUNING","VOCAL FX 6/6 SPATIAL","VOCAL FLOW / PLAY ALONG"};
        if(!vocal_tab){
          const felucca_font_t *font=fit_font(title[0],222,24);
          limited_text(9,2,225,font,title[0],RGB(0,0,0));

@@ -274,9 +274,9 @@ static void arrangement_snapshot(arrangement *record)
     memcpy(record->drum_pattern,engine.drum_pattern,sizeof record->drum_pattern);
     record->version=AQ_BANK_V10;
     record->vocal_enabled=engine.vocals_enabled;
-    /* V11 reserved6 bits 5–10 were zero. Older firmware ignores them. */
+    /* V11 reserved6 bits 5–12 were zero. Older firmware ignores them. */
     record->reserved6|=0x0400u|((uint16_t)engine.vocal_patch<<5u)|
-        ((uint16_t)engine.vocal_level_manual<<9u);
+        ((uint16_t)engine.vocal_level_manual<<9u)|((uint16_t)engine.vocal_flow<<11u);
 #define SAVE_VOCAL(x) record->x=engine.x;
     SAVE_VOCAL(vocal_param_lock) SAVE_VOCAL(vocal_presence) SAVE_VOCAL(vocal_play)
     SAVE_VOCAL(vocal_articulation) SAVE_VOCAL(vocal_level) SAVE_VOCAL(vocal_fx_send)
@@ -382,7 +382,7 @@ static void arrangement_apply(const arrangement *record)
     memset(engine.vocal_hook_vowel,0,sizeof engine.vocal_hook_vowel);
     memset(engine.vocal_hook_attack,0,sizeof engine.vocal_hook_attack);
    memset(engine.vocal_hook_transition,0,sizeof engine.vocal_hook_transition);
-    engine.vocal_patch=engine.vocal_level_manual=0;
+    engine.vocal_patch=engine.vocal_level_manual=engine.vocal_flow=0;
     engine.vocal_level=100;
     if(record->version>=AQ_BANK_VERSION){
         engine.vocals_enabled=record->vocal_enabled;
@@ -395,6 +395,7 @@ static void arrangement_apply(const arrangement *record)
             unsigned patch=(record->reserved6>>5u)&15u;
             engine.vocal_patch=patch<=SR_VOCAL_PATCHES?patch:0;
             engine.vocal_level_manual=(record->reserved6>>9u)&1u;
+            engine.vocal_flow=(record->reserved6>>11u)&3u;
         }else engine.vocal_level_manual=engine.vocal_level!=100;
         if(!engine.vocal_level_manual)engine.vocal_level=100;
         engine.vocal_fx_send=100;

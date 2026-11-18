@@ -88,3 +88,25 @@ of signed PCM. Edited PCM SHA-256
 The director can use it as a Dreaming cadence. Its intelligibility remains a
 physical listening item. It is one pilot addition, and the larger vocabulary
 and multiword composition expansion remain open.
+
+## v0.7.29 tuned lexical synthesis
+
+SHINE, FREE, FLY, STAY, AWAY, HOME, HOPE, ALIVE, TONIGHT and FOREVER are
+synthesized with Flite's CMU US SLT statistical vocoder. These are generated
+phonetic performances. The generator fixes the voiced excitation near
+334 Hz, leaves the unvoiced consonant durations intact, then prepares a
+short vowel loop so the arranger can hold the stressed vowel and release
+the final phones. It saves mono 11,025 Hz signed PCM. The firmware plays
+it in the existing sampled vocal slots and uses note rhythm for Vocal Flow.
+Pitch transposition still affects sample rate and formants, bounded to the
+closest octave around the source pitch. Listen for vowel and consonant clarity
+on the FM-1 before artistic acceptance.
+
+The corpus is generated using `device/tools/build_sung_words.py` with
+`libflite.so.1`, `libflite_cmu_us_slt.so.1`, NumPy and SciPy.
+The CMU US SLT voice is by Alan W Black, Language Technologies Institute,
+Carnegie Mellon University. Copyright (c) 1999–2007, all rights reserved.
+The source voice header carries the redistribution notice in
+[cmu_us_slt.c](https://github.com/festvox/flite/blob/master/lang/cmu_us_slt/cmu_us_slt.c).
+Its full notice is reproduced in FLITE-SLT-LICENSE.txt. The PCM is derived
+by the modifications described above. No Flite runtime ships in firmware.

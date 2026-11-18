@@ -211,7 +211,7 @@ static unsigned control_for(unsigned knob)
    {165,210+VF_TIME,210+VF_FEEDBACK,210+VF_TONE},
    {163,210+VF_RATE,210+VF_PHASER,210+VF_FLANGER},
    {210+VF_VIB_RATE,210+VF_VIB_DEPTH,210+VF_VIB_WAIT,210+VF_GLIDE},
-   {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{210+VF_SHIMMER,210+VF_FLANGE_RATE,210+VF_FLANGE_FEEDBACK,210+VF_CHORUS_DEPTH},{190,231,0,230}};return controls[vocal_tab][knob];}
+   {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{210+VF_SHIMMER,210+VF_FLANGE_RATE,210+VF_FLANGE_FEEDBACK,210+VF_CHORUS_DEPTH},{190,231,232,230}};return controls[vocal_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
    return controls[drum_tab][knob];
@@ -372,6 +372,10 @@ static void consume(void){
    if(d){sr_set_vocals(&engine,d>0,engine.vocal_presence);if(d>0){engine.vocal_entry_pending=1;engine.vocal_reprise=1;}}
    break;
  case 230:if(d>0){engine.vocal_param_lock=engine.vocal_fx_manual=0;engine.vocal_tune=0;}break;
+ case 232:
+   engine.vocal_flow=!engine.vocal_flow&&d>0?SR_VOCAL_HALF:
+       bounded(engine.vocal_flow+d,SR_VOCAL_AUTO,SR_VOCAL_DOUBLE);
+   break;
  case 231:
    engine.vocal_articulation=bounded(engine.vocal_articulation+d,0,18);
    memset(engine.vocal_hook_vowel,0,sizeof engine.vocal_hook_vowel);
