@@ -218,7 +218,7 @@ static int8_t drum_pcm[13][DRUM_WAVE_LENGTH];
 #include "vocal_you.inc"
 enum {VOCAL_DAY_ZONE=VOCAL_ZONES,VOCAL_YOU_ZONE,VOCAL_EH_ZONE,VOCAL_EE_ZONE,
       VOCAL_HUM_ZONE,VOCAL_LOVE_ZONE,VOCAL_BABY_ZONE,VOCAL_ME_ZONE,
-      VOCAL_LAST_ZONE=VOCAL_ME_ZONE};
+      VOCAL_DREAMS_ZONE,VOCAL_LAST_ZONE=VOCAL_DREAMS_ZONE};
 int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 #define VOCAL_POOL __attribute__((section(".pool"),aligned(4)))
@@ -226,6 +226,7 @@ int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #define VOCAL_POOL
 #endif
 #include "vocal_extensions.inc"
+#include "vocal_dreams.inc"
 
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 __attribute__((section(".pool"),aligned(4)))
@@ -253,6 +254,8 @@ static const struct {
   {vocal_love_pcm,11686u,5182u,7438u,1870u,{1,1,1},234.5744681f},
   {vocal_baby_pcm,8820u,4934u,7238u,5909u,{4,5,5},229.6875000f},
   {vocal_me_pcm,10804u,5090u,6578u,1729u,{4,5,5},355.6451613f},
+  {vocal_dreams_pcm,VOCAL_DREAMS_LENGTH,VOCAL_DREAMS_LOOP,VOCAL_DREAMS_RELEASE,
+   VOCAL_DREAMS_ATTACK,{6,5,4},212.0192308f},
 };
 static uint8_t vocal_pcm_ready;
 
@@ -660,8 +663,8 @@ static void apply_sound_profile(sr_engine *e,uint32_t seed,int sounds_only)
     e->tone_level=reference<2u?0.f:.004f+.002f*reference;
   }
   if(!(e->sound_locks&SR_SOUND_FX)){
-    e->reverb_amount=.12f+.045f*palette[scene].space+.01f*(song_draw(seed,9)%8u);
-    e->delay_amount=.06f+.025f*palette[scene].space+.01f*(song_draw(seed,10)%6u);
+    e->reverb_amount=.145f+.047f*palette[scene].space+.01f*(song_draw(seed,9)%8u);
+    e->delay_amount=.07f+.027f*palette[scene].space+.01f*(song_draw(seed,10)%6u);
     if(e->music_mode==SR_CINEMATIC){e->reverb_amount+=.10f;e->delay_amount*=.8f;}
     if(e->music_mode==SR_NEOCLASSICAL){e->reverb_amount*=.68f;e->delay_amount*=.45f;}
     if(e->music_mode==SR_EXPERIMENTAL){e->reverb_amount*=.92f;e->delay_amount*=1.3f;}
@@ -846,6 +849,7 @@ void sr_init(sr_engine *e,uint32_t seed){
       memcpy(vocal_love_pcm,vocal_love_flash,sizeof vocal_love_pcm);
       memcpy(vocal_baby_pcm,vocal_baby_flash,sizeof vocal_baby_pcm);
       memcpy(vocal_me_pcm,vocal_me_flash,sizeof vocal_me_pcm);
+      memcpy(vocal_dreams_pcm,vocal_dreams_flash,sizeof vocal_dreams_pcm);
       memcpy(drum_pcm,drum_flash,sizeof drum_pcm);
       vocal_pcm_ready=1;
     }
@@ -1932,7 +1936,7 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
    if(!replacement){e->vocal_sample_denied++;e->vocal_rejected++;return 0;}
  }
  float source_pitch=zone>=VOCAL_DAY_ZONE?vocal_words[zone-VOCAL_DAY_ZONE].hz:vocal_zones[zone].hz;
- int root=source_pitch<400.f?60:72;
+ int root=zone==VOCAL_DREAMS_ZONE?57:source_pitch<400.f?60:72;
  while(note>root+6)note-=12;
  while(note<root-6)note+=12;
  sr_voice *voice=allocate_note(e,SR_CHOIR,note,velocity,beats,1,replacement);
@@ -2139,13 +2143,20 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    if(zone<3u)zone+=3u;
    if(transition&&transition<=3u)transition+=3u;
  }
+ /* A recorded word can decorate a Dreaming cadence without overwriting
+    the reusable vowel hook or introducing a new sample ID into saved banks. */
+ if(!e->vocal_articulation&&part==2u&&e->scene==4u&&e->vocal_presence>=3u&&
+    cadence&&mode!=SR_IDM&&!attack){
+   zone=VOCAL_DREAMS_ZONE;
+   transition=0;
+ }
  unsigned word=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE;
  sr_voice *lead=recorded_note(e,sr_tonic(e)+scale[tone],zone,velocity,held);
  if(lead){
    lead->vocal_consonant=attack;
    lead->vocal_vowel_to=transition;
    lead->vocal_morph_rate=1.f/(float)lead->remain;
-   if(part==2u&&(section==2u||section==4u)&&!e->vocal_hook_vowel[hook_note]){
+   if(part==2u&&zone!=VOCAL_DREAMS_ZONE&&(section==2u||section==4u)&&!e->vocal_hook_vowel[hook_note]){
      e->vocal_hook_vowel[hook_note]=zone+1u;
      e->vocal_hook_attack[hook_note]=attack;
      e->vocal_hook_transition[hook_note]=transition;
@@ -2861,14 +2872,14 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     float send_level=track->send,echo_ratio=1.f;
     if(!(e->sound_locks&SR_SOUND_FX)&&!(e->track_send_manual&(1u<<t))&&
        !(e->sound_locks&(1u<<t))){
-      static const float role_space[SR_TRACKS]={.82f,.33f,1.18f,.89f,.94f,1.06f,1.18f,.78f};
+      static const float role_space[SR_TRACKS]={.88f,.36f,1.26f,.96f,1.05f,1.14f,1.25f,.86f};
       static const float mode_space[SR_MUSIC_MODES]={.91f,1.18f,.94f,1.09f,.88f};
       float room=mode_space[e->music_mode]*role_space[t];
       if(t!=SR_BASS&&t!=SR_DRUMS){
         room*=.88f+.21f*e->current_energy;
         room*=.95f+.025f*((e->song_seed>>(t*3u))&7u);
       }
-      static const float role_echo[SR_TRACKS]={1.16f,.17f,.39f,.69f,.48f,1.36f,.42f,.60f};
+      static const float role_echo[SR_TRACKS]={1.20f,.18f,.43f,.75f,.52f,1.41f,.46f,.65f};
       static const float mode_echo[SR_MUSIC_MODES]={.85f,.62f,.58f,1.08f,1.18f};
       echo_ratio=role_echo[t]*mode_echo[e->music_mode]*(.85f+.22f*e->current_energy);
       send_level*=room;

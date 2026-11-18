@@ -74,3 +74,17 @@ intelligibility and musical acceptance remain to be checked.
 The original E5–B4–A4 motif uses the same credited female VocalSet OH, AH and
 OOH assets above. Startup interpolates and loops the existing samples and adds
 bounded stereo reflection and echo taps. It includes no new source recording.
+
+## v0.7.28 DREAMS pilot
+
+[DREAMS](https://freesound.org/people/buggly/sounds/752369/) is the opening word
+of “dreams are breezy,” an original vocal performance recorded and released by
+buggly under CC0. This is human singing. The HQ preview SHA-256 is
+`fec0061c9e2ea3edb9c0d2405fb196075e1dc71a0f60602fac1b94c9fe2243b6`.
+The generator `device/tools/build_dreams_word.py` extracts 0.080–0.700 s,
+downsamples, normalizes, phase-matches a vowel loop and quantizes to 6,836 bytes
+of signed PCM. Edited PCM SHA-256
+`5102229c96aa9f73fd194a9c892d17e50838bc6eb0e004a6f1b9f2b67ba5dd03`.
+The director can use it as a Dreaming cadence. Its intelligibility remains a
+physical listening item. It is one pilot addition, and the larger vocabulary
+and multiword composition expansion remain open.
