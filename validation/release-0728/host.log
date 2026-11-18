@@ -1,0 +1,48 @@
+In file included from /workspace/scratch/28893522649b/aquora-0728-r2-host/device/app.c:169,
+                 from /workspace/scratch/28893522649b/aquora-0728-r2-host/vendor/fm1-base/host/plat_host.c:694:
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/visual_worker.c: In function ‘resonance_job’:
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/visual_worker.c:156:9: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  156 |         if(p[1]<0)p[1]=0;if(p[1]>239)p[1]=239;
+      |         ^~
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/visual_worker.c:156:26: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  156 |         if(p[1]<0)p[1]=0;if(p[1]>239)p[1]=239;
+      |                          ^~
+In file included from /workspace/scratch/28893522649b/aquora-0728-r2-host/device/app.c:286:
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/usb_midi.h: In function ‘midi_audio_before’:
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/usb_midi.h:127:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  127 |  if(!active&&midi_source_was)midi_panic();midi_source_was=active;
+      |  ^~
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/usb_midi.h:127:43: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  127 |  if(!active&&midi_source_was)midi_panic();midi_source_was=active;
+      |                                           ^~~~~~~~~~~~~~~
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/app.c: In function ‘consume’:
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/app.c:319:11: warning: comparison of integer expressions of different signedness: ‘int’ and ‘unsigned int’ [-Wsign-compare]
+  319 |  if(c.kind>=210u&&c.kind<210u+VF_COUNT){
+      |           ^~
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/app.c:319:25: warning: comparison of integer expressions of different signedness: ‘int’ and ‘unsigned int’ [-Wsign-compare]
+  319 |  if(c.kind>=210u&&c.kind<210u+VF_COUNT){
+      |                         ^
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/app.c:363:51: warning: operand of ‘?:’ changes signedness from ‘int’ to ‘unsigned int’ due to unsignedness of other operand [-Wsign-compare]
+  363 |    engine.vocal_patch=!engine.vocal_patch&&d>0?1u:bounded(engine.vocal_patch+d,0,SR_VOCAL_PATCHES);
+      |                                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/app.c: In function ‘app_input_only’:
+/workspace/scratch/28893522649b/aquora-0728-r2-host/device/app.c:1006:48: warning: variable ‘black_duty’ set but not used [-Wunused-but-set-variable]
+ 1006 |  unsigned lights=k, dim_keys=0, dim_buttons=0, black_duty=0,white_duty=0;
+      |                                                ^~~~~~~~~~
+font T: BarlowSemiCondensed-SemiBold.ttf 10px h 12, digit adv 5, 3600 B
+font XS: BarlowSemiCondensed-SemiBold.ttf 12px h 15, digit adv 6, 7005 B
+font S: BarlowSemiCondensed-Medium.ttf 15px h 16, digit adv 7, 8576 B
+font B: BarlowSemiCondensed-Bold.ttf 15px h 16, digit adv 8, 8752 B
+font M: BarlowSemiCondensed-SemiBold.ttf 23px h 24, digit adv 12, 11832 B
+font L: BarlowSemiCondensed-Bold.ttf 31px h 32, digit adv 16, 19776 B
+font set barlow: 60782 B (approx)
+words: 3 own + 51 common -> /workspace/scratch/28893522649b/aquora-0728-r2-host/device/web/words/95a41ce197.json (1059 B)
+font T: InterTight-source.ttf@wght=650 9px h 12, digit adv 5, 5220 B
+font XS: InterTight-source.ttf@wght=620 11px h 14, digit adv 7, 6832 B
+font S: InterTight-source.ttf@wght=560 13px h 17, digit adv 8, 8993 B
+font B: InterTight-source.ttf@wght=720 13px h 17, digit adv 8, 8993 B
+font M: InterTight-source.ttf@wght=660 16px h 20, digit adv 10, 12140 B
+font L: InterTight-source.ttf@wght=720 27px h 34, digit adv 16, 29580 B
+font I: InterTight-source.ttf@wght=560 11px h 14, digit adv 8, 8736 B
+font set AQUORA Sans / Inter Tight derivative: 82172 B (approx)
+host     /workspace/scratch/28893522649b/aquora-0728-r2-host/device/build/host/sound-healing_host

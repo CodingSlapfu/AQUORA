@@ -6,6 +6,21 @@ static sr_engine engine;
 
 int main(void)
 {
+    sr_init(&engine,728);
+    sr_set_vocals(&engine,1,4);
+    engine.running=engine.external_sync=1;
+    engine.master=.8f;
+    engine.isolate=SR_ISOLATE_TRACK1+SR_CHOIR;
+    assert(recorded_note(&engine,57,VOCAL_DREAMS_ZONE,100,4.f));
+    unsigned dream_blocks=0;
+    for(unsigned block=0;block<256;block++){
+        int16_t pcm[512];
+        sr_render(&engine,pcm,256);
+        dream_blocks+=engine.vocal_direct_peak>.001f;
+    }
+    assert(dream_blocks>40);
+    printf("DREAMS direct PCM blocks=%u\n",dream_blocks);
+
     uint64_t hash[SR_VOCAL_PATCHES];
     for(unsigned patch=1;patch<=SR_VOCAL_PATCHES;patch++){
         sr_init(&engine,728);
