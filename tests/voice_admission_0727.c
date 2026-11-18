@@ -59,6 +59,24 @@ static void protected_pool(void)
         assert(e.voices[i].external && e.voices[i].gate && e.voices[i].midi == 48 + i);
 }
 
+static void deadline_cycle(void)
+{
+    start();
+    for (unsigned i = 0; i < SR_VOICES; ++i)
+        assert(note_on(&e, i ? SR_LEAD : SR_BASS, 44 + i, 90, 16.f, 0));
+    e.frame_count += SR_RATE;
+    for (unsigned i = 0; i < 20; ++i) sr_deadline_observe(&e, 5900);
+    assert(e.voice_limit == 6);
+    assert(recorded_note(&e, 64, 0, 96, 2.f));
+    int16_t pcm[512];
+    for (unsigned i = 0; i < 32; ++i) sr_render(&e, pcm, 256);
+    assert(e.vocal_direct_peak > .0001f);
+    for (unsigned i = 0; i < 800; ++i) sr_deadline_observe(&e, 2800);
+    assert(!e.voice_limit);
+    assert(e.voices[0].gate && e.voices[0].track == SR_BASS);
+    puts("PASS injected deadline pressure clamps to 6 and recovers to 16 without losing bass or blocking vocal PCM");
+}
+
 static void ensemble_endurance(void)
 {
     static const unsigned caps[] = {6, 9};
@@ -74,8 +92,9 @@ static void ensemble_endurance(void)
                 unsigned heard = 0, singer = 0, sections = 0;
                 unsigned lead_requests = e.role_requested[SR_LEAD];
                 unsigned lead_refusals = e.role_refused[SR_LEAD];
-                unsigned end = e.sequence_step + 1024u;
-                while (e.sequence_step < end) {
+                unsigned bars = 32u * 2u * (2u + sr_scenes[e.scene].energy % 3u);
+                unsigned end = e.form_loop + bars;
+                while (e.form_loop < end) {
                     for (unsigned track = 0; track < SR_TRACKS; ++track)
                         e.tracks[track].meter = 0.f;
                     sr_render(&e, pcm, 256);
@@ -100,5 +119,6 @@ int main(void)
     two_samples();
     protected_pool();
     puts("PASS transactional sampled admission, direct vocal PCM, optional-role return at cap 6, held MIDI and bass");
+    deadline_cycle();
     ensemble_endurance();
 }

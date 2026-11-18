@@ -20,12 +20,16 @@ static inline k9_face k9_recorded_vocal_pose(const sr_engine *e)
             unsigned phase=e->tick_phase*4u/e->tick_length;
             static const int8_t nod[]={0,1,2,2,2,1,1,0,0,-1,-1,-1,-1,0,0,0};
             unsigned beat=step*4u+(phase>3u?3u:phase);
-            pose.head_y=nod[beat];
-            pose.module=beat<4u?2u:1u;
             unsigned bar_step=(e->sequence_step+15u)&15u;
-            if(bar_step>=12u){
-                pose.gaze=(e->sequence_step&16u)?1:-1;
-                pose.tilt=pose.gaze;
+            unsigned accent=(bar_step&4u)==0u;
+            pose.head_y=accent?nod[beat]:nod[beat]/2;
+            pose.module=beat<4u?2u:1u;
+            unsigned bar=(e->sequence_step+15u)>>4u;
+            if(bar_step>=8u){
+                int direction=(bar&1u)?1:-1;
+                pose.head_x=bar_step>=10u?direction:0;
+                pose.gaze=direction;
+                pose.tilt=bar_step>=12u?direction:0;
             }
         }
         return pose;

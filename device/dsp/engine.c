@@ -1074,6 +1074,7 @@ static sr_voice *allocate_note(sr_engine *e,uint8_t track,uint8_t midi,uint8_t v
       sr_voice *v=&e->voices[i];
       if(!v->active){
         if(!free_voice)free_voice=v;
+        if(!e->voice_limit)break;
         continue;
       }
       active++;
@@ -2017,8 +2018,13 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
  if(part==2u&&e->vocal_hook[hook_note])call=e->vocal_hook[hook_note]-1u;
  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
  unsigned target=phrase_chord(e,step/16u+1u);
- unsigned tone=pos==sustain&&sr_section_remaining(e)==1u?chord:
-     support_degree(e,chord,target,(unsigned)call,0);
+ unsigned cadence=pos==sustain&&sr_section_remaining(e)==1u;
+ /* Once the refrain is established, answer its opening tone with motion
+  * on a crest. The saved opening and closing anchors still identify it. */
+ unsigned lift=part==2u&&section==2u&&pos==answer&&pos!=opening&&
+               (bar&1u)&&e->vocal_hook[0];
+ if(lift)call=e->vocal_hook[0]-1u;
+ unsigned tone=cadence?chord:support_degree(e,chord,target,(unsigned)call,lift);
  /* Recorded zones are A, O, U in each register. */
  unsigned character=vocal_delivery(e,section);
  unsigned phrase=song_draw(e->song_seed,923u);
@@ -2032,7 +2038,8 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    if(e->drum_manual_mask&4u)
       velocity+=(e->drum_pattern[2]&(1u<<pos))?4u:0u;
  }
- if(pos==sustain&&sr_section_remaining(e)==1u)held=1.27f;
+ if(cadence)held=(mode==SR_CINEMATIC||mode==SR_NEOCLASSICAL)?1.55f:1.27f;
+ if(lift)velocity+=5u;
  /* Phrase length and accent follow the intention's breathing profile and
     the actual bass/drum pulse; these do not increase the presence cap. */
  float breath=(float)intention_score[e->scene][1]/7.f;
@@ -2282,8 +2289,14 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
       ornament(e,1,tonic+12+scale[response],60+expression,.65f,s,0);
       e->vocal_call=0;
     }else if(pos==9u)pluck_answer(e,s,chord,-1);
-    if(pos==10u&&!learned_active(e)&&degree>=0)
-      sr_note_on(e,SR_LEAD,lead_pitch(e,degree),56+expression,.21f);
+    if(pos==10u&&!learned_active(e)){
+      if(degree>=0)sr_note_on(e,SR_LEAD,lead_pitch(e,degree),56+expression,.21f);
+      else if((score_bar(e,s)&3u)==2u&&e->vocal_hook[0]&&
+              (song_section(e)==1u||song_section(e)==4u)){
+        unsigned reply=support_degree(e,chord,phrase_chord(e,s/16u+1u),e->vocal_hook[0]-1u,1);
+        sr_note_on(e,SR_LEAD,lead_pitch(e,reply),54+expression,.31f);
+      }
+    }
     if(pos==0u||pos==8u)piano_phrase(e,s,chord,-1,expression-6);
   }else{
     if(e->current_energy>=.25f||(score_bar(e,s)&1u)==0u)pluck_answer(e,s,chord,degree);
