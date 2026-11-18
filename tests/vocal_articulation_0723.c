@@ -50,6 +50,9 @@ int main(void)
         e.vocal_entry_pending=0;
         for(unsigned step=0;step<16;step++){
             score_advance(&e,e.frame_count+e.tick_length);
+            /* This articulation fixture advances score time without PCM;
+               release prior sample gates as elapsed real audio would. */
+            for(unsigned i=0;i<SR_VOICES;i++)if(e.voices[i].sample_zone)e.voices[i].gate=0;
             recorded_vocal_phrase(&e,step,0);
             assert(vocal_character(&e)==identity);
             for(unsigned i=0;i<SR_VOICES;i++){
@@ -58,18 +61,29 @@ int main(void)
                     words|=1u<<(voice->sample_zone-1u);
             }
         }
+        memset(e.voices,0,sizeof e.voices); /* Separate verse allocation from hook fixture. */
+        e.form_loop=0; e.loop_pos=0; e.sequence_step=0;
         e.form_route[0]=12;
-        for(unsigned step=0;step<16;step++)recorded_vocal_phrase(&e,step,0);
-        uint8_t vowels[3],attacks[3];
+        for(unsigned step=0;step<16;step++){
+            for(unsigned i=0;i<SR_VOICES;i++)if(e.voices[i].sample_zone)e.voices[i].gate=0;
+            recorded_vocal_phrase(&e,step,0);
+        }
+        uint8_t vowels[3],attacks[3],transitions[3];
         memcpy(vowels,e.vocal_hook_vowel,3);
         memcpy(attacks,e.vocal_hook_attack,3);
+        memcpy(transitions,e.vocal_hook_transition,3);
+        assert(e.vocal_hook_vowel[0]&&e.vocal_hook_vowel[1]&&e.vocal_hook_vowel[2]);
         e.vocal_reprise=1;
         for(unsigned step=16;step<32;step++){
             score_advance(&e,e.frame_count+e.tick_length);
+            /* This articulation fixture advances score time without PCM;
+               release prior sample gates as elapsed real audio would. */
+            for(unsigned i=0;i<SR_VOICES;i++)if(e.voices[i].sample_zone)e.voices[i].gate=0;
             recorded_vocal_phrase(&e,step,0);
         }
         assert(!memcmp(vowels,e.vocal_hook_vowel,3));
         assert(!memcmp(attacks,e.vocal_hook_attack,3));
+        assert(!memcmp(transitions,e.vocal_hook_transition,3));
     }
     assert(characters==63u);
     assert(words&(1u<<VOCAL_BABY_ZONE));

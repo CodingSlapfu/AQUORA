@@ -65,8 +65,10 @@ int main(void)
     for(unsigned i=0;i<SR_VOICES;i++)
         if(engine.voices[i].sample_zone)engine.voices[i].active=0;
     engine.form_route[0]=8;
+    engine.vocal_presence=2; /* Low presence keeps spacious sections instrumental. */
     for(unsigned step=0;step<16;step++)
         assert(!recorded_vocal_phrase(&engine,step,composition_chord(&engine,step)));
+    engine.vocal_presence=presence;
     engine.form_route[0]=12; /* Bloom uses the chorus hook. */
     assert(featured_vocal_section(&engine,0)==2);
     assert(recorded_vocal_phrase(&engine,0,composition_chord(&engine,0)));

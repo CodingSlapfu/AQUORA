@@ -36,7 +36,8 @@ int main(void)
   }
   e.form_route[0]=2;
   unsigned on=e.vocals_enabled,presence=e.vocal_presence,level=e.vocal_level,send=e.vocal_fx_send;
-  uint32_t hash=audio(&heard);assert(hash!=previous);previous=hash;
+  unsigned before=heard;
+  uint32_t hash=audio(&heard);assert(heard>before+10u);assert(hash!=previous);previous=hash;
   assert(e.vocals_enabled==on&&e.vocal_presence==presence&&e.vocal_level==level&&e.vocal_fx_send==send);
   cases++;
  }

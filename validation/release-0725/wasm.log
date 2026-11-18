@@ -1,0 +1,1 @@
+PASS v0.7.25 matching WASM boots, renders 512000 audio frames and exposes framebuffer
