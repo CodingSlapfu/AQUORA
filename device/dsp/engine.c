@@ -1064,33 +1064,51 @@ static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *att
  *transition=3u;return VOCAL_HUM_ZONE;
 }
 
-static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats,unsigned singer){
+static sr_voice *allocate_note(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,
+                               float beats,unsigned singer,sr_voice *replacement){
   if((!e->running&&!e->preview_frames&&!e->midi_suppress)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
-  unsigned active=0;
-  if(e->voice_limit)for(unsigned i=0;i<SR_VOICES;i++)active+=!!e->voices[i].active;
-  int slot=-1, lead_slot=-1;float quiet=1.e9f, lead_quiet=1.e9f;
-  for(int i=0;i<SR_VOICES;i++){
-    if(!e->voices[i].active){
-      if(!e->voice_limit||active<e->voice_limit){slot=i;break;}
-      continue;
-    }
-    if(e->voices[i].key&&e->voices[i].gate)continue;
-    if(e->voices[i].sample_zone&&e->voices[i].gate)continue;
-    float entrance=e->voices[i].gate&&e->frame_count-e->voices[i].born<SR_RATE/16u?.25f:0.f;
-    float score=e->voices[i].env+entrance+(e->voices[i].track==SR_BASS?.35f:e->voices[i].key&&e->voices[i].gate?.25f:0);
-    if(e->voice_limit&&track>SR_BASS&&e->voices[i].track<=SR_BASS){
-      /* The featured singer can displace a sequenced lead when the
-       * deadline cap leaves no optional voice. Keep bass and live notes. */
-      if(singer&&e->voices[i].track==SR_LEAD&&!e->voices[i].external&&score<lead_quiet){
-        lead_quiet=score;lead_slot=i;
+  unsigned active=0, held[SR_DRUMS]={0};
+  sr_voice *free_voice=0;
+  if(!replacement){
+    for(unsigned i=0;i<SR_VOICES;i++){
+      sr_voice *v=&e->voices[i];
+      if(!v->active){
+        if(!free_voice)free_voice=v;
+        continue;
       }
-      continue;
+      active++;
+      if(v->gate&&!v->sample_zone)held[v->track]++;
     }
-    if(score<quiet){quiet=score;slot=i;}
+    if(free_voice&&active<(e->voice_limit?e->voice_limit:SR_VOICES))replacement=free_voice;
   }
-  if(slot<0)slot=lead_slot;
-  if(slot<0)return 0;
-  sr_voice *v=&e->voices[slot];release_voice(e,v);e->note_ons++;float tail=v->active?v->filter*v->env*(v->sample_zone?.27f:calibrated_patch_gain(v->patch)):0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;v->patch=e->tracks[track].patch;
+  if(!replacement){
+    float best=1.e9f;
+    for(unsigned i=0;i<SR_VOICES;i++){
+      sr_voice *v=&e->voices[i];
+      if(!v->active||(v->gate&&(v->key||v->external||v->sample_zone)))continue;
+      if(v->gate&&v->track==SR_BASS&&track!=SR_BASS&&held[SR_BASS]<=1u)continue;
+      unsigned age=e->frame_count-v->born;
+      unsigned other_role=v->track!=track||singer||v->sample_zone;
+      if(v->gate&&other_role&&!singer&&held[track]&&held[v->track]<=1u)continue;
+      if(v->gate&&other_role&&!singer&&age<SR_RATE/64u&&held[v->track]<=1u)continue;
+      float score=v->env;
+      if(v->gate){
+        score+=2.f;
+        if(held[v->track]<=1u&&other_role)score+=1.f;
+        if(age<SR_RATE/16u)score+=.75f;
+        if(v->track==SR_LEAD||v->track==SR_BASS)score+=.35f;
+      }
+      if(score<best){best=score;replacement=v;}
+    }
+  }
+  if(!replacement)return 0;
+  sr_voice *v=replacement;
+  if(v->active&&v->gate&&!v->sample_zone)e->role_evicted[v->track]++;
+  release_voice(e,v);
+  e->note_ons++;
+  float tail=v->active?v->tail+v->filter*v->env*(v->sample_zone?.27f:calibrated_patch_gain(v->patch)):0.f;
+  memset(v,0,sizeof(*v));
+  v->tail=tail;v->active=v->gate=1;v->track=track;v->patch=e->tracks[track].patch;
   const sr_patch *p=&sr_patches[e->tracks[track].patch];
   e->tracks[track].last_note=midi;
   v->born=e->frame_count;v->freq=sr_note_frequency(e,midi);v->pitch=v->freq;v->midi=midi;
@@ -1136,6 +1154,12 @@ static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocit
   if(!e->midi_suppress)midi_push(e,track,midi,velocity);
   return v;
 }
+
+static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats,unsigned singer)
+{
+  return allocate_note(e,track,midi,velocity,beats,singer,0);
+}
+
 int sr_midi_event_pop(sr_engine *e,uint32_t *event)
 {
  if(e->midi_read==e->midi_write)return 0;
@@ -1172,12 +1196,14 @@ void sr_midi_bend(sr_engine *e,unsigned channel,int value)
 
 void sr_note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats)
 {
-    if(track<SR_DRUMS&&e->running&&!e->preview_frames){
+    if(track>=SR_DRUMS)return;
+    e->role_requested[track]++;
+    if(e->running&&!e->preview_frames){
       if(e->solo>=SR_TRACKS&&e->role_target[track]==0.f)return;
       if(e->role_target[track]>0.f)
         velocity=(uint8_t)(velocity*(.55f+.45f*e->role_target[track])+.5f);
     }
-    (void)note_on(e,track,midi,velocity,beats,0);
+    if(!note_on(e,track,midi,velocity,beats,0))e->role_refused[track]++;
 }
 uint8_t sr_key_note(const sr_engine *e,unsigned key)
 {
@@ -1847,30 +1873,29 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
    sr_voice *v=&e->voices[i];
    if(v->active&&v->sample_zone){occupied++;manual+=v->gate&&(v->key||v->external);}
  }
- float interrupted_tail=0.f;
+ sr_voice *replacement=0;
  if(occupied>=2u){
-   sr_voice *released=0;
    for(unsigned i=0;i<SR_VOICES;i++){
-     sr_voice *candidate=&e->voices[i];
-     if(candidate->active&&candidate->sample_zone&&
-        (!candidate->gate||live||(manual==occupied&&e->vocal_play!=1u))&&
-        (!released||(!candidate->gate&&released->gate)||
-         (candidate->gate==released->gate&&candidate->env<released->env)))released=candidate;
+     sr_voice *v=&e->voices[i];
+     if(!v->active||!v->sample_zone)continue;
+     unsigned held=v->gate&&(v->key||v->external);
+     if(held&&manual<occupied)continue;
+     /* AUTO+Play Along can borrow one slot when both are held by hand. */
+     if(held&&!live&&e->vocal_play==1u)continue;
+     if(!replacement||(!v->gate&&replacement->gate)||
+        (v->gate==replacement->gate&&e->frame_count-v->born>e->frame_count-replacement->born))
+       replacement=v;
    }
-   if(!released){e->vocal_rejected++;return 0;}
-   interrupted_tail=released->filter*released->env*.72f+released->tail;
-   release_voice(e,released);
-   released->active=0;
-   e->vocal_reclaimed++;
+   if(!replacement){e->vocal_sample_denied++;e->vocal_rejected++;return 0;}
  }
  float source_pitch=zone>=VOCAL_DAY_ZONE?vocal_words[zone-VOCAL_DAY_ZONE].hz:vocal_zones[zone].hz;
  int root=source_pitch<400.f?60:72;
  while(note>root+6)note-=12;
  while(note<root-6)note+=12;
- sr_voice *voice=note_on(e,SR_CHOIR,note,velocity,beats,1);
- if(!voice){e->vocal_rejected++;return 0;}
+ sr_voice *voice=allocate_note(e,SR_CHOIR,note,velocity,beats,1,replacement);
+ if(!voice){e->vocal_budget_denied++;e->vocal_rejected++;return 0;}
+ if(replacement)e->vocal_reclaimed++;
  voice->sample_zone=zone+1u;
- voice->tail+=interrupted_tail;
  e->vocal_started++;
  voice->freq=vocal_pitch_target(e,voice);
  voice->pitch=voice->freq;

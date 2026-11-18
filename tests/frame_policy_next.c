@@ -12,5 +12,14 @@ int main(void)
         assert(aq_frame_interval(1,1,pressure[i],1)==50);
     }
     assert(aq_frame_interval(1,0,0,0)==50);
+    for(unsigned visual=0;visual<3;visual++){
+        for(unsigned edge=1;edge<=600;edge++)
+            assert(!aq_frame_invalid(1,1,visual,visual,0,0,edge,0));
+        assert(aq_frame_invalid(1,1,visual,(visual+1)%3,0,0,1,0));
+        assert(aq_frame_invalid(1,0,visual,visual,0,0,1,0));
+        assert(aq_frame_invalid(1,1,visual,visual,0,1,1,0));
+    }
+    assert(aq_frame_invalid(0,0,0,0,0,0,1,0));
+    assert(!aq_frame_invalid(0,0,0,0,0,0,1,1));
     puts("PASS 20 FPS target, audio pressure and XRUN recovery");
 }

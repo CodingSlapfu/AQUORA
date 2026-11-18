@@ -1063,6 +1063,14 @@ static void evolve_graph(unsigned band){
  }
 }
 static unsigned display_strip,display_animate,display_first,display_inputs,display_selections,display_revision;
+static unsigned display_fullscreen,display_visual_mode,display_debug;
+
+static int display_frame_invalid(void)
+{
+ return aq_frame_invalid(display_fullscreen,fullscreen,display_visual_mode,visual_mode,
+                         display_debug,debug,input_revision-display_inputs,
+                         select_revision-display_selections);
+}
 #ifndef PLAT_HOST
 static unsigned panel_transfer_started;
 #endif
@@ -1071,7 +1079,7 @@ static int draw(int animate)
 #ifndef PLAT_HOST
  if(app_lcd_transfer_pending()&&plat_ticks24()-panel_transfer_started<240000u)return 0;
 #endif
- if(display_strip&&input_revision-display_inputs!=select_revision-display_selections){
+ if(display_strip&&display_frame_invalid()){
     display_strip=0;
     dirty=1;
  }
@@ -1139,13 +1147,16 @@ static int draw(int animate)
   }
  }
  if(!display_strip){
+   display_fullscreen=fullscreen;
+   display_visual_mode=visual_mode;
+   display_debug=debug;
    display_inputs=input_revision;
    display_selections=select_revision;
-   display_first=!intro_active&&!fullscreen&&labelled_input!=input_revision;
+   display_first=!intro_active&&labelled_input!=input_revision;
    display_revision=revision;
    display_animate=animate;
  }
- static const uint8_t control_first[5]={3,4,0,1,2};
+ static const uint8_t control_first[5]={3,4,0,1,2}, fullscreen_first[5]={4,0,1,2,3};
  int water_visible=page==PAGE_MIX&&(mix_tab==0||mix_tab==3)&&!debug&&!intro_active&&!fullscreen;
  if(water_visible&&!display_strip&&(animate||dirty))mixer_snapshot();
  /* Bind one audio observation to every portrait band in this frame. */
@@ -1158,13 +1169,13 @@ static int draw(int animate)
    vocal_pose.blink=blink<75u?255:blink<130u?130:0;
  }
  for(;display_strip<5;display_strip++){
-   int band=display_first?control_first[display_strip]:display_strip;
+   int band=display_first?(fullscreen?fullscreen_first:control_first)[display_strip]:display_strip;
    /* Input dispatch must not wait for a complete animated LCD frame. Poll
     * only between bands, never while the canvas/snapshot is being drawn.
     * Navigation can change every page-local selector: abandon this frame
     * rather than mixing snapshots or clearing the new dirty notification. */
    app_input_only();
-   if(input_revision-display_inputs!=select_revision-display_selections){display_strip=0;dirty=1;return 0;}
+   if(display_frame_invalid()){display_strip=0;dirty=1;return 0;}
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=page==PAGE_VOCALS||page==PAGE_GATE||intro_active||fullscreen||band==1||band==2||water_visible||(drums_visible&&band>0)||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
@@ -1325,6 +1336,22 @@ static int draw(int animate)
          if(k==0&&track->mute)value="Muted";
          limited_text(6+59*k,1,57,&FONT_T,names[k],skin_dim());
          limited_text(6+59*k,14,57,&FONT_T,value,skin_text());
+       }
+       if(vocal_tab==7u){
+         char value[16];
+         graph_text(8,0,"SAMPLE",skin_dim());
+         num(value,engine.vocal_sample_denied);
+         graph_text(60,0,value,skin_accent());
+         graph_text(122,0,"VOICE",skin_dim());
+         num(value,engine.vocal_budget_denied);
+         graph_text(175,0,value,skin_accent());
+         graph_text(8,15,"VOICES",skin_dim());
+         num(value,engine.voice_limit?engine.voice_limit:SR_VOICES);
+         graph_text(60,15,value,skin_accent());
+         graph_text(122,15,"PCM AGE MS",skin_dim());
+         if(engine.vocal_audio_frames)num(value,(engine.frame_count-engine.vocal_last_pcm_frame)/(SR_RATE/1000u));
+         else ui_copy(value,"--");
+         graph_text(200,15,value,skin_accent());
        }
        limited_text(7,31,226,&FONT_T,vocal_tab?"ALGO: TAB   SEL: MUTE":"FX: AUDITION  ALGO: FX  SEL: MUTE",RGB(228,182,255));
      }
@@ -1699,7 +1726,7 @@ static int draw(int animate)
    /* Acknowledge the submitted control band, rather than charging later
     * optional graphics to label feedback. Physical DMA completion is a
     * separate device measurement, not represented by this counter. */
-   unsigned feedback_band=knob_until?(knob_focus<2?3u:4u):0u;
+   unsigned feedback_band=knob_until?(fullscreen||knob_focus>=2?4u:3u):0u;
    if((unsigned)band==feedback_band&&revision==state_revision&&qread==qwrite&&labelled_input!=input_revision){
      measure(&control_label_timing[!!engine.running],(plat_ms()-input_changed_ms)*100u);
      labelled_input=input_revision;

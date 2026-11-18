@@ -97,6 +97,7 @@ typedef struct {
   uint8_t vocal_hook[3],vocal_hook_vowel[3],vocal_hook_attack[3],vocal_hook_transition[3],vocal_reprise,vocal_auto_ready;
   uint8_t last_auto_bpm[SR_MUSIC_MODES][SR_SCENES];
   uint32_t vocal_started,vocal_rejected,vocal_reclaimed,vocal_recovered,vocal_audio_frames,vocal_last_pcm_frame;
+  uint32_t vocal_sample_denied,vocal_budget_denied;
   float vocal_direct_peak;
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune,vocal_fx_manual;
   uint8_t vocal_level,vocal_fx_send,vocal_entry_pending,vocal_call;
@@ -152,6 +153,7 @@ typedef struct {
   uint8_t auto_gain, auto_level;
   float input_peak[SR_TRACKS], gain_trim[SR_TRACKS], master_peak;
   float role_gain[SR_TRACKS], role_target[SR_TRACKS];
+  uint32_t role_requested[SR_DRUMS],role_refused[SR_DRUMS],role_evicted[SR_DRUMS];
   uint32_t (*clock_ticks)(void);
   uint32_t fx_ticks;
   uint8_t voice_limit,deadline_high,deadline_low;
