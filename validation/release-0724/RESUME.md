@@ -15,3 +15,6 @@ public-download hash verification. Preserve stable0.7.14 and testing0.7.22.
 No new stable release is authorized. Physical FM-1 evaluation remains
 required, as do additional recorded intention names and more natural BABY
 singing. UH/soft syllable consonants/AY are documented approximations.
+
+Latest implementation/testing checkpoint: see ../release-0725/RESUME.md.
+v0.7.24 artifacts remain preserved as a rollback.
