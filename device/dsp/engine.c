@@ -220,7 +220,7 @@ enum {VOCAL_DAY_ZONE=VOCAL_ZONES,VOCAL_YOU_ZONE,VOCAL_EH_ZONE,VOCAL_EE_ZONE,
       VOCAL_HUM_ZONE,VOCAL_LOVE_ZONE,VOCAL_BABY_ZONE,VOCAL_ME_ZONE,
       VOCAL_DREAMS_ZONE,VOCAL_GO_ZONE,VOCAL_NO_ZONE,VOCAL_WAY_ZONE,VOCAL_BE_ZONE,
       VOCAL_FEEL_ZONE,VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,
-      VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_LAST_ZONE=VOCAL_DO_ZONE};
+      VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_HELLO_ZONE,VOCAL_LAST_ZONE=VOCAL_HELLO_ZONE};
 int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 #define VOCAL_POOL __attribute__((section(".pool"),aligned(4)))
@@ -1120,7 +1120,7 @@ static sr_voice *recorded_live_note(sr_engine *,int,unsigned,unsigned,float);
 static const uint8_t recorded_word_keys[]={
   VOCAL_DAY_ZONE,VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE,VOCAL_DREAMS_ZONE,
   VOCAL_GO_ZONE,VOCAL_NO_ZONE,VOCAL_WAY_ZONE,VOCAL_BE_ZONE,VOCAL_FEEL_ZONE,
-  VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE
+  VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_HELLO_ZONE
 };
 
 static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *attack,unsigned *transition)
@@ -2056,7 +2056,7 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
  if(!placed){
    int root=zone==VOCAL_DREAMS_ZONE?57:source_pitch<400.f?60:72;
    if(zone>=VOCAL_GO_ZONE){
-     static const uint8_t roots[]={64,61,66,67,61,61,57,67,54,57,68,69,66};
+     static const uint8_t roots[]={64,61,66,67,61,61,57,67,54,57,68,69,66,59};
      root=roots[zone-VOCAL_GO_ZONE];
    }
    while(note>root+6)note-=12;
@@ -2177,6 +2177,7 @@ static const uint8_t word_phrases[][3]={
   {VOCAL_DAY_ZONE,4u,VOCAL_DREAMS_ZONE},
   {VOCAL_WHEN_ZONE,VOCAL_YOU_ZONE,VOCAL_CALL_ZONE},
   {VOCAL_YOU_ZONE,VOCAL_DO_ZONE,VOCAL_CALL_ZONE},
+  {VOCAL_HELLO_ZONE,4u,4u},
 };
 #define WORD_PHRASE_COUNT (sizeof word_phrases/sizeof *word_phrases)
 
@@ -2188,9 +2189,9 @@ static unsigned auto_word_phrase(const sr_engine *e,unsigned bar,unsigned sectio
   unsigned color=intention_score[e->scene][2];
   if((section!=1u&&section!=2u&&section!=4u)||((bar+e->scene)&1u))return 0;
   unsigned compact=flow!=SR_VOCAL_NORMAL||e->tick_length<6400u;
-  unsigned phrase=compact?(color&1u?1u:2u):
-       (color+e->music_mode+song_draw(e->song_seed,929u)%7u)%7u;
-  if(phrase>=5u)phrase+=3u;
+  unsigned phrase=compact?(color&1u?1u:10u):
+       (color+e->music_mode+song_draw(e->song_seed,929u)%8u)%8u;
+  if(!compact&&phrase>=5u)phrase+=3u;
   return word_phrases[phrase][slot];
 }
 
@@ -2201,8 +2202,8 @@ static int vocal_octave_near(int note,int center)
  return note;
 }
 
-/* Pick a nearby chord voicing that keeps an actual recording close to its
- * sung pitch. The word may use the lower register when the phrase starts. */
+/* Keep the singer in register and near both the preceding tone and the
+ * sample’s recorded pitch. A word that does not fit gives way to a vowel. */
 static int vocal_word_note(const sr_engine *e,unsigned zone,unsigned chord,int target,
                            int previous,unsigned available)
 {
@@ -2215,9 +2216,9 @@ static int vocal_word_note(const sr_engine *e,unsigned zone,unsigned chord,int t
  int best=0;
  for(unsigned i=0;i<3;i++){
    int anchor=sr_tonic(e)+scale[(chord+i*2u)%7u];
-   int first=vocal_octave_near(anchor,60);
+   int first=vocal_octave_near(anchor,66);
    for(int note=first;note<=77;note+=12){
-     if(note<55||(previous&&(note-previous>5||previous-note>5)))continue;
+     if(note<62||(previous&&(note-previous>5||previous-note>5)))continue;
      float ratio=sr_note_frequency(e,note)/source;
      if(ratio<.77f||ratio>1.34f||duration/ratio>available)continue;
      int distance=note-target;
@@ -2387,7 +2388,7 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    unsigned slot=next>pos?next-pos:4u;
    unsigned recorded_word=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE;
    if(recorded_word){
-     int fitted=vocal_word_note(e,zone,chord,note,pos==opening?0:previous,slot*e->tick_length);
+     int fitted=vocal_word_note(e,zone,chord,note,previous,slot*e->tick_length);
      if(fitted)note=fitted;
      else recorded_word=0;
    }

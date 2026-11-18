@@ -119,3 +119,5 @@ The sample manifest records the exact source offsets and hashes. The three
 added cuts use the same one-shot encoder as the previous bank. AUTO
 chooses a recorded word where the note fits its source register, with a
 recorded sung-vowel fallback at other pitches.
+
+HELLO is a cue from [Valérie Vivegnis’s self-recorded Hello](https://freesound.org/people/Valerie-Vivegnis/sounds/759142/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). AQUORA trims, downmixes, resamples, fades, and quantizes this spoken performance and pitches it in the sampler. It is available on the manual WORDS keyboard and in AUTO.

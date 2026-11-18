@@ -258,5 +258,26 @@
     "codec_snr_db": 24.93,
     "median_hz": 370.0,
     "tempo_ratio": 1.0
+  },
+  {
+    "word": "HELLO",
+    "attribution": "Valerie-Vivegnis",
+    "source": "https://freesound.org/people/Valerie-Vivegnis/sounds/759142/",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "preview_sha256": "ed0949fb5bc6e7143c9cd75928210de68126f36f12572d155a02d4d09731d4cd",
+    "decoded_cut_sha256": "07c3e09c6fcc8e8f844c45fcc99ca336434ec9ae767fed506aa149d8656fe93d",
+    "offset_seconds": [
+      0.56,
+      1.18
+    ],
+    "pcm_sha256": "c36e02ea2c604293ac629536102bd1292405fe840a8538c8d1370a7b02b6322d",
+    "sample_rate": 6800,
+    "samples": 4216,
+    "packed_bytes": 2636,
+    "packed_sha256": "f2ca1212cb43e3d8de92787a29303664fdf479c71293efc6d43ab86a3401ed67",
+    "codec_snr_db": 24.42,
+    "median_hz": 245.0,
+    "tempo_ratio": 1.0,
+    "performance": "spoken"
   }
 ]

@@ -12,7 +12,7 @@ static unsigned pitch_near(float hz)
 int main(void)
 {
     static const char *const words[] = {
-        "GO","NO","WAY","BE","FEEL","COLORS","GREEN","BEAUTIFUL","I","GOING","WHEN","CALL","DO"
+        "GO","NO","WAY","BE","FEEL","COLORS","GREEN","BEAUTIFUL","I","GOING","WHEN","CALL","DO","HELLO"
     };
     unsigned glow_frames = 0;
     for (unsigned w = 0; w < sizeof words / sizeof *words; w++) {
@@ -65,6 +65,6 @@ int main(void)
                     if (zone >= VOCAL_GO_ZONE) heard_words |= 1u << (zone - VOCAL_GO_ZONE);
                 }
         }
-    assert(heard_words == 8191u && glow_frames > 100);
-    puts("PASS all thirteen words in manual bank and AUTO choices, natural one-shot endings and direct-PCM glow");
+    assert(heard_words == (1u << (VOCAL_LAST_ZONE - VOCAL_GO_ZONE + 1u)) - 1u && glow_frames > 100);
+    puts("PASS all added words in manual bank and AUTO choices, natural one-shot endings and direct-PCM glow");
 }
