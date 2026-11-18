@@ -261,6 +261,14 @@ static const struct {
    VOCAL_DREAMS_ATTACK,{6,5,4},212.0192308f},
   AQUORA_SUNG_WORDS
 };
+static inline __attribute__((always_inline)) int vocal_word_sample(unsigned word,unsigned index)
+{
+  const int8_t *pcm=vocal_words[word].pcm;
+  if(word<VOCAL_SHINE_ZONE-VOCAL_DAY_ZONE)return pcm[index];
+  static const int8_t levels[]={0,4,9,16,26,43,66,101,0,-4,-9,-16,-26,-43,-66,-101};
+  unsigned bits=(uint8_t)pcm[index>>1u];
+  return levels[(bits>>((index&1u)*4u))&15u];
+}
 static uint8_t vocal_pcm_ready;
 
 static const uint16_t rv_len[4]={1061,1277,1453,1789};
@@ -3343,8 +3351,9 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
         if(zone>=VOCAL_DAY_ZONE){
           unsigned word=zone-VOCAL_DAY_ZONE;
           if(index>=vocal_words[word].length-1u){v->active=0;continue;}
-          const int8_t *pcm=vocal_words[word].pcm;
-          s=(pcm[index]+(pcm[index+1u]-pcm[index])*(v->phase-index))*(1.f/128.f);
+          int first=vocal_word_sample(word,index);
+          int second=vocal_word_sample(word,index+1u);
+          s=(first+(second-first)*(v->phase-index))*(1.f/128.f);
           unsigned release=vocal_words[word].release;
           articulation=vocal_words[word].mouth[index<vocal_words[word].attack?0:index<release?1:2];
           v->phase+=config->step;
@@ -3359,12 +3368,13 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
         }
         if(v->vocal_vowel_to){
           unsigned target=v->vocal_vowel_to-1u;
-          const int8_t *pcm=target<VOCAL_DAY_ZONE?vocal_pcm[target]:vocal_words[target-VOCAL_DAY_ZONE].pcm;
           unsigned end=target<VOCAL_DAY_ZONE?VOCAL_LENGTH:vocal_words[target-VOCAL_DAY_ZONE].release;
           unsigned loop=target<VOCAL_DAY_ZONE?vocal_zones[target].loop:vocal_words[target-VOCAL_DAY_ZONE].loop;
           unsigned index=(unsigned)v->vocal_other_phase;
           unsigned next=index+1u<end?index+1u:loop;
-          float second=(pcm[index]+(pcm[next]-pcm[index])*(v->vocal_other_phase-index))*(1.f/128.f);
+          int a=target<VOCAL_DAY_ZONE?vocal_pcm[target][index]:vocal_word_sample(target-VOCAL_DAY_ZONE,index);
+          int b=target<VOCAL_DAY_ZONE?vocal_pcm[target][next]:vocal_word_sample(target-VOCAL_DAY_ZONE,next);
+          float second=(a+(b-a)*(v->vocal_other_phase-index))*(1.f/128.f);
           s+=(second-s)*config->morph;
           v->vocal_other_phase+=config->other_step;
           if(v->vocal_other_phase>=end)v->vocal_other_phase-=end-loop;

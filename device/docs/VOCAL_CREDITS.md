@@ -98,6 +98,7 @@ phonetic performances. The generator fixes the voiced excitation near
 short vowel loop so the arranger can hold the stressed vowel and release
 the final phones. It saves mono 11,025 Hz signed PCM. The firmware plays
 it in the existing sampled vocal slots and uses note rhythm for Vocal Flow.
+Flash uses four-bit companded samples, decoded by a 16-value lookup.
 Pitch transposition still affects sample rate and formants, bounded to the
 closest octave around the source pitch. Listen for vowel and consonant clarity
 on the FM-1 before artistic acceptance.
