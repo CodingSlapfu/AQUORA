@@ -11,7 +11,7 @@ Published November 18, 2026 to the existing AQUORA website as Site version 229. 
 
 - [Testing installer](https://parallax8-studio.jminie66.chatgpt.site/testing/0.7.33/install/) and [emulator](https://parallax8-studio.jminie66.chatgpt.site/testing/0.7.33/emu/) resolve on the public site.
 - [Evidence](https://parallax8-studio.jminie66.chatgpt.site/testing/0.7.33/evidence/) contains panel captures, 19 drum samples, and matched dry/full-mix vocal excerpts.
-- 16 simulated browser updater checks passed, including loader return, previous-identity mismatch and single-bit corruption rejection.
+- 18 simulated browser updater checks passed, including loader return, previous-identity mismatch and single-bit corruption rejection.
 - Across 15 native-style render cases the direct signal lit KIRA in 40,885 blocks. The pose signaled closed eyelids in 18,271 blocks and reopened 137 times. Every closed-lid block had direct vocal light above threshold.
 - The [stable installer](https://parallax8-studio.jminie66.chatgpt.site/install/) matched its previous bytes. The site commit changes only homepage testing links and adds v0.7.33 assets. The [v0.7.32 rollback](https://parallax8-studio.jminie66.chatgpt.site/testing/0.7.32/install/) still serves its firmware and identity.
 - Physical FM-1 timing, LCD behavior, flashing and listening acceptance remain open. See [benchmark](BENCHMARK.md) for audio measurements and the outstanding artist listening assessment.
