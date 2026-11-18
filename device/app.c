@@ -375,6 +375,7 @@ static void consume(void){
    engine.vocal_articulation=bounded(engine.vocal_articulation+d,0,18);
    memset(engine.vocal_hook_vowel,0,sizeof engine.vocal_hook_vowel);
    memset(engine.vocal_hook_attack,0,sizeof engine.vocal_hook_attack);
+   memset(engine.vocal_hook_transition,0,sizeof engine.vocal_hook_transition);
    engine.vocal_entry_pending=engine.vocals_enabled;
    break;
  case 190:engine.vocal_play=bounded(engine.vocal_play+d,0,2);break;
@@ -481,7 +482,7 @@ static void consume(void){
    engine.vocal_fx_manual|=2u;
    engine.vocal_reverb=bounded(engine.vocal_reverb+d*5,0,100);
    break;
- case 166:engine.vocal_tune=bounded(engine.vocal_tune+d*5,0,100);break;
+ case 166:engine.vocal_fx_manual|=8u;engine.vocal_tune=bounded(engine.vocal_tune+d*5,0,100);break;
  case 165:
    if(!(engine.vocal_fx_manual&4u)&&engine.vocal_echo_now>0.f)
      engine.vocal_delay=(uint8_t)(engine.vocal_echo_now+.5f);

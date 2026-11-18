@@ -332,6 +332,7 @@ static void arrangement_apply(const arrangement *record)
     memset(engine.vocal_hook,0,sizeof engine.vocal_hook);
     memset(engine.vocal_hook_vowel,0,sizeof engine.vocal_hook_vowel);
     memset(engine.vocal_hook_attack,0,sizeof engine.vocal_hook_attack);
+   memset(engine.vocal_hook_transition,0,sizeof engine.vocal_hook_transition);
     engine.vocal_entry_pending=engine.vocals_enabled;
     engine.vocal_auto_ready=0;
     engine.vocal_reprise=0;

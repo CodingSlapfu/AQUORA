@@ -46,7 +46,7 @@ int main(void)
         characters|=1u<<identity;
         sr_start(&e);
         sr_set_vocals(&e,1,4);
-        e.form_route[0]=12;
+        e.form_route[0]=2; /* Words belong to the verse; chorus develops the hook. */
         e.vocal_entry_pending=0;
         for(unsigned step=0;step<16;step++){
             score_advance(&e,e.frame_count+e.tick_length);
@@ -58,6 +58,8 @@ int main(void)
                     words|=1u<<(voice->sample_zone-1u);
             }
         }
+        e.form_route[0]=12;
+        for(unsigned step=0;step<16;step++)recorded_vocal_phrase(&e,step,0);
         uint8_t vowels[3],attacks[3];
         memcpy(vowels,e.vocal_hook_vowel,3);
         memcpy(attacks,e.vocal_hook_attack,3);

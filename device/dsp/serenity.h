@@ -94,7 +94,7 @@ typedef struct {
   float binaural_phase_l, binaural_phase_r;
   float speaker_low, speaker_body, speaker_mix;
   uint8_t speaker_enabled,vocals_enabled,vocal_presence,vocal_play,vocal_articulation;
-  uint8_t vocal_hook[3],vocal_hook_vowel[3],vocal_hook_attack[3],vocal_reprise,vocal_auto_ready;
+  uint8_t vocal_hook[3],vocal_hook_vowel[3],vocal_hook_attack[3],vocal_hook_transition[3],vocal_reprise,vocal_auto_ready;
   uint32_t vocal_started,vocal_rejected,vocal_reclaimed,vocal_recovered,vocal_audio_frames;
   float vocal_direct_peak;
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune,vocal_fx_manual;
