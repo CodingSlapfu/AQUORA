@@ -13,8 +13,8 @@ static inline k9_face k9_recorded_vocal_pose(const sr_engine *e)
        (e->isolate!=SR_ISOLATE_MIX&&e->isolate!=SR_ISOLATE_TRACK1+SR_CHOIR))
         return pose;
     float lamp=e->vocal_direct_peak*e->master;
-    if(lamp>.0005f){
-        float strength=70.f+lamp*1400.f+e->vocal_face_midi*.35f;
+    if(lamp>.0002f){
+        float strength=195.f+lamp*1200.f;
         pose.singing_light=(uint8_t)(strength<255.f?strength:255.f);
     }
     if(!e->vocal_face_mouth||peak<.0005f){

@@ -18,23 +18,27 @@ static void setup(void)
 int main(void)
 {
     static const char *const names[]={
-        "SHINE","FREE","FLY","STAY","AWAY","HOME","HOPE","ALIVE","TONIGHT","FOREVER"
+        "DAY","YOU","LOVE","ME","DREAMS"
     };
-    uint32_t signatures[10];
-    for(unsigned i=0;i<10;i++){
+    uint32_t signatures[sizeof recorded_word_keys];
+    for(unsigned i=0;i<sizeof recorded_word_keys;i++){
         setup();
         e.vocal_fx_manual=15;
         e.vocal_delay=e.vocal_reverb=e.vocal_chorus=0;
         e.vocal_param_lock=(1u<<VF_COUNT)-1u;
-        sr_voice *v=recorded_note(&e,64,VOCAL_SHINE_ZONE+i,100,.85f);
-        assert(v&&v->midi==64);
+        unsigned attack,transition;
+        unsigned zone=vocal_articulation(12u,i,&attack,&transition);
+        assert(zone==recorded_word_keys[i]&&zone!=VOCAL_BABY_ZONE);
+        assert(!attack&&!transition);
+        sr_voice *v=recorded_note(&e,64,zone,100,.85f);
+        assert(v&&v->sample_zone==zone+1u);
         unsigned audible=0,tail=0,peak=0;
         uint32_t hash=2166136261u;
         for(unsigned j=0;j<720;j++){
             int16_t pcm[256];
             sr_render(&e,pcm,128);
             audible+=e.vocal_direct_peak>.001f;
-            if(v->active&&!v->gate&&v->phase>vocal_words[VOCAL_SHINE_ZONE+i-VOCAL_DAY_ZONE].release)
+            if(v->active&&!v->gate&&v->phase>vocal_words[zone-VOCAL_DAY_ZONE].release)
                 tail+=e.vocal_direct_peak>.001f;
             for(unsigned n=0;n<256;n++){
                 unsigned abs_sample=pcm[n]<0?-(int)pcm[n]:pcm[n];
@@ -83,5 +87,5 @@ int main(void)
           }
       }
     assert(seen==14u);
-    puts("PASS all 10 generated clips through the allocator and PCM mixer; distinct flow timing");
+    puts("PASS five retained sung words through the allocator and PCM mixer; distinct flow timing");
 }

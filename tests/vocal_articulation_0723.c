@@ -86,7 +86,7 @@ int main(void)
         assert(!memcmp(transitions,e.vocal_hook_transition,3));
     }
     assert(characters==63u);
-    assert(words&(1u<<VOCAL_BABY_ZONE));
+    assert(!(words&(1u<<VOCAL_BABY_ZONE)));
     assert(words&(1u<<VOCAL_LOVE_ZONE));
     assert(words&(1u<<VOCAL_ME_ZONE));
     puts("PASS 18 distinct audible articulations, six stable song characters, recorded multiword vocabulary and hook articulation recall");

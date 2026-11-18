@@ -48,6 +48,45 @@ static void verify_recorded_word(unsigned zone)
     puts("PASS real sung word onset, vowel hold, release, PCM and timed mouth poses");
 }
 
+static void verify_glow(void)
+{
+    static const unsigned lamps[][2]={{62,116},{179,113},{121,212}};
+    int16_t pcm[512];
+    sr_init(&engine,729);
+    sr_set_vocals(&engine,1,4);
+    engine.running=engine.external_sync=1;
+    engine.isolate=SR_ISOLATE_TRACK1+SR_CHOIR;
+    engine.master=.8f;
+    assert(!k9_recorded_vocal_pose(&engine).singing_light);
+    assert(recorded_note(&engine,62,VOCAL_YOU_ZONE,100,1.f));
+    k9_face pose={0};
+    for(unsigned frame=0;frame<48&&!pose.singing_light;frame++){
+        sr_render(&engine,pcm,256);
+        pose=k9_recorded_vocal_pose(&engine);
+    }
+    assert(engine.vocal_direct_peak>.0002f && pose.singing_light>=195);
+    unsigned changed=0;
+    k9_face unlit=pose;
+    unlit.singing_light=0;
+    for(unsigned y=0;y<240;y+=48){
+        k9_face_render(rendered+y*240,y,48,&pose);
+        k9_face_render(neutral+y*240,y,48,&unlit);
+    }
+    for(unsigned i=0;i<240u*240u;i++)changed+=rendered[i]!=neutral[i];
+    assert(changed>800&&changed<=3u*23u*23u);
+    for(unsigned i=0;i<3;i++){
+        int x=lamps[i][0]+pose.head_x+((int)lamps[i][1]-120)*pose.tilt/128;
+        int y=lamps[i][1]+pose.head_y;
+        unsigned core=rendered[y*240+x];
+        assert((core>>11u)>18u&&((core>>5u)&63u)<24u&&(core&31u)>23u);
+        assert(rendered[y*240+x+8]!=neutral[y*240+x+8]);
+        assert(rendered[y*240+x+12]==neutral[y*240+x+12]);
+    }
+    engine.tracks[SR_CHOIR].mute=1;
+    assert(!k9_recorded_vocal_pose(&engine).singing_light);
+    printf("PASS direct vocal PCM lights all three violet modules; %u visible pixels\n",changed);
+}
+
 static void verify_phrase(void)
 {
     int16_t pcm[512];
@@ -85,6 +124,7 @@ static void verify_hidden(void)
 int main(void)
 {
     verify_canvas_palette();
+    verify_glow();
     verify_recorded_word(VOCAL_DAY_ZONE);
     verify_recorded_word(VOCAL_YOU_ZONE);
     const k9_face closed={0};

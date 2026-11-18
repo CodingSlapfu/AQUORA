@@ -46,23 +46,29 @@ void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *
  if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,dx,dy+1);
  if(f->neck)plate(pixels,y0,height,109,195,24,29,dx+(f->neck>0?1:-1),dy);
  if(f->module||f->singing_light){
-   static const uint8_t lamps[][2]={{121,212},{54,102},{184,99}};
-   uint16_t glow=f->module==2u?0x8f7fu:0x4b18u;
+   /* Centres are registered to the left/right ear plates and the throat servo. */
+   static const uint8_t lamps[][2]={{62,116},{179,113},{121,212}};
+   unsigned strength=f->singing_light;
+   int radius=strength>=16u?11:1;
    for(unsigned lamp=0;lamp<3;lamp++){
      int y=lamps[lamp][1]+dy;
      int x=lamps[lamp][0]+dx+((int)lamps[lamp][1]-120)*f->tilt/128;
-     int radius=f->singing_light>150u?4:f->singing_light>36u?3:1;
+     if(y+radius<(int)y0||y-radius>=(int)(y0+height))continue;
      for(int row=-radius;row<=radius;row++)for(int col=-radius;col<=radius;col++){
        if(y+row<(int)y0||y+row>=(int)(y0+height)||x+col<0||x+col>=240)continue;
-       unsigned distance=(unsigned)((row<0?-row:row)+(col<0?-col:col));
-       if(radius>1&&distance>(unsigned)radius+1u)continue;
-       uint16_t shade=glow;
-       if(f->singing_light){
-         unsigned level=f->singing_light/(distance+1u);
-         shade=(uint16_t)(((8u+level*23u/255u)<<11u)|
-                         ((4u+level*29u/255u)<<5u)|(13u+level*18u/255u));
+       unsigned d2=(unsigned)(row*row+col*col);
+       if(d2>(unsigned)(radius*radius))continue;
+       uint16_t *pixel=&pixels[(y+row-(int)y0)*240+x+col];
+       if(radius==1){
+         if(f->module)*pixel=f->module==2u?0x8f7fu:0x4b18u;
+         continue;
        }
-       pixels[(y+row-(int)y0)*240+x+col]=shade;
+       /* Soft falloff over the metal and a saturated violet emitter core. */
+       unsigned alpha=d2<=9u?strength:(121u-d2)*strength/176u;
+       unsigned red=(((*pixel>>11u)*(255u-alpha))+26u*alpha)/255u;
+       unsigned green=((((*pixel>>5u)&63u)*(255u-alpha))+9u*alpha)/255u;
+       unsigned blue=(((*pixel&31u)*(255u-alpha))+31u*alpha)/255u;
+       *pixel=(uint16_t)((red<<11u)|(green<<5u)|blue);
      }
    }
  }

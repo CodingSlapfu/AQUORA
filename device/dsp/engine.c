@@ -218,9 +218,7 @@ static int8_t drum_pcm[13][DRUM_WAVE_LENGTH];
 #include "vocal_you.inc"
 enum {VOCAL_DAY_ZONE=VOCAL_ZONES,VOCAL_YOU_ZONE,VOCAL_EH_ZONE,VOCAL_EE_ZONE,
       VOCAL_HUM_ZONE,VOCAL_LOVE_ZONE,VOCAL_BABY_ZONE,VOCAL_ME_ZONE,
-      VOCAL_DREAMS_ZONE,VOCAL_SHINE_ZONE,VOCAL_FREE_ZONE,VOCAL_FLY_ZONE,VOCAL_STAY_ZONE,
-      VOCAL_AWAY_ZONE,VOCAL_HOME_ZONE,VOCAL_HOPE_ZONE,VOCAL_ALIVE_ZONE,
-      VOCAL_TONIGHT_ZONE,VOCAL_FOREVER_ZONE,VOCAL_LAST_ZONE=VOCAL_FOREVER_ZONE};
+      VOCAL_DREAMS_ZONE,VOCAL_LAST_ZONE=VOCAL_DREAMS_ZONE};
 int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 #define VOCAL_POOL __attribute__((section(".pool"),aligned(4)))
@@ -229,7 +227,6 @@ int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #endif
 #include "vocal_extensions.inc"
 #include "vocal_dreams.inc"
-#include "sung_words.inc"
 
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 __attribute__((section(".pool"),aligned(4)))
@@ -259,15 +256,10 @@ static const struct {
   {vocal_me_pcm,10804u,5090u,6578u,1729u,{4,5,5},355.6451613f},
   {vocal_dreams_pcm,VOCAL_DREAMS_LENGTH,VOCAL_DREAMS_LOOP,VOCAL_DREAMS_RELEASE,
    VOCAL_DREAMS_ATTACK,{6,5,4},212.0192308f},
-  AQUORA_SUNG_WORDS
 };
 static inline __attribute__((always_inline)) int vocal_word_sample(unsigned word,unsigned index)
 {
-  const int8_t *pcm=vocal_words[word].pcm;
-  if(word<VOCAL_SHINE_ZONE-VOCAL_DAY_ZONE)return pcm[index];
-  static const int8_t levels[]={0,4,9,16,26,43,66,101,0,-4,-9,-16,-26,-43,-66,-101};
-  unsigned bits=(uint8_t)pcm[index>>1u];
-  return levels[(bits>>((index&1u)*4u))&15u];
+  return vocal_words[word].pcm[index];
 }
 static uint8_t vocal_pcm_ready;
 
@@ -1055,6 +1047,11 @@ void sr_deadline_observe(sr_engine *e,unsigned callback_us)
 static sr_voice *recorded_note(sr_engine *,int,unsigned,unsigned,float);
 static sr_voice *recorded_live_note(sr_engine *,int,unsigned,unsigned,float);
 
+/* Keyboard audition repeats this order across the keybed. */
+static const uint8_t recorded_word_keys[]={
+  VOCAL_DAY_ZONE,VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE,VOCAL_DREAMS_ZONE
+};
+
 static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *attack,unsigned *transition)
 {
  static const uint8_t vowel[]={0,0,2,1,VOCAL_EE_ZONE,VOCAL_EH_ZONE,
@@ -1064,6 +1061,7 @@ static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *att
    if(kind==6u)*attack=8u;
    return vowel[kind];
  }
+ if(kind==12u)return recorded_word_keys[position%sizeof recorded_word_keys];
  position%=3u;
  if(kind==8u){
    static const uint8_t vowels[]={1,VOCAL_EH_ZONE,VOCAL_EE_ZONE},onsets[]={4,5,1};
@@ -1071,7 +1069,6 @@ static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *att
  }
  if(kind==9u||kind==10u){*attack=kind==9u?2u:3u;return 0;}
  if(kind==11u){static const uint8_t attacks[]={6,4,7};*attack=attacks[position];return position==2u?1u:0u;}
- if(kind==12u){static const uint8_t words[]={VOCAL_BABY_ZONE,VOCAL_LOVE_ZONE,VOCAL_YOU_ZONE};return words[position];}
  if(kind==13u)return position==1u?0u:1u;
  if(kind==14u){*transition=1u;return 1u;}
  if(kind==15u){*transition=VOCAL_EE_ZONE+1u;return 2u;}
@@ -1948,7 +1945,7 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
    if(!replacement){e->vocal_sample_denied++;e->vocal_rejected++;return 0;}
  }
  float source_pitch=zone>=VOCAL_DAY_ZONE?vocal_words[zone-VOCAL_DAY_ZONE].hz:vocal_zones[zone].hz;
- int root=zone>=VOCAL_SHINE_ZONE?64:zone==VOCAL_DREAMS_ZONE?57:source_pitch<400.f?60:72;
+ int root=zone==VOCAL_DREAMS_ZONE?57:source_pitch<400.f?60:72;
  while(note>root+6)note-=12;
  while(note<root-6)note+=12;
  sr_voice *voice=allocate_note(e,SR_CHOIR,note,velocity,beats,1,replacement);
@@ -2055,23 +2052,15 @@ static unsigned vocal_flow_for(const sr_engine *e,unsigned section)
  return SR_VOCAL_NORMAL;
 }
 
-static unsigned sung_refrain(const sr_engine *e,unsigned section,unsigned slot)
+static unsigned manual_word_phrase(unsigned bar,unsigned slot)
 {
- static const uint8_t couplets[][2]={
-   {VOCAL_SHINE_ZONE,VOCAL_TONIGHT_ZONE}, {VOCAL_FLY_ZONE,VOCAL_AWAY_ZONE},
-   {VOCAL_STAY_ZONE,VOCAL_HOME_ZONE}, {VOCAL_STAY_ZONE,VOCAL_ALIVE_ZONE},
-   {VOCAL_FOREVER_ZONE,VOCAL_FREE_ZONE}, {0,VOCAL_HOPE_ZONE}
+ static const uint8_t phrases[][3]={
+   {VOCAL_LOVE_ZONE,4u,VOCAL_YOU_ZONE},
+   {VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE},
+   {VOCAL_DAY_ZONE,4u,VOCAL_DREAMS_ZONE},
+   {VOCAL_LOVE_ZONE,4u,VOCAL_ME_ZONE}
  };
- if(slot==1u||section==0u||section==3u)return 0;
- unsigned mood=intention_score[e->scene][1];
- unsigned style=e->music_mode;
- unsigned draw=song_draw(e->song_seed,958u);
- unsigned phrase=(mood+draw%6u)%6u;
- if(style==SR_CINEMATIC||style==SR_NEOCLASSICAL)
-   phrase=(mood+draw)%3u==0u?5u:(mood+draw)&1u?2u:4u;
- if(style==SR_IDM)
-   phrase=(mood+draw+!!(e->tick_length<8583u))%3u;
- return couplets[phrase][slot==2u];
+ return phrases[bar&3u][slot];
 }
 
 static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
@@ -2153,7 +2142,7 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
  unsigned lexical=character==2u&&section!=0u&&section!=3u;
  if(lexical){
    static const uint8_t words[][3]={
-     {VOCAL_BABY_ZONE,VOCAL_LOVE_ZONE,VOCAL_YOU_ZONE},
+     {VOCAL_LOVE_ZONE,VOCAL_YOU_ZONE,VOCAL_YOU_ZONE},
      {VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE},
      {VOCAL_LOVE_ZONE,VOCAL_YOU_ZONE,VOCAL_YOU_ZONE}
    };
@@ -2189,8 +2178,10 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    transition=0u;
  }
  if(e->vocal_articulation)zone=vocal_articulation(e->vocal_articulation,hook_note,&attack,&transition);
+ if(e->vocal_articulation==12u)zone=extra?4u:manual_word_phrase(bar,hook_note);
  if(!e->vocal_articulation&&part==2u&&(e->vocal_reprise||section==4u)&&e->vocal_hook_vowel[hook_note]){
    zone=e->vocal_hook_vowel[hook_note]-1u;
+   if(zone==VOCAL_BABY_ZONE)zone=VOCAL_LOVE_ZONE;
    attack=e->vocal_hook_attack[hook_note];
    transition=e->vocal_hook_transition[hook_note];
  }
@@ -2198,14 +2189,8 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    if(zone<3u)zone+=3u;
    if(transition&&transition<=3u)transition+=3u;
  }
- /* Refrains use two anchored words. Syncopated intervening notes use a
-    short vowel and do not replace the phrase's saved melodic anchors. */
+ /* Use brief wordless responses on the extra double-time subdivisions. */
  if(extra&&!e->vocal_articulation){zone=4u;attack=0;transition=0;}
- if(!e->vocal_articulation&&!extra&&part==2u&&e->vocal_presence>=3u&&
-     (section==2u||lexical||section==4u)){
-   unsigned sung=sung_refrain(e,section,hook_note);
-   if(sung){zone=sung;attack=0;transition=0;}
- }
  /* A recorded word can decorate a Dreaming cadence without overwriting
     the reusable vowel hook or introducing a new sample ID into saved banks. */
  if(!e->vocal_articulation&&part==2u&&e->scene==4u&&e->vocal_presence>=3u&&
@@ -2219,7 +2204,7 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    lead->vocal_consonant=attack;
    lead->vocal_vowel_to=transition;
    lead->vocal_morph_rate=1.f/(float)lead->remain;
-   if(part==2u&&!extra&&zone<VOCAL_DREAMS_ZONE&&(section==2u||section==4u)&&!e->vocal_hook_vowel[hook_note]){
+   if(part==2u&&!extra&&zone<VOCAL_DREAMS_ZONE&&zone!=VOCAL_BABY_ZONE&&(section==2u||section==4u)&&!e->vocal_hook_vowel[hook_note]){
      e->vocal_hook_vowel[hook_note]=zone+1u;
      e->vocal_hook_attack[hook_note]=attack;
      e->vocal_hook_transition[hook_note]=transition;
