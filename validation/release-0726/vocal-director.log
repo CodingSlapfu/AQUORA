@@ -1,0 +1,21 @@
+AUTO 0 target range 36.00..82.00
+AUTO 1 target range 22.55..52.75
+AUTO 2 target range 57.60..86.00
+AUTO 3 target range 32.00..100.00
+AUTO 4 target range 21.60..54.00
+AUTO 5 target range 42.40..68.20
+AUTO 6 target range 22.90..55.10
+AUTO 7 target range 0.00..33.10
+AUTO 8 target range 0.00..30.80
+AUTO 9 target range 33.20..58.00
+AUTO 10 target range 22.05..51.25
+AUTO 11 target range 19.00..65.80
+AUTO 12 target range 0.00..47.00
+AUTO 13 target range 38.40..62.20
+AUTO 14 target range 49.90..77.50
+AUTO 15 target range 45.70..58.40
+AUTO 16 target range 2.00..40.00
+AUTO 17 target range 26.20..63.00
+AUTO 18 target range 12.65..40.25
+AUTO 19 target range 36.60..67.10
+PASS 110 intention/mode direct-vocal PCM cases; 550 section profiles, all 20 AUTO ranges, locks, tune zero, articulation recall and OFF/presence zero
