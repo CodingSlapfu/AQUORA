@@ -343,8 +343,8 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 107:*name="USB MIDI OUT";return onoff(midi.settings.usb_out);
  case 108:*name="MIDI PANIC";return midi_panic_pending?"Flushing":"Turn right";
  case 110:*name="MIDI CONTROLS";return onoff(midi.settings.controls_out);
- case 152:*name="CUTOFF";if(!engine.filter_cutoff)return "Patch";number=engine.filter_cutoff;break;
- case 153:*name="RESONANCE";number=engine.filter_resonance;break;
+ case 152:*name="BRIGHTNESS";if(!engine.filter_cutoff)return "Patch";number=engine.filter_cutoff;break;
+ case 153:*name="FILTER EMPHASIS";number=engine.filter_resonance;break;
  case 230:*name="RESET FX";return "AUTO >";
  case 210: case 211: case 212: case 213: case 214: case 215: case 216: case 217: case 218: case 219: case 220: case 221: case 222: case 223: case 224: case 225: case 226: case 227: case 228: case 229:{
    static const char *const labels[]={"DECAY","DAMP","WIDTH","TIME","FEEDBACK","TONE",
@@ -396,10 +396,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 168:*name="LANE MODE";return (engine.drum_manual_mask&(1u<<drum_part))?"MANUAL":"AUTO";
  case 163:*name="CHORUS %";if(!(engine.vocal_fx_manual&1u))return "Auto";number=engine.vocal_chorus;break;
  case 164:*name="REVERB %";if(!(engine.vocal_fx_manual&2u))return "Auto";number=engine.vocal_reverb;break;
- case 166:*name="TUNE %";if(!(engine.vocal_fx_manual&8u)&&!engine.vocal_tune)return "Auto";number=engine.vocal_tune;break;
+ case 166:*name="TUNE %";if(!(engine.vocal_fx_manual&8u))return "Auto";number=engine.vocal_tune;break;
  case 165:*name="ECHO %";if(!(engine.vocal_fx_manual&4u))return "Auto";number=engine.vocal_delay;break;
- case 185:*name="VOCAL LEVEL";number=engine.vocal_level;break;
- case 186:*name="VOCAL FX SEND";number=engine.vocal_fx_send;break;
+ case 185:*name="VOCAL LEVEL";if(!engine.vocal_level_manual)return "Auto";number=engine.vocal_level;break;
+ case 186:*name="VOICE PATCH";return engine.vocal_patch?sr_vocal_patch_names[engine.vocal_patch-1u]:"Auto";
  case 231:{
    static const char *const voices[]={"AUTO","AH","OOH","OH","EE","EH","UH","HUM",
      "DO-RE-MI","LA-LA","NA-NA","SCAT","WORDS","OH-AH HOOK","OH-AH","OO-EE","AY-OH","EH-OH","MM-OOH"};
@@ -1161,12 +1161,25 @@ static int draw(int animate)
  if(water_visible&&!display_strip&&(animate||dirty))mixer_snapshot();
  /* Bind one audio observation to every portrait band in this frame. */
  static k9_face vocal_pose;
+ static unsigned singing_light;
  if(page==PAGE_VOCALS&&!vocal_tab&&!display_strip&&(animate||dirty)){
    unsigned flags=plat_lock();
    vocal_pose=k9_recorded_vocal_pose(&engine);
    plat_unlock(flags);
-   unsigned blink=plat_ms()%3959u;
+   unsigned now=plat_ms();
+   unsigned blink=now%3959u;
    vocal_pose.blink=blink<75u?255:blink<130u?130:0;
+   if(vocal_shutdown&&!requested_play){
+     unsigned elapsed=now-vocal_shutdown_at;
+     vocal_pose.blink=elapsed>=720u?255u:(uint8_t)(elapsed*255u/720u);
+     vocal_pose.singing_light=0;
+     vocal_pose.module=0;
+   }
+   singing_light=vocal_pose.singing_light>=singing_light?vocal_pose.singing_light:
+       (singing_light*2u+vocal_pose.singing_light)/3u;
+   vocal_pose.singing_light=(uint8_t)singing_light;
+ }else if(page!=PAGE_VOCALS||vocal_tab){
+   singing_light=0;
  }
  for(;display_strip<5;display_strip++){
    int band=display_first?(fullscreen?fullscreen_first:control_first)[display_strip]:display_strip;
@@ -1179,6 +1192,7 @@ static int draw(int animate)
    /* Only explicit fullscreen is immersive: both PLAY visualizers always keep
     * the lower physical K1-K4 control panels visible in normal mode. */
    int visual=page==PAGE_VOCALS||page==PAGE_GATE||intro_active||fullscreen||band==1||band==2||water_visible||(drums_visible&&band>0)||(page==PAGE_EVOLVE&&song_tab==0&&band>=3)||(page==PAGE_MIX&&band>=3&&!debug&&(mix_tab==0||mix_tab==3||mix_tab==5));
+   unsigned band_input=input_revision,band_revision=state_revision;
    if(!(battery_dirty&&(band==0||(band==2&&page==PAGE_SETUP&&setup_tab==2)))&&(debug ? !dirty : visual ? !animate&&!dirty : !dirty))continue;
    /* Intro-only vibrant flat color fills the unused screen area. RGB565
     * palette is chosen once, not per pixel; normal UI still follows user
@@ -1192,7 +1206,7 @@ static int draw(int animate)
    }
    /* One surface per logical region; no boxes around 48px transfer bands.
     * The PLAY preview spans two bands with no nested frame. */
-   if(!artwork&&!debug){
+   if(!artwork&&!debug&&!(page==PAGE_VOCALS&&!vocal_tab)){
      const uint16_t panel=skins[ui_theme][ui_background].panel;
      const uint16_t edge=skins[ui_theme][ui_background].border;
      if(band==0){cv_line(8,47,231,47,edge);}
@@ -1267,21 +1281,31 @@ static int draw(int animate)
      unsigned open=(pattern>>position)&1u;
      if(band==0){
        limited_text(8,1,224,&FONT_XS,"GATE / SLICER",skin_text());
-       limited_text(8,25,224,&FONT_T,sr_scenes[engine.scene].name,skin_dim());
+       limited_text(8,25,224,&FONT_T,"FILTER: PATCH = DEFAULT",skin_dim());
      }else if(band==1){
        char value[16];const char *name;
        graph_text(8,3,knob_value(187,&name,value),skin_accent());
        limited_text(8,22,222,&FONT_T,knob_value(154,&name,value),skin_text());
      }else if(band==2){
        for(unsigned i=0;i<16;i++){
-         int x=8+(int)i*14;
+         int x=13+(int)i*14;
          unsigned gate=(pattern>>i)&1u;
-         uint16_t color=engine.slicer_mask?skin_accent():skin_dim();
-         cv_rect(x,4,11,36,skin_dim());
-         cv_rect(x,gate?7:30,11,gate?30:7,color);
-         if(engine.running&&i==position){
-           cv_rect(x,0,11,3,skin_text());
-           cv_rect(x,43,11,3,skin_text());
+         unsigned current=engine.running&&i==position;
+         unsigned sparkle=current&&open&&engine.tick_phase<engine.tick_length/4u;
+         int top=gate?6+(i&1u)*3:28, base=39;
+         uint16_t edge=gate?(engine.slicer_mask?RGB(96,218,255):skin_dim()):RGB(91,73,126);
+         uint16_t dark=gate?RGB(46,83,142):RGB(52,40,78);
+         uint16_t bright=sparkle?RGB(221,255,255):gate?RGB(85,145,205):RGB(81,62,110);
+         for(int y=top;y<=base;y++){
+           int half=y-top<5?y-top:base-y<5?base-y:5;
+           cv_line(x-half,y,x,y,dark);
+           cv_line(x,y,x+half,y,bright);
+         }
+         cv_line(x,top,x,base,edge);
+         cv_line(x,top,x+5,top+5,edge);
+         if(current){
+           cv_line(x-5,43,x+5,43,skin_text());
+           if(sparkle){cv_line(x-2,3,x+2,3,bright);cv_line(x,1,x,5,bright);}
          }
        }
      }else if(band==3){
@@ -1300,12 +1324,16 @@ static int draw(int animate)
    }
    else if(page==PAGE_VOCALS){
      const sr_track *track=&engine.tracks[SR_CHOIR];
-     if(!vocal_tab&&band<4)k9_face_render_canvas(cv_px,48u*band,48,&vocal_pose);
+     if(!vocal_tab)k9_face_render_canvas(cv_px,48u*band,48,&vocal_pose);
      if(band==0){
        static const char *const title[]={"KIRA-9 VOCALS","VOCAL FX 1/6 SPACE",
          "VOCAL FX 2/6 ECHO","VOCAL FX 3/6 MODULATION","VOCAL FX 4/6 EXPRESSION",
          "VOCAL FX 5/6 TONE + TUNING","VOCAL FX 6/6 SPATIAL","VOCAL PLAY ALONG"};
-       limited_text(8,1,226,&FONT_XS,title[vocal_tab],RGB(228,182,255));
+       if(!vocal_tab){
+         const felucca_font_t *font=fit_font(title[0],222,24);
+         limited_text(9,2,225,font,title[0],RGB(0,0,0));
+         limited_text(8,1,225,font,title[0],RGB(242,207,255));
+       }else limited_text(8,1,226,&FONT_XS,title[vocal_tab],RGB(228,182,255));
        if(vocal_tab)limited_text(8,24,224,&FONT_XS,"ALGORITHM: TAB   FX: AUDITION",skin_text());
      }
      if(vocal_tab==7u&&band==3){
@@ -1330,12 +1358,16 @@ static int draw(int animate)
      }
      if(band==4){
        if(!vocal_tab)for(unsigned k=0;k<4;k++){
-         static const char *const names[]={"VOCALS","PRESENCE","LEVEL","FX SEND"};
+         static const char *const names[]={"VOCALS","PRESENCE","LEVEL","PATCH"};
          char buf[16];const char *name;
          const char *value=knob_value(control_for(k),&name,buf);
          if(k==0&&track->mute)value="Muted";
-         limited_text(6+59*k,1,57,&FONT_T,names[k],skin_dim());
-         limited_text(6+59*k,14,57,&FONT_T,value,skin_text());
+         int x=6+59*k;
+         const char *label=k<3u||!engine.vocal_patch?value:"Manual";
+         limited_text(x+1,2,56,&FONT_T,names[k],RGB(0,0,0));
+         limited_text(x,1,56,&FONT_T,names[k],RGB(235,209,249));
+         limited_text(x+1,15,56,&FONT_XS,label,RGB(0,0,0));
+         limited_text(x,14,56,&FONT_XS,label,RGB(255,242,255));
        }
        if(vocal_tab==7u){
          char value[16];
@@ -1353,7 +1385,10 @@ static int draw(int animate)
          else ui_copy(value,"--");
          graph_text(200,15,value,skin_accent());
        }
-       limited_text(7,31,226,&FONT_T,vocal_tab?"ALGO: TAB   SEL: MUTE":"FX: AUDITION  ALGO: FX  SEL: MUTE",RGB(228,182,255));
+       if(!vocal_tab&&engine.vocal_patch){
+         const char *patch=sr_vocal_patch_names[engine.vocal_patch-1u];
+         limited_text(7,31,226,fit_font(patch,226,17),patch,RGB(228,182,255));
+       }else limited_text(7,31,226,&FONT_T,vocal_tab?"ALGO: TAB   SEL: MUTE":"FX: AUDITION  ALGO: FX  SEL: MUTE",RGB(228,182,255));
      }
    }
    else if(water_visible){
@@ -1727,9 +1762,9 @@ static int draw(int animate)
     * optional graphics to label feedback. Physical DMA completion is a
     * separate device measurement, not represented by this counter. */
    unsigned feedback_band=knob_until?(fullscreen||knob_focus>=2?4u:3u):0u;
-   if((unsigned)band==feedback_band&&revision==state_revision&&qread==qwrite&&labelled_input!=input_revision){
+   if((unsigned)band==feedback_band&&band_revision==state_revision&&band_input==input_revision&&qread==qwrite&&labelled_input!=band_input){
      measure(&control_label_timing[!!engine.running],(plat_ms()-input_changed_ms)*100u);
-     labelled_input=input_revision;
+     labelled_input=band_input;
    }
 #ifndef PLAT_HOST
    if(display_strip<4){display_strip++;return 0;}

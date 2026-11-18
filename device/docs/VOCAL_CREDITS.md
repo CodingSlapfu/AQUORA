@@ -68,3 +68,9 @@ Automatic lexical arrangements include BABY–LOVE–YOU, YOU–LOVE–ME and
 LOVE–YOU. DAY can appear alone at a cadence. The small vocabulary does not
 support arbitrary lyrics or recorded intention names. Physical FM-1
 intelligibility and musical acceptance remain to be checked.
+
+## v0.7.28 startup motif
+
+The original E5–B4–A4 motif uses the same credited female VocalSet OH, AH and
+OOH assets above. Startup interpolates and loops the existing samples and adds
+bounded stereo reflection and echo taps. It includes no new source recording.

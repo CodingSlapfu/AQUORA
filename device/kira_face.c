@@ -45,15 +45,25 @@ void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *
  layer(pixels,y0,height,mouth,dx,dy,f->tilt);
  if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,dx,dy+1);
  if(f->neck)plate(pixels,y0,height,109,195,24,29,dx+(f->neck>0?1:-1),dy);
- if(f->module){
+ if(f->module||f->singing_light){
    static const uint8_t lamps[][2]={{121,212},{54,102},{184,99}};
    uint16_t glow=f->module==2u?0x8f7fu:0x4b18u;
    for(unsigned lamp=0;lamp<3;lamp++){
      int y=lamps[lamp][1]+dy;
      int x=lamps[lamp][0]+dx+((int)lamps[lamp][1]-120)*f->tilt/128;
-     for(int row=-1;row<=1;row++)for(int col=-1;col<=1;col++)
-       if(y+row>=(int)y0&&y+row<(int)(y0+height)&&x+col>=0&&x+col<240)
-         pixels[(y+row-(int)y0)*240+x+col]=glow;
+     int radius=f->singing_light>150u?4:f->singing_light>36u?3:1;
+     for(int row=-radius;row<=radius;row++)for(int col=-radius;col<=radius;col++){
+       if(y+row<(int)y0||y+row>=(int)(y0+height)||x+col<0||x+col>=240)continue;
+       unsigned distance=(unsigned)((row<0?-row:row)+(col<0?-col:col));
+       if(radius>1&&distance>(unsigned)radius+1u)continue;
+       uint16_t shade=glow;
+       if(f->singing_light){
+         unsigned level=f->singing_light/(distance+1u);
+         shade=(uint16_t)(((8u+level*23u/255u)<<11u)|
+                         ((4u+level*29u/255u)<<5u)|(13u+level*18u/255u));
+       }
+       pixels[(y+row-(int)y0)*240+x+col]=shade;
+     }
    }
  }
 }

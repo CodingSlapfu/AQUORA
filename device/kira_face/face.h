@@ -5,7 +5,7 @@
 typedef struct {
   uint8_t mouth, blink;
   int8_t gaze, jaw, cheek, neck, brow, head_x, head_y, tilt;
-  uint8_t lid, module;
+  uint8_t lid, module, singing_light;
   uint16_t open;
 } k9_face;
 

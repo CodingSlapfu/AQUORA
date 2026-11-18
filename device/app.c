@@ -34,6 +34,8 @@ static timing display_timing[7];
 static timing_summary audio_stats, fx_stats, callback_stats;
 static unsigned window_ms;
 static volatile unsigned requested_play, stop_generation, physical_keys;
+static unsigned vocal_shutdown_at;
+static unsigned vocal_shutdown;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm,arrange_browse;
@@ -59,39 +61,6 @@ static unsigned intro_start, intro_samples, intro_master;
 static volatile unsigned intro_master_moved;
 static unsigned intro_inputs_seen;
 static float intro_gain;
-static float intro_right;
-static float intro_sine_table[256], intro_fm_phase[6];
-/* Small original 3-voice FM startup signature. Fixed table / phase updates;
- * never calls libc sin/exp or the full effects bus in the audio interrupt. */
-static inline float intro_sine(float phase)
-{
-    float p=phase*256.f;
-    int index=(int)p;
-    float f=p-(float)index;
-    float a=intro_sine_table[index&255];
-    return a+(intro_sine_table[(index+1)&255]-a)*f;
-}
-static inline float intro_note(unsigned elapsed)
-{
-    float t=elapsed*(1.f/SR_RATE);
-    /* Original suspended interval: A3, E5, B5, with inharmonic modulators.
-     * Airy bell entrances coincide with the staged wordmark, not a borrowed
-     * console melody or recording. Three two-operator voices only. */
-    static const float increment[6]={220.f/SR_RATE,443.3f/SR_RATE,659.255f/SR_RATE,
-                                      1313.9f/SR_RATE,987.767f/SR_RATE,1487.1f/SR_RATE};
-    for(unsigned k=0;k<6;k++){
-        intro_fm_phase[k]+=increment[k];
-        if(intro_fm_phase[k]>=1.f)intro_fm_phase[k]-=1.f;
-    }
-    float low=fm_clampf((t-.12f)*1.3f,0,1)*fm_clampf((7.7f-t)*.30f,0,1);
-    float halo=fm_clampf((t-2.4f)*7.f,0,1)*fm_clampf((7.5f-t)*.24f,0,1);
-    float crystal=fm_clampf((t-3.7f)*6.f,0,1)*fm_clampf((7.7f-t)*.26f,0,1);
-    float warm=intro_sine(intro_fm_phase[0]+.08f*intro_sine(intro_fm_phase[1]));
-    float bloom=intro_sine(intro_fm_phase[2]+.26f*halo*intro_sine(intro_fm_phase[3]));
-    float glass=intro_sine(intro_fm_phase[4]+.20f*crystal*intro_sine(intro_fm_phase[5]));
-    intro_right=(warm*320.f*low+bloom*430.f*halo+glass*420.f*crystal)*3.f;
-    return (warm*390.f*low+bloom*620.f*halo+glass*290.f*crystal)*3.f;
-}
 static uint32_t evolve_events[SR_TRACKS], evolve_step;
 static uint8_t evolve_history[64];
 static unsigned led_test, led_step;
@@ -315,6 +284,27 @@ static void select_intention(int delta)
  plat_unlock(irq);
 }
 #include "usb_midi.h"
+/* AUTO is one detent below zero. Stop at zero before crossing it,
+ * including when the encoder coalesces several detents. */
+static int vocal_dial_step(int current,int delta)
+{
+ if(!delta)return current;
+ if(current<0)return delta>0?0:-1;
+ if(current==0&&delta<0)return -1;
+ return bounded(current+bounded(delta,-20,20)*5,0,100);
+}
+
+static void turn_vocal_fx(uint8_t *value,unsigned bit,int delta)
+{
+ int next=vocal_dial_step(engine.vocal_fx_manual&bit?*value:-1,delta);
+ if(next<0){
+   engine.vocal_fx_manual&=~bit;
+ }else{
+   *value=(uint8_t)next;
+   engine.vocal_fx_manual|=bit;
+ }
+}
+
 static void consume(void){
  unsigned request=intention_request;
  unsigned stop=stop_generation;
@@ -328,9 +318,13 @@ static void consume(void){
  unsigned vocal_before=sr_vocal_status(&engine);
  if(c.kind>=210u&&c.kind<210u+VF_COUNT){
    unsigned param=c.kind-210u,bit=1u<<param;
-   int old=(engine.vocal_param_lock&bit)?engine.vocal_param[param]:(int)(engine.vocal_param_now[param]+.5f);
-   engine.vocal_param[param]=bounded(old+d*5,0,100);
-   engine.vocal_param_lock|=bit;
+   int next=vocal_dial_step(engine.vocal_param_lock&bit?engine.vocal_param[param]:-1,d);
+   if(next<0){
+     engine.vocal_param_lock&=~bit;
+   }else{
+     engine.vocal_param[param]=(uint8_t)next;
+     engine.vocal_param_lock|=bit;
+   }
    continue;
  }
  switch(c.kind){
@@ -359,8 +353,15 @@ static void consume(void){
  case 110:midi.settings.controls_out=switched(midi.settings.controls_out,d);midi_cc_program=midi_cc_volume=midi_cc_pan=midi_cc_send=midi_cc_bend=-1;break;
  case 152:engine.filter_cutoff=bounded((int)engine.filter_cutoff+d,0,15);break;
  case 153:engine.filter_resonance=bounded((int)engine.filter_resonance+d,0,15);break;
- case 185:engine.vocal_level=bounded(engine.vocal_level+d*5,0,100);break;
- case 186:engine.vocal_fx_send=bounded(engine.vocal_fx_send+d*5,0,100);break;
+ case 185:{
+   int next=vocal_dial_step(engine.vocal_level_manual?engine.vocal_level:-1,d);
+   engine.vocal_level_manual=next>=0;
+   engine.vocal_level=next<0?100:(uint8_t)next;
+   break;
+ }
+ case 186:
+   engine.vocal_patch=!engine.vocal_patch&&d>0?1u:bounded(engine.vocal_patch+d,0,SR_VOCAL_PATCHES);
+   break;
  case 155:sr_set_vocals(&engine,switched(engine.vocals_enabled,d),engine.vocal_presence);break;
  case 156:sr_set_vocals(&engine,engine.vocals_enabled,bounded((int)engine.vocal_presence+d,1,4));break;
  case 187:engine.slicer_style=bounded((int)engine.slicer_style+d,0,7);break;
@@ -470,25 +471,10 @@ static void consume(void){
    break;
  }
  case 158:engine.drum_solo=d>0?c.drum_part:SR_DRUM_PARTS;break;
- case 163:
-   if(!(engine.vocal_fx_manual&1u)&&engine.vocal_chorus_now>0.f)
-     engine.vocal_chorus=(uint8_t)(engine.vocal_chorus_now+.5f);
-   engine.vocal_fx_manual|=1u;
-   engine.vocal_chorus=bounded(engine.vocal_chorus+d*5,0,100);
-   break;
- case 164:
-   if(!(engine.vocal_fx_manual&2u)&&engine.vocal_room_now>0.f)
-     engine.vocal_reverb=(uint8_t)(engine.vocal_room_now+.5f);
-   engine.vocal_fx_manual|=2u;
-   engine.vocal_reverb=bounded(engine.vocal_reverb+d*5,0,100);
-   break;
- case 166:engine.vocal_fx_manual|=8u;engine.vocal_tune=bounded(engine.vocal_tune+d*5,0,100);break;
- case 165:
-   if(!(engine.vocal_fx_manual&4u)&&engine.vocal_echo_now>0.f)
-     engine.vocal_delay=(uint8_t)(engine.vocal_echo_now+.5f);
-   engine.vocal_fx_manual|=4u;
-   engine.vocal_delay=bounded(engine.vocal_delay+d*5,0,100);
-   break;
+ case 163:turn_vocal_fx(&engine.vocal_chorus,1u,d);break;
+ case 164:turn_vocal_fx(&engine.vocal_reverb,2u,d);break;
+ case 165:turn_vocal_fx(&engine.vocal_delay,4u,d);break;
+ case 166:turn_vocal_fx(&engine.vocal_tune,8u,d);break;
  case 169:engine.fx_decay=bounded(engine.fx_decay+d*5,0,100);break;
  case 170:engine.fx_feedback=bounded(engine.fx_feedback+d*5,0,100);break;
  case 171:engine.fx_damping=bounded(engine.fx_damping+d*5,0,100);break;
@@ -681,11 +667,9 @@ void app_init(void)
     plat_cpu2_set(1);
     output_gain=0;
     intro_active=intro_samples=intro_master_moved=intro_inputs_seen=0;
-    memset(intro_fm_phase,0,sizeof intro_fm_phase);
-    for(unsigned i=0;i<256;i++)
-      intro_sine_table[i]=fm_sinf(i*(6.28318530718f/256.f));
     intro_master=~0u;
     intro_gain=0;
+    vocal_shutdown=vocal_shutdown_at=0;
     evolve_step=0;
     memset(evolve_events,0,sizeof evolve_events);
     memset(evolve_history,0,sizeof evolve_history);
@@ -766,20 +750,25 @@ void app_render(int32_t *lr,uint32_t n,uint32_t master)
     }
     unsigned intro=intro_samples;
     unsigned playing_intro=intro_active;
-    unsigned chime=intro<SR_RATE*8u&&(playing_intro||intro_gain>.0001f);
+    unsigned signature=intro<SR_RATE*8u&&(playing_intro||intro_gain>.0001f);
     for(unsigned i=0;i<n;i++){
-      float bell=0,bell_right=0;
-      if(chime){
+      float sung_left=0,sung_right=0;
+      if(signature){
         intro_gain+=((float)playing_intro-intro_gain)*.003f;
         /* Master zero remains real silence. The start of the synth timeline
          * is the first ready audio callback, not an early boot wall clock. */
-        if(master&&startup_chime){float level=startup_chime==1?.35f:1.f;bell=intro_note(intro+i)*intro_gain*level;bell_right=intro_right*intro_gain*level;}
+        if(master&&startup_chime){
+          float level=intro_gain*(startup_chime==1?.35f:1.f);
+          sr_startup_vocal(intro+i,&sung_left,&sung_right);
+          sung_left*=level;
+          sung_right*=level;
+        }
       }
       output_gain+=(target-output_gain)*.002f;
-      lr[2*i]=(int32_t)((pcm[2*i]+bell)*256.f*output_gain);
-      lr[2*i+1]=(int32_t)((pcm[2*i+1]+bell_right)*256.f*output_gain);
+      lr[2*i]=(int32_t)((pcm[2*i]+sung_left)*256.f*output_gain);
+      lr[2*i+1]=(int32_t)((pcm[2*i+1]+sung_right)*256.f*output_gain);
     }
-    if(chime)intro_samples+=n;
+    if(signature)intro_samples+=n;
     if(!master)intro_gain=0;
     unsigned total=plat_ticks24()-begin;
 #ifndef PLAT_HOST
@@ -846,7 +835,11 @@ void app_input_only(void){
    bank_confirm=0;
    song_arm=mix_reset=0;
    requested_play=!requested_play;
-   if(!requested_play)stop_generation++;
+   if(!requested_play){
+     stop_generation++;
+     vocal_shutdown_at=plat_ms();
+   }
+   vocal_shutdown=!requested_play;
    plat_unlock(flags);
  }
  if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=mix_reset=0;send(44,0);}
@@ -1270,7 +1263,7 @@ void app_frame(void)
     int live_sound=page==PAGE_SOUND&&!sound_picker&&(engine.running||engine.preview_frames||engine.external_audio);
     int live_mix=page==PAGE_MIX&&(engine.running||engine.external_audio);
     int live_evolve=page==PAGE_EVOLVE&&(engine.running||engine.external_audio);
-    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||(page==PAGE_VOCALS&&(engine.running||engine.preview_frames))||((page==PAGE_DRUMS||page==PAGE_GATE)&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
+    int animate=!debug&&(intro_active||page==PAGE_PLAY||live_mix||live_sound||live_evolve||(page==PAGE_VOCALS&&(engine.running||engine.preview_frames||(vocal_shutdown&&now-vocal_shutdown_at<820u)))||((page==PAGE_DRUMS||page==PAGE_GATE)&&engine.running)||now-page_animation_ms<220u)&&elapsed>=visual_interval;
     if(animate&&page==0){
       if(elapsed>=FRAME_MIN_MS)missed+=elapsed/FRAME_MIN_MS-1u;
 
@@ -1307,6 +1300,12 @@ int app_expect(const char *what,int *got){
  if(!strcmp(what,"vocal_heard")){*got=engine.vocal_audio_frames>0;return 1;}
  if(!strcmp(what,"vocal_audio_frames")){*got=engine.vocal_audio_frames;return 1;}
  if(!strcmp(what,"vocal_live")){*got=engine.vocal_face_peak*engine.master>.0005f;return 1;}
+ if(!strcmp(what,"vocal_knob")){
+   char value[16];const char *name;
+   const char *shown=knob_value(control_for(knob_focus),&name,value);
+   *got=!strcmp(shown,"Auto")?-1:(shown[0]>='0'&&shown[0]<='9'?atoi(shown):engine.vocal_patch);
+   return 1;
+ }
  if(!strcmp(what,"vocal_level")){*got=engine.vocal_level;return 1;}
  if(!strcmp(what,"vocal_fx_send")){*got=engine.vocal_fx_send;return 1;}
  if(!strcmp(what,"slicer_style")){*got=engine.slicer_style;return 1;}

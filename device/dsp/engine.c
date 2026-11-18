@@ -853,9 +853,9 @@ void sr_init(sr_engine *e,uint32_t seed){
   memset(e,0,sizeof(*e));
     e->vocal_presence=4;
     e->vocal_level=100;
-    e->vocal_level_smoothed=1.f;
-    e->vocal_fx_send=40;
-    e->vocal_send_now=1.15f;
+    e->vocal_level_smoothed=e->vocal_auto_gain=1.f;
+    e->vocal_fx_send=100;
+    e->vocal_send_now=1.f;
     e->vocal_reverb=38;
     memset(e->drum_levels,100,sizeof e->drum_levels);
     e->drum_solo=SR_DRUM_PARTS; e->rng=seed?seed:0x73ac05u;
@@ -1640,6 +1640,47 @@ static inline __attribute__((always_inline)) float drum_sample(sr_engine *e){
   e->drum_meter=fmaxf(e->drum_meter*.9993f,fabsf(sound));
   return sound*e->drum_level;
 }
+/* Female VocalSet vowels, arranged as an original E5–B4–A4 signature.
+ * The short stereo taps are local to boot and cannot claim sequencer voices. */
+static float startup_vowel(unsigned frame)
+{
+  static const unsigned starts[]={SR_RATE/5u,SR_RATE*17u/10u,SR_RATE*31u/10u};
+  static const unsigned lengths[]={SR_RATE*17u/10u,SR_RATE*16u/10u,SR_RATE*27u/10u};
+  static const uint8_t zones[]={4,3,5};
+  static const float steps[]={659.255f/525.26014f*.25f,493.883f/525.21703f*.25f,
+                            440.f/525.81201f*.25f};
+  float mix=0.f;
+  for(unsigned note=0;note<3;note++){
+    if(frame<starts[note]||frame-starts[note]>=lengths[note])continue;
+    unsigned age=frame-starts[note];
+    unsigned zone=zones[note],loop=vocal_zones[zone].loop;
+    float pos=age*steps[note];
+    unsigned index=(unsigned)pos;
+    float fraction=pos-index;
+    if(index>=VOCAL_LENGTH)index=loop+(index-loop)%(VOCAL_LENGTH-loop);
+    unsigned next=index+1u<VOCAL_LENGTH?index+1u:loop;
+    float sample=vocal_flash[zone][index]+
+        (vocal_flash[zone][next]-vocal_flash[zone][index])*fraction;
+    float attack=clampf(age*(14.f/SR_RATE),0.f,1.f);
+    float release=clampf((lengths[note]-age)*(3.8f/SR_RATE),0.f,1.f);
+    mix+=sample*attack*release;
+  }
+  return mix;
+}
+
+void sr_startup_vocal(unsigned frame,float *left,float *right)
+{
+  static const unsigned taps[]={1323,3137,6615,13892,22535,37620,57065,79710};
+  static const uint8_t gains[]={6,5,4,3,3,2,2,1};
+  float dry=startup_vowel(frame)*21.f;
+  *left=*right=dry;
+  for(unsigned tap=0;tap<sizeof(gains);tap++)if(frame>=taps[tap]){
+    float wet=startup_vowel(frame-taps[tap])*gains[tap];
+    if(tap&1u){*right+=wet;*left+=wet*.45f;}
+    else {*left+=wet;*right+=wet*.45f;}
+  }
+}
+
 static inline __attribute__((always_inline)) float advance(float *phase,float hz){
   *phase+=hz/(float)SR_RATE;
   if(*phase>=1.f)*phase-=1.f;
@@ -1847,7 +1888,7 @@ static float vocal_pitch_target(const sr_engine *e,const sr_voice *voice)
   /* A nonzero legacy value remains an explicit setting. Bit 3 also locks
      an intentional zero; AUTO reset clears both. No bank format changes. */
   float tune=e->vocal_tune;
-  if(!(e->vocal_fx_manual&8u)&&!e->vocal_tune)
+  if(!(e->vocal_fx_manual&8u))
     tune=(e->music_mode==SR_IDM?72.f:e->music_mode==SR_NEOCLASSICAL?18.f:36.f)
       +intention_score[e->scene][0]*2.f+(song_section(e)==2u?8.f:0.f);
   if(!tune)return voice->freq;
@@ -2093,6 +2134,10 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    zone=e->vocal_hook_vowel[hook_note]-1u;
    attack=e->vocal_hook_attack[hook_note];
    transition=e->vocal_hook_transition[hook_note];
+ }
+ if(!e->vocal_articulation){
+   if(zone<3u)zone+=3u;
+   if(transition&&transition<=3u)transition+=3u;
  }
  unsigned word=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE;
  sr_voice *lead=recorded_note(e,sr_tonic(e)+scale[tone],zone,velocity,held);
@@ -2670,6 +2715,28 @@ static const sr_fm_worker *fm_worker;
 
 void sr_set_fm_worker(const sr_fm_worker *worker){fm_worker=worker;}
 
+const char *const sr_vocal_patch_names[SR_VOCAL_PATCHES]={
+  "Angelic Halo","Velvet Soul","Crystal Dream","Celestial Cathedral","Aurora Pop",
+  "Starlight Echo","Moonlit Whisper","Neon IDM","Golden Harmony","Infinite Bloom"
+};
+
+/* Relative to the Vocal Director: chorus, room, echo, space and direct tone.
+ * Bias only automatic controls so every manual knob remains authoritative. */
+static const struct {
+  int8_t chorus,room,echo,decay,width,shimmer,presence,damping,depth,feedback;
+} vocal_chars[SR_VOCAL_PATCHES]={
+  { 13, 16, -8, 12,  8, 18,  4, -5,  4, -5},
+  {-14,-18,-17, -8,-22, -8, 10, 16, -8, -8},
+  {  6,  7,  7,  6, 21, 32, 12,-10,  8,  1},
+  {  4, 26,  2, 29, 12, 14, -5,  4, -2, -3},
+  { 10,-18, -3,-16,  4, -6, 20, -3,  7, -5},
+  { -8, -6, 28, -4, 23, -3,  8,  2, -5, 17},
+  {-18,-23,-16,-13,-24,-10, -4, 11, -9,-11},
+  {  6,-12, 15,-10, 13,  9, 10, -6, 22,  8},
+  { 26, -2, -9,  1, 20,  6,  1,  7, 23, -5},
+  { 12, 21, 12, 24, 18, 24, -2,  1, 13,  3}
+};
+
 static void vocal_production(sr_engine *e,size_t frames)
 {
   static const uint8_t profiles[SR_MUSIC_MODES][3]={
@@ -2686,12 +2753,18 @@ static void vocal_production(sr_engine *e,size_t frames)
   float organic=e->music_mode==SR_NEOCLASSICAL?1.f:0.f;
   float rhythmic=e->music_mode==SR_IDM?1.f:e->music_mode==SR_EXPERIMENTAL?.65f:0.f;
   const uint8_t *profile=profiles[e->music_mode];
+  static const uint8_t auto_patches[SR_MUSIC_MODES][4]={
+    {0,1,4,8},{3,0,8,9},{1,6,0,8},{2,5,0,9},{7,5,4,2}
+  };
+  unsigned character=e->vocal_patch?e->vocal_patch-1u:
+      auto_patches[e->music_mode][(song_draw(e->song_seed,928u)+
+      (unsigned)e->scene+intention_score[e->scene][2]+sr_scenes[e->scene].scale)&3u];
   float chorus=e->vocal_fx_manual&1u?e->vocal_chorus:
-      clampf(profile[0]+variation+warmth*5.f+energy*4.f+bloom*.2f,0.f,100.f);
+      clampf(profile[0]+vocal_chars[character].chorus+variation+warmth*5.f+energy*4.f+bloom*.2f,0.f,100.f);
   float room=e->vocal_fx_manual&2u?e->vocal_reverb:
-      clampf(profile[1]+bloom+variation+breath*4.f,0.f,100.f);
+      clampf(profile[1]+vocal_chars[character].room+bloom+variation+breath*4.f,0.f,100.f);
   float echo=e->vocal_fx_manual&4u?e->vocal_delay:
-      clampf(profile[2]+bloom+color*6.f+energy*4.f,0.f,100.f);
+      clampf(profile[2]+vocal_chars[character].echo+bloom+color*6.f+energy*4.f,0.f,100.f);
   float blend=clampf((float)frames*.00045f,0.f,1.f);
   e->vocal_chorus_now+=(chorus-e->vocal_chorus_now)*blend;
   e->vocal_room_now+=(room-e->vocal_room_now)*blend;
@@ -2720,11 +2793,18 @@ static void vocal_production(sr_engine *e,size_t frames)
     12.f+rhythmic*16.f+color*8.f+energy*5.f+bloom*.2f,
     36.f+cinematic*14.f+warmth*12.f+energy*6.f+bloom*.3f
   };
+  targets[VF_DECAY]+=vocal_chars[character].decay;
+  targets[VF_WIDTH]+=vocal_chars[character].width;
+  targets[VF_SHIMMER]+=vocal_chars[character].shimmer;
+  targets[VF_PRESENCE]+=vocal_chars[character].presence;
+  targets[VF_DAMPING]+=vocal_chars[character].damping;
+  targets[VF_CHORUS_DEPTH]+=vocal_chars[character].depth;
+  targets[VF_FEEDBACK]+=vocal_chars[character].feedback;
   for(unsigned id=0;id<VF_COUNT;id++){
     float target=e->vocal_param_lock&(1u<<id)?e->vocal_param[id]:clampf(targets[id],0.f,100.f);
     e->vocal_param_now[id]+=(target-e->vocal_param_now[id])*blend;
   }
-  e->vocal_send_now+=(.65f+e->vocal_fx_send*.0125f-e->vocal_send_now)*blend;
+  e->vocal_send_now=1.f;
 }
 
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
@@ -2764,6 +2844,7 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     if(e->vibrato_phase[t]>=1)e->vibrato_phase[t]-=1;
     vibrato[t]=m->vibrato_depth?sine(e->vibrato_phase[t])*m->vibrato_depth*.0005776f:0;
   }
+  float backing=0.f;
   for(int t=0;t<SR_TRACKS;t++){
     sr_track *track=&e->tracks[t];
     float level=(track->mute||(e->solo<SR_TRACKS&&e->solo!=t))?0:track->volume;
@@ -2798,11 +2879,18 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
     e->track_echo_now[t]+=(send_level*echo_ratio-e->track_echo_now[t])*send_blend;
     block->echo_send[t]=level*e->track_echo_now[t];
     if(!full&&source!=SR_ISOLATE_TRACK1+(unsigned)t)level=0;
+    if(full&&level>0.f&&t!=SR_CHOIR)backing+=track->meter;
     left[t]=level*(.5f-.31f*track->pan);
     right[t]=level*(.5f+.31f*track->pan);
   }
   float human_phrase=0.f;
-  float vocal_target=e->vocal_level*.01f;
+  if(!e->vocal_level_manual&&e->vocal_direct_peak>.014f){
+    float target=full?clampf((.13f+backing*.31f)*e->vocal_level_smoothed/
+        e->vocal_direct_peak,.76f,1.25f):1.f;
+    e->vocal_auto_gain+=(target-e->vocal_auto_gain)*
+        clampf((float)frames*(1.f/(SR_RATE*2.f)),0.f,1.f);
+  }
+  float vocal_target=e->vocal_level_manual||e->vocal_level!=100u?e->vocal_level*.01f:e->vocal_auto_gain;
   e->vocal_level_smoothed+=(vocal_target-e->vocal_level_smoothed)*
       clampf((float)frames*.004f,0.f,1.f);
   if(fabsf(vocal_target-e->vocal_level_smoothed)<.001f)
@@ -3035,7 +3123,7 @@ static inline __attribute__((always_inline)) void vocal_effects(sr_engine *e,flo
     unsigned frame,float *left,float *right)
 {
   float chorus=e->vocals_enabled?e->vocal_chorus_now:e->vocal_chorus;
-  float room=e->vocals_enabled?fmaxf(22.f,e->vocal_room_now):e->vocal_reverb;
+  float room=e->vocals_enabled?e->vocal_room_now:e->vocal_reverb;
   float echo=e->vocals_enabled?e->vocal_echo_now:e->vocal_delay;
   if(!(chorus||room||echo)){e->vocal_fx_history=0;e->vocal_fx_tail=0;e->vocal_fx_input=0;return;}
   if(fabsf(dry)>.0001f)e->vocal_fx_tail=SR_RATE*(3u+(unsigned)e->vocal_param_now[VF_DECAY]/12u);
