@@ -2183,11 +2183,11 @@ static const uint8_t word_phrases[][3]={
 static unsigned auto_word_phrase(const sr_engine *e,unsigned bar,unsigned section,
                                  unsigned slot,unsigned flow)
 {
-  /* Keep the wordless identity and use an occasional lexical refrain on
-   * featured passages. At fast tempos use shorter, two-anchor phrases. */
+  /* Give each refrain a recurring lexical hook and leave answer bars open
+   * for the instrumental response. Keep the same words on the reprise. */
   unsigned color=intention_score[e->scene][2];
-  if(((bar+e->scene+section)&3u)!=1u)return 0;
-  unsigned compact=flow!=SR_VOCAL_NORMAL||e->tick_length<7800u;
+  if((section!=1u&&section!=2u&&section!=4u)||((bar+e->scene)&1u))return 0;
+  unsigned compact=flow!=SR_VOCAL_NORMAL||e->tick_length<6400u;
   unsigned phrase=compact?(color&1u?1u:2u):
        (color+e->music_mode+song_draw(e->song_seed,929u)%7u)%7u;
   if(phrase>=5u)phrase+=3u;
@@ -2199,6 +2199,34 @@ static int vocal_octave_near(int note,int center)
  while(note>center+6)note-=12;
  while(note<center-5)note+=12;
  return note;
+}
+
+/* Pick a nearby chord voicing that keeps an actual recording close to its
+ * sung pitch. The word may use the lower register when the phrase starts. */
+static int vocal_word_note(const sr_engine *e,unsigned zone,unsigned chord,int target,
+                           int previous,unsigned available)
+{
+ const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
+ unsigned index=zone-VOCAL_DAY_ZONE;
+ float source=vocal_words[index].hz;
+ float rate=zone>=VOCAL_GO_ZONE?HUMAN_WORD_RATE:VOCAL_RATE;
+ float duration=(float)vocal_words[index].length*(SR_RATE/rate);
+ unsigned cost=~0u;
+ int best=0;
+ for(unsigned i=0;i<3;i++){
+   int anchor=sr_tonic(e)+scale[(chord+i*2u)%7u];
+   int first=vocal_octave_near(anchor,60);
+   for(int note=first;note<=77;note+=12){
+     if(note<55||(previous&&(note-previous>5||previous-note>5)))continue;
+     float ratio=sr_note_frequency(e,note)/source;
+     if(ratio<.77f||ratio>1.34f||duration/ratio>available)continue;
+     int distance=note-target;
+     unsigned pitch_cost=(unsigned)((ratio>1.f?ratio-1.f:1.f-ratio)*28.f);
+     unsigned score=(unsigned)(distance<0?-distance:distance)*2u+pitch_cost;
+     if(score<cost){cost=score;best=note;}
+   }
+ }
+ return best;
 }
 
 static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
@@ -2222,9 +2250,9 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
  if(!natural&&mode==SR_IDM&&groove_kick(e,start+sustain))sustain=13u;
  unsigned extra=(!natural||e->vocal_flow)&&flow==SR_VOCAL_DOUBLE&&pos!=opening&&pos!=sustain&&pos!=answer&&
       (pos==3u||pos==9u||pos==14u)&&!groove_kick(e,step)&&part==2u&&e->vocal_presence>=3u;
- unsigned answer_note=pos==answer&&part==2u&&e->vocal_presence>=3u&&flow!=SR_VOCAL_HALF;
- if(natural&&!e->vocal_flow)answer_note=answer_note&&section==2u&&e->tick_length>=7800u;
- if(pos!=opening&&pos!=sustain&&!answer_note&&!extra)return 0;
+ unsigned has_answer=opening<answer&&part==2u&&e->vocal_presence>=3u&&flow!=SR_VOCAL_HALF;
+ if(natural&&!e->vocal_flow)has_answer=has_answer&&(section==1u||section==2u||section==4u)&&e->tick_length>=7200u;
+ if(pos!=opening&&pos!=sustain&&!(has_answer&&pos==answer)&&!extra)return 0;
 
  int call=(int)chord;
  if(part==2u){
@@ -2335,7 +2363,7 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    zone=VOCAL_DREAMS_ZONE;
    transition=0;
  }
- if(!e->vocal_articulation&&part==2u&&e->vocal_presence>=3u&&section==2u&&!extra&&!cadence){
+ if(!e->vocal_articulation&&part==2u&&e->vocal_presence>=3u&&!extra){
    unsigned selected=auto_word_phrase(e,bar,section,hook_note,flow);
    if(selected){zone=selected;attack=transition=0;}
  }
@@ -2355,10 +2383,13 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
      }
      note=best;
    }
+   unsigned next=pos==opening?(has_answer?answer:sustain):pos==answer?sustain:16u;
+   unsigned slot=next>pos?next-pos:4u;
    unsigned recorded_word=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE;
    if(recorded_word){
-     float ratio=sr_note_frequency(e,note)/vocal_words[zone-VOCAL_DAY_ZONE].hz;
-     if(ratio<.77f||ratio>1.34f)recorded_word=0;
+     int fitted=vocal_word_note(e,zone,chord,note,pos==opening?0:previous,slot*e->tick_length);
+     if(fitted)note=fitted;
+     else recorded_word=0;
    }
    attack=0; /* use recorded entrances for AUTO, including actual consonants in words */
    if(!recorded_word){
@@ -2371,13 +2402,15 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
        transition=zone==3u?5u:4u;
      }
    }else transition=0u;
-   unsigned next=pos==opening?(answer_note?answer:sustain):pos==answer?sustain:16u;
-   held=(next>pos?next-pos:4u)*.25f;
+   held=slot*.25f;
+   /* Let the answer crest toward the cadence and soften the resolution. */
+   if(pos==answer&&part==2u)velocity+=5u;
+   if(cadence&&!recorded_word)velocity-=6u;
    if(pos==sustain){
      /* Leave a breath at the end of a phrase. The ongoing hook keeps its
       * connected vowel through the barline between phrase boundaries. */
-     if(cadence)held*=.78f;
-     else if(part==2u&&e->tick_length<14000u)held+=.19f;
+     if(cadence&&!recorded_word)held*=.78f;
+     else if(!recorded_word&&part==2u&&e->tick_length<14000u)held+=.19f;
    }
  }
  unsigned word=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE;
