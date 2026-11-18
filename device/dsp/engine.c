@@ -219,6 +219,7 @@ static int8_t drum_pcm[13][DRUM_WAVE_LENGTH];
 enum {VOCAL_DAY_ZONE=VOCAL_ZONES,VOCAL_YOU_ZONE,VOCAL_EH_ZONE,VOCAL_EE_ZONE,
       VOCAL_HUM_ZONE,VOCAL_LOVE_ZONE,VOCAL_BABY_ZONE,VOCAL_ME_ZONE,
       VOCAL_LAST_ZONE=VOCAL_ME_ZONE};
+int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 #define VOCAL_POOL __attribute__((section(".pool"),aligned(4)))
 #else
@@ -672,13 +673,22 @@ static void song_tempo(sr_engine *e,uint32_t seed)
 {
   if(e->motion_manual&4u)return;
   static const uint8_t ranges[SR_MUSIC_MODES][2]={
-    {45,65},{45,65},{75,105},{75,105},{105,165}
+    [SR_STANDARD]={62,89},
+    [SR_CINEMATIC]={48,76},
+    [SR_NEOCLASSICAL]={64,104},
+    [SR_EXPERIMENTAL]={79,116},
+    [SR_IDM]={108,159},
   };
   unsigned lo=ranges[e->music_mode][0], hi=ranges[e->music_mode][1];
   unsigned previous=(SR_RATE*15u+e->tick_length/2u)/(e->tick_length?e->tick_length:1u);
   seed^=(uint32_t)e->rhythm_style*0x9e3779b9u;
-  unsigned bpm=lo+song_draw(seed,202)%(hi-lo+1u);
-  if(bpm==previous)bpm=bpm==hi?lo:bpm+1u;
+  unsigned range=hi-lo+1u;
+  /* Two draws favor each mode's characteristic pacing while keeping
+     occasional slower and faster compositions. */
+  unsigned bpm=lo+(song_draw(seed,202)%range+song_draw(seed,203)%range)/2u;
+  uint8_t *last=&e->last_auto_bpm[e->music_mode][e->scene];
+  while(bpm==previous||bpm==*last)bpm=bpm==hi?lo:bpm+1u;
+  *last=(uint8_t)bpm;
   unsigned old=e->tick_length;
   e->tick_length=(SR_RATE*15u+bpm/2u)/bpm;
   if(old&&old!=e->tick_length&&e->tick_phase<old)
@@ -1054,23 +1064,31 @@ static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *att
  *transition=3u;return VOCAL_HUM_ZONE;
 }
 
-static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats){
+static sr_voice *note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float beats,unsigned singer){
   if((!e->running&&!e->preview_frames&&!e->midi_suppress)||track>=SR_DRUMS||midi>127||!velocity||e->tracks[track].mute)return 0;
   unsigned active=0;
   if(e->voice_limit)for(unsigned i=0;i<SR_VOICES;i++)active+=!!e->voices[i].active;
-  int slot=-1;float quiet=1.e9f;
+  int slot=-1, lead_slot=-1;float quiet=1.e9f, lead_quiet=1.e9f;
   for(int i=0;i<SR_VOICES;i++){
     if(!e->voices[i].active){
       if(!e->voice_limit||active<e->voice_limit){slot=i;break;}
       continue;
     }
-    if(e->voice_limit&&track>SR_BASS&&e->voices[i].track<=SR_BASS)continue;
     if(e->voices[i].key&&e->voices[i].gate)continue;
     if(e->voices[i].sample_zone&&e->voices[i].gate)continue;
     float entrance=e->voices[i].gate&&e->frame_count-e->voices[i].born<SR_RATE/16u?.25f:0.f;
     float score=e->voices[i].env+entrance+(e->voices[i].track==SR_BASS?.35f:e->voices[i].key&&e->voices[i].gate?.25f:0);
+    if(e->voice_limit&&track>SR_BASS&&e->voices[i].track<=SR_BASS){
+      /* The featured singer can displace a sequenced lead when the
+       * deadline cap leaves no optional voice. Keep bass and live notes. */
+      if(singer&&e->voices[i].track==SR_LEAD&&!e->voices[i].external&&score<lead_quiet){
+        lead_quiet=score;lead_slot=i;
+      }
+      continue;
+    }
     if(score<quiet){quiet=score;slot=i;}
   }
+  if(slot<0)slot=lead_slot;
   if(slot<0)return 0;
   sr_voice *v=&e->voices[slot];release_voice(e,v);e->note_ons++;float tail=v->active?v->filter*v->env*(v->sample_zone?.27f:calibrated_patch_gain(v->patch)):0.f;memset(v,0,sizeof(*v));v->tail=tail;v->active=v->gate=1;v->track=track;v->patch=e->tracks[track].patch;
   const sr_patch *p=&sr_patches[e->tracks[track].patch];
@@ -1133,7 +1151,7 @@ void sr_midi_note(sr_engine *e,unsigned role,unsigned channel,unsigned note,unsi
  }
  e->midi_suppress=1;
  sr_voice *v=role==SR_CHOIR&&e->vocals_enabled&&e->vocal_play?recorded_live_note(e,note,0,velocity,1.f):
-     note_on(e,(uint8_t)role,(uint8_t)note,(uint8_t)velocity,1.f);
+     note_on(e,(uint8_t)role,(uint8_t)note,(uint8_t)velocity,1.f,0);
  e->midi_suppress=0;
  if(v){v->external=1;v->channel=(uint8_t)channel;v->remain=0xffffffffu;e->external_audio=1;}
 }
@@ -1159,7 +1177,7 @@ void sr_note_on(sr_engine *e,uint8_t track,uint8_t midi,uint8_t velocity,float b
       if(e->role_target[track]>0.f)
         velocity=(uint8_t)(velocity*(.55f+.45f*e->role_target[track])+.5f);
     }
-    (void)note_on(e,track,midi,velocity,beats);
+    (void)note_on(e,track,midi,velocity,beats,0);
 }
 uint8_t sr_key_note(const sr_engine *e,unsigned key)
 {
@@ -1192,7 +1210,7 @@ static void play_key(sr_engine *e,uint8_t track,unsigned key,unsigned tap)
     unsigned consonant=0,transition=0;
     if(e->vocal_articulation)zone=vocal_articulation(e->vocal_articulation,key,&consonant,&transition);
     sr_voice *voice=track==SR_CHOIR&&e->vocals_enabled&&e->vocal_play?recorded_live_note(e,note,zone,96,1.f):
-        note_on(e,track,note,96,1.f);
+        note_on(e,track,note,96,1.f,0);
     if(voice){
       voice->vocal_consonant=consonant;
       voice->vocal_vowel_to=transition;
@@ -1849,8 +1867,8 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
  int root=source_pitch<400.f?60:72;
  while(note>root+6)note-=12;
  while(note<root-6)note+=12;
- sr_voice *voice=note_on(e,SR_CHOIR,note,velocity,beats);
- if(!voice)return 0;
+ sr_voice *voice=note_on(e,SR_CHOIR,note,velocity,beats,1);
+ if(!voice){e->vocal_rejected++;return 0;}
  voice->sample_zone=zone+1u;
  voice->tail+=interrupted_tail;
  e->vocal_started++;
@@ -3308,7 +3326,10 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
   }
   e->vocal_face_peak=vocal_pose_peak;
   e->vocal_direct_peak=vocal_direct_peak;
-  if(vocal_direct_peak>.0001f)e->vocal_audio_frames+=(uint32_t)frames;
+  if(vocal_direct_peak>.0001f){
+    e->vocal_audio_frames+=(uint32_t)frames;
+    e->vocal_last_pcm_frame=e->frame_count;
+  }
   if(precomputed)for(unsigned a=0;a<count;a++){
     unsigned cached=precomputed[a];
     if(!cached)continue;

@@ -111,7 +111,7 @@ enum { GROUP_PERC=4, GROUP_HIT=8, GROUP_VISUAL=9, GROUP_BANKS=10, GROUP_ISOLATE=
 static const uint8_t sound_controls[GROUP_COUNT][4]={
  {2,13,24,29},{21,5,54,78},{4,22,48,45},{8,7,23,6},{16,17,10,9},
  {30,31,36,0},{32,33,34,35},{100,0,0,0},
- {37,17,10,9},{56,141,142,143},{39,40,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123},{152,153,154,187},{155,156,0,0}
+ {37,17,10,9},{56,141,142,143},{39,0,41,0},{43,0,0,0},{47,63,73,74},{55,14,0,0},{79,85,86,0},{120,121,122,123},{152,153,154,187},{155,156,0,0}
 };
 static const uint8_t page_controls[4][4]={
  {18,145,22,5},{0,0,0,0},{0,20,25,46},{100,0,0,0}
@@ -644,7 +644,7 @@ void app_init(void)
     if((settings.version==0x41513033u&&prefs_size==24)||
        ((settings.version==0x41513034u||settings.version==0x41513035u||(settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u)))))&&(prefs_size==28||prefs_size==32||prefs_size==40||prefs_size==(int)offsetof(aq_settings,tempo_ticks)||prefs_size==(int)sizeof(settings))))
       visual_mode=settings.visual<=2?settings.visual:0;
-    if(settings.version>=0x41513035u&&settings.active_bank<4)bank_slot=settings.active_bank;
+    if(settings.version>=0x41513035u&&settings.active_bank<AQ_BANKS)bank_slot=settings.active_bank;
     if((settings.version==0x41513036u||(settings.version==0x41513037u||(settings.version==0x41513038u||(settings.version==0x41513039u||settings.version==0x41513040u))))){
       sr_set_music_mode(&engine,settings.music_mode<SR_MUSIC_MODES?settings.music_mode:0);
       engine.motion_manual=settings.motion_manual&3u;
@@ -826,7 +826,7 @@ void app_input_only(void){
  }
  if(control){
    last_control_ms=plat_ms();
-   if(fullscreen&&(press&(1u<<B_HOME)||enc[0])){fullscreen=fullscreen_performance=0;dirty=1;enc[0]=0;press&=~(1u<<B_HOME);}
+   if(fullscreen&&(press&(1u<<B_HOME)||enc[1])){fullscreen=fullscreen_performance=0;dirty=1;enc[1]=0;press&=~(1u<<B_HOME);}
    /* Fullscreen retains transport, keys, PRESETS and contextual intensity. */
  }
  if((press&(1u<<B_EDIT))&&(b&(1u<<B_HOME))){
@@ -852,7 +852,8 @@ void app_input_only(void){
  if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=mix_reset=0;send(44,0);}
  if((press&(1u<<B_SEL))&&page==PAGE_SETUP&&setup_tab==0){display_subtab=!display_subtab;dirty=1;}
  else if((press&(1u<<B_SEL))&&page==PAGE_VOCALS)send(15,0);
- else if((press&(1u<<B_SEL))&&(page==PAGE_PLAY||page==PAGE_SOUND||(page==PAGE_MIX&&mix_tab!=2))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
+ else if((press&(1u<<B_SEL))&&page==PAGE_SOUND){selected=(selected+1u)%SR_TRACKS;dirty=1;}
+ else if((press&(1u<<B_SEL))&&(page==PAGE_PLAY||(page==PAGE_MIX&&mix_tab!=2))&&!(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(15,0);
  if((press&(1u<<B_SEL))&&page==PAGE_EVOLVE&&song_tab==0){selected=(selected+1u)%SR_TRACKS;dirty=1;}
  if(press&(1u<<B_ARP)){bank_confirm=0;page=PAGE_DRUMS;drum_tab=0;debug=0;}
  if(press&(1u<<B_GLO))debug=(debug+1)%4;
@@ -871,17 +872,6 @@ void app_input_only(void){
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
-   if(!debug&&page==2)song_tab=(song_tab+1)%8;
-   if(page==PAGE_SOUND){
-     unsigned index=0;
-     for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=i;
-     group=sound_groups[(index+1)%sizeof(sound_groups)];sound_picker=0;
-   }
-   if(page==PAGE_VOCALS)vocal_tab=(vocal_tab+1u)%8u;
-   if(page==PAGE_DRUMS)drum_tab=(drum_tab+1)%7;
-   if(page==PAGE_SETUP)setup_tab=(setup_tab+1)%5;
-   if(page==3){/* Preserve legacy EDIT cycle; FX enters the dedicated focus strip. */
-     mix_tab=mix_tab>=4?0:mix_tab+1;mix_reset=0;}
    bank_confirm=song_arm=0;if(!quick_started&&!quick_pending)bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
@@ -904,23 +894,30 @@ void app_input_only(void){
  for(unsigned i=0;i<NKEYS;i++)if((engine.learn_mode||engine.response_enabled)&&((physical_keys^oldkeys)&(1u<<i)))
    send(136,i|((physical_keys&(1u<<i))?0:32));
  oldkeys=k;
- int d=enc[0];
- if(d&&!debug){page=bounded((int)page+d,PAGE_PLAY,PAGE_VOCALS);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
+ int d=enc[1];
+ if(d&&!debug&&!fullscreen){page=bounded((int)page+d,PAGE_PLAY,PAGE_VOCALS);sound_picker=0;mix_reset=0;bank_confirm=song_arm=0;knob_until=0;dirty=1;}
  static unsigned role_page=~0u;
  if(page==PAGE_MIX&&role_page!=PAGE_MIX&&mix_tab!=4)mix_focus=selected;
  role_page=page;
- d=enc[1];
- if(d&&!debug){
-   if(page==PAGE_SOUND&&sound_picker){
+ d=enc[0];
+ if(d&&!debug&&!fullscreen){
+   unsigned contextual=(b&(1u<<B_EDIT))!=0;
+   if(page==PAGE_SOUND&&!contextual){
      int index=0;
      for(unsigned i=0;i<sizeof(sound_groups);i++)if(sound_groups[i]==group)index=(int)i;
      group=sound_groups[bounded(index+d,0,sizeof(sound_groups)-1)];
-   }else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
+     sound_picker=0;
+   }else if(page==PAGE_VOCALS)vocal_tab=bounded((int)vocal_tab+d,0,7);
+   else if(page==PAGE_EVOLVE&&!contextual)song_tab=bounded((int)song_tab+d,0,7);
+   else if(page==PAGE_MIX&&!contextual){mix_tab=bounded((int)mix_tab+d,0,5);mix_reset=0;}
+   else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
    else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3||mix_tab==5))mix_select(d);
    else if(page==PAGE_DRUMS)drum_tab=bounded((int)drum_tab+d,0,6);
+   else if(page==PAGE_SETUP&&!contextual)setup_tab=bounded((int)setup_tab+d,0,4);
    else if(page==PAGE_SETUP&&setup_tab==2)save_info=bounded((int)save_info+d,0,2);
    else if(page==PAGE_SETUP&&setup_tab==0)display_subtab=bounded((int)display_subtab+d,0,1);
-   else if(page!=PAGE_DRUMS){selected=bounded((int)selected+d,0,7);if(page==PAGE_PLAY)select_revision++;}
+   else if(page==PAGE_PLAY||page==PAGE_EVOLVE){selected=bounded((int)selected+d,0,7);if(page==PAGE_PLAY)select_revision++;}
+   if(!contextual){bank_confirm=song_arm=0;}
    knob_until=0;dirty=1;
  }
  d=enc[2];
@@ -970,7 +967,7 @@ void app_input_only(void){
     else if(control==147){ui_theme=bounded((int)ui_theme+d,0,4);preferences_changed_now();}
     else if(control==148){ui_background=switched(ui_background,d);preferences_changed_now();}
     else if(control==38){visual_mode=bounded((int)visual_mode+d,0,2);preferences_changed_now();}
-    else if(control==39){bank_slot=bounded((int)bank_slot+d,0,3);preferences_changed_now();bank_confirm=0;bank_message=BANK_IDLE;}
+    else if(control==39){bank_slot=bounded((int)bank_slot+d,0,AQ_BANKS-1);preferences_changed_now();bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==40){bank_action=d>0;bank_confirm=0;bank_message=BANK_IDLE;}
     else if(control==41)bank_confirm=d>0;
     else if(control==99){
@@ -1335,11 +1332,13 @@ int app_expect(const char *what,int *got){
  }
  if(!strcmp(what,"bank_migration_matrix")){
   *got=1;arrangement record,loaded;arrangement_snapshot(&record);
-  for(unsigned version=1;version<=8;version++){
+  arrangement original=record;
+  for(unsigned version=1;version<=10;version++){
+   record=original;
    record.version=0x41514200u+version;
-   size_t size=version==1?offsetof(arrangement,loop_length):version==2?offsetof(arrangement,motif_home):version==3?offsetof(arrangement,song_seed):version==4?offsetof(arrangement,chord_mode):version==5?offsetof(arrangement,learned):version==6?offsetof(arrangement,arrange_next):version==7?offsetof(arrangement,motif_memory):sizeof(record);
+   size_t size=version==1?offsetof(arrangement,loop_length):version==2?offsetof(arrangement,motif_home):version==3?offsetof(arrangement,song_seed):version==4?offsetof(arrangement,chord_mode):version==5?offsetof(arrangement,learned):version==6?offsetof(arrangement,arrange_next):version==7?offsetof(arrangement,motif_memory):version==8?offsetof(arrangement,drum_mutes):version==9?offsetof(arrangement,crc9)+4u:offsetof(arrangement,vocal_param_lock);
    uint32_t crc=arrangement_crc(&record);
-   if(version==1)record.legacy_crc=crc;else if(version==2)record.v2_crc=crc;else if(version==3)record.crc=crc;else if(version==4)record.crc4=crc;else if(version==5)record.crc5=crc;else if(version==6)record.crc6=crc;else if(version==7)record.crc7=crc;else record.crc8=crc;
+   if(version==1)record.legacy_crc=crc;else if(version==2)record.v2_crc=crc;else if(version==3)record.crc=crc;else if(version==4)record.crc4=crc;else if(version==5)record.crc5=crc;else if(version==6)record.crc6=crc;else if(version==7)record.crc7=crc;else if(version==8)record.crc8=crc;else if(version==9)record.crc9=crc;else record.crc10=crc;
    for(unsigned slot=0;slot<4;slot++){
     if(plat_store_save(OBJ_BANK1+slot,&record,size)||!arrangement_read(slot,&loaded)){*got=0;return 1;}
     arrangement_apply(&loaded);

@@ -15,7 +15,7 @@ static int quick_poll(void){
  if(fault&&!strcmp(fault,"stall"))return 1;
  if(fault&&!strcmp(fault,"fail"))return -1;
  if(fault&&!strcmp(fault,"slow")&&quick_polls<80)return 1;
- return plat_store_save(OBJ_BANK1+quick_slot,&quick_record,sizeof(quick_record));
+ return plat_store_save(arrangement_object(quick_slot),&quick_record,sizeof(quick_record));
 }
 #else
 extern int plat_aquora_save_begin(uint32_t,const void *,uint32_t);
@@ -33,6 +33,17 @@ static int quick_poll(void){
  */
 static void arrangement_quick_save(void)
 {
+    if(!quick_started&&!quick_pending&&bank_status[bank_slot]&&!bank_confirm){
+        page=PAGE_SETUP;
+        setup_tab=1;
+        bank_message=BANK_CONFIRM;
+        dirty=1;
+        return;
+    }
+    /* An in-flight press cannot authorize overwriting another occupied slot. */
+    if((quick_started&&quick_slot==bank_slot)||(quick_pending&&quick_request_slot==bank_slot))return;
+    if((quick_started||quick_pending)&&bank_status[bank_slot]&&!bank_confirm)return;
+    bank_confirm=0;
     quick_requests++;if(quick_last_result<0)quick_retries++;
     quick_next_ms=plat_ms();
     if(!quick_started&&!quick_pending){quick_request_ms=quick_next_ms;quick_timeout=0;quick_polls=0;}
@@ -53,7 +64,7 @@ static void arrangement_service(void)
         quick_flash_ms=plat_ms()-quick_snapshot_ms;
         bank_message=result==0&&!quick_timeout?BANK_SAVED:BANK_ERROR;
         if(!result){
-            bank_status[quick_slot]=1;
+            arrangement_mark_saved(quick_slot,&quick_record);
             quick_has_save=1;
             quick_saved_revision=quick_snapshot_revision;
         }
@@ -64,7 +75,7 @@ static void arrangement_service(void)
         quick_snapshot_revision=state_revision;
         arrangement_snapshot(&quick_record);
         quick_pending=0;
-        if(quick_begin(OBJ_BANK1+quick_slot,&quick_record,sizeof quick_record)){
+        if(quick_begin(arrangement_object(quick_slot),&quick_record,sizeof quick_record)){
             quick_last_result=-1;bank_message=BANK_ERROR;quick_finished_ms=plat_ms();
         }else{quick_started=1;bank_message=BANK_SAVING;}
         dirty=1;

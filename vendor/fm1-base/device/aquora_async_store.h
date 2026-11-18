@@ -6,7 +6,7 @@
  */
 static struct {
     st_hdr_t header;
-    uint8_t payload[512];
+    uint8_t payload[AQ_BANK_RECORD_MAX];
     uint32_t base, pos, phase, resumed, slices, busy, wait_tick, phase_tick, phase_us[4], suspends;
 } aq_store;
 
@@ -14,7 +14,8 @@ static struct {
 
 int plat_aquora_save_begin(uint32_t obj,const void *src,uint32_t len)
 {
-    if(aq_store.phase||!flash_ok||(obj!=OBJ_SETTINGS&&(obj<OBJ_BANK1||obj>OBJ_BANK4))||!len||len>512)return -1;
+    int bank=(obj>=OBJ_BANK1&&obj<=OBJ_BANK4)||(obj>=OBJ_FAVORITE5&&obj<=OBJ_FAVORITE16);
+    if(aq_store.phase||!flash_ok||(obj!=OBJ_SETTINGS&&!bank)||!len||len>sizeof aq_store.payload)return -1;
     st_hdr_t old;
     int cur=st_current(obj,&old);
     st_hdr_t *h=&aq_store.header;

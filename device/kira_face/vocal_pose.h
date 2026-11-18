@@ -8,11 +8,28 @@ static inline k9_face k9_recorded_vocal_pose(const sr_engine *e)
 {
     k9_face pose={0};
     float peak=e->vocal_face_peak*e->master;
-    if(!e->vocals_enabled||!e->vocal_face_mouth||e->frequency_lock||
-       e->nature_audition||e->tracks[SR_CHOIR].mute||peak<.0005f||
-       (e->solo<SR_TRACKS&&e->solo!=SR_CHOIR)||
+    if(!e->vocals_enabled||e->frequency_lock||e->nature_audition||
+       e->tracks[SR_CHOIR].mute||(e->solo<SR_TRACKS&&e->solo!=SR_CHOIR)||
        (e->isolate!=SR_ISOLATE_MIX&&e->isolate!=SR_ISOLATE_TRACK1+SR_CHOIR))
         return pose;
+    if(!e->vocal_face_mouth||peak<.0005f){
+        if(e->running&&e->tick_length){
+            /* One small nod per quarter note. Use the playhead and the
+             * within-step clock so the motion follows tempo and transport. */
+            unsigned step=(e->sequence_step+3u)&3u;
+            unsigned phase=e->tick_phase*4u/e->tick_length;
+            static const int8_t nod[]={0,1,2,2,2,1,1,0,0,-1,-1,-1,-1,0,0,0};
+            unsigned beat=step*4u+(phase>3u?3u:phase);
+            pose.head_y=nod[beat];
+            pose.module=beat<4u?2u:1u;
+            unsigned bar_step=(e->sequence_step+15u)&15u;
+            if(bar_step>=12u){
+                pose.gaze=(e->sequence_step&16u)?1:-1;
+                pose.tilt=pose.gaze;
+            }
+        }
+        return pose;
+    }
     float opening=peak*2048.f;
     pose.open=(uint16_t)(opening<58.f?opening:58.f);
     pose.mouth=e->vocal_face_mouth;

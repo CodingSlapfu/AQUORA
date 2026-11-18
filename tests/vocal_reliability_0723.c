@@ -101,8 +101,82 @@ static void stress(void)
            heard,e.vocal_reclaimed,e.vocal_recovered);
 }
 
+static void deadline_capped_entry(void)
+{
+    setup();
+    /* Keep the protected channels full as a dense arrangement can at the
+     * six-voice deadline floor. A sung entrance must replace a sequenced
+     * lead rather than exceed the cap or cut a keyboard/bass voice. */
+    for(unsigned i=0;i<6;i++){
+        sr_voice *voice=note_on(&e,i<3?SR_BASS:SR_LEAD,48+i,90,8.f,0);
+        assert(voice);
+        if(i==3)voice->key=1;
+        if(i==4)voice->external=1;
+    }
+    e.voice_limit=6;
+    sr_set_music_mode(&e,SR_IDM);
+    assert(recorded_vocal_phrase(&e,0,0));
+    assert(e.voices[3].key&&e.voices[4].external);
+    assert(e.voices[5].sample_zone);
+    assert(audio_window(SR_RATE/8u));
+}
+
+static void repeated_mode_edits(void)
+{
+    static const uint8_t modes[]={SR_STANDARD,SR_IDM,SR_CINEMATIC,SR_IDM};
+    setup();
+    for(unsigned change=0;change<24;change++){
+        unsigned mode=modes[change%4u];
+        unsigned starting=e.vocal_started;
+        unsigned heard=0;
+        sr_set_music_mode(&e,mode);
+        for(unsigned edit=0;edit<VF_COUNT;edit++){
+            e.vocal_param_lock|=1u<<edit;
+            e.vocal_param[edit]=(change*17u+edit*23u)%101u;
+            e.vocal_level=30u+edit*3u;
+            e.vocal_fx_send=(change+edit*7u)%101u;
+            unsigned pcm=audio_window(SR_RATE/10u);
+            if(e.music_mode==mode&&e.vocal_started>starting)heard|=pcm;
+        }
+        assert(e.music_mode==mode);
+        assert(heard);
+    }
+    puts("PASS 24 mode transitions with concurrent VOCALS edits and direct PCM");
+}
+
+static void mode_tempo(void)
+{
+    setup();
+    unsigned means[SR_MUSIC_MODES]={0};
+    for(unsigned mode=0;mode<SR_MUSIC_MODES;mode++){
+        e.music_mode=mode;
+        for(unsigned scene=0;scene<SR_SCENES;scene++){
+            sr_set_scene(&e,scene);
+            unsigned initial=e.tick_length;
+            uint32_t seed=e.song_seed;
+            means[mode]+=(SR_RATE*15u+initial/2u)/initial;
+            sr_set_scene(&e,(scene+1u)%SR_SCENES);
+            sr_set_scene(&e,scene);
+            assert(e.song_seed!=seed&&e.tick_length!=initial);
+            unsigned previous=e.tick_length;
+            sr_set_scene(&e,scene);
+            assert(e.tick_length!=previous);
+        }
+    }
+    assert(means[SR_CINEMATIC]<means[SR_STANDARD]);
+    assert(means[SR_STANDARD]<means[SR_IDM]);
+    unsigned manual=e.tick_length;
+    sr_set_auto_tempo(&e,0);
+    sr_set_scene(&e,1);
+    assert(e.tick_length==manual);
+    puts("PASS five mode tempo distributions, intention regeneration and manual lock");
+}
+
 int main(void)
 {
+    deadline_capped_entry();
+    repeated_mode_edits();
+    mode_tempo();
     setup();
     e.freeze=1;
     assert(recorded_vocal_phrase(&e,0,0));

@@ -1,0 +1,41 @@
+wait 3000
+tap HOME
+expect page 0
+turn SELECT 1
+expect page 1
+expect track 0
+tap SEL
+expect track 1
+turn ALGO 1
+expect sound_group 6
+tap SEL
+expect track 2
+turn ALGO -1
+expect sound_group 0
+turn SELECT 1
+expect page 2
+turn SELECT 1
+expect page 3
+turn ALGO 4
+expect mix_tab 4
+turn ALGO -4
+expect mix_tab 0
+turn SELECT 1
+expect page 4
+turn ALGO 6
+expect drum_tab 6
+turn ALGO -6
+expect drum_tab 0
+turn SELECT 1
+expect page 5
+turn ALGO 4
+expect setup_tab 4
+turn ALGO -4
+expect setup_tab 0
+turn SELECT 1
+expect page 6
+turn SELECT 1
+expect page 7
+turn SELECT -7
+expect page 0
+expect drops 0

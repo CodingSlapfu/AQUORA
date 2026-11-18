@@ -94,6 +94,12 @@ int main(void)
     engine.master=.8f;
     engine.running=1;
     engine.external_sync=1;
+    engine.sequence_step=1;
+    engine.tick_phase=engine.tick_length/2u;
+    k9_face listening=k9_recorded_vocal_pose(&engine);
+    assert(listening.head_y==2&&listening.module==2);
+    assert(!listening.mouth&&!listening.open&&!listening.jaw);
+    engine.tick_phase=0;
     engine.reverb_amount=engine.delay_amount=engine.tone_level=engine.bed_level=0.f;
     engine.reverb_wet=engine.delay_wet=0.f;
     engine.solo=SR_CHOIR;
