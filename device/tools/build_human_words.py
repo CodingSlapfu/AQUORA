@@ -17,6 +17,7 @@ SOURCES = {
     417410: ("TheScarlettWitch89", "3.0", "451a67b26ff5ee787d48bd2b7c67117e71f8644d79a8c567bfa6cc7dd089b633"),
     417513: ("TheScarlettWitch89", "3.0", "3f163644ea154d9dbb039679fae1878e28f9e4bf0b9b4fd390f2dc43a1851a4f"),
     476829: ("womb_affliction", "4.0", "f458b3687cbd7eaa4a9b872299bf431cb067074b7d4cb9e7c4f151a68ce0effa"),
+    417935: ("TheScarlettWitch89", "3.0", "fe59dfdb02874fc8ab20f0058f8c4e4447858e470737575c57bcaeb001b13a91"),
     417936: ("TheScarlettWitch89", "3.0", "52a550b79ecd4114542b60fc39c5cf57bf2de6d7295063e5911eb7daf90da764"),
 }
 # Word, source, decoded-preview bounds, median voiced frequency, mouth poses.
@@ -31,6 +32,9 @@ WORDS = [
     ("BEAUTIFUL", 417936, 2.54, 3.96, 391.0, (4, 5, 4)),
     ("I", 476829, .290, .935, 185.0, (1, 1, 5)),
     ("GOING", 417410, 1.017, 1.549, 225.0, (4, 2, 4)),
+    ("WHEN", 417935, 1.595, 1.785, 410.0, (3, 5, 4)),
+    ("CALL", 417935, 1.935, 2.645, 428.0, (4, 2, 4)),
+    ("DO", 417936, .605, .939, 370.0, (4, 3, 3)),
 ]
 
 

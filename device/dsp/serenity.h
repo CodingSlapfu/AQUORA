@@ -89,7 +89,7 @@ typedef struct {
   float shaker_env, shaker_lp, hand_noise_lp;
   float drum_part_gain[3], slicer_gain[4];
   uint8_t filter_cutoff, filter_resonance, slicer_mask, slicer_style;
-  uint16_t drum_mutes, drum_active;
+  uint16_t drum_group_solo,drum_mutes, drum_active;
   uint16_t drum_manual_mask, drum_pattern[SR_DRUM_PARTS];
   uint32_t drum_steps[64], drum_phase[13];
   float drum_amp[13], drum_aux_from, drum_aux_to;
@@ -105,6 +105,8 @@ typedef struct {
   float vocal_direct_peak;
   uint8_t vocal_chorus,vocal_reverb,vocal_delay,vocal_tune,vocal_fx_manual;
   uint8_t vocal_level,vocal_fx_send,vocal_entry_pending,vocal_call;
+  uint8_t vocal_phrase_note;
+  uint32_t vocal_phrase_frame;
   uint8_t track_send_manual,vocal_level_manual,vocal_patch,vocal_flow;
   float vocal_auto_gain;
   float track_send_now[SR_TRACKS],track_echo_now[SR_TRACKS];
@@ -210,6 +212,7 @@ void sr_learn_action(sr_engine *e,unsigned action);
 void sr_init(sr_engine *e, uint32_t seed);
 void sr_generate_song(sr_engine *e,uint32_t seed,int sounds_only);
 void sr_select_nature(sr_engine *e, uint32_t seed);
+unsigned sr_intention_style(unsigned scene,uint32_t seed);
 void sr_set_scene(sr_engine *e, uint8_t scene);
 unsigned sr_slicer_pattern(const sr_engine *e);
 void sr_set_auto_tempo(sr_engine *e, int automatic);

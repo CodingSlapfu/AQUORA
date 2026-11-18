@@ -108,3 +108,14 @@ compression for longer takes, fades, level normalization, resampling and
 through, without looping. Source offsets, preview and PCM hashes, pitch and
 quantization measurements are in `device/dsp/human_words.json`. Recreate the
 bank with `device/tools/build_human_words.py` and the same four previews.
+
+## v0.7.33 recorded additions
+
+WHEN and CALL are excerpts from TheScarlettWitch89’s [I hang up when you
+call, take 1](https://freesound.org/people/TheScarlettWitch89/sounds/417935/).
+DO is from the same performer’s [Do you wanna be beautiful, take 3](https://freesound.org/people/TheScarlettWitch89/sounds/417936/).
+Both recordings use [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+The sample manifest records the exact source offsets and hashes. The three
+added cuts use the same one-shot encoder as the previous bank. AUTO
+chooses a recorded word where the note fits its source register, with a
+recorded sung-vowel fallback at other pitches.

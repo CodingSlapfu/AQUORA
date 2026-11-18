@@ -327,7 +327,7 @@ static void arrangement_apply(const arrangement *record)
     engine.groove_mode=groove<=2?groove:0;
     engine.groove_strength=strength&&strength<=101?strength-1u:100;
     engine.drum_mutes=record->version>=AQ_BANK_V5&&(record->future&0xFFF8u)==0xA510u?record->future&7u:0;
-    engine.drum_solo=SR_DRUM_PARTS;
+    engine.vocal_phrase_note=0;engine.drum_group_solo=0;engine.drum_solo=SR_DRUM_PARTS;
     memset(engine.drum_levels,100,sizeof engine.drum_levels);
     if(record->version>=AQ_BANK_V9){
       engine.drum_mutes=record->drum_mutes;

@@ -45,31 +45,22 @@ void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *
  layer(pixels,y0,height,mouth,dx,dy,f->tilt);
  if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,dx,dy+1);
  if(f->neck)plate(pixels,y0,height,109,195,24,29,dx+(f->neck>0?1:-1),dy);
- if(f->module||f->singing_light){
-   /* Centres are registered to the left/right ear plates and the throat servo. */
-   static const uint8_t lamps[][2]={{62,116},{179,113},{121,212}};
+ /* Side ribbons stay clear of KIRA's face and follow direct vocal energy. */
+ if(f->singing_light){
    unsigned strength=f->singing_light;
-   int radius=strength>=16u?11:1;
-   for(unsigned lamp=0;lamp<3;lamp++){
-     int y=lamps[lamp][1]+dy;
-     int x=lamps[lamp][0]+dx+((int)lamps[lamp][1]-120)*f->tilt/128;
-     if(y+radius<(int)y0||y-radius>=(int)(y0+height))continue;
-     for(int row=-radius;row<=radius;row++)for(int col=-radius;col<=radius;col++){
-       if(y+row<(int)y0||y+row>=(int)(y0+height)||x+col<0||x+col>=240)continue;
-       unsigned d2=(unsigned)(row*row+col*col);
-       if(d2>(unsigned)(radius*radius))continue;
-       uint16_t *pixel=&pixels[(y+row-(int)y0)*240+x+col];
-       if(radius==1){
-         if(f->module)*pixel=f->module==2u?0x8f7fu:0x4b18u;
-         continue;
-       }
-       /* Soft falloff over the metal and a saturated violet emitter core. */
-       unsigned alpha=d2<=9u?strength:(121u-d2)*strength/176u;
-       unsigned red=(((*pixel>>11u)*(255u-alpha))+26u*alpha)/255u;
-       unsigned green=((((*pixel>>5u)&63u)*(255u-alpha))+9u*alpha)/255u;
-       unsigned blue=(((*pixel&31u)*(255u-alpha))+31u*alpha)/255u;
-       *pixel=(uint16_t)((red<<11u)|(green<<5u)|blue);
-     }
+   for(int row=54;row<189;row++){
+     if(row<(int)y0||row>=(int)(y0+height))continue;
+     int distance=row-121;
+     int wave=(row+f->jaw*6+f->neck*3)&31;
+     if(wave>16)wave=32-wave;
+     int x=7+distance*distance/715+(int)strength*wave/620;
+     unsigned red=12u+strength/14u,green=32u+strength/9u;
+     uint16_t ink=(uint16_t)(red<<11u|green<<5u|17u);
+     uint16_t fringe=(uint16_t)((red/3u)<<11u|(green/3u)<<5u|8u);
+     uint16_t *line=pixels+(row-y0)*240u;
+     line[x-1]=line[240-x]=fringe;
+     line[x]=line[239-x]=ink;
+     if(wave>12){line[x+1]=line[238-x]=0xffd3u;}
    }
  }
 }

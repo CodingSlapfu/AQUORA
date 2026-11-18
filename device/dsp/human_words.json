@@ -198,5 +198,65 @@
     "codec_snr_db": 24.81,
     "median_hz": 225.0,
     "tempo_ratio": 1.0
+  },
+  {
+    "word": "WHEN",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417935/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "fe59dfdb02874fc8ab20f0058f8c4e4447858e470737575c57bcaeb001b13a91",
+    "decoded_cut_sha256": "afe2fdab2274711bd446925e2d568bd62037247019cd411cb543f81fafbb4f54",
+    "offset_seconds": [
+      1.595,
+      1.785
+    ],
+    "pcm_sha256": "855bca20ee783e796ffe37f3b72e37baf960b46497fabdaa1aacbeb53f90ea7f",
+    "sample_rate": 6800,
+    "samples": 1292,
+    "packed_bytes": 809,
+    "packed_sha256": "b37d987d4427acbad56cc8dfcb29a4dfefb65779f449e76bec952f99f44de516",
+    "codec_snr_db": 23.6,
+    "median_hz": 410.0,
+    "tempo_ratio": 1.0
+  },
+  {
+    "word": "CALL",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417935/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "fe59dfdb02874fc8ab20f0058f8c4e4447858e470737575c57bcaeb001b13a91",
+    "decoded_cut_sha256": "c9239242060d3ef2dfd518bbbbe758dc33c5e8b66a57657f3556299b2e65db92",
+    "offset_seconds": [
+      1.935,
+      2.645
+    ],
+    "pcm_sha256": "4007b2188045d2a21c71e4c1ecb19f8f1052d7feabc40fb3dadb2aa1b1fec1f9",
+    "sample_rate": 6800,
+    "samples": 4828,
+    "packed_bytes": 3019,
+    "packed_sha256": "b564094ab4025b84965e066e94ab33ecdcea403b060a0de271042a31e0092091",
+    "codec_snr_db": 23.39,
+    "median_hz": 428.0,
+    "tempo_ratio": 1.0
+  },
+  {
+    "word": "DO",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417936/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "52a550b79ecd4114542b60fc39c5cf57bf2de6d7295063e5911eb7daf90da764",
+    "decoded_cut_sha256": "f9277ed230f6849dae357796d478dc192befe3a3d8b5f870b8e03326fec89330",
+    "offset_seconds": [
+      0.605,
+      0.939
+    ],
+    "pcm_sha256": "d25f7a8cf4ac31847aa14a93793b0abd050f769208fffa09c164a6c4f5ff72a1",
+    "sample_rate": 6800,
+    "samples": 2272,
+    "packed_bytes": 1421,
+    "packed_sha256": "8dc87c1c50c97b3a293eb50cc1636de530bb01e47fef1ef9b93cab4df001f0e1",
+    "codec_snr_db": 24.93,
+    "median_hz": 370.0,
+    "tempo_ratio": 1.0
   }
 ]

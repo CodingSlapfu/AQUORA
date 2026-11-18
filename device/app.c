@@ -191,7 +191,7 @@ static void mix_select(int delta)
  unsigned moves=delta>0?(unsigned)delta:(unsigned)-delta;
  while(moves){
    next+=direction;
-   if(next<0||next>=(mix_tab==5?SR_TRACKS:SR_TRACKS+SR_BUS_COUNT))break;
+   if(next<0||next>=(!mix_tab||mix_tab==5?SR_TRACKS:SR_TRACKS+SR_BUS_COUNT))break;
    unsigned channel=next<SR_TRACKS?mix_order[next]:(unsigned)next;
    if(!mix_visible(channel))continue;
    mix_focus=channel;
@@ -214,6 +214,7 @@ static unsigned control_for(unsigned knob)
    {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{210+VF_SHIMMER,210+VF_FLANGE_RATE,210+VF_FLANGE_FEEDBACK,210+VF_CHORUS_DEPTH},{190,231,232,230}};return controls[vocal_tab][knob];}
  if(page==PAGE_DRUMS){
    static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
+   if(!drum_tab){static const uint8_t live[]={0,0,167,16};return live[knob];}
    return controls[drum_tab][knob];
  }
  if(page==PAGE_SETUP){
@@ -227,9 +228,10 @@ static unsigned control_for(unsigned knob)
  }
  if(page==PAGE_SOUND&&sound_picker)return 0;
  if(page==PAGE_EVOLVE&&song_tab){
-   static const uint8_t ids[][4]={{58,59,60,61},{64,65,160,161},{82,19,83,84},{96,97,98,0},{132,133,134,135},{137,138,139,140},{144,0,0,0}};
+   static const uint8_t ids[][4]={{58,59,60,61},{64,65,160,161},{82,19,83,84},{0,97,98,0},{132,133,134,135},{137,138,139,140},{144,0,0,0}};
    return ids[song_tab-1][knob];
  }
+ if(page==PAGE_MIX&&mix_tab==0){static const uint8_t live[]={0,13,24,29};return live[knob];}
  if(page==PAGE_MIX&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))){
    return knob==0?99:0;
  }
@@ -303,6 +305,13 @@ static void turn_vocal_fx(uint8_t *value,unsigned bit,int delta)
    *value=(uint8_t)next;
    engine.vocal_fx_manual|=bit;
  }
+}
+
+static void apply_intention(unsigned scene)
+{
+ engine.music_mode=sr_intention_style(scene,engine.song_seed^engine.visit_nonce);
+ engine.pending_mode=0;
+ sr_set_scene(&engine,scene);
 }
 
 static void consume(void){
@@ -398,7 +407,7 @@ static void consume(void){
 
  case 1:{
    unsigned next=bounded((int)(engine.pending_scene?engine.pending_scene-1u:engine.scene)+d,0,SR_SCENES-1);
-   sr_set_scene(&engine,next);
+   apply_intention(next);
    break;
  }
  case 2:case 16:{
@@ -472,9 +481,24 @@ static void consume(void){
    unsigned bit=1u<<c.drum_part;
    if(d>0)engine.drum_mutes|=bit;
    else if(d<0)engine.drum_mutes&=~bit;
+   else engine.drum_mutes^=bit;
    break;
  }
- case 158:engine.drum_solo=d>0?c.drum_part:SR_DRUM_PARTS;break;
+ case 158:engine.drum_group_solo=0;engine.drum_solo=d>0||(d==0&&engine.drum_solo!=c.drum_part)?c.drum_part:SR_DRUM_PARTS;break;
+ case 233:{
+   static const uint16_t families[]={0x0009,0x0192,0x1864,0xe600};
+   unsigned family=c.drum_part==0||c.drum_part==3?0:
+     (families[1]&(1u<<c.drum_part))?1:(families[2]&(1u<<c.drum_part))?2:3;
+   unsigned mask=families[family];
+   if(d>0){engine.drum_solo=SR_DRUM_PARTS;engine.drum_group_solo=engine.drum_group_solo==mask?0:mask;}
+   else if((engine.drum_mutes&mask)==mask)engine.drum_mutes&=~mask;
+   else engine.drum_mutes|=mask;
+   break;
+ }
+ case 234:
+   if(c.track==SR_DRUMS&&d){engine.drum_mutes=0;engine.drum_group_solo=0;engine.drum_solo=SR_DRUM_PARTS;}
+   else {for(unsigned i=0;i<SR_TRACKS;i++)engine.tracks[i].mute=0;engine.solo=SR_TRACKS;}
+   break;
  case 163:turn_vocal_fx(&engine.vocal_chorus,1u,d);break;
  case 164:turn_vocal_fx(&engine.vocal_reverb,2u,d);break;
  case 165:turn_vocal_fx(&engine.vocal_delay,4u,d);break;
@@ -517,7 +541,12 @@ static void consume(void){
  case 55:engine.lock_textures=switched(engine.lock_textures,d);break;
  case 58:case 59:
    if(!engine.running)engine.nature_audition=0;
-   if(d>0)sr_generate_song(&engine,plat_ticks24()^++song_nonce,c.kind==59);
+   if(d>0){
+     uint32_t seed=plat_ticks24()^++song_nonce;
+     if(c.kind==58&&!engine.running&&!engine.stop_frames)
+       engine.music_mode=sr_intention_style(engine.scene,seed);
+     sr_generate_song(&engine,seed,c.kind==59);
+   }
    break;
  case 60:if(d>0)engine.sound_locks|=1u<<c.track;else engine.sound_locks&=~(1u<<c.track);break;
  case 64:engine.groove_mode=bounded(engine.groove_mode+d,0,2);break;
@@ -529,7 +558,6 @@ static void consume(void){
  case 129:{unsigned next=bounded((int)(engine.rhythm_pending?engine.rhythm_pending-1u:engine.rhythm_style)+d,0,2);
    if(engine.running)engine.rhythm_pending=next+1u;else sr_set_rhythm_style(&engine,next);break;}
  case 130:engine.fill_character=bounded(engine.fill_character+d,0,3);break;
- case 96:sr_set_music_mode(&engine,bounded((engine.pending_mode?engine.pending_mode-1u:engine.music_mode)+d,0,SR_MUSIC_MODES-1));break;
  case 97:sr_motion_auto(&engine,SR_LEAD,d<0);break;
  case 98:sr_motion_auto(&engine,SR_BASS,d<0);break;
  case 75:case 76:case 77:
@@ -579,7 +607,7 @@ static void consume(void){
  if(request!=intention_applied){
    unsigned start=plat_ticks24();
    intention_latency_us=(start-intention_ticks)/24u;
-   sr_set_scene(&engine,request%32u);
+   apply_intention(request%32u);
    intention_prepare_us=(plat_ticks24()-start)/24u;
    intention_applied=request;
    state_revision++;
@@ -659,7 +687,7 @@ void app_init(void)
     if(boot_fixture)boot_seed=(unsigned)strtoul(boot_fixture,0,0);
 #endif
     sr_set_music_mode(&engine,(boot_seed>>8)%SR_MUSIC_MODES);
-    sr_set_scene(&engine,boot_seed%SR_SCENES);
+    apply_intention(boot_seed%SR_SCENES);
     sr_generate_song(&engine,boot_seed^0x41513039u,0);
     engine.rhythm_style=(boot_seed>>16)%8u<4u?0u:1u+(boot_seed>>20)%2u;
     boot_armed=1;boot_starts=0;
@@ -847,6 +875,12 @@ void app_input_only(void){
    plat_unlock(flags);
  }
  if(press&(1u<<B_HOME)){page=0;debug=0;bank_confirm=song_arm=mix_reset=0;send(44,0);}
+ if(!debug&&!fullscreen&&page==PAGE_DRUMS&&!drum_tab){
+   unsigned edit=b&(1u<<B_EDIT);
+   if(press&(1u<<B_SEL))send(edit?233:157,edit?-1:0);
+   if(press&(1u<<B_LFO))send(edit?233:158,edit?1:0);
+   if(press&(1u<<B_FX))send(edit?234:162,edit?1:0);
+ }
  if((press&(1u<<B_SEL))&&page==PAGE_SETUP&&setup_tab==0){display_subtab=!display_subtab;dirty=1;}
  else if((press&(1u<<B_SEL))&&page==PAGE_VOCALS)send(15,0);
  else if((press&(1u<<B_SEL))&&page==PAGE_SOUND){selected=(selected+1u)%SR_TRACKS;dirty=1;}
@@ -858,6 +892,7 @@ void app_input_only(void){
  if(press&(1u<<B_ENV))send(14,0);
  if(press&(1u<<B_FX)){
    if(page==PAGE_VOCALS&&!debug)send(184,0);
+   else if(page==PAGE_DRUMS&&!drum_tab&&!debug&&!fullscreen){}
    else if(page==PAGE_DRUMS&&drum_tab>=5&&!debug)send(162,0);
    else if(page==PAGE_MIX&&mix_tab==1&&!debug){mix_fx_detail=(mix_fx_detail+1u)%5u;dirty=1;}
    else if(page==PAGE_MIX&&!debug){
@@ -869,12 +904,13 @@ void app_input_only(void){
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
    if(!debug&&page==0)send(47,0);
+   if(!debug&&!fullscreen&&page==PAGE_MIX&&!mix_tab)send(234,0);
    bank_confirm=song_arm=0;if(!quick_started&&!quick_pending)bank_message=BANK_IDLE;
  }
  /* OCT- opens the arrangement page. OCT+ jumps between percussion and HIT. */
  if((press&(1u<<B_OCTDN))&&!(b&(1u<<B_OCTUP))){page=PAGE_SETUP;setup_tab=1;debug=0;}
  if((press&(1u<<B_OCTUP))&&!(b&(1u<<B_OCTDN))){bank_confirm=0;drum_tab=page==PAGE_DRUMS?(drum_tab+1)%7:0;page=PAGE_DRUMS;debug=0;}
- if((press&(1u<<B_LFO))&&!(page==PAGE_MIX&&!debug&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(debug?27:28,0);
+ if((press&(1u<<B_LFO))&&!(page==PAGE_DRUMS&&!drum_tab&&!debug&&!fullscreen)&&!(page==PAGE_MIX&&!debug&&(mix_tab==4||((mix_tab==0||mix_tab==3)&&mix_focus>=SR_TRACKS))))send(debug?27:28,0);
  /* SAVE has exactly one meaning on every page, including fullscreen. */
  if(press&(1u<<B_SAVE))arrangement_quick_save();
  /* Explicit actions use SEL on their labelled action page, never SAVE. */
@@ -906,7 +942,7 @@ void app_input_only(void){
      sound_picker=0;
    }else if(page==PAGE_VOCALS)vocal_tab=bounded((int)vocal_tab+d,0,7);
    else if(page==PAGE_EVOLVE&&!contextual)song_tab=bounded((int)song_tab+d,0,7);
-   else if(page==PAGE_MIX&&!contextual){mix_tab=bounded((int)mix_tab+d,0,5);mix_reset=0;}
+   else if(page==PAGE_MIX&&!contextual){mix_tab=bounded((int)mix_tab+d,0,5);if(!mix_tab)mix_focus=selected;mix_reset=0;}
    else if(page==PAGE_MIX&&mix_tab==4)mix_bus=bounded((int)mix_bus+d,0,SR_BUS_COUNT-1);
    else if(page==PAGE_MIX&&(mix_tab==0||mix_tab==3||mix_tab==5))mix_select(d);
    else if(page==PAGE_DRUMS)drum_tab=bounded((int)drum_tab+d,0,6);
@@ -923,12 +959,15 @@ void app_input_only(void){
     d=enc[3+i];
     unsigned control=control_for(i);
     if(!d)continue;
-    if(page==PAGE_DRUMS&&drum_tab>=5&&!debug&&!fullscreen&&i==0){
+    if(page==PAGE_MIX&&!mix_tab&&!debug&&!fullscreen&&!i){
+      mix_select(d);dirty=1;continue;
+    }
+    if(page==PAGE_DRUMS&&(!drum_tab||drum_tab>=5)&&!debug&&!fullscreen&&i==0){
       drum_part=bounded((int)drum_part+d,0,SR_DRUM_PARTS-1);
       dirty=1;
       continue;
     }
-    if(page==PAGE_DRUMS&&drum_tab==6&&!debug&&!fullscreen){
+    if(page==PAGE_DRUMS&&(!drum_tab||drum_tab==6)&&!debug&&!fullscreen){
       if(i==1){drum_edit_step=bounded((int)drum_edit_step+d,0,15);dirty=1;continue;}
       if(i==2){send(167,d>0?(int)drum_edit_step+1:-(int)drum_edit_step-1);dirty=1;continue;}
     }
