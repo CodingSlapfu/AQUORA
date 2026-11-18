@@ -1,0 +1,25 @@
+wait 7000
+tap PLAY
+wait 1500
+expect running 0
+tap HOME
+tap ARP
+turn K4 1
+wait 100
+expect drum_time 2
+tap HOME
+tap OCT-
+tap SAVE
+wait 150
+expect bank_message 4
+tap ARP
+turn K4 -2
+wait 100
+expect drum_time 1
+tap HOME
+tap OCT-
+tap SEL
+wait 120
+expect bank_message 5
+expect drum_time 2
+expect bank_migration_matrix 1
