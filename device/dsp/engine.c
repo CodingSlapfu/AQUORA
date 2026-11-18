@@ -1097,7 +1097,8 @@ static sr_voice *allocate_note(sr_engine *e,uint8_t track,uint8_t midi,uint8_t v
         score+=2.f;
         if(held[v->track]<=1u&&other_role)score+=1.f;
         if(age<SR_RATE/16u)score+=.75f;
-        if(v->track==SR_LEAD||v->track==SR_BASS)score+=.35f;
+        if(v->track==SR_LEAD)score+=.35f;
+        if(v->track==SR_BASS)score+=1.75f;
       }
       if(score<best){best=score;replacement=v;}
     }
