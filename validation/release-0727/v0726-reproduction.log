@@ -1,0 +1,2 @@
+aquora-admission-base: /tmp/aquora-base-0727/tests/voice_admission_0727.c:27: two_samples: Assertion `first->active && first->sample_zone == 1 && e.note_offs == offs' failed.
+v0.7.26 fixture exit status 134

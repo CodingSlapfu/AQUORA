@@ -1,0 +1,10 @@
+PASS 24 mode transitions with concurrent VOCALS edits and direct PCM
+PASS five mode tempo distributions, intention regeneration and manual lock
+Vocal stress 200/1200 PCM windows passed
+Vocal stress 400/1200 PCM windows passed
+Vocal stress 600/1200 PCM windows passed
+Vocal stress 800/1200 PCM windows passed
+Vocal stress 1000/1200 PCM windows passed
+Vocal stress 1200/1200 PCM windows passed
+PASS 1200 setting-change windows with isolated output PCM and direct-vocal activity; 0 reclaimed tails, 1 invalid voices recovered
+PASS frozen arrangement keeps singer and scene changes reuse released sample slots

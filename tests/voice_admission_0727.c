@@ -88,6 +88,7 @@ static void ensemble_endurance(void)
             sr_set_vocals(&e, 1, 4);
             sr_start(&e);
             e.voice_limit = caps[test];
+            unsigned played = 0, left = 0, returned = 0;
             for (unsigned cycle = 0; cycle < 2; ++cycle) {
                 unsigned heard = 0, singer = 0, sections = 0;
                 unsigned lead_requests = e.role_requested[SR_LEAD];
@@ -100,16 +101,26 @@ static void ensemble_endurance(void)
                     sr_render(&e, pcm, 256);
                     sections |= 1u << song_section(&e);
                     singer |= e.vocal_direct_peak > .0001f;
-                    for (unsigned track = 0; track < SR_TRACKS; ++track)
-                        if (e.tracks[track].meter > .0001f) heard |= 1u << track;
+                    for (unsigned track = 0; track < SR_TRACKS; ++track) {
+                        unsigned bit = 1u << track;
+                        if ((played & bit) && e.role_target[track] == 0.f) left |= bit;
+                        if (e.tracks[track].meter <= .0001f) continue;
+                        heard |= bit;
+                        played |= bit;
+                        if (e.role_target[track] > 0.f) returned |= bit & left;
+                    }
                 }
                 printf("cap %u mode %u window %u roles %02x sections %02x vocal %u lead requests %u refusals %u\n",
                        caps[test], mode, cycle + 1, heard, sections, singer,
                        e.role_requested[SR_LEAD] - lead_requests,
                        e.role_refused[SR_LEAD] - lead_refusals);
                 fflush(stdout);
-                assert(singer && (heard & 0xfeu) == 0xfeu);
+                assert(singer && heard == 0xffu);
             }
+            printf("cap %u mode %u roles that exited %02x and returned with PCM %02x\n",
+                   caps[test], mode, left, returned);
+            fflush(stdout);
+            assert(left && returned == left);
         }
     }
 }

@@ -16,3 +16,7 @@ Run tests/voice_admission_0727.c and tests/frame_policy_next.c. The former repro
 Preserved navigation, V11 Favorites, effects, vocal vocabulary and portrait. Open items include physical reproduction with pre/post no-reboot snapshots, callback and LCD DMA timing while spinning K1–K4, independent oscillator choir output under all roles, complete per-role on-device telemetry and endurance of saved-song writes. No additional genuine sung BABY recording or intention names, revised vocal composition grammar, or portrait animation work is claimed here.
 
 Before a testing publication, verify the exact final native and emulator builds and the GitHub backup. Keep public stable at v0.7.14. A testing release remains subject to the owner’s physical FM-1 acceptance.
+
+## Successor source and builds
+
+621602d9b0dcb99b7fda7df24c4912b33fadcae2 adds crest replies, longer cadences, lead responses, idle portrait refinements and the two-arc-per-mode/cap PCM fixtures. It also prioritizes keeping gated bass voices over replacing a sequenced lead during a vocal entrance. It supersedes the earlier checkpoint's description of vocal composition and portrait work. See ACCEPTANCE.md for coverage and SHA256SUMS for the matching compiled outputs. Reuse those bytes unless evidence requires a source change.

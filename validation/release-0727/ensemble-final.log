@@ -1,0 +1,22 @@
+PASS transactional sampled admission, direct vocal PCM, optional-role return at cap 6, held MIDI and bass
+PASS injected deadline pressure clamps to 6 and recovers to 16 without losing bass or blocking vocal PCM
+cap 6 mode 0 window 1 roles ff sections 1f vocal 1 lead requests 113 refusals 0
+cap 6 mode 0 window 2 roles ff sections 1e vocal 1 lead requests 63 refusals 0
+cap 6 mode 1 window 1 roles ff sections 1f vocal 1 lead requests 178 refusals 0
+cap 6 mode 1 window 2 roles ff sections 1e vocal 1 lead requests 164 refusals 0
+cap 6 mode 2 window 1 roles ff sections 1f vocal 1 lead requests 81 refusals 0
+cap 6 mode 2 window 2 roles ff sections 1e vocal 1 lead requests 64 refusals 0
+cap 6 mode 3 window 1 roles ff sections 1f vocal 1 lead requests 215 refusals 0
+cap 6 mode 3 window 2 roles ff sections 1e vocal 1 lead requests 167 refusals 0
+cap 6 mode 4 window 1 roles ff sections 1f vocal 1 lead requests 157 refusals 0
+cap 6 mode 4 window 2 roles ff sections 1e vocal 1 lead requests 102 refusals 0
+cap 9 mode 0 window 1 roles ff sections 1f vocal 1 lead requests 113 refusals 0
+cap 9 mode 0 window 2 roles ff sections 1e vocal 1 lead requests 63 refusals 0
+cap 9 mode 1 window 1 roles ff sections 1f vocal 1 lead requests 178 refusals 0
+cap 9 mode 1 window 2 roles ff sections 1e vocal 1 lead requests 164 refusals 0
+cap 9 mode 2 window 1 roles ff sections 1f vocal 1 lead requests 81 refusals 0
+cap 9 mode 2 window 2 roles ff sections 1e vocal 1 lead requests 64 refusals 0
+cap 9 mode 3 window 1 roles ff sections 1f vocal 1 lead requests 215 refusals 0
+cap 9 mode 3 window 2 roles ff sections 1e vocal 1 lead requests 167 refusals 0
+cap 9 mode 4 window 1 roles ff sections 1f vocal 1 lead requests 157 refusals 0
+cap 9 mode 4 window 2 roles ff sections 1e vocal 1 lead requests 102 refusals 0
