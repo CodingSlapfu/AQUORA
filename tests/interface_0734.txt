@@ -1,0 +1,64 @@
+master 2250
+wait 6500
+tap HOME
+turn SELECT 3
+expect page 3
+turn K1 7
+expect mix_focus 7
+tap SEL
+tap LFO
+wait 100
+expect solo 7
+shot mixer.png
+tap EDIT
+wait 100
+expect solo 8
+tap ARP
+expect page 4
+turn K1 15
+expect drum_part 15
+tap SEL
+tap LFO
+wait 100
+expect drum_mutes 32768
+expect drum_solo 15
+shot drums.png
+press EDIT
+tap FX
+release EDIT
+wait 100
+expect drum_mutes 0
+expect drum_solo 16
+turn K2 2
+turn K3 -100
+turn K3 63
+turn K4 -1
+wait 240
+expect hit 63
+expect drum_time 1
+shot drums-half.png
+turn K4 2
+wait 240
+expect drum_time 2
+shot drums-double.png
+turn SELECT 2
+expect page 6
+turn K1 2
+turn K2 2
+wait 100
+shot gate.png
+wait 130
+shot gate-next.png
+tap HOME
+turn SELECT 1
+expect page 1
+wait 100
+shot sound.png
+wait 130
+shot sound-next.png
+turn SELECT 6
+expect page 7
+wait 100
+shot kira.png
+expect drops 0
+expect page_draw_stats 1

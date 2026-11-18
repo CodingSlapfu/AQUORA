@@ -391,8 +391,10 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  case 181:*name="SHIMMER %";number=engine.fx_shimmer;break;
  case 182:*name="FREEZE %";number=engine.fx_granular;break;
  case 183:*name="DUCKING %";number=engine.fx_duck;break;
- case 167:*name="HIT";return (engine.drum_pattern[drum_part]&(1u<<drum_edit_step))?"ON":"OFF";
- case 168:*name="LANE MODE";return (engine.drum_manual_mask&(1u<<drum_part))?"MANUAL":"AUTO";
+ case 168:{
+   static const char *times[]={"NORMAL","HALF","DOUBLE"};
+   *name="TIME";return times[engine.drum_time];
+ }
  case 163:*name="CHORUS %";if(!(engine.vocal_fx_manual&1u))return "Auto";number=engine.vocal_chorus;break;
  case 164:*name="REVERB %";if(!(engine.vocal_fx_manual&2u))return "Auto";number=engine.vocal_reverb;break;
  case 166:*name="TUNE %";if(!(engine.vocal_fx_manual&8u))return "Auto";number=engine.vocal_tune;break;
@@ -959,6 +961,7 @@ static unsigned submit_panel_band(unsigned band,int full_motion)
 }
 static unsigned graph_future_count;
 static uint32_t drum_forecast[16],drum_view_history[16];
+static unsigned drum_view_page,drum_view_pages;
 static unsigned drum_view_step,drum_view_mutes,drum_view_solo;
 static uint32_t graph_frame,graph_tick,graph_boundary,graph_phase;
 static float graph_scale;
@@ -1103,7 +1106,7 @@ static int draw(int animate)
  unsigned entry_age=plat_ms()-page_animation_ms;
  int entry_x=entry_age<220u?(int)((220u-entry_age)*(220u-entry_age)/1600u):0;
  if(entry_age<220u)dirty=1;
- static unsigned forecast_valid, forecast_step, forecast_revision, forecast_clock, forecast_sync, forecast_page;
+ static unsigned forecast_valid, forecast_step, forecast_revision, forecast_clock, forecast_sync, forecast_page, forecast_drum;
  unsigned score_visible=page==PAGE_EVOLVE&&song_tab==0&&!debug&&!intro_active&&!fullscreen;
  unsigned drums_visible=page==PAGE_DRUMS&&!debug&&!intro_active&&!fullscreen;
  if(!score_visible&&!drums_visible)forecast_valid=0;
@@ -1113,6 +1116,8 @@ static int draw(int animate)
   unsigned drum_position=engine.drum_playhead&15u;
   if(drums_visible){
    drum_view_step=drum_position;
+   drum_view_page=engine.drum_playhead/16u;
+   drum_view_pages=engine.loop_length/16u;
    drum_view_mutes=engine.drum_mutes|(engine.drum_group_solo?(~engine.drum_group_solo&65535u):0u);
    drum_view_solo=engine.drum_solo;
    memcpy(drum_view_history,engine.drum_steps+(engine.drum_playhead&~15u),sizeof drum_view_history);
@@ -1120,11 +1125,12 @@ static int draw(int animate)
   if(score_visible||drums_visible){
    if(score_visible)memcpy(graph_notes,engine.timeline,sizeof graph_notes);
    refresh=!forecast_valid||forecast_page!=page||forecast_step!=engine.sequence_step||
+     (drums_visible&&forecast_drum!=engine.drum_playhead)||
      forecast_revision!=revision||forecast_clock!=engine.tick_length||
      forecast_sync!=engine.external_sync;
    if(refresh){
     sr_score_snapshot(&graph_snapshot,&engine);
-    forecast_step=engine.sequence_step;forecast_page=page;
+    forecast_step=engine.sequence_step;forecast_page=page;forecast_drum=engine.drum_playhead;
     forecast_revision=revision;
     forecast_clock=engine.tick_length;
     forecast_sync=engine.external_sync;
@@ -1141,19 +1147,13 @@ static int draw(int animate)
    if(input_before!=input_revision){forecast_valid=0;dirty=1;return 0;}
    if(drums_visible){
     memset(drum_forecast,0,sizeof drum_forecast);
-    uint32_t next=graph_frame+(graph_phase<graph_tick?graph_tick-graph_phase:0u);
-    unsigned count=sr_score_preview(&graph_snapshot,graph_future,384,16u-drum_position);
-    for(unsigned i=0;i<count;i++){
-     const sr_event *event=&graph_future[i];
-     if(event->role!=SR_DRUMS||(int32_t)(event->frame-next)<0)continue;
-     unsigned step=drum_position+1u+(event->frame-next)/graph_tick;
-     if(step>=16u)continue;
-     for(unsigned lane=0;lane<SR_DRUM_PARTS;lane++)if(event->note==sr_drum_notes[lane]){
-       unsigned bit=1u<<lane;
-       drum_forecast[step]|=bit|(event->velocity>=96u?bit<<16u:0u);
-       break;
-     }
-    }
+    unsigned remaining=15u-drum_position;
+    unsigned ticks=graph_snapshot.drum_time==1u?remaining*2u-(remaining&&!(graph_snapshot.sequence_step&1u)):
+                   graph_snapshot.drum_time==2u?remaining/2u:remaining;
+    /* Include a pending DOUBLE step before the next song tick. */
+    if(graph_snapshot.drum_time==2u&&remaining&&!(drum_position&1u))ticks++;
+    if(sr_score_preview(&graph_snapshot,graph_future,384,ticks))
+      memcpy(drum_forecast,graph_snapshot.drum_steps+drum_view_page*16u,sizeof drum_forecast);
    }else graph_future_count=sr_score_preview(&graph_snapshot,graph_future,384,34);
    forecast_valid=1;
   }
@@ -1173,7 +1173,7 @@ static int draw(int animate)
  if(water_visible&&!display_strip&&(animate||dirty))mixer_snapshot();
  /* Bind one audio observation to every portrait band in this frame. */
  static k9_face vocal_pose;
- static unsigned singing_light,expressive_lid;
+ static unsigned expressive_lid;
  if(page==PAGE_VOCALS&&!vocal_tab&&!display_strip&&(animate||dirty)){
    unsigned flags=plat_lock();
    vocal_pose=k9_recorded_vocal_pose(&engine);
@@ -1192,11 +1192,9 @@ static int draw(int animate)
      vocal_pose.singing_light=0;
      vocal_pose.module=0;
    }
-   singing_light=vocal_pose.singing_light>=singing_light?vocal_pose.singing_light:
-       (singing_light*2u+vocal_pose.singing_light)/3u;
-   vocal_pose.singing_light=(uint8_t)singing_light;
+   if(vocal_pose.singing_light)vocal_pose.module=(now/90u)&3u;
  }else if(page!=PAGE_VOCALS||vocal_tab){
-   singing_light=expressive_lid=0;
+   expressive_lid=0;
  }
  for(;display_strip<5;display_strip++){
    int band=display_first?(fullscreen?fullscreen_first:control_first)[display_strip]:display_strip;
@@ -1438,7 +1436,11 @@ static int draw(int animate)
           engine.solo<SR_TRACKS&&engine.solo!=SR_DRUMS?"OTHER TRACK SOLO":
           engine.drum_group_solo?"GROUP SOLO":engine.drum_solo<SR_DRUM_PARTS?"PART SOLO":"LIVE MIX",skin_text());
        graph_text(6,15,"SEL MUTE / LFO SOLO / FX AUDITION",skin_text());
-       graph_text(6,31,"HOLD EDIT: GROUP / FX CLEAR",skin_dim());
+       graph_text(6,31,"EDIT: GROUP / FX CLEAR",skin_dim());
+       char page_number[]="BAR 1/1";
+       page_number[4]=(char)('1'+drum_view_page);
+       page_number[6]=(char)('0'+drum_view_pages);
+       graph_text(167,31,page_number,skin_accent());
      }
      for(unsigned lane=first;lane<end;lane++){
        unsigned row_band=!drum_tab?1u+(lane-first)/4u:1u+lane/5u;
@@ -1450,12 +1452,9 @@ static int draw(int animate)
        graph_text(8,y,lanes[lane],ink);
        for(unsigned step=0;step<16;step++){
          unsigned events=step>drum_view_step?drum_forecast[step]:drum_view_history[step];
-         if((!drum_tab||drum_tab==6)&&(engine.drum_manual_mask&(1u<<lane)))
-           events=(engine.drum_pattern[lane]&(1u<<step))?(1u<<lane):0u;
          unsigned hit=events&(1u<<lane);
          int x=69+(int)step*10;
-         if((!drum_tab||drum_tab==6)&&lane==drum_part&&step==drum_edit_step)cv_rect(x-1,y,10,9,skin_accent());
-         else if(step==drum_view_step)cv_rect(x-1,y,10,9,skins[ui_theme][ui_background].border);
+         if(step==drum_view_step)cv_rect(x-1,y,10,9,skins[ui_theme][ui_background].border);
          cv_rect(x,y+3,7,hit?(!drum_tab?6:4):1,hit?ink:skins[ui_theme][ui_background].border);
          if(!drum_tab&&hit&&step==drum_view_step&&engine.running)
            cv_line(x+1,y+2,x+5,y+2,skin_text());
@@ -1469,7 +1468,6 @@ static int draw(int animate)
          const char *value=knob_value(control_for(k),&name,number);
          int x=4+(int)k*59;
          if(k==0&&(!drum_tab||drum_tab>=5)){name="K1 PART";value=sr_drum_parts[drum_part];}
-         if(k==1&&(!drum_tab||drum_tab==6)){name="K2 STEP";num(number,drum_edit_step+1u);value=number;}
          limited_text(x,12,56,&FONT_T,name,skin_dim());
          limited_text(x,25,56,&FONT_XS,value,skin_text());
        }
@@ -1646,7 +1644,7 @@ static int draw(int animate)
    }else if(band==0){
      cv_text(8+entry_x,0,ui_font_size==2?&FONT_M:&FONT_B,pages[page],skin_accent());
      if(page==PAGE_DRUMS){
-       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART / FX AUDITION","STEP EDIT / FX AUDITION"};
+       static const char *tabs[]={"PATTERN","SOUND / MIX","MUTE / SOLO","RHYTHM / FILLS","PART MUTES","16-PART / FX AUDITION","PATTERN / TIME"};
        limited_text(104,2,110,&FONT_XS,tabs[drum_tab],colors[SR_DRUMS]);
      }else if(page==PAGE_SOUND){
        limited_text(104,2,128,fit_font(groups[group],128,20),groups[group],skin_text());

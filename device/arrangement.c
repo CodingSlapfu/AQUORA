@@ -268,10 +268,8 @@ static void arrangement_snapshot(arrangement *record)
     memcpy(record->motif_memory,engine.motif_memory,sizeof record->motif_memory);
     memcpy(record->motif_scores,engine.motif_scores,sizeof record->motif_scores);
     record->motif_count=engine.motif_count;record->motif_cursor=engine.motif_cursor;record->current_energy=engine.current_energy;
-    /* The high 12 bits of v2_crc and bits 1–4 of reserved6 were unused. */
-    record->v2_crc|=(uint32_t)(engine.drum_manual_mask&0xfffu)<<20u;
-    record->reserved6|=(uint16_t)((engine.drum_manual_mask>>12u)<<1u);
-    memcpy(record->drum_pattern,engine.drum_pattern,sizeof record->drum_pattern);
+    record->reserved6|=0x2000u;
+    record->drum_pattern[0]=engine.drum_time;
     record->version=AQ_BANK_V10;
     record->vocal_enabled=engine.vocals_enabled;
     /* V11 reserved6 bits 5–12 were zero. Older firmware ignores them. */
@@ -334,12 +332,10 @@ static void arrangement_apply(const arrangement *record)
       engine.drum_solo=record->drum_solo;
       memcpy(engine.drum_levels,record->drum_levels,sizeof engine.drum_levels);
     }
-    engine.drum_manual_mask=0;
-    memset(engine.drum_pattern,0,sizeof engine.drum_pattern);
-    if(record->version>=AQ_BANK_V10){
-      engine.drum_manual_mask=(uint16_t)((record->v2_crc>>20u)|((uint32_t)(record->reserved6&30u)<<11u));
-      memcpy(engine.drum_pattern,record->drum_pattern,sizeof engine.drum_pattern);
-    }
+    engine.drum_time=0;
+    engine.drum_mid_pending=0;
+    if(record->version>=AQ_BANK_V10&&(record->reserved6&0x2000u)&&record->drum_pattern[0]<=2u)
+      engine.drum_time=record->drum_pattern[0];
     memset(engine.drum_steps,0,sizeof engine.drum_steps);
     engine.drum_playhead=0;
     for(unsigned part=0;part<3;part++)engine.drum_part_gain[part]=(engine.drum_mutes&(1u<<part))?0.f:1.f;

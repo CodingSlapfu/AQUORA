@@ -39,7 +39,7 @@ static unsigned vocal_shutdown;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm,arrange_browse;
-static unsigned drum_part, drum_edit_step;
+static unsigned drum_part;
 static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, fullscreen_performance, last_control_ms;
 static unsigned preferences_saving, preferences_generation, preferences_saved_ms;
 #ifndef PLAT_HOST
@@ -213,8 +213,8 @@ static unsigned control_for(unsigned knob)
    {210+VF_VIB_RATE,210+VF_VIB_DEPTH,210+VF_VIB_WAIT,210+VF_GLIDE},
    {210+VF_PRESENCE,210+VF_COMP,210+VF_MAKEUP,166},{210+VF_SHIMMER,210+VF_FLANGE_RATE,210+VF_FLANGE_FEEDBACK,210+VF_CHORUS_DEPTH},{190,231,232,230}};return controls[vocal_tab][knob];}
  if(page==PAGE_DRUMS){
-   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,0,167,168}};
-   if(!drum_tab){static const uint8_t live[]={0,0,167,16};return live[knob];}
+   static const uint8_t controls[][4]={{9,10,37,17},{16,13,24,29},{49,28,62,0},{129,130,0,0},{149,150,151,49},{0,157,158,159},{0,46,37,168}};
+   if(!drum_tab){static const uint8_t live[]={0,46,37,168};return live[knob];}
    return controls[drum_tab][knob];
  }
  if(page==PAGE_SETUP){
@@ -518,17 +518,16 @@ static void consume(void){
  case 181:engine.fx_shimmer=bounded(engine.fx_shimmer+d*5,0,100);break;
  case 182:engine.fx_granular=bounded(engine.fx_granular+d*5,0,100);break;
  case 183:engine.fx_duck=bounded(engine.fx_duck+d*5,0,100);break;
- case 167:{
-   unsigned step=(unsigned)(d<0?-d:d)-1u;
-   if(step<16u){
-     unsigned bit=1u<<step;
-     engine.drum_manual_mask|=1u<<c.drum_part;
-     if(d>0)engine.drum_pattern[c.drum_part]|=bit;
-     else engine.drum_pattern[c.drum_part]&=~bit;
-   }
+ case 168:{
+   static const uint8_t order[]={1,0,2};
+   int position=engine.drum_time==1u?0:engine.drum_time==2u?2:1;
+   unsigned time=order[bounded(position+d,0,2)];
+   if(time==engine.drum_time)break;
+   engine.drum_time=time;
+   engine.drum_mid_pending=0;
+   memset(engine.drum_steps,0,sizeof engine.drum_steps);
    break;
  }
- case 168:if(d>0)engine.drum_manual_mask|=1u<<c.drum_part;else if(d<0)engine.drum_manual_mask&=~(1u<<c.drum_part);break;
  case 162:sr_audition_drum(&engine,c.drum_part);break;
  case 184:if(!interrupted)sr_audition_vocal(&engine);break;
  case 160:sr_set_auto_tempo(&engine,d<0);break;
@@ -966,10 +965,6 @@ void app_input_only(void){
       drum_part=bounded((int)drum_part+d,0,SR_DRUM_PARTS-1);
       dirty=1;
       continue;
-    }
-    if(page==PAGE_DRUMS&&(!drum_tab||drum_tab==6)&&!debug&&!fullscreen){
-      if(i==1){drum_edit_step=bounded((int)drum_edit_step+d,0,15);dirty=1;continue;}
-      if(i==2){send(167,d>0?(int)drum_edit_step+1:-(int)drum_edit_step-1);dirty=1;continue;}
     }
     if(!control)continue;
     if(control==71)quick_item=bounded((int)quick_item+d,0,QUICK_COUNT-1u);
@@ -1604,7 +1599,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"frequency_lock"))*got=engine.frequency_lock;
  else if(!strcmp(what,"reverb_percent"))*got=(int)(engine.reverb_amount*100.f+.5f);
  else if(!strcmp(what,"delay_percent"))*got=(int)(engine.delay_amount*100.f+.5f);
- else if(!strcmp(what,"page"))*got=page;else if(!strcmp(what,"running"))*got=engine.running;else if(!strcmp(what,"binaural"))*got=engine.binaural_enabled;else if(!strcmp(what,"track"))*got=selected;else if(!strcmp(what,"perfect"))*got=engine.perfect_key;else if(!strcmp(what,"tracks"))*got=SR_TRACKS;else if(!strcmp(what,"lead_glide"))*got=engine.motion[SR_LEAD].glide_ms;else if(!strcmp(what,"bass_glide"))*got=engine.motion[SR_BASS].glide_ms;else if(!strcmp(what,"lead_vibrato"))*got=engine.motion[SR_LEAD].vibrato_depth;else if(!strcmp(what,"bass_vibrato"))*got=engine.motion[SR_BASS].vibrato_depth;else if(!strcmp(what,"drums"))*got=engine.drums_enabled;else if(!strcmp(what,"density"))*got=engine.drum_density;else if(!strcmp(what,"hit"))*got=engine.drum_hit;else if(!strcmp(what,"scene"))*got=engine.scene;else if(!strcmp(what,"visual"))*got=visual_mode;else if(!strcmp(what,"bank"))*got=bank_slot;else if(!strcmp(what,"bank_message"))*got=bank_message;else if(!strcmp(what,"saving"))*got=quick_started||quick_pending;else if(!strcmp(what,"knobs_valid")){
+ else if(!strcmp(what,"page"))*got=page;else if(!strcmp(what,"running"))*got=engine.running;else if(!strcmp(what,"binaural"))*got=engine.binaural_enabled;else if(!strcmp(what,"track"))*got=selected;else if(!strcmp(what,"perfect"))*got=engine.perfect_key;else if(!strcmp(what,"tracks"))*got=SR_TRACKS;else if(!strcmp(what,"lead_glide"))*got=engine.motion[SR_LEAD].glide_ms;else if(!strcmp(what,"bass_glide"))*got=engine.motion[SR_BASS].glide_ms;else if(!strcmp(what,"lead_vibrato"))*got=engine.motion[SR_LEAD].vibrato_depth;else if(!strcmp(what,"bass_vibrato"))*got=engine.motion[SR_BASS].vibrato_depth;else if(!strcmp(what,"drums"))*got=engine.drums_enabled;else if(!strcmp(what,"density"))*got=engine.drum_density;else if(!strcmp(what,"drum_time"))*got=engine.drum_time;else if(!strcmp(what,"loop_length"))*got=engine.loop_length;else if(!strcmp(what,"hit"))*got=engine.drum_hit;else if(!strcmp(what,"scene"))*got=engine.scene;else if(!strcmp(what,"visual"))*got=visual_mode;else if(!strcmp(what,"bank"))*got=bank_slot;else if(!strcmp(what,"bank_message"))*got=bank_message;else if(!strcmp(what,"saving"))*got=quick_started||quick_pending;else if(!strcmp(what,"knobs_valid")){
  *got=1;
  for(unsigned i=0;i<4;i++){
    unsigned id=control_for(i);

@@ -45,22 +45,31 @@ void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *
  layer(pixels,y0,height,mouth,dx,dy,f->tilt);
  if(f->jaw>2)plate(pixels,y0,height,52,96,8,28,dx,dy+1);
  if(f->neck)plate(pixels,y0,height,109,195,24,29,dx+(f->neck>0?1:-1),dy);
- /* Side ribbons stay clear of KIRA's face and follow direct vocal energy. */
+ /* LED clusters sit on the cheek plates and neck hardware. The palette
+  * alternates gold and aqua across the modules. */
  if(f->singing_light){
+   static const uint8_t modules[][3]={
+     {54,102,3},{56,113,2},{184,99,3},{182,109,2},{113,209,2},{121,212,4},{129,209,2}
+   };
    unsigned strength=f->singing_light;
-   for(int row=54;row<189;row++){
-     if(row<(int)y0||row>=(int)(y0+height))continue;
-     int distance=row-121;
-     int wave=(row+f->jaw*6+f->neck*3)&31;
-     if(wave>16)wave=32-wave;
-     int x=7+distance*distance/715+(int)strength*wave/620;
-     unsigned red=12u+strength/14u,green=32u+strength/9u;
-     uint16_t ink=(uint16_t)(red<<11u|green<<5u|17u);
-     uint16_t fringe=(uint16_t)((red/3u)<<11u|(green/3u)<<5u|8u);
-     uint16_t *line=pixels+(row-y0)*240u;
-     line[x-1]=line[240-x]=fringe;
-     line[x]=line[239-x]=ink;
-     if(wave>12){line[x+1]=line[238-x]=0xffd3u;}
+   for(unsigned i=0;i<sizeof modules/sizeof modules[0];i++){
+     int x=(int)modules[i][0]+dx,y=(int)modules[i][1]+dy;
+     unsigned bright=((f->module+i)%4u)!=0u;
+     int radius=modules[i][2]-(bright?0:1);
+     unsigned level=bright?strength:strength/3u;
+     uint16_t halo=i<4?(uint16_t)(((7u+level/24u)<<11u)|((13u+level/9u)<<5u)|3u):
+                        (uint16_t)(((14u+level/7u)<<5u)|(8u+level/13u));
+     uint16_t core=i<4?0xff4du:0x7fffu;
+     for(int iy=-radius-1;iy<=radius+1;iy++){
+       int row=y+iy;
+       if(row<(int)y0||row>=(int)(y0+height))continue;
+       uint16_t *line=pixels+(row-y0)*240u;
+       for(int ix=-radius-1;ix<=radius+1;ix++){
+         int d=ix*ix+iy*iy,column=x+ix;
+         if(d>(radius+1)*(radius+1)||column<0||column>=240)continue;
+         line[column]=(d<=radius&&bright)?core:halo;
+       }
+     }
    }
  }
 }

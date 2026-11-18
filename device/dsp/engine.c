@@ -969,7 +969,9 @@ void sr_init(sr_engine *e,uint32_t seed){
  * generating a fresh downbeat, even when STOP and PLAY share a block. */
 static void clear_transport(sr_engine *e)
 {
-    e->drum_active=e->drum_subsample=0;
+    e->drum_active=e->drum_subsample=e->drum_mid_pending=0;
+    e->drum_playhead=0;
+    memset(e->drum_steps,0,sizeof e->drum_steps);
     e->drum_aux_from=e->drum_aux_to=0.f;
     e->external_audio=0;
     e->play_queued=0;
@@ -1393,9 +1395,8 @@ static unsigned groove_density(const sr_engine *e,unsigned step){
  }
  return density<cap?density:cap;
 }
-static float groove_kick(const sr_engine *e,unsigned step){
+static float drum_kick(const sr_engine *e,unsigned step){
  if(!e->drums_enabled||!e->drum_density||e->drum_level<=0.f)return 0;
- if(e->drum_manual_mask&1u)return (e->drum_pattern[0]>>(step&15u))&1u ? 1.f : 0.f;
  unsigned density=groove_density(e,step);
  unsigned beat=step&15u,bar=score_bar(e,step);
 
@@ -1415,6 +1416,23 @@ static float groove_kick(const sr_engine *e,unsigned step){
  }
  return 0;
 }
+static unsigned drum_position(const sr_engine *e,unsigned song_step)
+{
+ if(e->drum_time==1u)song_step/=2u;
+ if(e->drum_time==2u)song_step*=2u;
+ return song_step&(e->loop_length-1u);
+}
+
+static float groove_kick(const sr_engine *e,unsigned step)
+{
+ if(e->drum_time==0u)return drum_kick(e,step);
+ unsigned current=(e->loop_pos-1u)&(e->loop_length-1u);
+ unsigned ahead=(step-current)&(e->loop_length-1u);
+ unsigned song_step=e->sequence_step-1u+ahead;
+ if(e->drum_time==1u&&(song_step&1u))return 0.f;
+ return drum_kick(e,drum_position(e,song_step));
+}
+
 static void bass_groove(sr_engine *e,unsigned step){
  unsigned beat=step&15u,chord=composition_chord(e,step);
  float kick=groove_kick(e,step);
@@ -1463,13 +1481,15 @@ static void drum_strike(sr_engine *e,unsigned lane,unsigned velocity)
  if((lane==2||lane==6)&&(e->drum_active&(1u<<2u)))e->drum_amp[2]*=.18f;
 }
 
-/* Stable accents from one bar/section score. The secondary kick never
- * replaces groove_kick(), which is the bassline's anchor. */
-/* A stable draw per score position keeps detents nested and repeatable. */
+/* HIT adds whole rhythmic layers in score order. Downbeats and backbeats
+ * stay intact while the answer, subdivisions, ornament and fill enter. */
 static int drum_hit_allowed(const sr_engine *e,unsigned step,unsigned lane)
 {
- unsigned rank=song_draw(e->song_seed, 701u+step*17u+lane+1093u*e->form_loop)%100u;
- return rank<e->drum_hit;
+ unsigned beat=step&15u;
+ unsigned style=e->music_mode==SR_CINEMATIC?12u:e->music_mode==SR_IDM?0u:6u;
+ unsigned threshold=lane==1u?35u:lane==2u?((beat&3u)==2u?15u:45u):
+                    lane==9u||lane==10u?80u:lane>=11u?65u:55u;
+ return e->drum_hit>=threshold+style;
 }
 
 static void drum_colors(sr_engine *e,unsigned step,unsigned density)
@@ -1490,7 +1510,6 @@ static void drum_colors(sr_engine *e,unsigned step,unsigned density)
    if(beat==13)mask|=1u<<10;
    if(beat==15)mask|=1u<<9;
  }
- mask&=~e->drum_manual_mask;
  while(mask){
    unsigned part=__builtin_ctz(mask);
    mask&=mask-1u;
@@ -1509,10 +1528,11 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
   float prior_hand=e->hand_env, prior_hat=e->shaker_env;
   unsigned parts=0;
   uint32_t stable_draw=song_draw(e->song_seed+e->scene+bar*13u,beat);
-  float kick=groove_kick(e,step);if(kick){e->kick_env=kick;parts|=1u;}
+  float kick=drum_kick(e,step);if(kick){e->kick_env=kick;parts|=1u;}
   static const uint16_t backbeats[]={0x1010,0x1020,0x0410,0x2040,0x1080,0x8010};
   unsigned rhythm=(e->scene+song_draw(e->song_seed,385u)+e->music_mode)%6u;
-  if((backbeats[rhythm]&(1u<<beat)) && (density>=2 || (stable_draw&3u)==0)){
+  unsigned backbone=backbeats[rhythm]&(1u<<beat);
+  if(backbone && (density>=2 || (stable_draw&3u)==0)){
     e->hand_env=bar&&(beat==4?bar&1u:bar&2u)?.78f:1.f;parts|=2u;
   }
   if(density>=3 && (((beat+(rhythm&1u))&1u)!=0u)){e->shaker_env=.72f;parts|=4u;}
@@ -1554,26 +1574,17 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
     if(bar&1u)eligible|=beat==5||beat==13;
     if(bar&2u)eligible|=beat==1||beat==9;
   }
-  if(eligible){
-    e->drum_rng=e->drum_rng*1664525u+1013904223u;
-    unsigned percent=e->drum_hit>SR_HIT_MAX?SR_HIT_MAX:e->drum_hit;
-    unsigned allowance=e->music_mode==SR_CINEMATIC?22u:e->music_mode==SR_NEOCLASSICAL?34u:55u;
-    if((stable_draw>>16)%100u<percent*allowance/100u){
-      if(beat==11||(bar&&(beat==5||beat==13))){e->hand_env=.55f;parts|=2u;}
-      else {e->shaker_env=.52f;parts|=4u;}
-      e->optional_hits++;
-    }
+  if(eligible&&e->drum_hit>=75u&&density>=2u){
+    if(beat==11||(bar&&(beat==5||beat==13))){e->hand_env=.55f;parts|=2u;}
+    else {e->shaker_env=.52f;parts|=4u;}
+    e->optional_hits++;
   }
-  if((parts&2u)&&beat!=4u&&beat!=12u&&!drum_hit_allowed(e,step,1)){
+  if((parts&2u)&&!backbone&&!drum_hit_allowed(e,step,1)){
     parts&=~2u;e->hand_env=prior_hand;
   }
   if((parts&4u)&&!drum_hit_allowed(e,step,2)){
     parts&=~4u;e->shaker_env=prior_hat;
   }
-  unsigned manual=e->drum_manual_mask&~1u;
-  if(manual&2u)e->hand_env=prior_hand;
-  if(manual&4u)e->shaker_env=prior_hat;
-  parts&=~manual;
   e->tracks[SR_DRUMS].events+=__builtin_popcount(parts);
   if(parts&1u)drum_record(e,0,(unsigned)(e->kick_env*127.f+.5f));
   if(parts&2u)drum_record(e,1,(unsigned)(e->hand_env*127.f+.5f));
@@ -1582,12 +1593,14 @@ static void drum_trigger(sr_engine *e,uint32_t step,uint8_t energy){
     if(e->drum_active&(1u<<2u))e->drum_amp[2]*=.18f;
   }
   drum_colors(e,step,density);
-  while(manual){
-    unsigned part=__builtin_ctz(manual);
-    manual&=manual-1u;
-    if(e->drum_pattern[part]&(1u<<beat))drum_strike(e,part,96);
-  }
 }
+
+static void drum_midpoint(sr_engine *e)
+{
+ e->drum_mid_pending=0;
+ drum_trigger(e,drum_position(e,e->sequence_step-1u)+1u,e->music_mode==SR_CINEMATIC?2:1);
+}
+
 void sr_preview_sound(sr_engine *e,unsigned role)
 {
   if(e->running||e->stop_frames||e->external_audio||e->frequency_lock||role>=SR_TRACKS)return;
@@ -1927,7 +1940,8 @@ static unsigned transition_fill(sr_engine *e,unsigned step,int gesture)
  unsigned preparing=(sr_section_remaining(e)==1u)&&current!=next;
  unsigned style=current%5u;
  unsigned cadence=(step&15u)==15u;
- if(!gesture&&(!cadence||(!preparing&&(e->phrase+style)%5u!=4u)))return 0;
+ if(!gesture&&(e->drum_time||e->drum_hit<65u||!cadence||
+    (!preparing&&(e->phrase+style)%5u!=4u)))return 0;
  unsigned count=gesture?3u:preparing?2u+sr_sections[next].pulse:2u;
  if(e->music_mode==SR_NEOCLASSICAL&&count>2u)count=2u;
  unsigned performed=0;for(unsigned i=0;i<count;i++)
@@ -2200,14 +2214,12 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
  unsigned start=step-pos;
  if(!natural&&part==2u&&mode!=SR_CINEMATIC){
    answer=5u+song_draw(e->song_seed,762u+(bar&1u))%3u;
-   if(groove_kick(e,start+answer)||
-      ((e->drum_manual_mask&2u)&&(e->drum_pattern[1]&(1u<<answer)))){
+   if(groove_kick(e,start+answer)){
       unsigned next=answer==7u?5u:answer+1u;
-      if(!groove_kick(e,start+next)&&
-         (!(e->drum_manual_mask&2u)||!(e->drum_pattern[1]&(1u<<next))))answer=next;
+      if(!groove_kick(e,start+next))answer=next;
    }
  }
- if(!natural&&(mode==SR_IDM||e->drum_manual_mask)&&groove_kick(e,start+sustain))sustain=13u;
+ if(!natural&&mode==SR_IDM&&groove_kick(e,start+sustain))sustain=13u;
  unsigned extra=(!natural||e->vocal_flow)&&flow==SR_VOCAL_DOUBLE&&pos!=opening&&pos!=sustain&&pos!=answer&&
       (pos==3u||pos==9u||pos==14u)&&!groove_kick(e,step)&&part==2u&&e->vocal_presence>=3u;
  unsigned answer_note=pos==answer&&part==2u&&e->vocal_presence>=3u&&flow!=SR_VOCAL_HALF;
@@ -2247,8 +2259,6 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
  float held=pos==opening?(part==2u?1.42f:1.78f):pos==answer?.68f:1.05f;
  if(pos==answer&&pos!=opening){
    velocity+=mode==SR_IDM?9u:3u;
-   if(e->drum_manual_mask&4u)
-      velocity+=(e->drum_pattern[2]&(1u<<pos))?4u:0u;
  }
  if(cadence)held=(mode==SR_CINEMATIC||mode==SR_NEOCLASSICAL)?1.55f:1.27f;
  if(lift)velocity+=5u;
@@ -2363,7 +2373,12 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    }else transition=0u;
    unsigned next=pos==opening?(answer_note?answer:sustain):pos==answer?sustain:16u;
    held=(next>pos?next-pos:4u)*.25f;
-   if(pos==sustain&&part==2u&&!cadence&&e->tick_length<14000u)held+=.19f;
+   if(pos==sustain){
+     /* Leave a breath at the end of a phrase. The ongoing hook keeps its
+      * connected vowel through the barline between phrase boundaries. */
+     if(cadence)held*=.78f;
+     else if(part==2u&&e->tick_length<14000u)held+=.19f;
+   }
  }
  unsigned word=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE;
  sr_voice *lead=automatic?recorded_voice(e,note,zone,velocity,held,0,1):
@@ -2404,7 +2419,8 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    else if(lead&&zone<6u){
      int harmony_note=vocal_octave_near(sr_tonic(e)+scale[harmony],note);
      int distance=harmony_note-note;
-     if(distance>=-5&&distance<=5&&(distance<=-3||distance>=3)){
+     if(harmony_note>=62&&harmony_note<=77&&distance>=-5&&distance<=5&&
+        (distance<=-3||distance>=3)){
        float lead_pitch=e->vocal_pitch_last;
        recorded_voice(e,harmony_note,zone,velocity-31u,held,0,1);
        e->vocal_pitch_last=lead_pitch;
@@ -2539,9 +2555,12 @@ static void mode_phrase(sr_engine *e,unsigned s,uint32_t seed)
   unsigned dynamic=6u+((draw>>4)&3u);
   int expression=phrase_expression(s)+(int)(8.f*(e->current_energy-.5f));
   if(e->music_mode==SR_IDM)expression+=(pos&3u)==2u?6:(pos&3u)==0u?-3:0;
-  drum_trigger(e,s,e->music_mode==SR_CINEMATIC?2:1);
+  unsigned drum_tick=e->sequence_step-1u;
+  e->drum_mid_pending=e->drum_time==2u;
+  if(e->drum_time!=1u||!(drum_tick&1u))
+    drum_trigger(e,drum_position(e,drum_tick),e->music_mode==SR_CINEMATIC?2:1);
   bass_groove(e,s);
-  if(e->music_mode==SR_IDM&&section_harmony(form_index(e,0))>=1u&&
+  if(e->drum_time==0u&&e->music_mode==SR_IDM&&section_harmony(form_index(e,0))>=1u&&
      e->current_energy>.55f&&sr_section_remaining(e)==1u&&pos==14u&&
      !e->freeze&&e->drums_enabled&&e->drum_density>=5u&&e->fill_character!=3u){
     schedule(e,SR_DRUMS,2,64,0.f,e->tick_length/3u);
@@ -2636,7 +2655,10 @@ static void trigger(sr_engine *e){
   if(!e->loop_pos){
     if(e->learn_pending&&!e->freeze){e->learned=e->capture;e->capture.count=0;e->learn_pending=0;e->learn_origin=e->sequence_step;}
     if(e->rhythm_pending){sr_set_rhythm_style(e,e->rhythm_pending-1u);e->rhythm_pending=0;}
-    if(e->pending_length){e->loop_length=e->pending_length;e->pending_length=0;e->play_queued=0;}
+    if(e->pending_length){
+      e->loop_length=e->pending_length;e->pending_length=0;e->play_queued=0;
+      memset(e->drum_steps,0,sizeof e->drum_steps);
+    }
     if(e->pending_key){
       memset(e->scheduled,0,sizeof e->scheduled);
       e->tonic_override=36+e->pending_key-1;
@@ -2717,11 +2739,16 @@ unsigned sr_score_preview(sr_engine *e,sr_event *out,unsigned cap,unsigned ticks
     uint32_t f=e->frame_count-e->tick_phase+e->ornaments[i].phase;
     if((int32_t)(f-due)<0){due=f;kind=1;index=i;}
    }
+   if(e->drum_mid_pending){
+    uint32_t f=e->frame_count-e->tick_phase+e->tick_length/2u;
+    if((int32_t)(f-due)<=0&&(int32_t)(f-next)<0){due=f;kind=2;}
+   }
    if(kind<0)break;
    if((int32_t)(due-e->frame_count)<0)due=e->frame_count;
    unsigned before=e->timeline_write;
    uint32_t gap=due-e->frame_count;score_advance(e,due);e->tick_phase+=gap;
-   if(kind==1){
+   if(kind==2)drum_midpoint(e);
+   else if(kind==1){
     e->ornaments[index].phase=0;
     sr_note_on(e,ornament_track[index],e->ornaments[index].midi,e->ornaments[index].velocity,e->ornaments[index].beats);
    }else{
@@ -2915,8 +2942,8 @@ static inline __attribute__((always_inline)) unsigned slicer_pattern(const sr_en
     }
     unsigned variation=(e->scene+section+e->form_loop+((e->sequence_step?(e->sequence_step-1u):0u)>>4u))%3u;
     unsigned pattern=patterns[style-1u][variation]|1u;
-    /* Keep the current kick and bass anchor intact, including edited kicks. */
-    if(e->drum_steps[e->drum_playhead]&1u)pattern|=1u<<(e->drum_playhead&15u);
+    /* Keep the song-clock kick and bass anchor intact. */
+    if(e->sequence_step&&e->drum_steps[e->drum_playhead]&1u)pattern|=1u<<((e->sequence_step-1u)&15u);
     return pattern;
 }
 unsigned sr_slicer_pattern(const sr_engine *e){return slicer_pattern(e);}
@@ -3995,6 +4022,11 @@ void sr_render(sr_engine *e,int16_t *out,size_t frames){
   }
   if(e->running&&e->tick_phase>=e->tick_length){e->tick_phase=0;memset(e->ornaments,0,sizeof e->ornaments);trigger(e);}
   size_t n=frames>64?64:frames;
+  if(e->running&&e->drum_mid_pending){
+    unsigned midpoint=e->tick_length/2u;
+    if(e->tick_phase>=midpoint)drum_midpoint(e);
+    else if(n>midpoint-e->tick_phase)n=midpoint-e->tick_phase;
+  }
   if(e->running)for(unsigned i=0;i<12;i++)if(e->scheduled[i].active){
     int32_t due=(int32_t)(e->scheduled[i].due-e->frame_count);
     if(due<=0){

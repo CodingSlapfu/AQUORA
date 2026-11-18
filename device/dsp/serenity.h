@@ -90,10 +90,9 @@ typedef struct {
   float drum_part_gain[3], slicer_gain[4];
   uint8_t filter_cutoff, filter_resonance, slicer_mask, slicer_style;
   uint16_t drum_group_solo,drum_mutes, drum_active;
-  uint16_t drum_manual_mask, drum_pattern[SR_DRUM_PARTS];
   uint32_t drum_steps[64], drum_phase[13];
   float drum_amp[13], drum_aux_from, drum_aux_to;
-  uint8_t drum_levels[16], drum_solo, drum_playhead, drum_subsample;
+  uint8_t drum_levels[16], drum_solo, drum_playhead, drum_subsample, drum_time, drum_mid_pending;
   float binaural_carrier, binaural_rate, binaural_level, binaural_env;
   float binaural_phase_l, binaural_phase_r;
   float speaker_low, speaker_body, speaker_mix;
