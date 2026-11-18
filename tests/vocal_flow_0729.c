@@ -20,8 +20,8 @@ int main(void)
     static const char *const names[]={
         "DAY","YOU","LOVE","ME","DREAMS"
     };
-    uint32_t signatures[sizeof recorded_word_keys];
-    for(unsigned i=0;i<sizeof recorded_word_keys;i++){
+    uint32_t signatures[sizeof names/sizeof *names];
+    for(unsigned i=0;i<sizeof names/sizeof *names;i++){
         setup();
         e.vocal_fx_manual=15;
         e.vocal_delay=e.vocal_reverb=e.vocal_chorus=0;

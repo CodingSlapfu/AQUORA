@@ -88,3 +88,23 @@ of signed PCM. Edited PCM SHA-256
 The director can use it as a Dreaming cadence. Its intelligibility remains a
 physical listening item. It is one pilot addition, and the larger vocabulary
 and multiword composition expansion remain open.
+
+## v0.7.31 live sung word additions
+
+GO, NO and WAY are excerpted from TheScarlettWitch89’s
+[Vocal Sample 2 (Variation)](https://freesound.org/people/TheScarlettWitch89/sounds/417513/).
+GOING is from her [Vocal sample](https://freesound.org/people/TheScarlettWitch89/sounds/417410/).
+BE and BEAUTIFUL are from her [Do you wanna be beautiful, take 3](https://freesound.org/people/TheScarlettWitch89/sounds/417936/).
+All three recordings are [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+FEEL, COLORS, GREEN and I are excerpted from Katarina Rose (womb_affliction)’s
+[female vocal](https://freesound.org/people/womb_affliction/sounds/476829/),
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+Firmware samples are edited from the lossy public previews. Edits include mono
+fold-down, word-boundary trimming, DC removal, pitch-preserving time
+compression for longer takes, fades, level normalization, resampling and
+5-bit companding. The originals' pitch contours and final consonants play once
+through, without looping. Source offsets, preview and PCM hashes, pitch and
+quantization measurements are in `device/dsp/human_words.json`. Recreate the
+bank with `device/tools/build_human_words.py` and the same four previews.

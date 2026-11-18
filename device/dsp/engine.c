@@ -218,7 +218,9 @@ static int8_t drum_pcm[13][DRUM_WAVE_LENGTH];
 #include "vocal_you.inc"
 enum {VOCAL_DAY_ZONE=VOCAL_ZONES,VOCAL_YOU_ZONE,VOCAL_EH_ZONE,VOCAL_EE_ZONE,
       VOCAL_HUM_ZONE,VOCAL_LOVE_ZONE,VOCAL_BABY_ZONE,VOCAL_ME_ZONE,
-      VOCAL_DREAMS_ZONE,VOCAL_LAST_ZONE=VOCAL_DREAMS_ZONE};
+      VOCAL_DREAMS_ZONE,VOCAL_GO_ZONE,VOCAL_NO_ZONE,VOCAL_WAY_ZONE,VOCAL_BE_ZONE,
+      VOCAL_FEEL_ZONE,VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,
+      VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_LAST_ZONE=VOCAL_GOING_ZONE};
 int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 #define VOCAL_POOL __attribute__((section(".pool"),aligned(4)))
@@ -227,6 +229,8 @@ int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #endif
 #include "vocal_extensions.inc"
 #include "vocal_dreams.inc"
+#include "human_words.inc"
+enum { HUMAN_WORD_RATE=6800 };
 
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 __attribute__((section(".pool"),aligned(4)))
@@ -256,10 +260,19 @@ static const struct {
   {vocal_me_pcm,10804u,5090u,6578u,1729u,{4,5,5},355.6451613f},
   {vocal_dreams_pcm,VOCAL_DREAMS_LENGTH,VOCAL_DREAMS_LOOP,VOCAL_DREAMS_RELEASE,
    VOCAL_DREAMS_ATTACK,{6,5,4},212.0192308f},
+  AQUORA_HUMAN_WORDS
 };
+_Static_assert(sizeof vocal_words/sizeof *vocal_words==VOCAL_LAST_ZONE-VOCAL_DAY_ZONE+1u,
+               "Recorded word table must cover every zone");
+
 static inline __attribute__((always_inline)) int vocal_word_sample(unsigned word,unsigned index)
 {
-  return vocal_words[word].pcm[index];
+  const int8_t *pcm=vocal_words[word].pcm;
+  if(word<VOCAL_GO_ZONE-VOCAL_DAY_ZONE)return pcm[index];
+  unsigned bit=index*5u;
+  unsigned byte=bit>>3u;
+  unsigned pair=(uint8_t)pcm[byte]|((unsigned)(uint8_t)pcm[byte+1u]<<8u);
+  return human_word_levels[(pair>>(bit&7u))&31u];
 }
 static uint8_t vocal_pcm_ready;
 
@@ -1049,7 +1062,9 @@ static sr_voice *recorded_live_note(sr_engine *,int,unsigned,unsigned,float);
 
 /* Keyboard audition repeats this order across the keybed. */
 static const uint8_t recorded_word_keys[]={
-  VOCAL_DAY_ZONE,VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE,VOCAL_DREAMS_ZONE
+  VOCAL_DAY_ZONE,VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE,VOCAL_DREAMS_ZONE,
+  VOCAL_GO_ZONE,VOCAL_NO_ZONE,VOCAL_WAY_ZONE,VOCAL_BE_ZONE,VOCAL_FEEL_ZONE,
+  VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,VOCAL_I_ZONE,VOCAL_GOING_ZONE
 };
 
 static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *attack,unsigned *transition)
@@ -1946,6 +1961,10 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
  }
  float source_pitch=zone>=VOCAL_DAY_ZONE?vocal_words[zone-VOCAL_DAY_ZONE].hz:vocal_zones[zone].hz;
  int root=zone==VOCAL_DREAMS_ZONE?57:source_pitch<400.f?60:72;
+ if(zone>=VOCAL_GO_ZONE){
+   static const uint8_t word_roots[]={64,61,66,67,61,61,57,67,54,57};
+   root=word_roots[zone-VOCAL_GO_ZONE];
+ }
  while(note>root+6)note-=12;
  while(note<root-6)note+=12;
  sr_voice *voice=allocate_note(e,SR_CHOIR,note,velocity,beats,1,replacement);
@@ -1960,7 +1979,8 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
    if(ratio>.74f&&ratio<1.35f)voice->pitch=e->vocal_pitch_last;
  }
  e->vocal_pitch_last=voice->freq;
- voice->phase2=voice->freq*(VOCAL_RATE/(float)SR_RATE)/source_pitch;
+ float playback_rate=zone>=VOCAL_GO_ZONE?HUMAN_WORD_RATE:VOCAL_RATE;
+ voice->phase2=voice->freq*(playback_rate/SR_RATE)/source_pitch;
  voice->attack_coef=zone>=VOCAL_DAY_ZONE?.004f:.00065f;
  voice->release_coef=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE?.00010f:.00095f;
  return voice;
@@ -2043,24 +2063,37 @@ static unsigned vocal_flow_for(const sr_engine *e,unsigned section)
  if(e->vocal_flow)return e->vocal_flow;
  unsigned mood=intention_score[e->scene][1];
  /* The tick is one sixteenth note. 8583 samples is about 77 BPM. */
- if(section==0u||section==3u||section==4u)return SR_VOCAL_HALF;
+ if(e->music_mode==SR_CINEMATIC||e->music_mode==SR_NEOCLASSICAL)return SR_VOCAL_NORMAL;
+ if(section==3u&&e->tick_length<8583u)return SR_VOCAL_HALF;
  if(section==2u&&(e->music_mode==SR_IDM||
       (e->current_energy>.72f&&e->tick_length>=8583u&&mood>=4u)))
    return SR_VOCAL_DOUBLE;
- if((e->music_mode==SR_CINEMATIC||e->music_mode==SR_NEOCLASSICAL)&&
-    (mood<4u||e->tick_length>=11025u))return SR_VOCAL_HALF;
  return SR_VOCAL_NORMAL;
 }
 
-static unsigned manual_word_phrase(unsigned bar,unsigned slot)
+static const uint8_t word_phrases[][3]={
+  {VOCAL_I_ZONE,VOCAL_FEEL_ZONE,VOCAL_COLORS_ZONE},
+  {VOCAL_NO_ZONE,4u,VOCAL_WAY_ZONE},
+  {VOCAL_BE_ZONE,4u,VOCAL_BEAUTIFUL_ZONE},
+  {VOCAL_BEAUTIFUL_ZONE,VOCAL_GREEN_ZONE,VOCAL_COLORS_ZONE},
+  {VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_GO_ZONE},
+  {VOCAL_LOVE_ZONE,4u,VOCAL_YOU_ZONE},
+  {VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE},
+  {VOCAL_DAY_ZONE,4u,VOCAL_DREAMS_ZONE},
+};
+#define WORD_PHRASE_COUNT (sizeof word_phrases/sizeof *word_phrases)
+
+static unsigned auto_word_phrase(const sr_engine *e,unsigned bar,unsigned section,
+                                 unsigned slot,unsigned flow)
 {
- static const uint8_t phrases[][3]={
-   {VOCAL_LOVE_ZONE,4u,VOCAL_YOU_ZONE},
-   {VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE},
-   {VOCAL_DAY_ZONE,4u,VOCAL_DREAMS_ZONE},
-   {VOCAL_LOVE_ZONE,4u,VOCAL_ME_ZONE}
- };
- return phrases[bar&3u][slot];
+  /* Keep the wordless identity and use an occasional lexical refrain on
+   * featured passages. At fast tempos use shorter, two-anchor phrases. */
+  unsigned color=intention_score[e->scene][2];
+  if(((bar+e->scene+section)&3u)!=1u)return 0;
+  unsigned compact=flow!=SR_VOCAL_NORMAL||e->tick_length<7800u;
+  unsigned phrase=compact?(color&1u?1u:2u):
+       (color+e->music_mode+song_draw(e->song_seed,929u)%5u)%5u;
+  return word_phrases[phrase][slot];
 }
 
 static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
@@ -2178,7 +2211,7 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    transition=0u;
  }
  if(e->vocal_articulation)zone=vocal_articulation(e->vocal_articulation,hook_note,&attack,&transition);
- if(e->vocal_articulation==12u)zone=extra?4u:manual_word_phrase(bar,hook_note);
+ if(e->vocal_articulation==12u)zone=extra?4u:word_phrases[bar%WORD_PHRASE_COUNT][hook_note];
  if(!e->vocal_articulation&&part==2u&&(e->vocal_reprise||section==4u)&&e->vocal_hook_vowel[hook_note]){
    zone=e->vocal_hook_vowel[hook_note]-1u;
    if(zone==VOCAL_BABY_ZONE)zone=VOCAL_LOVE_ZONE;
@@ -2197,6 +2230,10 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
     cadence&&mode!=SR_IDM&&!attack){
    zone=VOCAL_DREAMS_ZONE;
    transition=0;
+ }
+ if(!e->vocal_articulation&&part==2u&&e->vocal_presence>=3u&&section==2u&&!extra&&!cadence){
+   unsigned selected=auto_word_phrase(e,bar,section,hook_note,flow);
+   if(selected){zone=selected;attack=transition=0;}
  }
  unsigned word=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE;
  sr_voice *lead=recorded_note(e,sr_tonic(e)+scale[tone],zone,velocity,held);
@@ -2815,18 +2852,14 @@ static void vocal_production(sr_engine *e,size_t frames)
   float organic=e->music_mode==SR_NEOCLASSICAL?1.f:0.f;
   float rhythmic=e->music_mode==SR_IDM?1.f:e->music_mode==SR_EXPERIMENTAL?.65f:0.f;
   const uint8_t *profile=profiles[e->music_mode];
-  static const uint8_t auto_patches[SR_MUSIC_MODES][4]={
-    {0,1,4,8},{3,0,8,9},{1,6,0,8},{2,5,0,9},{7,5,4,2}
-  };
-  unsigned character=e->vocal_patch?e->vocal_patch-1u:
-      auto_patches[e->music_mode][(song_draw(e->song_seed,928u)+
-      (unsigned)e->scene+intention_score[e->scene][2]+sr_scenes[e->scene].scale)&3u];
+  unsigned character=e->vocal_patch?e->vocal_patch-1u:0u;
+  float patch_amount=e->vocal_patch?1.f:0.f;
   float chorus=e->vocal_fx_manual&1u?e->vocal_chorus:
-      clampf(profile[0]+vocal_chars[character].chorus+variation+warmth*5.f+energy*4.f+bloom*.2f,0.f,100.f);
+      clampf(profile[0]+patch_amount*vocal_chars[character].chorus+variation+warmth*5.f+energy*4.f+bloom*.2f,0.f,100.f);
   float room=e->vocal_fx_manual&2u?e->vocal_reverb:
-      clampf(profile[1]+vocal_chars[character].room+bloom+variation+breath*4.f+5.f*space-7.f*rapid,0.f,100.f);
+      clampf(profile[1]+patch_amount*vocal_chars[character].room+bloom+variation+breath*4.f+5.f*space-7.f*rapid,0.f,100.f);
   float echo=e->vocal_fx_manual&4u?e->vocal_delay:
-      clampf(profile[2]+vocal_chars[character].echo+bloom+color*6.f+energy*4.f-6.f*rapid,0.f,100.f);
+      clampf(profile[2]+patch_amount*vocal_chars[character].echo+bloom+color*6.f+energy*4.f-6.f*rapid,0.f,100.f);
   float blend=clampf((float)frames*.00045f,0.f,1.f);
   e->vocal_chorus_now+=(chorus-e->vocal_chorus_now)*blend;
   e->vocal_room_now+=(room-e->vocal_room_now)*blend;
@@ -2859,18 +2892,18 @@ static void vocal_production(sr_engine *e,size_t frames)
   targets[VF_VIB_WAIT]+=9.f*space-7.f*rapid;
   targets[VF_VIB_DEPTH]+=5.f*space-6.f*rapid;
   targets[VF_GLIDE]+=6.f*space-8.f*rapid;
-  targets[VF_DECAY]+=vocal_chars[character].decay+5.f*space-8.f*rapid;
-  targets[VF_WIDTH]+=vocal_chars[character].width;
-  targets[VF_SHIMMER]+=vocal_chars[character].shimmer;
-  targets[VF_PRESENCE]+=vocal_chars[character].presence;
-  targets[VF_DAMPING]+=vocal_chars[character].damping;
-  targets[VF_CHORUS_DEPTH]+=vocal_chars[character].depth;
-  targets[VF_FEEDBACK]+=vocal_chars[character].feedback;
+  targets[VF_DECAY]+=patch_amount*vocal_chars[character].decay+5.f*space-8.f*rapid;
+  targets[VF_WIDTH]+=patch_amount*vocal_chars[character].width;
+  targets[VF_SHIMMER]+=patch_amount*vocal_chars[character].shimmer;
+  targets[VF_PRESENCE]+=patch_amount*vocal_chars[character].presence;
+  targets[VF_DAMPING]+=patch_amount*vocal_chars[character].damping;
+  targets[VF_CHORUS_DEPTH]+=patch_amount*vocal_chars[character].depth;
+  targets[VF_FEEDBACK]+=patch_amount*vocal_chars[character].feedback;
   for(unsigned id=0;id<VF_COUNT;id++){
     float target=e->vocal_param_lock&(1u<<id)?e->vocal_param[id]:clampf(targets[id],0.f,100.f);
     e->vocal_param_now[id]+=(target-e->vocal_param_now[id])*blend;
   }
-  e->vocal_send_now=1.f;
+  e->vocal_send_now+=(.65f+e->vocal_fx_send*.0125f-e->vocal_send_now)*blend;
 }
 
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
@@ -3080,7 +3113,7 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
                               move*(v->vocal_turn_second-v->vocal_turn_first));
       }
       config->vocal=(v->pitch/v->freq)*turn*(1.f+fx[VF_VIB_DEPTH]*.00029f*depth*sine(age*rate));
-      config->step=v->phase2*config->vocal;
+      config->step=v->sample_zone>VOCAL_GO_ZONE?v->phase2:v->phase2*config->vocal;
       config->morph=clampf(age*SR_RATE*v->vocal_morph_rate*2.f-.55f,0.f,1.f);
       if(v->vocal_vowel_to){
         unsigned target=v->vocal_vowel_to-1u;
@@ -3342,7 +3375,8 @@ static void mix_voices(sr_engine *e,const voice_block *block,float *dry,size_t f
           unsigned release=vocal_words[word].release;
           articulation=vocal_words[word].mouth[index<vocal_words[word].attack?0:index<release?1:2];
           v->phase+=config->step;
-          if(v->gate&&v->phase>=release)v->phase-=release-vocal_words[word].loop;
+          if(vocal_words[word].loop&&v->gate&&v->phase>=release)
+            v->phase-=release-vocal_words[word].loop;
         }else{
           const int8_t *pcm=vocal_pcm[zone];
           unsigned next=index+1u<VOCAL_LENGTH?index+1u:vocal_zones[zone].loop;

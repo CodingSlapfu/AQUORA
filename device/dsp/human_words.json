@@ -1,0 +1,202 @@
+[
+  {
+    "word": "GO",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417513/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "3f163644ea154d9dbb039679fae1878e28f9e4bf0b9b4fd390f2dc43a1851a4f",
+    "decoded_cut_sha256": "6beab6d96a1e59a3b3abdd9c284e67326f347491a8b119b1bc8ff2f966b29e98",
+    "offset_seconds": [
+      7.925,
+      8.615
+    ],
+    "pcm_sha256": "f304971a81cf20bec71b70dbe3030bec4871bbc7a8dba0a3202a7d1eb4346372",
+    "sample_rate": 6800,
+    "samples": 4692,
+    "packed_bytes": 2934,
+    "packed_sha256": "63ceb5c020a1fceb27c49fc5e5cad8052401131dd277295b15fe93b00b404ce1",
+    "codec_snr_db": 24.37,
+    "median_hz": 330.5,
+    "tempo_ratio": 1.0
+  },
+  {
+    "word": "NO",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417513/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "3f163644ea154d9dbb039679fae1878e28f9e4bf0b9b4fd390f2dc43a1851a4f",
+    "decoded_cut_sha256": "4cf6e04d9a2c3915455a158d608258e886a52502c95453dc766428a3f833a355",
+    "offset_seconds": [
+      6.56,
+      7.125
+    ],
+    "pcm_sha256": "c442ad71d9c17382aef99be776804a66bf30739ccc565b8d4b4663d13976a1b5",
+    "sample_rate": 6800,
+    "samples": 3842,
+    "packed_bytes": 2403,
+    "packed_sha256": "fde80eec2ec204d9bcfb469c896c7dc32e787a852f1ade0b0c582e50433683b7",
+    "codec_snr_db": 23.83,
+    "median_hz": 281.5,
+    "tempo_ratio": 1.0
+  },
+  {
+    "word": "WAY",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417513/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "3f163644ea154d9dbb039679fae1878e28f9e4bf0b9b4fd390f2dc43a1851a4f",
+    "decoded_cut_sha256": "e45a461a89c142664cc77820fb7819eb1ff4fa3bcf215a62cff6872d704300e2",
+    "offset_seconds": [
+      2.915,
+      5.16
+    ],
+    "pcm_sha256": "7394a0f2d3c99ec903298d221562d3f57f9f3da5299da1931785c4a72d8d3720",
+    "sample_rate": 6800,
+    "samples": 5338,
+    "packed_bytes": 3338,
+    "packed_sha256": "cec7f1a5ee8d6adc6689e10b645e55eaeb2be6ae0005f4e86bd19660bc93dbb8",
+    "codec_snr_db": 24.86,
+    "median_hz": 362.5,
+    "tempo_ratio": 2.85987261
+  },
+  {
+    "word": "BE",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417936/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "52a550b79ecd4114542b60fc39c5cf57bf2de6d7295063e5911eb7daf90da764",
+    "decoded_cut_sha256": "18754ac7ed01cbe9fdf397053d3f2262578794e376e9b7044fbf5735cab57221",
+    "offset_seconds": [
+      1.86,
+      2.35
+    ],
+    "pcm_sha256": "3da107b76192428c0bae15ff12252998d099a1e4f53e47c1ce66282528babd8a",
+    "sample_rate": 6800,
+    "samples": 3332,
+    "packed_bytes": 2084,
+    "packed_sha256": "8432281a49470df385efb3445764d388b8aaa001fb65c31ef3731a8d5804085f",
+    "codec_snr_db": 24.15,
+    "median_hz": 396.0,
+    "tempo_ratio": 1.0
+  },
+  {
+    "word": "FEEL",
+    "attribution": "Katarina Rose (womb_affliction)",
+    "source": "https://freesound.org/people/womb_affliction/sounds/476829/",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "preview_sha256": "f458b3687cbd7eaa4a9b872299bf431cb067074b7d4cb9e7c4f151a68ce0effa",
+    "decoded_cut_sha256": "26a57ab197d9bd40f0244bcb9af8c17886d4e97fa4c6e425fd31356312901ff1",
+    "offset_seconds": [
+      0.968,
+      1.565
+    ],
+    "pcm_sha256": "087657ff7e9d8d0643e0602b7218d24a120de2ca0d4024788b9656a6ecd128f5",
+    "sample_rate": 6800,
+    "samples": 4060,
+    "packed_bytes": 2539,
+    "packed_sha256": "f0c3f592b934d3ca908a071cc0945899ae726596dc6201824d90ebbc96d6918c",
+    "codec_snr_db": 23.96,
+    "median_hz": 275.5,
+    "tempo_ratio": 1.0
+  },
+  {
+    "word": "COLORS",
+    "attribution": "Katarina Rose (womb_affliction)",
+    "source": "https://freesound.org/people/womb_affliction/sounds/476829/",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "preview_sha256": "f458b3687cbd7eaa4a9b872299bf431cb067074b7d4cb9e7c4f151a68ce0effa",
+    "decoded_cut_sha256": "d6c4e1a36fe658ad8217cea60821182fcd11c8bf6606f0df6bdaa3d1cf04270b",
+    "offset_seconds": [
+      1.55,
+      3.005
+    ],
+    "pcm_sha256": "d0877c16d8f82dee33fda95c358e58dd04c90e3689e61124ccc05dcddab201f3",
+    "sample_rate": 6800,
+    "samples": 6868,
+    "packed_bytes": 4294,
+    "packed_sha256": "c4bc8c37f691acd098fa4f5abfd0c64c88efaa24292950a97a39bd14ba1a2980",
+    "codec_snr_db": 23.43,
+    "median_hz": 279.6,
+    "tempo_ratio": 1.44059406
+  },
+  {
+    "word": "GREEN",
+    "attribution": "Katarina Rose (womb_affliction)",
+    "source": "https://freesound.org/people/womb_affliction/sounds/476829/",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "preview_sha256": "f458b3687cbd7eaa4a9b872299bf431cb067074b7d4cb9e7c4f151a68ce0effa",
+    "decoded_cut_sha256": "ee82372770d527d2b2530ee0bcf7efedc197d7158f111033625d0a0646206265",
+    "offset_seconds": [
+      4.24,
+      5.465
+    ],
+    "pcm_sha256": "2e3480ac8e28cbbb52273951e0eaeb273c85975f7f464c0ea513905ca0b9b156",
+    "sample_rate": 6800,
+    "samples": 5338,
+    "packed_bytes": 3338,
+    "packed_sha256": "017689a9d18d28ace8fe70da2d2d3e70ae9a09c8468be51b2c130fecc0ec4be8",
+    "codec_snr_db": 23.76,
+    "median_hz": 214.5,
+    "tempo_ratio": 1.56050955
+  },
+  {
+    "word": "BEAUTIFUL",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417936/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "52a550b79ecd4114542b60fc39c5cf57bf2de6d7295063e5911eb7daf90da764",
+    "decoded_cut_sha256": "fe51b652829bc4e1129919e61f60960144a849b4ae438dc6298604f33b447abb",
+    "offset_seconds": [
+      2.54,
+      3.96
+    ],
+    "pcm_sha256": "c3605720066aa1fcad757c7920b61ee7ba95043c3ee8b3ab4a965df4ca084ea4",
+    "sample_rate": 6800,
+    "samples": 6868,
+    "packed_bytes": 4294,
+    "packed_sha256": "17bbdd06e919d8fd4d2868c80d8719de9e752d158c677833f60e5c604e37ae18",
+    "codec_snr_db": 24.69,
+    "median_hz": 391.0,
+    "tempo_ratio": 1.40594059
+  },
+  {
+    "word": "I",
+    "attribution": "Katarina Rose (womb_affliction)",
+    "source": "https://freesound.org/people/womb_affliction/sounds/476829/",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "preview_sha256": "f458b3687cbd7eaa4a9b872299bf431cb067074b7d4cb9e7c4f151a68ce0effa",
+    "decoded_cut_sha256": "a4268b6b7082180f0252bdef724849542abea7f0a803e7f1221d6f9a7c541158",
+    "offset_seconds": [
+      0.29,
+      0.935
+    ],
+    "pcm_sha256": "84308fd6f7a49daa3eb1481dffb8b3381f059be99681a0315d23adb9959c31e6",
+    "sample_rate": 6800,
+    "samples": 4386,
+    "packed_bytes": 2743,
+    "packed_sha256": "6e86b9b90847c42ca95e9c76d9d4a4b72c116ad757ccf92d0704008f71537748",
+    "codec_snr_db": 24.58,
+    "median_hz": 185.0,
+    "tempo_ratio": 1.0
+  },
+  {
+    "word": "GOING",
+    "attribution": "TheScarlettWitch89",
+    "source": "https://freesound.org/people/TheScarlettWitch89/sounds/417410/",
+    "license": "https://creativecommons.org/licenses/by/3.0/",
+    "preview_sha256": "451a67b26ff5ee787d48bd2b7c67117e71f8644d79a8c567bfa6cc7dd089b633",
+    "decoded_cut_sha256": "e6d5179684db9e64b5b047c17f3e1c78d028291cfc56f3d88985eaeb9d0ba013",
+    "offset_seconds": [
+      1.017,
+      1.549
+    ],
+    "pcm_sha256": "be18203837ef01ef08a50b50358948eee1f1c44eb9c8229a9d1cb7c9b3b583ba",
+    "sample_rate": 6800,
+    "samples": 3618,
+    "packed_bytes": 2263,
+    "packed_sha256": "d95df6cf459c79dd93eab6a5d0f0cb0ee7a34215f71b454b92f93608824db530",
+    "codec_snr_db": 24.81,
+    "median_hz": 225.0,
+    "tempo_ratio": 1.0
+  }
+]
