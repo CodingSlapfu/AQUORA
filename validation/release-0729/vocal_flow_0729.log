@@ -1,0 +1,14 @@
+SHINE direct blocks=424 tail=89 peak=6368 PCM=72aebed9
+FREE direct blocks=414 tail=60 peak=6858 PCM=3810ae0b
+FLY direct blocks=413 tail=54 peak=5843 PCM=0fdb496d
+STAY direct blocks=415 tail=102 peak=7039 PCM=100a7df3
+AWAY direct blocks=426 tail=71 peak=6680 PCM=4f353717
+HOME direct blocks=422 tail=96 peak=7203 PCM=f1eb9ceb
+HOPE direct blocks=424 tail=80 peak=6683 PCM=2b4e854b
+ALIVE direct blocks=426 tail=60 peak=6273 PCM=fbd8f6f5
+TONIGHT direct blocks=426 tail=34 peak=6126 PCM=63921d7b
+FOREVER direct blocks=417 tail=75 peak=6173 PCM=1df8772f
+flow=1 onsets=2 opening_frames=82870 midi=66 tick=9062
+flow=2 onsets=3 opening_frames=47354 midi=66 tick=9062
+flow=3 onsets=6 opening_frames=32674 midi=66 tick=9062
+PASS all 10 generated clips through the allocator and PCM mixer; distinct flow timing

@@ -1,0 +1,39 @@
+master 2048
+wait 3000
+tap HOME
+turn SELECT 7
+turn ALGO 7
+expect knobs_valid 1
+wait 180
+fbdump auto.raw
+turn K3 1
+wait 180
+fbdump half.raw
+turn K3 1
+wait 180
+fbdump normal.raw
+turn K3 1
+wait 180
+fbdump double.raw
+tap HOME
+tap OCT-
+tap SAVE
+wait 120
+expect bank_message 4
+tap HOME
+turn SELECT 7
+turn K3 -4
+expect vocal_knob -1
+tap HOME
+tap OCT-
+tap SEL
+wait 120
+expect bank_message 5
+expect bank_exact 1
+tap HOME
+turn SELECT 7
+wait 180
+fbdump recall.raw
+turn K3 -4
+expect vocal_knob -1
+expect drops 0

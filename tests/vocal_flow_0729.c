@@ -28,22 +28,24 @@ int main(void)
         e.vocal_param_lock=(1u<<VF_COUNT)-1u;
         sr_voice *v=recorded_note(&e,64,VOCAL_SHINE_ZONE+i,100,.85f);
         assert(v&&v->midi==64);
-        unsigned audible=0,peak=0;
+        unsigned audible=0,tail=0,peak=0;
         uint32_t hash=2166136261u;
-        for(unsigned j=0;j<360;j++){
+        for(unsigned j=0;j<720;j++){
             int16_t pcm[256];
             sr_render(&e,pcm,128);
             audible+=e.vocal_direct_peak>.001f;
+            if(v->active&&!v->gate&&v->phase>vocal_words[VOCAL_SHINE_ZONE+i-VOCAL_DAY_ZONE].release)
+                tail+=e.vocal_direct_peak>.001f;
             for(unsigned n=0;n<256;n++){
                 unsigned abs_sample=pcm[n]<0?-(int)pcm[n]:pcm[n];
                 if(abs_sample>peak)peak=abs_sample;
                 hash=(hash^(uint16_t)pcm[n])*16777619u;
             }
         }
-        assert(audible>40&&peak>100&&peak<30000);
+        assert(audible>40&&tail>2&&peak>100&&peak<30000&&!v->active);
         for(unsigned j=0;j<i;j++)assert(hash!=signatures[j]);
         signatures[i]=hash;
-        fprintf(stdout,"%s direct blocks=%u peak=%u PCM=%08x\n",names[i],audible,peak,hash);
+        fprintf(stdout,"%s direct blocks=%u tail=%u peak=%u PCM=%08x\n",names[i],audible,tail,peak,hash);
     }
     unsigned count[4]={0},holds[4]={0},pitch[4]={0},tempo=0;
     for(unsigned flow=SR_VOCAL_HALF;flow<=SR_VOCAL_DOUBLE;flow++){

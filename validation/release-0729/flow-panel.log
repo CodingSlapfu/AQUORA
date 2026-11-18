@@ -1,0 +1,9 @@
+  ok knobs_valid == 1
+  ok bank_message == 4
+  ok vocal_knob == -1
+  ok bank_message == 5
+  ok bank_exact == 1
+  ok vocal_knob == -1
+  ok drops == 0
+host: 8020 ms simulated, 322 blits, render 0.0% of real time (host CPU)
+PASS four distinct Vocal Flow labels and Favorite restores Double
