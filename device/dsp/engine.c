@@ -130,11 +130,13 @@ static const struct {
   {2.5f,.31f,.985f,.001f},{1.f,.055f,.30f,.001f},
   {2.f,.09f,.40f,0.f},{1.f,.40f,.54f,.001f},
   {1.f,.28f,.42f,0.f},{3.f,.32f,.38f,.002f},
-  {1.f,.30f,.25f,0.f},{1.f,.24f,.38f,0.f},
-  {2.f,.21f,.18f,0.f},{1.f,.43f,.16f,0.f},{2.f,.29f,.35f,0.f},
-  {1.f,.065f,.55f,0.f},{2.f,.045f,.65f,0.f},{1.f,.11f,.42f,0.f},
-  {2.f,.20f,.50f,.003f},{1.f,.135f,.34f,.001f},
-  {2.f,.25f,.46f,.002f},{3.f,.12f,.50f,.003f},
+  /* Alto bark, tenor body, odd clarinet partials and reedy oboe/bassoon. */
+  {2.f,.35f,.36f,0.f},{1.f,.27f,.23f,0.f},
+  {2.f,.32f,.17f,0.f},{1.f,.49f,.19f,0.f},{3.f,.26f,.41f,0.f},
+  /* Flute registers range from soft body to bright upper partials. */
+  {2.f,.085f,.48f,0.f},{1.f,.055f,.70f,0.f},{3.f,.14f,.52f,0.f},
+  {3.f,.21f,.40f,.003f},{1.f,.115f,.30f,.001f},
+  {2.f,.25f,.46f,.002f},{4.f,.095f,.55f,.003f},
   {2.f,.31f,.96f,0.f},{3.99f,.27f,.99f,0.f},{5.95f,.33f,.99f,0.f}
 };
 _Static_assert(sizeof fm_operators / sizeof *fm_operators == SR_PATCHES,
@@ -220,7 +222,7 @@ enum {VOCAL_DAY_ZONE=VOCAL_ZONES,VOCAL_YOU_ZONE,VOCAL_EH_ZONE,VOCAL_EE_ZONE,
       VOCAL_HUM_ZONE,VOCAL_LOVE_ZONE,VOCAL_BABY_ZONE,VOCAL_ME_ZONE,
       VOCAL_DREAMS_ZONE,VOCAL_GO_ZONE,VOCAL_NO_ZONE,VOCAL_WAY_ZONE,VOCAL_BE_ZONE,
       VOCAL_FEEL_ZONE,VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,
-      VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_HELLO_ZONE,VOCAL_LAST_ZONE=VOCAL_HELLO_ZONE};
+      VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_HELLO_ZONE,VOCAL_YES_ZONE,VOCAL_LAST_ZONE=VOCAL_YES_ZONE};
 int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 #define VOCAL_POOL __attribute__((section(".pool"),aligned(4)))
@@ -388,7 +390,9 @@ static void make_motif(sr_engine *e,int revisit)
   };
   const uint8_t *profile=intention_score[e->scene];
   uint32_t variation=song_draw(e->song_seed,311);
-  const uint8_t *shape=contour[profile[0]];
+  unsigned shape_index=profile[0];
+  if((variation>>21)&1u)shape_index=(shape_index+1u+((variation>>22)%5u))%6u;
+  const uint8_t *shape=contour[shape_index];
   const uint8_t *beat=grid[(profile[1]+2u*e->music_mode+(variation&3u))&7u];
   for(unsigned i=0;i<16;i++)e->melody[i]=-1;
   int offset=(int)((variation>>2)%3u)-1;
@@ -1120,7 +1124,7 @@ static sr_voice *recorded_live_note(sr_engine *,int,unsigned,unsigned,float);
 static const uint8_t recorded_word_keys[]={
   VOCAL_DAY_ZONE,VOCAL_YOU_ZONE,VOCAL_LOVE_ZONE,VOCAL_ME_ZONE,VOCAL_DREAMS_ZONE,
   VOCAL_GO_ZONE,VOCAL_NO_ZONE,VOCAL_WAY_ZONE,VOCAL_BE_ZONE,VOCAL_FEEL_ZONE,
-  VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_HELLO_ZONE
+  VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_HELLO_ZONE,VOCAL_YES_ZONE
 };
 
 static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *attack,unsigned *transition)
@@ -2008,10 +2012,7 @@ static float vocal_pitch_target(const sr_engine *e,const sr_voice *voice)
   int played=voice->midi, tonic=sr_tonic(e)%12;
   /* A nonzero legacy value remains an explicit setting. Bit 3 also locks
      an intentional zero; AUTO reset clears both. No bank format changes. */
-  float tune=e->vocal_tune;
-  if(!(e->vocal_fx_manual&8u))
-    tune=(e->music_mode==SR_IDM?72.f:e->music_mode==SR_NEOCLASSICAL?18.f:36.f)
-      +intention_score[e->scene][0]*2.f+(song_section(e)==2u?8.f:0.f);
+  float tune=(e->vocal_fx_manual&8u)?e->vocal_tune:100.f;
   if(!tune)return voice->freq;
   const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
   int best=played, distance=13;
@@ -2056,7 +2057,7 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
  if(!placed){
    int root=zone==VOCAL_DREAMS_ZONE?57:source_pitch<400.f?60:72;
    if(zone>=VOCAL_GO_ZONE){
-     static const uint8_t roots[]={64,61,66,67,61,61,57,67,54,57,68,69,66,59};
+     static const uint8_t roots[]={64,61,66,67,61,61,57,67,54,57,68,69,66,59,57};
      root=roots[zone-VOCAL_GO_ZONE];
    }
    while(note>root+6)note-=12;
@@ -2178,6 +2179,7 @@ static const uint8_t word_phrases[][3]={
   {VOCAL_WHEN_ZONE,VOCAL_YOU_ZONE,VOCAL_CALL_ZONE},
   {VOCAL_YOU_ZONE,VOCAL_DO_ZONE,VOCAL_CALL_ZONE},
   {VOCAL_HELLO_ZONE,4u,4u},
+  {VOCAL_YES_ZONE,4u,VOCAL_WAY_ZONE},
 };
 #define WORD_PHRASE_COUNT (sizeof word_phrases/sizeof *word_phrases)
 
@@ -2190,7 +2192,7 @@ static unsigned auto_word_phrase(const sr_engine *e,unsigned bar,unsigned sectio
   if((section!=1u&&section!=2u&&section!=4u)||((bar+e->scene)&1u))return 0;
   unsigned compact=flow!=SR_VOCAL_NORMAL||e->tick_length<6400u;
   unsigned phrase=compact?(color&1u?1u:10u):
-       (color+e->music_mode+song_draw(e->song_seed,929u)%8u)%8u;
+       (color+e->music_mode+song_draw(e->song_seed,929u)%9u)%9u;
   if(!compact&&phrase>=5u)phrase+=3u;
   return word_phrases[phrase][slot];
 }
@@ -2212,6 +2214,7 @@ static int vocal_word_note(const sr_engine *e,unsigned zone,unsigned chord,int t
  float source=vocal_words[index].hz;
  float rate=zone>=VOCAL_GO_ZONE?HUMAN_WORD_RATE:VOCAL_RATE;
  float duration=(float)vocal_words[index].length*(SR_RATE/rate);
+ if(zone>=VOCAL_GO_ZONE)duration*=1.13f;
  unsigned cost=~0u;
  int best=0;
  for(unsigned i=0;i<3;i++){
@@ -2415,6 +2418,13 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    }
  }
  unsigned word=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE;
+ /* A finite word keeps its consonant and coda. Vowel ornaments still use
+  * the usual phase-continuous pitch turn and can run at double time. */
+ if(word)for(unsigned i=0;i<SR_VOICES;i++){
+   const sr_voice *voice=&e->voices[i];
+   if(voice->active&&!voice->key&&!voice->external&&voice->sample_zone==zone+1u&&
+      !vocal_words[zone-VOCAL_DAY_ZONE].loop)return 0;
+ }
  sr_voice *lead=automatic?recorded_voice(e,note,zone,velocity,held,0,1):
                           recorded_note(e,note,zone,velocity,held);
  if(lead){
@@ -2673,7 +2683,7 @@ static void trigger(sr_engine *e){
   /* The separate mode control remains quantized. Intention selection is
    * committed by the app at the audio callback boundary. */
   unsigned song_changed=0;
-  if((e->sequence_step&3u)==0u){
+  if((e->sequence_step&15u)==0u){
     if(e->pending_mode){
       e->profile_applying=1;
       e->music_mode=e->pending_mode-1u;
@@ -3315,7 +3325,16 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
                               move*(v->vocal_turn_second-v->vocal_turn_first));
       }
       config->vocal=(v->pitch/v->freq)*turn*(1.f+fx[VF_VIB_DEPTH]*.00029f*depth*sine(age*rate));
-      config->step=v->sample_zone>VOCAL_GO_ZONE?v->phase2:v->phase2*config->vocal;
+      config->step=v->phase2*config->vocal;
+      if(v->sample_zone>VOCAL_GO_ZONE){
+        const int8_t *map=human_word_pitch[v->sample_zone-VOCAL_GO_ZONE-1u];
+        float pos=v->phase*(1.f/256.f);
+        unsigned bin=(unsigned)pos;
+        float amount=(e->vocal_fx_manual&8u)?e->vocal_tune:100.f;
+        float correction=bin+1u<sizeof human_word_pitch[0]?
+          map[bin]+(map[bin+1u]-map[bin])*(pos-bin):0.f;
+        config->step=v->phase2*(1.f+correction*amount*.0001f);
+      }
       config->morph=clampf(age*SR_RATE*v->vocal_morph_rate*2.f-.55f,0.f,1.f);
       if(v->vocal_vowel_to){
         unsigned target=v->vocal_vowel_to-1u;

@@ -397,7 +397,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  }
  case 163:*name="CHORUS %";if(!(engine.vocal_fx_manual&1u))return "Auto";number=engine.vocal_chorus;break;
  case 164:*name="REVERB %";if(!(engine.vocal_fx_manual&2u))return "Auto";number=engine.vocal_reverb;break;
- case 166:*name="TUNE %";if(!(engine.vocal_fx_manual&8u))return "Auto";number=engine.vocal_tune;break;
+ case 166:*name="TUNE %";number=(engine.vocal_fx_manual&8u)?engine.vocal_tune:100;break;
  case 165:*name="ECHO %";if(!(engine.vocal_fx_manual&4u))return "Auto";number=engine.vocal_delay;break;
  case 185:*name="VOCAL LEVEL";if(!engine.vocal_level_manual)return "Auto";number=engine.vocal_level;break;
  case 186:*name="VOICE PATCH";return engine.vocal_patch?sr_vocal_patch_names[engine.vocal_patch-1u]:"Auto";
@@ -986,19 +986,19 @@ static void fullscreen_labels(void)
  unsigned scene=shown_intention();
  unsigned mode=engine.pending_mode?engine.pending_mode-1u:engine.music_mode;
  visual_title(8,3,224,23,sr_scenes[scene].name);
- visual_title(8,26,190,17,music_modes[mode]);
- if(engine.pending_mode)visual_title(189,27,44,14,"QUEUED");
+ visual_title(8,26,154,17,music_modes[mode]);
+ visual_title(164,28,68,13,engine.pending_mode?"NEXT BAR":"EDIT+ALGO");
 }
 static void intention_mode_header(void){
  unsigned scene=shown_intention();
  unsigned mode=engine.pending_mode?engine.pending_mode-1u:engine.music_mode;
- int width=engine.pending_mode?183:198;
+ int width=133;
  limited_text(8,0,width,fit_font(sr_scenes[scene].name,width,25),
               sr_scenes[scene].name,skin_text());
- limited_text(8,26,188,fit_font(music_modes[mode],188,18),
+ limited_text(8,26,31,&FONT_T,"MODE",skin_dim());
+ limited_text(42,25,131,fit_font(music_modes[mode],131,18),
               music_modes[mode],skin_accent());
- if(engine.pending_mode)
-   limited_text(196,6,37,&FONT_T,"QUEUED",skin_accent());
+ limited_text(150,8,65,&FONT_T,engine.pending_mode?"NEXT BAR":"EDIT+ALGO",skin_text());
 }
 static void evolve_graph(unsigned band){
  unsigned offset=band*48;
@@ -1174,6 +1174,7 @@ static int draw(int animate)
  /* Bind one audio observation to every portrait band in this frame. */
  static k9_face vocal_pose;
  static unsigned expressive_lid;
+ static int head_lift;
  if(page==PAGE_VOCALS&&!vocal_tab&&!display_strip&&(animate||dirty)){
    unsigned flags=plat_lock();
    vocal_pose=k9_recorded_vocal_pose(&engine);
@@ -1182,6 +1183,11 @@ static int draw(int animate)
    unsigned blink=now%3959u;
    vocal_pose.blink=blink<75u?255:blink<130u?130:0;
    unsigned lid_target=!!vocal_pose.lid;
+   int lift_target=lid_target?(vocal_pose.brow>0?-5:4):0;
+   if(head_lift<lift_target)head_lift++;
+   if(head_lift>lift_target)head_lift--;
+   vocal_pose.head_y=(int8_t)(head_lift/3);
+   vocal_pose.tilt=(int8_t)(head_lift/3);
    vocal_pose.lid=0;
    if(lid_target)expressive_lid=expressive_lid<211u?expressive_lid+44u:255u;
    else expressive_lid=expressive_lid>31u?expressive_lid-32u:0;
@@ -1194,7 +1200,7 @@ static int draw(int animate)
    }
    if(vocal_pose.singing_light)vocal_pose.module=(now/90u)&3u;
  }else if(page!=PAGE_VOCALS||vocal_tab){
-   expressive_lid=0;
+   expressive_lid=0;head_lift=0;
  }
  for(;display_strip<5;display_strip++){
    int band=display_first?(fullscreen?fullscreen_first:control_first)[display_strip]:display_strip;
@@ -1675,8 +1681,6 @@ static int draw(int animate)
        limited_text(x+5,25,163-x,&FONT_XS,"NEXT PAGE",skin_text());
        }
      }
-     if(page==PAGE_PLAY&&(engine.pending_mode))
-       limited_text(107,2,125,&FONT_T,"NEXT BEAT",skin_accent());
 
    }else if(page==PAGE_SETUP&&setup_tab==2){
      if(save_info==0){

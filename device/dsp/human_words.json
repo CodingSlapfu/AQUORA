@@ -279,5 +279,26 @@
     "median_hz": 245.0,
     "tempo_ratio": 1.0,
     "performance": "spoken"
+  },
+  {
+    "word": "YES",
+    "attribution": "MatteusNova",
+    "source": "https://freesound.org/people/MatteusNova/sounds/157506/",
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "preview_sha256": "dcc4f41a75f93418a1a50a5fbf1c1515b3db0d4bf849804c72bc318dc231ea09",
+    "decoded_cut_sha256": "9400fac94d14195504af3d6964adcbb80aafc58277c337ad2397cdc8a6eea16e",
+    "offset_seconds": [
+      0.26,
+      0.83
+    ],
+    "pcm_sha256": "bf1ef98a3924f504b89d1167afbc4e98088822d4f65d9321b7b062ec2e60f78b",
+    "sample_rate": 6800,
+    "samples": 3876,
+    "packed_bytes": 2424,
+    "packed_sha256": "6dfb4838cb59a2b3dd67e61406993ff186575af635028a03871c606ef2f3a2d3",
+    "codec_snr_db": 23.82,
+    "median_hz": 219.5,
+    "tempo_ratio": 1.0,
+    "performance": "spoken"
   }
 ]

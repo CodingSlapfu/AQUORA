@@ -12,7 +12,7 @@ static unsigned pitch_near(float hz)
 int main(void)
 {
     static const char *const words[] = {
-        "GO","NO","WAY","BE","FEEL","COLORS","GREEN","BEAUTIFUL","I","GOING","WHEN","CALL","DO","HELLO"
+        "GO","NO","WAY","BE","FEEL","COLORS","GREEN","BEAUTIFUL","I","GOING","WHEN","CALL","DO","HELLO","YES"
     };
     unsigned glow_frames = 0;
     for (unsigned w = 0; w < sizeof words / sizeof *words; w++) {

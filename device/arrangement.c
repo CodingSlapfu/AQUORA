@@ -405,6 +405,7 @@ static void arrangement_apply(const arrangement *record)
     engine.vocal_entry_pending=engine.vocals_enabled;
     engine.vocal_auto_ready=0;
     engine.vocal_reprise=0;
+    engine.pending_mode=0;
     engine.music_mode=record->version>=AQ_BANK_V4?record->music_mode:SR_STANDARD;
     engine.expression_manual=record->version>=AQ_BANK_V4?(record->reserved&3u):0;
     unsigned effects=record->version>=AQ_BANK_V4&&(record->reserved&0x8000u)?record->reserved:0u;

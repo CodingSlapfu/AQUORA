@@ -39,7 +39,7 @@ static unsigned vocal_shutdown;
 static unsigned applied_stop;
 static unsigned saved_status, graphics_us, blocked_keys, voice_slot;
 static unsigned mix_tab,mix_reset,mix_bus,mix_focus,song_tab,song_nonce,song_arm,arrange_browse;
-static unsigned drum_part;
+static unsigned drum_part, home_edit_tap;
 static unsigned save_info,drum_tab, setup_tab, display_subtab, sound_picker, fullscreen, fullscreen_performance, last_control_ms;
 static unsigned preferences_saving, preferences_generation, preferences_saved_ms;
 #ifndef PLAT_HOST
@@ -126,7 +126,7 @@ static int save_preferences(void)
     settings.lighting=0x80u|lighting|(keys_baseline<<2u)|(notes_lights<<4u)|(dance_lights<<5u);settings.output_profile=0x80u|engine.speaker_enabled; /* Legacy AUTO/20 stored 0 or 1. */
     settings.visual=visual_mode;settings.theme=ui_theme;
     settings.font_size=ui_font_size;settings.background=ui_background;
-    settings.active_bank=bank_slot;settings.music_mode=engine.music_mode;settings.motion_manual=engine.motion_manual;
+    settings.active_bank=bank_slot;settings.music_mode=engine.pending_mode?engine.pending_mode-1u:engine.music_mode;settings.motion_manual=engine.motion_manual;
     plat_unlock(flags);
     settings.startup_sound=startup_chime;
 #ifdef PLAT_HOST
@@ -309,8 +309,6 @@ static void turn_vocal_fx(uint8_t *value,unsigned bit,int delta)
 
 static void apply_intention(unsigned scene)
 {
- engine.music_mode=sr_intention_style(scene,engine.song_seed^engine.visit_nonce);
- engine.pending_mode=0;
  sr_set_scene(&engine,scene);
 }
 
@@ -465,6 +463,11 @@ static void consume(void){
    sr_set_loop_length(&engine,d>0?(length<64?length*2:64):(length>16?length/2:16));
    break;
  }
+ case 235:{
+   int mode=engine.pending_mode?engine.pending_mode-1:engine.music_mode;
+   sr_set_music_mode(&engine,(mode+d+SR_MUSIC_MODES)%SR_MUSIC_MODES);
+   break;
+ }
  case 47:
    engine.play_queued=0;
    engine.keyboard_mode=switched(engine.keyboard_mode,d);
@@ -502,7 +505,12 @@ static void consume(void){
  case 163:turn_vocal_fx(&engine.vocal_chorus,1u,d);break;
  case 164:turn_vocal_fx(&engine.vocal_reverb,2u,d);break;
  case 165:turn_vocal_fx(&engine.vocal_delay,4u,d);break;
- case 166:turn_vocal_fx(&engine.vocal_tune,8u,d);break;
+ case 166:{
+   int tune=(engine.vocal_fx_manual&8u)?engine.vocal_tune:100;
+   engine.vocal_tune=bounded(tune+d*5,0,100);
+   engine.vocal_fx_manual|=8u;
+   break;
+ }
  case 169:engine.fx_decay=bounded(engine.fx_decay+d*5,0,100);break;
  case 170:engine.fx_feedback=bounded(engine.fx_feedback+d*5,0,100);break;
  case 171:engine.fx_damping=bounded(engine.fx_damping+d*5,0,100);break;
@@ -542,8 +550,6 @@ static void consume(void){
    if(!engine.running)engine.nature_audition=0;
    if(d>0){
      uint32_t seed=plat_ticks24()^++song_nonce;
-     if(c.kind==58&&!engine.running&&!engine.stop_frames)
-       engine.music_mode=sr_intention_style(engine.scene,seed);
      sr_generate_song(&engine,seed,c.kind==59);
    }
    break;
@@ -685,7 +691,6 @@ void app_init(void)
     const char *boot_fixture=getenv("AQUORA_TEST_BOOT_SEED");
     if(boot_fixture)boot_seed=(unsigned)strtoul(boot_fixture,0,0);
 #endif
-    sr_set_music_mode(&engine,(boot_seed>>8)%SR_MUSIC_MODES);
     apply_intention(boot_seed%SR_SCENES);
     sr_generate_song(&engine,boot_seed^0x41513039u,0);
     engine.rhythm_style=(boot_seed>>16)%8u<4u?0u:1u+(boot_seed>>20)%2u;
@@ -705,7 +710,7 @@ void app_init(void)
     memset(evolve_events,0,sizeof evolve_events);
     memset(evolve_history,0,sizeof evolve_history);
     intention_request=intention_applied=0;
-    qread=qwrite=command_enqueued=command_applied=0;
+    qread=qwrite=command_enqueued=command_applied=home_edit_tap=0;
     quick_started=quick_pending=quick_timeout=quick_finished_ms=0;
     requested_play=stop_generation=applied_stop=physical_keys=0;
     page=selected=group=debug=display_subtab=drum_part=0;
@@ -823,7 +828,7 @@ void app_input_only(void){
 #endif
  if(input_poll_ms)measure(&control_poll_timing[!!engine.running],(poll_now-input_poll_ms)*100u);
  input_poll_ms=poll_now;
- midi_poll();unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbuttons;oldbuttons=b;
+ midi_poll();unsigned b=plat_buttons(),k=plat_keys(),press=b&~oldbuttons,released=oldbuttons&~b;oldbuttons=b;
  int enc[7]={plat_enc(EN_ALGO),plat_enc(EN_SELECT),plat_enc(EN_PRESET),
              plat_enc(EN_K1),plat_enc(EN_K1+1),plat_enc(EN_K1+2),plat_enc(EN_K1+3)};
  int control=press!=0;
@@ -902,7 +907,7 @@ void app_input_only(void){
  }
  if(debug!=3&&(press&(1u<<B_SEQ)))send(20,0);
  if(press&(1u<<B_EDIT)){
-   if(!debug&&page==0)send(47,0);
+   home_edit_tap=!debug&&!fullscreen&&page==PAGE_PLAY;
    if(!debug&&!fullscreen&&page==PAGE_MIX&&!mix_tab)send(234,0);
    bank_confirm=song_arm=0;if(!quick_started&&!quick_pending)bank_message=BANK_IDLE;
  }
@@ -932,7 +937,11 @@ void app_input_only(void){
  if(page==PAGE_MIX&&role_page!=PAGE_MIX&&mix_tab!=4)mix_focus=selected;
  role_page=page;
  d=enc[0];
- if(d&&!debug&&!fullscreen){
+ if(d&&!debug&&(b&(1u<<B_EDIT))&&(page==PAGE_PLAY||fullscreen)){
+   home_edit_tap=0;
+   send(235,d%SR_MUSIC_MODES);
+   preferences_changed_now();
+ }else if(d&&!debug&&!fullscreen){
    unsigned contextual=(b&(1u<<B_EDIT))!=0;
    if(page==PAGE_SOUND&&!contextual){
      int index=0;
@@ -951,6 +960,10 @@ void app_input_only(void){
    else if(page==PAGE_PLAY||page==PAGE_EVOLVE){selected=bounded((int)selected+d,0,7);if(page==PAGE_PLAY)select_revision++;}
    if(!contextual){bank_confirm=song_arm=0;}
    knob_until=0;dirty=1;
+ }
+ if(released&(1u<<B_EDIT)){
+   if(home_edit_tap&&!debug&&!fullscreen&&page==PAGE_PLAY)send(47,0);
+   home_edit_tap=0;
  }
  d=enc[2];
  if(d)select_intention(d);
@@ -1404,6 +1417,7 @@ int app_expect(const char *what,int *got){
  else if(!strcmp(what,"solo"))*got=engine.solo;
  else if(!strcmp(what,"send_percent"))*got=(int)(track->send*100.f+.5f);
  else if(!strcmp(what,"music_mode"))*got=engine.music_mode;
+ else if(!strcmp(what,"mode_queued"))*got=engine.pending_mode;
  else if(!strcmp(what,"motion_manual"))*got=engine.motion_manual;
  else if(!strcmp(what,"visual_pitch_hz"))*got=(int)vis_input.pitch;
  else if(!strcmp(what,"node_count"))*got=vis_output.node_count;

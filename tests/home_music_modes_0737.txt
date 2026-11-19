@@ -1,0 +1,89 @@
+master 2048
+wait 8200
+expect running 0
+expect scene 10
+expect music_mode 0
+tap HOME
+turn ALGO 1
+expect track 1
+press EDIT
+turn ALGO 1
+release EDIT
+expect music_mode 1
+expect track 1
+turn PRESET 1
+expect scene 11
+expect music_mode 1
+tap ARP
+turn PRESET -1
+expect scene 10
+expect music_mode 1
+tap HOME
+press EDIT
+turn ALGO 1
+release EDIT
+expect music_mode 2
+turn PRESET 1
+turn PRESET -1
+expect music_mode 2
+press EDIT
+turn ALGO 1
+release EDIT
+expect music_mode 3
+shot experimental.png
+press EDIT
+turn ALGO 1
+release EDIT
+expect music_mode 4
+turn PRESET 1
+turn PRESET -1
+expect music_mode 4
+turn SELECT 2
+turn ALGO 1
+turn K1 1
+tap SEL
+expect music_mode 4
+turn K2 1
+tap SEL
+expect music_mode 4
+tap HOME
+tap OCT-
+tap SAVE
+wait 1900
+expect bank_message 4
+tap HOME
+press EDIT
+turn ALGO 1
+release EDIT
+expect music_mode 0
+tap OCT-
+tap SEL
+wait 1500
+expect bank_message 5
+expect music_mode 4
+expect bank_migration_matrix 1
+reboot
+wait 8200
+expect music_mode 4
+tap HOME
+tap PLAY
+wait 120
+press EDIT
+turn ALGO -1 2
+release EDIT
+expect music_mode 4
+expect mode_queued 4
+wait 6500
+expect music_mode 3
+expect mode_queued 0
+expect running 1
+turn K2 1
+expect fullscreen 1
+press EDIT
+turn ALGO 1 2
+release EDIT
+wait 6500
+expect music_mode 4
+expect fullscreen 1
+expect drops 0
+shot fullscreen.png

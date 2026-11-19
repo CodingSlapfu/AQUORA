@@ -121,3 +121,5 @@ chooses a recorded word where the note fits its source register, with a
 recorded sung-vowel fallback at other pitches.
 
 HELLO is a cue from [Valérie Vivegnis’s self-recorded Hello](https://freesound.org/people/Valerie-Vivegnis/sounds/759142/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). AQUORA trims, downmixes, resamples, fades, and quantizes this spoken performance and pitches it in the sampler. It is available on the manual WORDS keyboard and in AUTO.
+
+YES is by Morena, from [MatteusNova’s recording The word yes](https://freesound.org/people/MatteusNova/sounds/157506/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). AQUORA trims, resamples, fades, and quantizes this spoken cue. It is playable in WORDS and eligible in AUTO.
