@@ -11,9 +11,13 @@ import numpy as np
 from scipy.signal import resample_poly
 
 RATE = 6800
+SPEECH_RATE = 9000
+EXTENDED_SOURCES = (268020, 97836)
 POSITIVE = [1, 2, 4, 6, 9, 12, 16, 21, 26, 32, 39, 47, 56, 66, 77]
 LEVELS = np.array([0, *POSITIVE, 88, *(-x for x in POSITIVE)], dtype=np.int8)
 SOURCES = {
+    268020: ("shadoWisp", "3.0", "cdcdf572d020ab043560d5d45006d5ee365cae34e322bf464c8af57542ce847f"),
+    97836: ("deleted_user_1390811", "3.0", "e9ef1f2f03075a166bff53dce1c352a87aed424aba933dc8535e57d83b7a1c62"),
     157506: ("MatteusNova", "4.0", "dcc4f41a75f93418a1a50a5fbf1c1515b3db0d4bf849804c72bc318dc231ea09"),
     759142: ("Valerie-Vivegnis", "4.0", "ed0949fb5bc6e7143c9cd75928210de68126f36f12572d155a02d4d09731d4cd"),
     417410: ("TheScarlettWitch89", "3.0", "451a67b26ff5ee787d48bd2b7c67117e71f8644d79a8c567bfa6cc7dd089b633"),
@@ -39,6 +43,17 @@ WORDS = [
     ("DO", 417936, .605, .939, 370.0, (4, 3, 3)),
     ("HELLO", 759142, .56, 1.18, 245.0, (1, 2, 3)),
     ("YES", 157506, .26, .83, 219.5, (4, 2, 6)),
+    ("PEACE", 268020, 2.50, 3.10, 174.0, (4, 5, 6)),
+    ("FAITH", 268020, 12.93, 13.40, 189.0, (6, 5, 6)),
+    ("HOPE", 268020, 16.82, 17.34, 181.0, (1, 2, 4)),
+    ("LIGHT", 268020, 20.74, 21.32, 197.0, (4, 1, 6)),
+    ("JOY", 268020, 24.64, 25.24, 170.0, (6, 2, 5)),
+    ("DIVINE", 268020, 27.03, 27.47, 194.0, (4, 1, 4)),
+    ("CONSOLE", 268020, 32.55, 33.22, 153.0, (4, 2, 4)),
+    ("UNDERSTAND", 268020, 36.15, 37.20, 166.0, (3, 1, 4)),
+    ("RECEIVE", 268020, 43.03, 43.80, 162.0, (4, 5, 6)),
+    ("LIFE", 268020, 50.57, 51.11, 158.0, (4, 1, 6)),
+    ("WELCOME", 97836, .24, .645, 262.0, (2, 1, 4)),
 ]
 
 
@@ -77,15 +92,27 @@ def main():
         # soft fades remove edit clicks without masking word attacks.
         limit = 1.01 if name in ("BEAUTIFUL", "COLORS") else .785
         speed = max(1., (end - begin) / limit)
-        if speed > 1:
+        # Speech recorded below the singer's register is moved offline with
+        # formants preserved, reducing the required device playback shift.
+        source_pitch = pitch
+        pitch_ratio = max(1., 270. / pitch) if source == 268020 else 1.
+        pitch *= pitch_ratio
+        if speed > 1 or pitch_ratio != 1.:
             mono = np.frombuffer(ffmpeg(
                 "-f", "f32le", "-ar", "48000", "-ac", "1", "-i", "-",
-                "-af", f"rubberband=tempo={speed:.8f}:transients=crisp:formant=preserved",
+                "-af", f"rubberband=tempo={speed:.8f}:pitch={pitch_ratio:.8f}:transients=crisp:formant=preserved",
                 "-f", "f32le", "-", data=mono.astype("<f4").tobytes(),
             ), dtype="<f4").copy()
-        divisor = math.gcd(RATE, 48000)
-        mono = resample_poly(mono, RATE // divisor, 48000 // divisor)
-        fade_in, fade_out = 5 * RATE // 1000, 24 * RATE // 1000
+        rate = SPEECH_RATE if source in EXTENDED_SOURCES else RATE
+        divisor = math.gcd(rate, 48000)
+        mono = resample_poly(mono, rate // divisor, 48000 // divisor)
+        if source in EXTENDED_SOURCES:
+            # Remove preview and time-stretcher padding. Keep the quiet
+            # consonants near each edge with a short guard on both ends.
+            signal = np.flatnonzero(np.abs(mono) >= .013 * np.max(np.abs(mono)))
+            guard = rate * 12 // 1000
+            mono = mono[max(0, signal[0] - guard):signal[-1] + guard + 1]
+        fade_in, fade_out = 5 * rate // 1000, 24 * rate // 1000
         mono[:fade_in] *= np.linspace(0, 1, fade_in)
         mono[-fade_out:] *= np.linspace(1, 0, fade_out)
         peak = np.max(np.abs(mono))
@@ -95,8 +122,8 @@ def main():
         # Normalized autocorrelation tracks voiced F0 near the measured source
         # note. Reject unvoiced or ambiguous windows and preserve some drift.
         correction = []
-        low = int(RATE / (pitch * 1.28))
-        high = int(RATE / (pitch * .78))
+        low = int(rate / (pitch * 1.28))
+        high = int(rate / (pitch * .78))
         for center in range(0, len(mono) + 256, 256):
             window = mono[max(0, center - 170):center + 170]
             window = window - np.mean(window) if len(window) else window
@@ -108,7 +135,7 @@ def main():
                           for lag in lags]
                 index = int(np.argmax(scores))
                 if 0 < index < len(scores) - 1 and scores[index] > .72:
-                    delta = round(100 * (pitch * lags[index] / RATE - 1))
+                    delta = round(100 * (pitch * lags[index] / rate - 1))
             correction.append(max(-11, min(11, delta)))
         pitch_maps.append([0, *[round((a + 2*b + c) / 4)
                                 for a, b, c in zip(correction, correction[1:], correction[2:])], 0])
@@ -120,7 +147,7 @@ def main():
         for i in range(0, len(packed), 24):
             lines.append("  " + ",".join(str(x) for x in packed[i:i + 24]) + ",")
         lines.append("};")
-        attack = min(len(quantized) // 6, RATE * 5 // 100)
+        attack = min(len(quantized) // 6, rate * 5 // 100)
         release_pose = len(quantized) * 5 // 6
         entries.append(
             f"  {{{symbol},{len(quantized)}u,0u,{release_pose}u,{attack}u,"
@@ -133,12 +160,15 @@ def main():
                              license=f"https://creativecommons.org/licenses/by/{license_version}/",
                              preview_sha256=preview_hash, decoded_cut_sha256=sha(original.tobytes()),
                              offset_seconds=[begin, end], pcm_sha256=sha(quantized.tobytes()),
-                             sample_rate=RATE, samples=len(quantized), packed_bytes=len(packed),
+                             sample_rate=rate, samples=len(quantized), packed_bytes=len(packed),
                              packed_sha256=sha(packed.tobytes()), codec_snr_db=round(float(snr),2), median_hz=pitch,
                              tempo_ratio=round(speed,8),
-                             **({"performance": "spoken"} if source in (759142, 157506) else {})))
+                             **({"performance": "spoken"} if source in (759142, 157506, 268020, 97836) else {}),
+                             **({"source_median_hz": source_pitch, "offline_pitch_ratio": round(pitch_ratio, 8)}
+                                if pitch_ratio != 1. else {})))
     (args.output / "human_words.inc").write_text(
         "/* Generated by device/tools/build_human_words.py. See VOCAL_CREDITS.md. */\n"
+        + f"enum {{ HUMAN_WORD_RATE={RATE}, HUMAN_SPEECH_RATE={SPEECH_RATE} }};\n"
         + "static const int8_t human_word_levels[]={"+",".join(str(x) for x in LEVELS)+"};\n"
         + "\n".join(lines) + "\n\n#define AQUORA_HUMAN_WORDS \\\n"
         + " \\\n".join(entries) + "\n"

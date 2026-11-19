@@ -407,7 +407,7 @@ static const char *knob_value(unsigned id,const char **name,char *buffer)
  }
  case 231:{
    static const char *const voices[]={"AUTO","AH","OOH","OH","EE","EH","UH","HUM",
-     "DO-RE-MI","LA-LA","NA-NA","SCAT","WORDS","OH-AH HOOK","OH-AH","OO-EE","AY-OH","EH-OH","MM-OOH"};
+     "DO-RE-MI","LA-LA","NA-NA","SCAT","WORDS","OH-AH HOOK","OH-AH","OO-EE","AY-OH","EH-OH","MM-OOH","WORDS 2"};
    *name="VOICE";return voices[engine.vocal_articulation];
  }
  case 155:*name="RECORDED VOCALS";return engine.vocals_enabled?"On":"Off";
@@ -992,13 +992,12 @@ static void fullscreen_labels(void)
 static void intention_mode_header(void){
  unsigned scene=shown_intention();
  unsigned mode=engine.pending_mode?engine.pending_mode-1u:engine.music_mode;
- int width=133;
- limited_text(8,0,width,fit_font(sr_scenes[scene].name,width,25),
+ limited_text(8,0,224,fit_font(sr_scenes[scene].name,224,22),
               sr_scenes[scene].name,skin_text());
- limited_text(8,26,31,&FONT_T,"MODE",skin_dim());
- limited_text(42,25,131,fit_font(music_modes[mode],131,18),
+ limited_text(8,22,36,&FONT_XS,"MODE",skin_dim());
+ limited_text(45,22,187,fit_font(music_modes[mode],187,15),
               music_modes[mode],skin_accent());
- limited_text(150,8,65,&FONT_T,engine.pending_mode?"NEXT BAR":"EDIT+ALGO",skin_text());
+ limited_text(8,36,224,&FONT_T,engine.pending_mode?"MODE CHANGES NEXT BAR":"HOLD EDIT + TURN ALGO TO CHANGE MODE",skin_text());
 }
 static void evolve_graph(unsigned band){
  unsigned offset=band*48;
@@ -1174,7 +1173,7 @@ static int draw(int animate)
  /* Bind one audio observation to every portrait band in this frame. */
  static k9_face vocal_pose;
  static unsigned expressive_lid;
- static int head_lift;
+ static int head_lift, head_lean;
  if(page==PAGE_VOCALS&&!vocal_tab&&!display_strip&&(animate||dirty)){
    unsigned flags=plat_lock();
    vocal_pose=k9_recorded_vocal_pose(&engine);
@@ -1186,8 +1185,14 @@ static int draw(int animate)
    int lift_target=lid_target?(vocal_pose.brow>0?-5:4):0;
    if(head_lift<lift_target)head_lift++;
    if(head_lift>lift_target)head_lift--;
+   int lean_target=vocal_pose.open>12u&&vocal_pose.brow<0?-4:
+                   vocal_pose.open>12u&&vocal_pose.brow>0?4:0;
+   if(head_lean<lean_target)head_lean++;
+   if(head_lean>lean_target)head_lean--;
    vocal_pose.head_y=(int8_t)(head_lift/3);
-   vocal_pose.tilt=(int8_t)(head_lift/3);
+   vocal_pose.head_x=(int8_t)(head_lean/4);
+   vocal_pose.tilt=(int8_t)(head_lean/4);
+   vocal_pose.gaze=vocal_pose.head_x;
    vocal_pose.lid=0;
    if(lid_target)expressive_lid=expressive_lid<211u?expressive_lid+44u:255u;
    else expressive_lid=expressive_lid>31u?expressive_lid-32u:0;
@@ -1200,7 +1205,7 @@ static int draw(int animate)
    }
    if(vocal_pose.singing_light)vocal_pose.module=(now/90u)&3u;
  }else if(page!=PAGE_VOCALS||vocal_tab){
-   expressive_lid=0;head_lift=0;
+   expressive_lid=0;head_lift=head_lean=0;
  }
  for(;display_strip<5;display_strip++){
    int band=display_first?(fullscreen?fullscreen_first:control_first)[display_strip]:display_strip;

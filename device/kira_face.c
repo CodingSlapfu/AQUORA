@@ -2,13 +2,22 @@
  * Row-addressed immutable ROM art; no heap, decompression buffer or DSP changes. */
 #include "kira_face/face.h"
 #include "kira_face/character023.h"
+/* Each run is a count and palette index. Rare colors keep their RGB565
+ * bytes inline, so every portrait layer remains pixel-identical. */
+static uint16_t art_color(unsigned *position)
+{
+ unsigned index=k9_art_data[(*position)++];
+ if(index<255u)return k9_art_colors[index];
+ uint16_t color=k9_art_data[(*position)++];
+ return color|((uint16_t)k9_art_data[(*position)++]<<8u);
+}
 static void layer(uint16_t *p,unsigned y0,unsigned height,unsigned region,int dx,int dy,int tilt){
  const uint16_t *r=k9_art_regions[region];
  for(unsigned row=0;row<r[3];row++){
   int y=(int)r[1]+(int)row+dy;if(y<(int)y0||y>=(int)(y0+height)||y<0||y>=240)continue;
   unsigned pos=k9_art_rows[r[4]+row],used=0;
   while(used<r[2]){
-   unsigned n=k9_art_data[pos++];uint16_t color=k9_art_data[pos++];color|=(uint16_t)k9_art_data[pos++]<<8;
+   unsigned n=k9_art_data[pos++];uint16_t color=art_color(&pos);
    for(unsigned j=0;j<n;j++){int x=(int)r[0]+(int)used+(int)j+dx+((int)r[1]+(int)row-120)*tilt/128;if(x>=0&&x<240)p[(y-y0)*240+x]=color;}used+=n;
   }
  }
@@ -19,14 +28,14 @@ static void plate(uint16_t *p,unsigned y0,unsigned height,int left,int top,int w
  for(int row=top;row<top+rows;row++){
   int y=row+dy;if(y<(int)y0||y>=(int)(y0+height)||y<0||y>=240)continue;
   unsigned pos=k9_art_rows[row],used=0;
-  while(used<240){unsigned n=k9_art_data[pos++];uint16_t color=k9_art_data[pos++];color|=(uint16_t)k9_art_data[pos++]<<8;
+  while(used<240){unsigned n=k9_art_data[pos++];uint16_t color=art_color(&pos);
    for(unsigned j=0;j<n;j++){int x=(int)(used+j);if(x>=left&&x<left+width&&x+dx>=0&&x+dx<240)p[(y-y0)*240+x+dx]=color;}used+=n;}
  }
 }
 void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *f){
  if(y0>=240||!height)return;if(height>240-y0)height=240-y0;
- unsigned background=k9_art_rows[0];
- uint16_t color=k9_art_data[background+1u]|((uint16_t)k9_art_data[background+2u]<<8u);
+ unsigned background=k9_art_rows[0]+1u;
+ uint16_t color=art_color(&background);
  for(unsigned i=0;i<height*240u;i++)pixels[i]=color;
  int dx=f->head_x,dy=f->head_y;
  layer(pixels,y0,height,0,dx,dy,f->tilt);
@@ -53,7 +62,8 @@ void k9_face_render(uint16_t *pixels,unsigned y0,unsigned height,const k9_face *
    };
    unsigned strength=f->singing_light;
    for(unsigned i=0;i<sizeof modules/sizeof modules[0];i++){
-     int x=(int)modules[i][0]+dx,y=(int)modules[i][1]+dy;
+     int y=(int)modules[i][1]+dy;
+     int x=(int)modules[i][0]+dx+((int)modules[i][1]-120)*f->tilt/128;
      unsigned bright=((f->module+i)%4u)!=0u;
      int radius=modules[i][2]-(bright?0:1);
      unsigned level=bright?strength:strength/3u;

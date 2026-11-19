@@ -384,7 +384,7 @@ static void consume(void){
        bounded(engine.vocal_flow+d,SR_VOCAL_AUTO,SR_VOCAL_DOUBLE);
    break;
  case 231:
-   engine.vocal_articulation=bounded(engine.vocal_articulation+d,0,18);
+   engine.vocal_articulation=bounded(engine.vocal_articulation+d,0,SR_VOCAL_WORDS_EXT);
    memset(engine.vocal_hook_vowel,0,sizeof engine.vocal_hook_vowel);
    memset(engine.vocal_hook_attack,0,sizeof engine.vocal_hook_attack);
    memset(engine.vocal_hook_transition,0,sizeof engine.vocal_hook_transition);

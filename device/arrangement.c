@@ -129,7 +129,7 @@ static int arrangement_valid(const arrangement *r)
     int legacy=r->version==AQ_BANK_LEGACY;
     if(r->version==AQ_BANK_VERSION){
         if(r->vocal_enabled>1||r->vocal_presence>4||r->vocal_play>2||
-           r->vocal_articulation>18||r->vocal_level>100||r->vocal_fx_send>100||
+           r->vocal_articulation>SR_VOCAL_WORDS_EXT||r->vocal_level>100||r->vocal_fx_send>100||
            r->vocal_tune>100||r->slicer_style>7||r->vocal_fx_manual>15||
            r->vocal_chorus>100||r->vocal_reverb>100||r->vocal_delay>100||
            (r->vocal_param_lock>>VF_COUNT))return 0;

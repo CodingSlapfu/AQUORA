@@ -106,27 +106,27 @@ static const struct {
 } fm_operators[] = {
   /* Original bank IDs: bass/drone, pads, struck strings, winds and voices.
    * Depth approaches zero on sub bass; higher ratios brighten transients. */
-  {1.f,.022f,.12f,0.f}, {2.f,.12f,.34f,0.f},
+  {1.f,.022f,.12f,0.f}, {2.f,.155f,.46f,0.f},
   {1.f,.18f,.35f,0.f}, {1.f,.045f,.19f,.0006f},
   {2.f,.15f,.24f,.0013f}, {1.5f,.11f,.52f,.002f},
-  {2.f,.17f,.71f,0.f}, {3.004f,.24f,.83f,0.f},
-  {3.79f,.29f,.86f,0.f}, {2.f,.22f,.81f,0.f},
-  {3.f,.18f,.72f,0.f}, {4.01f,.26f,.83f,0.f},
+  {2.f,.125f,.88f,0.f}, {1.003f,.31f,.72f,.0012f},
+  {3.79f,.34f,.66f,0.f}, {2.f,.19f,.88f,0.f},
+  {3.f,.18f,.72f,0.f}, {4.01f,.33f,.94f,0.f},
   {1.f,.08f,.33f,0.f}, {2.f,.10f,.28f,0.f},
   {3.f,.064f,.20f,0.f}, {1.f,.31f,.32f,0.f},
   {2.f,.28f,.33f,0.f}, {2.73f,.26f,.22f,0.f},
-  {3.91f,.36f,.57f,0.f}, {2.f,.17f,.28f,.0018f},
-  {1.f,.25f,.29f,.0023f}, {2.f,.17f,.29f,.0011f},
-  {1.4142f,.16f,.31f,.001f}, {2.f,.08f,.22f,.0025f},
-  {3.01f,.17f,.80f,.000f}, {2.f,.15f,.22f,.003f},
+  {3.91f,.36f,.57f,0.f}, {2.f,.24f,.24f,.0026f},
+  {1.f,.27f,.39f,.0016f}, {3.f,.12f,.47f,.0008f},
+  {1.4142f,.21f,.44f,.001f}, {1.f,.095f,.18f,.0032f},
+  {2.71f,.19f,.62f,0.f}, {2.f,.15f,.22f,.003f},
   {1.4142f,.14f,.30f,.001f}, {2.75f,.22f,.85f,.000f},
-  {1.f,.12f,.38f,.000f}, {3.f,.18f,.46f,.002f},
+  {2.f,.09f,.22f,0.f}, {3.f,.18f,.46f,.002f},
   {1.f,.035f,.90f,0.f},{1.001f,.12f,.50f,0.f},
-  {2.f,.26f,.85f,.002f},{3.f,.29f,.35f,0.f},
+  {2.002f,.215f,.91f,.001f},{3.f,.29f,.22f,0.f},
   {2.5f,.40f,.97f,0.f},{.5f,.22f,.18f,.001f},
-  {1.f,.32f,.96f,0.f},{3.f,.47f,.98f,.001f},
-  {2.f,.25f,.995f,0.f},{1.002f,.19f,.60f,.003f},
-  {2.f,.23f,.94f,0.f},{3.f,.42f,.97f,0.f},
+  {1.f,.23f,.86f,0.f},{3.002f,.46f,.94f,.001f},
+  {2.f,.28f,.997f,0.f},{1.002f,.18f,.44f,.004f},
+  {1.5f,.16f,.92f,0.f},{3.01f,.38f,.91f,0.f},
   {2.5f,.31f,.985f,.001f},{1.f,.055f,.30f,.001f},
   {2.f,.09f,.40f,0.f},{1.f,.40f,.54f,.001f},
   {1.f,.28f,.42f,0.f},{3.f,.32f,.38f,.002f},
@@ -137,7 +137,7 @@ static const struct {
   {2.f,.085f,.48f,0.f},{1.f,.055f,.70f,0.f},{3.f,.14f,.52f,0.f},
   {3.f,.21f,.40f,.003f},{1.f,.115f,.30f,.001f},
   {2.f,.25f,.46f,.002f},{4.f,.095f,.55f,.003f},
-  {2.f,.31f,.96f,0.f},{3.99f,.27f,.99f,0.f},{5.95f,.33f,.99f,0.f}
+  {2.f,.24f,.94f,0.f},{3.99f,.31f,.98f,0.f},{5.95f,.23f,.88f,0.f}
 };
 _Static_assert(sizeof fm_operators / sizeof *fm_operators == SR_PATCHES,
                "Every FM patch needs an operator profile");
@@ -222,7 +222,10 @@ enum {VOCAL_DAY_ZONE=VOCAL_ZONES,VOCAL_YOU_ZONE,VOCAL_EH_ZONE,VOCAL_EE_ZONE,
       VOCAL_HUM_ZONE,VOCAL_LOVE_ZONE,VOCAL_BABY_ZONE,VOCAL_ME_ZONE,
       VOCAL_DREAMS_ZONE,VOCAL_GO_ZONE,VOCAL_NO_ZONE,VOCAL_WAY_ZONE,VOCAL_BE_ZONE,
       VOCAL_FEEL_ZONE,VOCAL_COLORS_ZONE,VOCAL_GREEN_ZONE,VOCAL_BEAUTIFUL_ZONE,
-      VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_HELLO_ZONE,VOCAL_YES_ZONE,VOCAL_LAST_ZONE=VOCAL_YES_ZONE};
+      VOCAL_I_ZONE,VOCAL_GOING_ZONE,VOCAL_WHEN_ZONE,VOCAL_CALL_ZONE,VOCAL_DO_ZONE,VOCAL_HELLO_ZONE,VOCAL_YES_ZONE,
+      VOCAL_PEACE_ZONE,VOCAL_FAITH_ZONE,VOCAL_HOPE_ZONE,VOCAL_LIGHT_ZONE,VOCAL_JOY_ZONE,
+      VOCAL_DIVINE_ZONE,VOCAL_CONSOLE_ZONE,VOCAL_UNDERSTAND_ZONE,VOCAL_RECEIVE_ZONE,
+      VOCAL_LIFE_ZONE,VOCAL_WELCOME_ZONE,VOCAL_LAST_ZONE=VOCAL_WELCOME_ZONE};
 int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 #define VOCAL_POOL __attribute__((section(".pool"),aligned(4)))
@@ -232,7 +235,7 @@ int sr_vocal_sample_valid(unsigned id){return id<=VOCAL_LAST_ZONE+1u;}
 #include "vocal_extensions.inc"
 #include "vocal_dreams.inc"
 #include "human_words.inc"
-enum { HUMAN_WORD_RATE=6800 };
+
 
 #if defined(SR_DEVICE) && !defined(PLAT_HOST)
 __attribute__((section(".pool"),aligned(4)))
@@ -378,6 +381,21 @@ static unsigned score_bar(const sr_engine *e,unsigned step)
   unsigned current=e->loop_pos?e->loop_pos-1u:e->sequence_step?e->loop_length-1u:0u;
   return e->form_loop+step/16u-current/16u;
 }
+/* Compare contour and inter-onset timing independently of the pickup
+ * offset or a uniform shift in scale degree. */
+static uint16_t motif_signature(const int8_t *melody)
+{
+  unsigned signature=1, last_step=0;
+  int previous=-1;
+  for(unsigned step=0;step<16u;step++){
+    int degree=melody[step];
+    if(degree<0)continue;
+    if(previous>=0)signature=31u*signature+(step-last_step)*13u+(unsigned)(degree-previous+6);
+    last_step=step;
+    previous=degree;
+  }
+  return (uint16_t)signature;
+}
 static void make_motif(sr_engine *e,int revisit)
 {
   static const uint8_t contour[6][5]={
@@ -403,15 +421,13 @@ static void make_motif(sr_engine *e,int revisit)
     e->melody[beat[i]]=(int8_t)(degree<0?0:degree>6?6:degree);
   }
   e->melody[beat[5]]=(int8_t)((variation>>15)&1u?2:0);
-  uint16_t fingerprint=0;
-  for(unsigned i=0;i<16;i++)fingerprint=(uint16_t)(31u*fingerprint+(unsigned)(e->melody[i]+1));
+  uint16_t fingerprint=motif_signature(e->melody);
   uint16_t *previous=&e->last_theme[e->music_mode][e->scene];
   if(revisit&&*previous==fingerprint){
     int note=e->melody[beat[3]];
     int replacement=note>=4?note-2:note+2;
     e->melody[beat[3]]=(int8_t)replacement;
-    fingerprint=0;
-    for(unsigned i=0;i<16;i++)fingerprint=(uint16_t)(31u*fingerprint+(unsigned)(e->melody[i]+1));
+    fingerprint=motif_signature(e->melody);
   }
   *previous=fingerprint;
 
@@ -621,7 +637,8 @@ static unsigned fresh_patch(sr_engine *e,unsigned role,uint32_t seed)
   unsigned family=ensemble(e,seed),previous=e->recent_patches[e->music_mode][e->scene][role];
   unsigned anchor=voices[family][role],weights[SR_PATCHES],total=0;
   /* Respect an explicitly locked foreground when balancing the ensemble. */
-  unsigned lead=(e->sound_locks&1u)?e->tracks[SR_LEAD].patch:voices[family][SR_LEAD];
+  unsigned lead=e->tracks[SR_LEAD].patch;
+  unsigned keys=e->tracks[SR_PIANO].patch;
   for(unsigned p=0;p<SR_PATCHES;p++){
     unsigned valid=home[p]==role || (role==SR_HARMONY&&home[p]==SR_LEAD) ||
       (role==SR_CHOIR&&(home[p]==SR_DRONE||home[p]==SR_HARMONY));
@@ -632,8 +649,14 @@ static unsigned fresh_patch(sr_engine *e,unsigned role,uint32_t seed)
       if(p==anchor)w+=12u;
       /* Joint intention/mode color, while every valid patch retains weight. */
       w+=2u+song_draw(e->scene*43u+e->music_mode*101u,p+role*53u)%7u;
-      if(role!=SR_LEAD&&sr_patches[lead].brightness>.45f&&sr_patches[p].brightness>.6f)w=1;
-      if(role==SR_GUITAR&&sr_patches[p].release>3.f&&family!=1u)w=1;
+      const sr_patch *candidate=&sr_patches[p];
+      if(role!=SR_LEAD&&sr_patches[lead].brightness>.45f&&candidate->brightness>.6f)w=(w+3u)/4u;
+      if(role==SR_GUITAR){
+        /* Piano and pluck share the foreground. Pair a hard, bright key
+         * attack with a softer pluck, leaving room for the sung onset. */
+        if(sr_patches[keys].brightness>.5f&&candidate->brightness>.53f&&candidate->attack<.01f)w=(w+2u)/3u;
+        if(candidate->release>3.f&&family!=1u)w=1;
+      }
       if(p+1u==previous)w=1u;
     }
     weights[p]=w;total+=w;
@@ -1137,6 +1160,7 @@ static unsigned vocal_articulation(unsigned kind,unsigned position,unsigned *att
    return vowel[kind];
  }
  if(kind==12u)return recorded_word_keys[position%sizeof recorded_word_keys];
+ if(kind==SR_VOCAL_WORDS_EXT)return VOCAL_PEACE_ZONE+position%(VOCAL_LAST_ZONE-VOCAL_PEACE_ZONE+1u);
  position%=3u;
  if(kind==8u){
    static const uint8_t vowels[]={1,VOCAL_EH_ZONE,VOCAL_EE_ZONE},onsets[]={4,5,1};
@@ -2057,7 +2081,7 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
  if(!placed){
    int root=zone==VOCAL_DREAMS_ZONE?57:source_pitch<400.f?60:72;
    if(zone>=VOCAL_GO_ZONE){
-     static const uint8_t roots[]={64,61,66,67,61,61,57,67,54,57,68,69,66,59,57};
+     static const uint8_t roots[]={64,61,66,67,61,61,57,67,54,57,68,69,66,59,57,61,61,61,61,61,61,61,61,61,61,60};
      root=roots[zone-VOCAL_GO_ZONE];
    }
    while(note>root+6)note-=12;
@@ -2075,7 +2099,7 @@ static sr_voice *recorded_voice(sr_engine *e,int note,unsigned zone,unsigned vel
    if(ratio>.74f&&ratio<1.35f)voice->pitch=e->vocal_pitch_last;
  }
  e->vocal_pitch_last=voice->freq;
- float playback_rate=zone>=VOCAL_GO_ZONE?HUMAN_WORD_RATE:VOCAL_RATE;
+ float playback_rate=zone>=VOCAL_PEACE_ZONE?HUMAN_SPEECH_RATE:zone>=VOCAL_GO_ZONE?HUMAN_WORD_RATE:VOCAL_RATE;
  voice->phase2=voice->freq*(playback_rate/SR_RATE)/source_pitch;
  voice->attack_coef=zone>=VOCAL_DAY_ZONE?.004f:.00065f;
  voice->release_coef=zone==VOCAL_DAY_ZONE||zone==VOCAL_YOU_ZONE||zone>=VOCAL_LOVE_ZONE?.00010f:.00095f;
@@ -2180,8 +2204,17 @@ static const uint8_t word_phrases[][3]={
   {VOCAL_YOU_ZONE,VOCAL_DO_ZONE,VOCAL_CALL_ZONE},
   {VOCAL_HELLO_ZONE,4u,4u},
   {VOCAL_YES_ZONE,4u,VOCAL_WAY_ZONE},
+  {VOCAL_FEEL_ZONE,VOCAL_PEACE_ZONE,4u},
+  {VOCAL_FAITH_ZONE,VOCAL_HOPE_ZONE,4u},
+  {VOCAL_DIVINE_ZONE,VOCAL_LIGHT_ZONE,4u},
+  {VOCAL_RECEIVE_ZONE,VOCAL_JOY_ZONE,4u},
+  {VOCAL_CONSOLE_ZONE,VOCAL_ME_ZONE,4u},
+  {VOCAL_UNDERSTAND_ZONE,VOCAL_ME_ZONE,4u},
+  {VOCAL_BEAUTIFUL_ZONE,VOCAL_LIFE_ZONE,4u},
+  {VOCAL_WELCOME_ZONE,4u,3u},
 };
 #define WORD_PHRASE_COUNT (sizeof word_phrases/sizeof *word_phrases)
+#define EXTENDED_WORD_PHRASE 12u
 
 static unsigned auto_word_phrase(const sr_engine *e,unsigned bar,unsigned section,
                                  unsigned slot,unsigned flow)
@@ -2191,9 +2224,13 @@ static unsigned auto_word_phrase(const sr_engine *e,unsigned bar,unsigned sectio
   unsigned color=intention_score[e->scene][2];
   if((section!=1u&&section!=2u&&section!=4u)||((bar+e->scene)&1u))return 0;
   unsigned compact=flow!=SR_VOCAL_NORMAL||e->tick_length<6400u;
-  unsigned phrase=compact?(color&1u?1u:10u):
-       (color+e->music_mode+song_draw(e->song_seed,929u)%9u)%9u;
-  if(!compact&&phrase>=5u)phrase+=3u;
+  unsigned phrase=(color+e->music_mode+song_draw(e->song_seed,929u)%WORD_PHRASE_COUNT)%WORD_PHRASE_COUNT;
+  if(compact){
+    static const uint8_t short_phrases[]={1,10,11,13,14,19};
+    phrase=short_phrases[(phrase+color)%(sizeof short_phrases/sizeof *short_phrases)];
+    /* Give LIGHT the long opening when there is no room for its answer. */
+    if(phrase==14u)return slot==0u?VOCAL_LIGHT_ZONE:4u;
+  }
   return word_phrases[phrase][slot];
 }
 
@@ -2212,7 +2249,7 @@ static int vocal_word_note(const sr_engine *e,unsigned zone,unsigned chord,int t
  const int8_t *scale=scale_notes[sr_scenes[e->scene].scale];
  unsigned index=zone-VOCAL_DAY_ZONE;
  float source=vocal_words[index].hz;
- float rate=zone>=VOCAL_GO_ZONE?HUMAN_WORD_RATE:VOCAL_RATE;
+ float rate=zone>=VOCAL_PEACE_ZONE?HUMAN_SPEECH_RATE:zone>=VOCAL_GO_ZONE?HUMAN_WORD_RATE:VOCAL_RATE;
  float duration=(float)vocal_words[index].length*(SR_RATE/rate);
  if(zone>=VOCAL_GO_ZONE)duration*=1.13f;
  unsigned cost=~0u;
@@ -2347,7 +2384,11 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
    transition=0u;
  }
  if(e->vocal_articulation)zone=vocal_articulation(e->vocal_articulation,hook_note,&attack,&transition);
- if(e->vocal_articulation==12u)zone=extra?4u:word_phrases[bar%WORD_PHRASE_COUNT][hook_note];
+ if(e->vocal_articulation==12u)zone=extra?4u:word_phrases[bar%EXTENDED_WORD_PHRASE][hook_note];
+ if(e->vocal_articulation==SR_VOCAL_WORDS_EXT){
+   unsigned phrase=EXTENDED_WORD_PHRASE+bar%(WORD_PHRASE_COUNT-EXTENDED_WORD_PHRASE);
+   zone=extra?4u:word_phrases[phrase][hook_note];
+ }
  if(!e->vocal_articulation&&part==2u&&(e->vocal_reprise||section==4u)&&e->vocal_hook_vowel[hook_note]){
    zone=e->vocal_hook_vowel[hook_note]-1u;
    if(zone==VOCAL_BABY_ZONE)zone=VOCAL_LOVE_ZONE;
@@ -2423,7 +2464,14 @@ static int recorded_vocal_phrase(sr_engine *e,unsigned step,unsigned chord)
  if(word)for(unsigned i=0;i<SR_VOICES;i++){
    const sr_voice *voice=&e->voices[i];
    if(voice->active&&!voice->key&&!voice->external&&voice->sample_zone==zone+1u&&
-      !vocal_words[zone-VOCAL_DAY_ZONE].loop)return 0;
+      !vocal_words[zone-VOCAL_DAY_ZONE].loop){
+     /* Continue the melody on a vowel while the previous word finishes. */
+     zone=pos==answer?4u:3u;
+     transition=zone==3u?5u:4u;
+     attack=0;
+     word=0;
+     break;
+   }
  }
  sr_voice *lead=automatic?recorded_voice(e,note,zone,velocity,held,0,1):
                           recorded_note(e,note,zone,velocity,held);
@@ -3276,7 +3324,10 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
       if(!e->filter_cutoff&&(v->track==SR_DRONE||v->track==SR_HARMONY))
         config->cutoff*=.70f+.30f*e->current_energy;
     }
-    if(v->sample_zone&&!e->filter_cutoff)config->cutoff=.16f+e->vocal_param_now[VF_PRESENCE]*.0044f;
+    if(v->sample_zone&&!e->filter_cutoff){
+      float presence=e->vocal_param_now[VF_PRESENCE];
+      config->cutoff=v->sample_zone>VOCAL_PEACE_ZONE?.30f+presence*.0032f:.16f+presence*.0044f;
+    }
     config->left=left[v->track];
     config->right=right[v->track];
     config->send=send[v->track]*.5f;
@@ -3333,7 +3384,10 @@ static void prepare_voices(sr_engine *e,voice_block *block,size_t frames){
         float amount=(e->vocal_fx_manual&8u)?e->vocal_tune:100.f;
         float correction=bin+1u<sizeof human_word_pitch[0]?
           map[bin]+(map[bin+1u]-map[bin])*(pos-bin):0.f;
-        config->step=v->phase2*(1.f+correction*amount*.0001f);
+        /* The offline map estimates a window, so limit its gain to avoid
+         * chasing speech inflection and overshooting the note center.
+         * The correction multiplies, rather than replacing, phrase motion. */
+        config->step*=1.f+correction*amount*.000055f;
       }
       config->morph=clampf(age*SR_RATE*v->vocal_morph_rate*2.f-.55f,0.f,1.f);
       if(v->vocal_vowel_to){

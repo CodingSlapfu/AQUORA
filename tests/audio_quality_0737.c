@@ -27,7 +27,7 @@ static void tune_check(unsigned zone)
         sr_render(&engine,pcm,128);
         assert(voice->active);
         speed[i]=(voice->phase-bin*256.f)/(voice->phase2*128.f);
-        assert(fabsf(speed[i]-(1.f+map[bin]*(float)i*.005f))<.012f);
+        assert(fabsf(speed[i]-(1.f+map[bin]*(float)i*.00275f))<.012f);
     }
     assert((speed[1]-speed[0])*map[bin]>0.f);
     assert((speed[2]-speed[1])*map[bin]>0.f);

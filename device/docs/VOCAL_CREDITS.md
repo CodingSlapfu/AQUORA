@@ -123,3 +123,16 @@ recorded sung-vowel fallback at other pitches.
 HELLO is a cue from [Valérie Vivegnis’s self-recorded Hello](https://freesound.org/people/Valerie-Vivegnis/sounds/759142/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). AQUORA trims, downmixes, resamples, fades, and quantizes this spoken performance and pitches it in the sampler. It is available on the manual WORDS keyboard and in AUTO.
 
 YES is by Morena, from [MatteusNova’s recording The word yes](https://freesound.org/people/MatteusNova/sounds/157506/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). AQUORA trims, resamples, fades, and quantizes this spoken cue. It is playable in WORDS and eligible in AUTO.
+
+## v0.7.38 spoken words
+
+PEACE, FAITH, HOPE, LIGHT, JOY, DIVINE, CONSOLE, UNDERSTAND, RECEIVE and LIFE
+are excerpts from shadoWisp’s [Prayer of St Francis](https://freesound.org/people/shadoWisp/sounds/268020/)
+under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+WELCOME is excerpted from [Welcome Back](https://freesound.org/people/deleted_user_1390811/sounds/97836/)
+by the Freesound contributor displayed as `deleted_user_1390811`, also under CC BY 3.0.
+Both are recorded female spoken performances. AQUORA isolates each word,
+folds to mono, pitch-shifts the prayer excerpts offline with formant preservation
+into KIRA’s register, and uses the same finite 5-bit firmware samples as before.
+The per-word source cuts, processing, and SHA-256 hashes are in
+`device/dsp/human_words.json`. These credits apply to both firmware and emulator.
