@@ -1,0 +1,5 @@
+HELLO dry PCM window, target 329.63 Hz. Normalized autocorrelation with parabolic peak interpolation over frames 400–1699, source cursor initially 2560.
+TUNE   0: rendered 338.87 Hz, error +47.9 cents, autocorrelation 0.974
+TUNE  50: rendered 334.28 Hz, error +24.3 cents, autocorrelation 0.976
+TUNE 100: rendered 329.75 Hz, error  +0.7 cents, autocorrelation 0.977
+Single voiced window. This measures pitch centering in a flat fixture. The separate glide regression demonstrates expression retained at every strength.

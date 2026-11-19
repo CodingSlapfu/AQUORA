@@ -1,0 +1,25 @@
+Manual PEACE      MIDI 57, audible blocks 142, coda 21
+Manual FAITH      MIDI 59, audible blocks 115, coda 17
+Manual HOPE       MIDI 61, audible blocks 96, coda 9
+Manual LIGHT      MIDI 64, audible blocks 93, coda 19
+Manual JOY        MIDI 66, audible blocks 112, coda 16
+Manual DIVINE     MIDI 57, audible blocks 185, coda 30
+Manual CONSOLE    MIDI 59, audible blocks 231, coda 36
+Manual UNDERSTAND MIDI 61, audible blocks 205, coda 31
+Manual RECEIVE    MIDI 64, audible blocks 170, coda 25
+Manual LIFE       MIDI 66, audible blocks 76, coda 7
+Manual WELCOME    MIDI 57, audible blocks 147, coda 26
+TUNE 0: PCM advance 26.562 flat, 23.391 in glide
+TUNE 50: PCM advance 25.984 flat, 22.891 in glide
+TUNE 100: PCM advance 25.391 flat, 22.375 in glide
+AUTO CONSOLE    seed pass 1, scene 1, mode 0, step 0, audible blocks 197
+AUTO RECEIVE    seed pass 1, scene 5, mode 0, step 0, audible blocks 163
+AUTO JOY        seed pass 1, scene 5, mode 0, step 8, audible blocks 119
+AUTO PEACE      seed pass 1, scene 9, mode 0, step 8, audible blocks 96
+AUTO LIFE       seed pass 1, scene 13, mode 0, step 8, audible blocks 82
+AUTO FAITH      seed pass 1, scene 14, mode 0, step 0, audible blocks 87
+AUTO HOPE       seed pass 1, scene 14, mode 0, step 8, audible blocks 82
+AUTO WELCOME    seed pass 1, scene 19, mode 0, step 0, audible blocks 111
+AUTO UNDERSTAND seed pass 1, scene 17, mode 2, step 0, audible blocks 165
+AUTO DIVINE     seed pass 1, scene 19, mode 2, step 0, audible blocks 131
+AUTO LIGHT      seed pass 1, scene 14, mode 4, step 0, audible blocks 93
